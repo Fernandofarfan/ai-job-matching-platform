@@ -1,0 +1,43 @@
+{
+  "name": "EmpleoIA",
+  "short_name": "EmpleoIA",
+  "description": "Plataforma de búsqueda de empleo con Inteligencia Artificial",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1a1a2e",
+  "theme_color": "#667eea",
+  "orientation": "portrait-primary",
+  "lang": "es",
+  "icons": [
+    {
+      "src": "/static/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/static/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Job Tracker",
+      "short_name": "Tracker",
+      "description": "Ver mis postulaciones",
+      "url": "/tracker",
+      "icons": [{ "src": "/static/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Analytics",
+      "short_name": "Stats",
+      "description": "Ver estadísticas",
+      "url": "/analytics",
+      "icons": [{ "src": "/static/icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ],
+  "categories": ["productivity", "utilities"],
+  "screenshots": []
+}

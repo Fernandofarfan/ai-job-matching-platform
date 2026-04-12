@@ -9,8 +9,14 @@
       <h2 class="fw-bold text-dark mb-1">Tablero de Postulaciones</h2>
       <p class="text-muted mb-0">Gestiona el estado de tus aplicaciones en tiempo real</p>
     </div>
-    <div class="d-flex gap-2">
-      <a href="/results" class="btn btn-outline-success">
+    <div class="d-flex gap-2 flex-wrap">
+      <a href="/export/tracker/excel" class="btn btn-outline-success" id="btn-tracker-excel" title="Exportar a Excel">
+        <i class="bi bi-file-earmark-excel me-1"></i> Excel
+      </a>
+      <a href="/export/tracker/pdf" class="btn btn-outline-danger" id="btn-tracker-pdf" title="Exportar a PDF">
+        <i class="bi bi-file-earmark-pdf me-1"></i> PDF
+      </a>
+      <a href="/results" class="btn btn-outline-secondary">
         <i class="bi bi-file-earmark-spreadsheet me-2"></i> Importar de Resultados
       </a>
       <button class="btn btn-outline-secondary" id="toggleCompactView" onclick="toggleCompactView()">
@@ -19,6 +25,51 @@
       <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addJobModal">
         <i class="bi bi-plus-lg me-2"></i> Agregar Manualmente
       </button>
+    </div>
+  </div>
+
+  <!-- ── Funnel Metrics Strip ─────────────────────── -->
+  <div id="funnel-metrics" class="funnel-strip mb-4" style="display:none;">
+    <div class="funnel-strip-inner">
+      <div class="funnel-strip-item" id="fm-applied">
+        <div class="fm-icon fm-blue"><i class="bi bi-send-check"></i></div>
+        <div class="fm-data">
+          <div class="fm-value" id="fm-val-applied">0</div>
+          <div class="fm-label">Enviados</div>
+        </div>
+        <div class="fm-arrow"><i class="bi bi-chevron-right"></i></div>
+      </div>
+      <div class="funnel-strip-item" id="fm-interviewing">
+        <div class="fm-icon fm-yellow"><i class="bi bi-camera-video"></i></div>
+        <div class="fm-data">
+          <div class="fm-value" id="fm-val-interviewing">0</div>
+          <div class="fm-label">Entrevistas</div>
+        </div>
+        <div class="fm-conv" id="fm-conv-interviewing" title="Tasa de conversión desde enviados"></div>
+        <div class="fm-arrow"><i class="bi bi-chevron-right"></i></div>
+      </div>
+      <div class="funnel-strip-item" id="fm-negotiating">
+        <div class="fm-icon fm-orange"><i class="bi bi-currency-dollar"></i></div>
+        <div class="fm-data">
+          <div class="fm-value" id="fm-val-negotiating">0</div>
+          <div class="fm-label">Negociando</div>
+        </div>
+        <div class="fm-conv" id="fm-conv-negotiating"></div>
+        <div class="fm-arrow"><i class="bi bi-chevron-right"></i></div>
+      </div>
+      <div class="funnel-strip-item" id="fm-accepted">
+        <div class="fm-icon fm-green"><i class="bi bi-trophy"></i></div>
+        <div class="fm-data">
+          <div class="fm-value" id="fm-val-accepted">0</div>
+          <div class="fm-label">Aceptados</div>
+        </div>
+        <div class="fm-conv" id="fm-conv-accepted"></div>
+      </div>
+      <div class="funnel-strip-cta">
+        <a href="/analytics" class="btn-funnel-analytics">
+          <i class="bi bi-bar-chart-line me-1"></i>Analytics
+        </a>
+      </div>
     </div>
   </div>
 
@@ -180,7 +231,35 @@
   // Load all jobs on page load
   document.addEventListener('DOMContentLoaded', function () {
     loadAllJobs();
+    loadFunnelStats();
   });
+
+  function loadFunnelStats() {
+    fetch('/api/tracker/stats')
+      .then(r => r.json())
+      .then(data => {
+        if (!data.success) return;
+        const s = data.stats;
+        const stages = ['applied', 'interviewing', 'negotiating', 'accepted'];
+        stages.forEach(k => {
+          const el = document.getElementById('fm-val-' + k);
+          if (el) el.textContent = s[k] || 0;
+        });
+        // Conversion rates
+        const applied = s.applied || 0;
+        if (applied > 0) {
+          const setConv = (id, val) => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = Math.round(val / applied * 100) + '%';
+          };
+          setConv('fm-conv-interviewing', s.interviewing || 0);
+          setConv('fm-conv-negotiating', s.negotiating || 0);
+          setConv('fm-conv-accepted', s.accepted || 0);
+        }
+        document.getElementById('funnel-metrics').style.display = '';
+      })
+      .catch(() => {});
+  }
 
   function loadAllJobs() {
     fetch('/api/tracker/jobs')

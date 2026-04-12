@@ -1,29 +1,53 @@
+# ============================================================
+# EmpleoIA - Dependencias
+# ============================================================
+
+# --- Web Framework ---
 Flask==2.3.3
 Werkzeug==2.3.7
-numpy
-pandas
+flask-wtf==1.1.1
+
+# --- Real-time / WebSockets ---
+flask-socketio==5.3.6
+eventlet==0.35.2
+
+# --- Producción (WSGI Windows) ---
+waitress==3.0.0
+
+# --- Scraping ---
 selenium==4.12.0
 undetected-chromedriver==3.5.3
 webdriver-manager==4.0.0
-python-dotenv==1.0.0
-requests==2.31.0
-lxml
 beautifulsoup4==4.12.2
-flask-wtf==1.1.1
-cryptography==41.0.3
-APScheduler==3.10.4
-flask
-pandas
-selenium
-beautifulsoup4
-requests
-python-dotenv
-PyPDF2==3.0.1
-python-docx==0.8.11
-scikit-learn>=1.5.0
+lxml
+requests==2.31.0
+
+# --- NLP & Parsing ---
 spacy
 nltk==3.8.1
+PyPDF2==3.0.1
+python-docx==0.8.11
 
+# --- Machine Learning ---
+scikit-learn>=1.5.0
+numpy
+pandas
+
+# --- Base de datos ---
+mysql-connector-python
+
+# --- Inteligencia Artificial ---
 google-generativeai
 
-mysql-connector-python
+# --- Exportación de datos ---
+openpyxl>=3.1.0
+reportlab>=4.0.0
+
+# --- Tests ---
+pytest>=8.0.0
+pytest-flask>=1.3.0
+
+# --- Utilidades ---
+python-dotenv==1.0.0
+cryptography==41.0.3
+APScheduler==3.10.4

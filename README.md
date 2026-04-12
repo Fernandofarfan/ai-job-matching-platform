@@ -79,6 +79,17 @@
 - Notas y recordatorios personalizados
 - Métricas de progreso
 
+### 📈 **Analytics y Reportes Avanzados**
+- Dashboard interactivo con métricas de embudo (funnels) y tasas de conversión
+- Gráficos y visualizaciones (heatmap semanal) integrados con Chart.js
+- Extracción de Insights impulsados por reglas avanzadas para mejorar la búsqueda
+- Exportación de resultados y postulaciones en formatos profesionales (Excel y PDF)
+
+### ⚡ **Rendimiento y Modo Offline (PWA)**
+- Soporte para Progressive Web App (PWA) con modo de instalación
+- Sistema offline utilizando Service Workers y almacenamiento local en IndexedDB
+- Acceso continuo a las postulaciones guardadas incluso sin conexión a internet
+
 ### 👤 **Gestión de Perfiles**
 - Soporte para múltiples perfiles profesionales
 - Extracción automática de habilidades desde CVs
@@ -371,16 +382,12 @@ tail -f logs/app.log
 
 ### 🔴 En Desarrollo Activo
 - **Sistema de Notificaciones**: Alertas por email cuando aparecen nuevos trabajos relevantes
-- **Tests Unitarios**: Cobertura completa de tests para mayor estabilidad
-- **CI/CD Pipeline**: Automatización de despliegues con GitHub Actions
+- **Más Plataformas**: Glassdoor, ZipRecruiter, Monster, CareerBuilder
 
 ### 🟡 Próximas Funcionalidades
-- **Más Plataformas**: Glassdoor, ZipRecruiter, Monster, CareerBuilder
-- **Dashboard de Analytics**: Estadísticas de mercado laboral, tendencias salariales, demanda de skills
-- **Modo Offline**: Acceso a búsquedas guardadas sin conexión
-- **Exportación Avanzada**: PDF y Excel con formato profesional
 - **Filtros Avanzados**: Rango salarial, tipo de contrato, modalidad remota/híbrida
-- **Gráficos y Visualizaciones**: Charts interactivos para análisis de tendencias
+- **Machine Learning**: Predicción de probabilidad de conseguir entrevista
+- **Recomendación de Skills**: Sugerir habilidades para aprender basado en el mercado
 
 ### 🟢 Ideas a Largo Plazo
 - **Machine Learning**: Predicción de probabilidad de conseguir entrevista

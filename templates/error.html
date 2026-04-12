@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/error_premium.css') }}">
+
+<div class="error-container">
+  <div class="error-glow"></div>
+  <div class="error-content text-center">
+    <div class="error-code-wrapper mb-4">
+      <span class="error-code">{{ code }}</span>
+    </div>
+
+    <div class="error-icon-ring mb-4">
+      {% if code == 404 %}
+        <i class="bi bi-search error-icon"></i>
+      {% elif code == 500 %}
+        <i class="bi bi-exclamation-triangle error-icon"></i>
+      {% else %}
+        <i class="bi bi-x-circle error-icon"></i>
+      {% endif %}
+    </div>
+
+    <h1 class="error-title mb-3">
+      {% if code == 404 %}Página no encontrada
+      {% elif code == 500 %}Error interno del servidor
+      {% else %}Algo salió mal
+      {% endif %}
+    </h1>
+
+    <p class="error-description mb-5">
+      {% if code == 404 %}
+        La página que buscás no existe o fue movida. Quizás un scraper la escondió 🤖
+      {% elif code == 500 %}
+        Ocurrió un error inesperado. El equipo ya fue notificado. Intentá de nuevo en unos instantes.
+      {% else %}
+        {{ message or "Ocurrió un error inesperado." }}
+      {% endif %}
+    </p>
+
+    <div class="d-flex justify-content-center gap-3">
+      <a href="/" class="btn-error-primary">
+        <i class="bi bi-house me-2"></i>Volver al Inicio
+      </a>
+      <a href="javascript:history.back()" class="btn-error-secondary">
+        <i class="bi bi-arrow-left me-2"></i>Página Anterior
+      </a>
+    </div>
+
+    <!-- Floating particles -->
+    <div class="error-particles">
+      <span class="particle"></span>
+      <span class="particle"></span>
+      <span class="particle"></span>
+      <span class="particle"></span>
+      <span class="particle"></span>
+    </div>
+  </div>
+</div>
+{% endblock %}

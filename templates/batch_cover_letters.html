@@ -40,9 +40,46 @@
           <div class="form-text small">Se procesarán los primeros N empleos del archivo.</div>
         </div>
 
+        <!-- ✨ Nuevo: Selección de tono -->
+        <div class="mb-4">
+          <label class="form-label small fw-bold text-muted">3. Tono de la Carta</label>
+          <div class="d-flex flex-column gap-2" id="tone-selector">
+            <label class="tone-option selected" data-tone="profesional">
+              <input type="radio" name="tone" value="profesional" checked class="d-none">
+              <div class="d-flex align-items-center gap-2">
+                <span class="tone-icon">🏢</span>
+                <div>
+                  <div class="fw-semibold small">Profesional / Corporativo</div>
+                  <div class="text-muted" style="font-size: 0.75rem;">Formal, estructurado, logros cuantificables</div>
+                </div>
+              </div>
+            </label>
+            <label class="tone-option" data-tone="startup">
+              <input type="radio" name="tone" value="startup" class="d-none">
+              <div class="d-flex align-items-center gap-2">
+                <span class="tone-icon">🚀</span>
+                <div>
+                  <div class="fw-semibold small">Startup / Tech</div>
+                  <div class="text-muted" style="font-size: 0.75rem;">Dinámico, directo, enfocado en impacto</div>
+                </div>
+              </div>
+            </label>
+            <label class="tone-option" data-tone="creativo">
+              <input type="radio" name="tone" value="creativo" class="d-none">
+              <div class="d-flex align-items-center gap-2">
+                <span class="tone-icon">🎨</span>
+                <div>
+                  <div class="fw-semibold small">Creativo / Emprendedor</div>
+                  <div class="text-muted" style="font-size: 0.75rem;">Memorable, narrativo, personal</div>
+                </div>
+              </div>
+            </label>
+          </div>
+        </div>
+
         <div class="d-grid">
           <button class="btn btn-primary py-2" id="start_generation">
-            <i class="bi bi-magic me-2"></i> Generar Cartas
+            <i class="bi bi-magic me-2"></i> Generar Cartas con IA
           </button>
         </div>
         {% else %}
@@ -54,6 +91,7 @@
       </div>
     </div>
   </div>
+
 
   <!-- Results Column -->
   <div class="col-lg-8">
@@ -109,91 +147,136 @@
 {% endblock %}
 
 {% block scripts %}
+<style>
+  .tone-option {
+    display: block;
+    padding: 0.7rem 1rem;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: #f9fafb;
+  }
+  .tone-option:hover { border-color: #667eea; background: rgba(102,126,234,0.04); }
+  .tone-option.selected { border-color: #667eea; background: rgba(102,126,234,0.08); }
+  .tone-icon { font-size: 1.4rem; }
+</style>
 <script>
+  // ── Tone selector visual toggle ──────────
+  document.querySelectorAll('.tone-option').forEach(option => {
+    option.addEventListener('click', () => {
+      document.querySelectorAll('.tone-option').forEach(o => o.classList.remove('selected'));
+      option.classList.add('selected');
+      option.querySelector('input[type="radio"]').checked = true;
+    });
+  });
+
+  // ── Generate button ──────────────────────
   document.getElementById('start_generation').addEventListener('click', function () {
     const filename = document.getElementById('job_file_select').value;
-    const numJobs = parseInt(document.getElementById('num_jobs').value) || 5;
-    const btn = this;
+    const numJobs  = parseInt(document.getElementById('num_jobs').value) || 5;
+    const tone     = document.querySelector('input[name="tone"]:checked')?.value || 'profesional';
+    const btn      = this;
 
-    if (!filename) {
-      alert('Por favor seleccioná un archivo de empleos');
-      return;
-    }
+    if (!filename) { alert('Por favor seleccioná un archivo de empleos'); return; }
 
-    // UI Updates
-    const statusDiv = document.getElementById('generation_status');
-    const resultsDiv = document.getElementById('generation_results');
-    const emptyState = document.getElementById('empty-state');
+    const statusDiv   = document.getElementById('generation_status');
+    const resultsDiv  = document.getElementById('generation_results');
+    const emptyState  = document.getElementById('empty-state');
     const progressBar = document.getElementById('generation_progress');
-    const messageEl = document.getElementById('generation_message');
-    const percentageEl = document.getElementById('progress-percentage');
+    const messageEl   = document.getElementById('generation_message');
+    const percentageEl= document.getElementById('progress-percentage');
     const resultsList = document.getElementById('results_list');
     const statusBadge = document.getElementById('status-badge');
 
-    statusDiv.style.display = 'block';
+    statusDiv.style.display  = 'block';
     resultsDiv.style.display = 'none';
     emptyState.style.display = 'none';
-    progressBar.style.width = '10%';
+    progressBar.style.width  = '10%';
     percentageEl.textContent = '10%';
-    messageEl.textContent = 'Analizando CV y ofertas...';
-
-    statusBadge.className = 'badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 animate-pulse';
-    statusBadge.textContent = 'Generando...';
-
+    messageEl.textContent    = `Analizando CV y generando cartas (tono: ${tone})...`;
+    statusBadge.className    = 'badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25';
+    statusBadge.textContent  = 'Generando...';
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Procesando...';
 
     fetch('/api/batch_cover_letters', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ filename: filename, num_jobs: numJobs })
+      body: JSON.stringify({ filename, num_jobs: numJobs, tone })
     })
-      .then(response => response.json())
+      .then(r => r.json())
       .then(data => {
         if (data.success) {
           progressBar.style.width = '100%';
           percentageEl.textContent = '100%';
-          progressBar.classList.remove('progress-bar-striped', 'progress-bar-animated');
+          progressBar.classList.remove('progress-bar-striped','progress-bar-animated');
           progressBar.classList.add('bg-success');
-
-          messageEl.textContent = `¡Proceso finalizado!`;
+          messageEl.textContent = '¡Proceso finalizado!';
           statusBadge.className = 'badge bg-success bg-opacity-10 text-success border border-success border-opacity-25';
           statusBadge.textContent = 'Completado';
 
           let html = '';
           data.results.forEach(result => {
-            const isSuccess = result.status === 'success';
+            const ok = result.status === 'success';
             html += '<tr>';
             html += `<td class="ps-3 fw-medium">${result.job_title}</td>`;
             html += `<td class="text-muted">${result.company}</td>`;
-            html += `<td class="text-center"><span class="badge ${isSuccess ? 'bg-success' : 'bg-danger'} bg-opacity-10 ${isSuccess ? 'text-success' : 'text-danger'} border ${isSuccess ? 'border-success' : 'border-danger'} border-opacity-25">${isSuccess ? 'Éxito' : 'Error'}</span></td>`;
-
-            if (result.filename) {
-              html += `<td class="pe-3 text-end"><a href="/download_resume/${result.filename}" class="btn btn-sm btn-primary"><i class="bi bi-download me-1"></i> Descargar</a></td>`;
+            html += `<td class="text-center"><span class="badge ${ok ? 'bg-success' : 'bg-danger'} bg-opacity-10 ${ok ? 'text-success' : 'text-danger'} border ${ok ? 'border-success' : 'border-danger'} border-opacity-25">${ok ? 'Éxito' : 'Error'}</span></td>`;
+            if (ok && result.filename) {
+              html += `<td class="pe-3 text-end d-flex gap-2 justify-content-end">`;
+              if (result.preview) {
+                html += `<button class="btn btn-sm btn-outline-secondary" onclick="showPreview(this)" data-preview="${encodeURIComponent(result.preview)}" data-job="${result.job_title}"><i class="bi bi-eye me-1"></i>Preview</button>`;
+              }
+              html += `<a href="/download_resume/${result.filename}" class="btn btn-sm btn-primary"><i class="bi bi-download me-1"></i>Descargar</a>`;
+              html += `</td>`;
             } else {
-              html += `<td class="pe-3 text-end text-muted small">${result.error ? result.error.substring(0, 20) + '...' : 'Fallido'}</td>`;
+              html += `<td class="pe-3 text-end text-muted small">${result.error ? result.error.substring(0, 40) + '...' : 'Fallido'}</td>`;
             }
             html += '</tr>';
           });
 
           resultsList.innerHTML = html;
           resultsDiv.style.display = 'block';
-        } else {
-          throw new Error(data.error || 'Error desconocido');
-        }
+        } else { throw new Error(data.error || 'Error desconocido'); }
       })
       .catch(error => {
-        console.error('Error:', error);
         messageEl.textContent = 'Error: ' + error.message;
         progressBar.classList.add('bg-danger');
         statusBadge.className = 'badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25';
         statusBadge.textContent = 'Error';
-        alert('Ocurrió un error: ' + error.message);
       })
       .finally(() => {
         btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-magic me-2"></i> Generar Cartas';
+        btn.innerHTML = '<i class="bi bi-magic me-2"></i> Generar Cartas con IA';
       });
   });
+
+  // ── Preview modal ─────────────────────────
+  function showPreview(btn) {
+    const text = decodeURIComponent(btn.dataset.preview);
+    const job  = btn.dataset.job || 'Carta';
+    document.getElementById('previewModalTitle').textContent = `Preview — ${job}`;
+    document.getElementById('previewModalBody').textContent  = text;
+    new bootstrap.Modal(document.getElementById('previewModal')).show();
+  }
 </script>
+
+<!-- Preview Modal -->
+<div class="modal fade" id="previewModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold" id="previewModalTitle">Preview Carta</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <pre id="previewModalBody" style="white-space: pre-wrap; font-family: 'Inter', sans-serif; font-size: 0.9rem; line-height: 1.7;"></pre>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}

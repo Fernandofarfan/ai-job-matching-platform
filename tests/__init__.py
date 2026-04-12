@@ -1,0 +1,3 @@
+"""
+EmpleoIA – pytest configuration file.
+"""

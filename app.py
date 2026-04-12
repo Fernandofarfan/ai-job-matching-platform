@@ -1,4 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session, send_from_directory, send_file
+import io
+from flask_socketio import SocketIO, emit
 import os
 import threading
 import logging
@@ -33,6 +35,9 @@ app.secret_key = os.urandom(24)
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 app.jinja_env.auto_reload = True
+
+# WebSockets (async_mode=threading es compatible con el servidor dev de Flask)
+socketio = SocketIO(app, async_mode='threading', cors_allowed_origins='*')
 
 logging.basicConfig(
     level=logging.INFO,
@@ -102,14 +107,16 @@ def get_recent_job_files():
     return [os.path.basename(f[0]) for f in files_with_time[:10]]
 
 def get_user_profile():
-    profile_path = os.path.join('profiles', 'user_profile.json')
-    if os.path.exists(profile_path):
-        try:
-            with open(profile_path, 'r') as f:
+    """Load user profile from profiles/user_profiles.json"""
+    try:
+        profile_path = os.path.join('profiles', 'user_profiles.json')
+        if os.path.exists(profile_path):
+            with open(profile_path, 'r', encoding='utf-8') as f:
                 return json.load(f)
-        except Exception as e:
-            logger.error(f"Error loading profile: {e}")
-    return None
+        return None
+    except Exception as e:
+        logger.error(f"Error loading user profile: {e}")
+        return None
 
 def save_user_profile(profile, filename):
     profile_path = os.path.join('profiles', 'user_profile.json')
@@ -2183,5 +2190,546 @@ def api_batch_optimize():
         logger.error(f"Error in batch optimization: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
+# ─────────────────────────────────────────────────────────────
+# NUEVAS RUTAS: Analytics, Tracker Stats, Error Handlers
+# ─────────────────────────────────────────────────────────────
+
+@app.route('/analytics')
+def analytics():
+    """Dashboard de analytics: métricas de postulaciones y archivos scrapeados."""
+    from collections import defaultdict
+
+    # ── Datos desde MySQL (tabla applications) ──
+    stats = {
+        'total_jobs': 0,
+        'bookmarked': 0,
+        'applying': 0,
+        'applied': 0,
+        'interviewing': 0,
+        'negotiating': 0,
+        'accepted': 0,
+        'rejected': 0,
+        'top_companies': [],
+    }
+
+    timeline_labels = []
+    timeline_data   = []
+    status_labels   = []
+    status_data     = []
+    csv_stats       = []
+
+    try:
+        all_jobs = db_manager.get_all_tracked_jobs()
+        status_counts = defaultdict(int)
+        company_counts = defaultdict(int)
+        date_counts    = defaultdict(int)
+
+        for job in all_jobs:
+            st = job.get('status', 'unknown')
+            status_counts[st] += 1
+            company = job.get('company', 'Desconocida')
+            company_counts[company] += 1
+            date_applied = job.get('applied_date') or job.get('date_saved')
+            if date_applied:
+                try:
+                    day = str(date_applied)[:10]
+                    date_counts[day] += 1
+                except Exception:
+                    pass
+
+        stats['total_jobs']    = len(all_jobs)
+        stats['bookmarked']    = status_counts.get('bookmarked', 0)
+        stats['applying']      = status_counts.get('applying', 0)
+        stats['applied']       = status_counts.get('applied', 0)
+        stats['interviewing']  = status_counts.get('interviewing', 0)
+        stats['negotiating']   = status_counts.get('negotiating', 0)
+        stats['accepted']      = status_counts.get('accepted', 0)
+        stats['rejected']      = status_counts.get('rejected', 0)
+
+        # Top companies
+        stats['top_companies'] = [
+            {'name': k, 'count': v}
+            for k, v in sorted(company_counts.items(), key=lambda x: -x[1])[:10]
+        ]
+
+        # Timeline (últimos 30 días)
+        sorted_dates = sorted(date_counts.keys())[-30:]
+        timeline_labels = sorted_dates
+        timeline_data   = [date_counts[d] for d in sorted_dates]
+
+        # Status doughnut
+        status_order = ['applied','interviewing','negotiating','accepted','bookmarked','applying','rejected']
+        status_labels_map = {
+            'applied': 'Postulados',
+            'interviewing': 'Entrevistas',
+            'negotiating': 'Negociando',
+            'accepted': 'Aceptados',
+            'bookmarked': 'Guardados',
+            'applying': 'Aplicando',
+            'rejected': 'Rechazados',
+        }
+        for k in status_order:
+            if status_counts.get(k, 0) > 0:
+                status_labels.append(status_labels_map.get(k, k))
+                status_data.append(status_counts[k])
+
+    except Exception as e:
+        logger.error(f"Error loading analytics data from DB: {e}")
+
+    # ── CSV Stats ──
+    try:
+        csv_files = glob.glob(os.path.join('results', '*.csv'))
+        for fpath in sorted(csv_files, key=os.path.getmtime, reverse=True)[:15]:
+            fname = os.path.basename(fpath)
+            try:
+                df_tmp = pd.read_csv(fpath, encoding='latin-1', nrows=1)
+                count  = sum(1 for _ in open(fpath, encoding='latin-1')) - 1
+            except Exception:
+                count = 0
+
+            # Detectar plataforma desde nombre de archivo
+            platform = 'otro'
+            for p in ['indeed','linkedin','computrabajo','bumeran']:
+                if p in fname.lower():
+                    platform = p
+                    break
+
+            mtime = datetime.fromtimestamp(os.path.getmtime(fpath)).strftime('%d/%m/%Y %H:%M')
+            csv_stats.append({'name': fname, 'count': count, 'platform': platform, 'date': mtime})
+    except Exception as e:
+        logger.error(f"Error loading CSV stats: {e}")
+
+    return render_template(
+        'analytics.html',
+        stats=stats,
+        timeline_labels=timeline_labels,
+        timeline_data=timeline_data,
+        status_labels=status_labels,
+        status_data=status_data,
+        csv_stats=csv_stats,
+    )
+
+
+@app.route('/api/tracker/stats')
+def tracker_stats():
+    """Devuelve conteos por estado para el embudo del Job Tracker."""
+    try:
+        from collections import defaultdict
+        all_jobs = db_manager.get_all_tracked_jobs()
+        counts   = defaultdict(int)
+        for job in all_jobs:
+            counts[job.get('status', 'unknown')] += 1
+        return jsonify({'success': True, 'stats': dict(counts)})
+    except Exception as e:
+        logger.error(f"Error in tracker stats: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ─────────────────────────────────────────────────────────────
+# ANALYTICS AVANZADO – endpoint JSON (para llamadas AJAX)
+# ─────────────────────────────────────────────────────────────
+
+@app.route('/api/analytics/advanced')
+def api_analytics_advanced():
+    """Métricas avanzadas: tiempos promedio por etapa, tasa respuesta, heatmap."""
+    from collections import defaultdict
+
+    try:
+        all_jobs = db_manager.get_all_tracked_jobs()
+
+        # ── Conteos por estado ──
+        by_status = defaultdict(int)
+        by_weekday = defaultdict(int)  # 0=Lun … 6=Dom
+        total = len(all_jobs)
+
+        applied = interviewing = accepted = rejected = 0
+
+        for job in all_jobs:
+            st = job.get('status', 'unknown')
+            by_status[st] += 1
+
+            # Detección de día de la semana de postulación
+            raw_date = job.get('applied_date') or job.get('date_saved')
+            if raw_date:
+                try:
+                    if hasattr(raw_date, 'weekday'):
+                        by_weekday[raw_date.weekday()] += 1
+                    else:
+                        from datetime import datetime as _dt
+                        parsed = _dt.strptime(str(raw_date)[:10], '%Y-%m-%d')
+                        by_weekday[parsed.weekday()] += 1
+                except Exception:
+                    pass
+
+            if st == 'applied':     applied += 1
+            if st == 'interviewing': interviewing += 1
+            if st == 'accepted':    accepted += 1
+            if st == 'rejected':    rejected += 1
+
+        # ── Tasas (evitar divisiones por cero) ──
+        response_rate   = round(interviewing / applied * 100, 1) if applied  > 0 else 0
+        success_rate    = round(accepted / total * 100, 1)       if total    > 0 else 0
+        rejection_rate  = round(rejected / total * 100, 1)       if total    > 0 else 0
+
+        # ── Heatmap por día de semana ──
+        weekday_labels = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+        heatmap = [{'day': weekday_labels[i], 'count': by_weekday.get(i, 0)} for i in range(7)]
+
+        # ── Insights automáticos ──
+        insights = []
+        if response_rate >= 20:
+            insights.append({'icon': '🎯', 'type': 'success', 'text': f'Excelente tasa de respuesta ({response_rate}%). ¡Tus cartas de presentación están funcionando!'})
+        elif response_rate > 0:
+            insights.append({'icon': '💡', 'type': 'warning', 'text': f'Tasa de respuesta del {response_rate}%. Considera personalizar más tu CV para cada empresa.'})
+        else:
+            insights.append({'icon': '📝', 'type': 'info', 'text': 'Comienza a postularte para ver métricas de respuesta.'})
+
+        if by_status.get('bookmarked', 0) > by_status.get('applied', 0):
+            insights.append({'icon': '🚀', 'type': 'info', 'text': 'Tienes más empleos guardados que postulaciones. ¡Es momento de aplicar!'})
+
+        best_day = max(by_weekday, key=lambda k: by_weekday[k], default=None)
+        if best_day is not None and by_weekday[best_day] > 0:
+            insights.append({'icon': '📅', 'type': 'info', 'text': f'Tu día más activo es el {weekday_labels[best_day]}.'})
+
+        # ── Embudo detallado con conversiones ──
+        funnel = []
+        stages = [
+            ('bookmarked',  'Guardados'),
+            ('applying',    'Aplicando'),
+            ('applied',     'Postulados'),
+            ('interviewing','Entrevistas'),
+            ('negotiating', 'Negociando'),
+            ('accepted',    'Aceptados'),
+        ]
+        prev_count = total if total > 0 else 1
+        for key, label in stages:
+            count = by_status.get(key, 0)
+            conversion = round(count / prev_count * 100, 1) if prev_count > 0 else 0
+            funnel.append({'key': key, 'label': label, 'count': count, 'conversion': conversion})
+            if count > 0:
+                prev_count = count
+
+        return jsonify({
+            'success': True,
+            'total': total,
+            'response_rate': response_rate,
+            'success_rate': success_rate,
+            'rejection_rate': rejection_rate,
+            'by_status': dict(by_status),
+            'heatmap': heatmap,
+            'funnel': funnel,
+            'insights': insights,
+        })
+
+    except Exception as e:
+        logger.error(f"Error in advanced analytics: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ─────────────────────────────────────────────────────────────
+# EXPORTACIÓN – Excel y PDF
+# ─────────────────────────────────────────────────────────────
+
+@app.route('/export/tracker/excel')
+def export_tracker_excel():
+    """Exporta el Job Tracker completo a Excel (.xlsx)."""
+    try:
+        import openpyxl
+        from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+        from openpyxl.utils import get_column_letter
+
+        jobs = db_manager.get_all_tracked_jobs()
+
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Job Tracker"
+
+        # ── Estilos ──
+        header_fill   = PatternFill(start_color="667EEA", end_color="667EEA", fill_type="solid")
+        header_font   = Font(name='Calibri', bold=True, color="FFFFFF", size=11)
+        center_align  = Alignment(horizontal='center', vertical='center', wrap_text=True)
+        left_align    = Alignment(horizontal='left', vertical='center', wrap_text=True)
+        thin_border   = Border(
+            left=Side(style='thin', color='E5E7EB'),
+            right=Side(style='thin', color='E5E7EB'),
+            top=Side(style='thin', color='E5E7EB'),
+            bottom=Side(style='thin', color='E5E7EB')
+        )
+
+        status_colors = {
+            'bookmarked': "FEF3C7", 'applying': "DBEAFE",
+            'applied': "E0E7FF", 'interviewing': "D1FAE5",
+            'negotiating': "FDE68A", 'accepted': "A7F3D0", 'rejected': "FEE2E2"
+        }
+
+        # ── Encabezados ──
+        columns = ['ID', 'Título', 'Empresa', 'Ubicación', 'Salario',
+                   'Estado', 'Entusiasmo', 'Fecha Guardado', 'Fecha Aplicado',
+                   'Deadline', 'Notas', 'Enlace']
+        db_keys = ['id', 'title', 'company', 'location', 'salary',
+                   'status', 'excitement', 'date_saved', 'date_applied',
+                   'deadline', 'notes', 'job_link']
+
+        for col_idx, col_name in enumerate(columns, start=1):
+            cell = ws.cell(row=1, column=col_idx, value=col_name)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = center_align
+            cell.border = thin_border
+
+        ws.row_dimensions[1].height = 22
+
+        # ── Datos ──
+        for row_idx, job in enumerate(jobs, start=2):
+            status = job.get('status', '')
+            row_fill_color = status_colors.get(status, "FFFFFF")
+            row_fill = PatternFill(start_color=row_fill_color, end_color=row_fill_color, fill_type="solid")
+
+            for col_idx, key in enumerate(db_keys, start=1):
+                value = job.get(key, '')
+                if hasattr(value, 'strftime'):
+                    value = value.strftime('%Y-%m-%d')
+                cell = ws.cell(row=row_idx, column=col_idx, value=value)
+                cell.fill = row_fill
+                cell.border = thin_border
+                cell.alignment = left_align if col_idx > 2 else center_align
+            ws.row_dimensions[row_idx].height = 18
+
+        # ── Ancho de columnas ──
+        col_widths = [6, 32, 22, 18, 14, 15, 12, 16, 16, 14, 30, 40]
+        for i, width in enumerate(col_widths, start=1):
+            ws.column_dimensions[get_column_letter(i)].width = width
+
+        # ── "Freeze" primera fila ──
+        ws.freeze_panes = 'A2'
+
+        # ── Hoja de resumen ──
+        ws2 = wb.create_sheet("Resumen")
+        from collections import Counter
+        statuses = Counter(j.get('status', 'unknown') for j in jobs)
+        ws2.append(['Estado', 'Cantidad', '% del Total'])
+        for st, cnt in sorted(statuses.items(), key=lambda x: -x[1]):
+            pct = round(cnt / len(jobs) * 100, 1) if jobs else 0
+            ws2.append([st, cnt, f"{pct}%"])
+
+        # ── Guardar en memoria ──
+        output = io.BytesIO()
+        wb.save(output)
+        output.seek(0)
+
+        filename = f"EmpleoIA_Tracker_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx"
+        return send_file(output, as_attachment=True, download_name=filename,
+                         mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+    except Exception as e:
+        logger.error(f"Error exporting tracker to Excel: {e}")
+        flash(f'Error al exportar: {str(e)}', 'danger')
+        return redirect(url_for('tracker'))
+
+
+@app.route('/export/tracker/pdf')
+def export_tracker_pdf():
+    """Exporta el Job Tracker a PDF con ReportLab."""
+    try:
+        from reportlab.lib.pagesizes import A4, landscape
+        from reportlab.lib import colors
+        from reportlab.lib.units import cm
+        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.lib.enums import TA_CENTER, TA_LEFT
+
+        jobs = db_manager.get_all_tracked_jobs()
+
+        output = io.BytesIO()
+        doc = SimpleDocTemplate(output, pagesize=landscape(A4),
+                                leftMargin=1.5*cm, rightMargin=1.5*cm,
+                                topMargin=1.5*cm, bottomMargin=1.5*cm)
+
+        styles = getSampleStyleSheet()
+        title_style = ParagraphStyle('title', parent=styles['Title'],
+                                     fontSize=18, textColor=colors.HexColor('#667EEA'),
+                                     spaceAfter=6)
+        subtitle_style = ParagraphStyle('sub', parent=styles['Normal'],
+                                        fontSize=10, textColor=colors.HexColor('#6B7280'),
+                                        spaceAfter=16)
+
+        elements = []
+        elements.append(Paragraph("EmpleoIA – Reporte de Postulaciones", title_style))
+        elements.append(Paragraph(f"Generado el {datetime.now().strftime('%d/%m/%Y %H:%M')} · {len(jobs)} registros totales", subtitle_style))
+        elements.append(Spacer(1, 10))
+
+        # ── Tabla de trabajos ──
+        col_names = ['Título', 'Empresa', 'Ubicación', 'Estado', 'Fecha Aplicado', 'Salario']
+        db_keys   = ['title', 'company', 'location', 'status', 'date_applied', 'salary']
+        data = [col_names]
+        for job in jobs[:200]:   # límite de 200 filas en PDF
+            row = []
+            for key in db_keys:
+                val = job.get(key, '')
+                if hasattr(val, 'strftime'):
+                    val = val.strftime('%d/%m/%Y')
+                row.append(str(val)[:40] if val else '-')
+            data.append(row)
+
+        col_widths_pdf = [7*cm, 6*cm, 5*cm, 3.5*cm, 3.5*cm, 3.5*cm]
+        table = Table(data, colWidths=col_widths_pdf, repeatRows=1)
+
+        status_color_map = {
+            'bookmarked': colors.HexColor('#FEF3C7'),
+            'applying':   colors.HexColor('#DBEAFE'),
+            'applied':    colors.HexColor('#E0E7FF'),
+            'interviewing': colors.HexColor('#D1FAE5'),
+            'negotiating': colors.HexColor('#FDE68A'),
+            'accepted':   colors.HexColor('#A7F3D0'),
+            'rejected':   colors.HexColor('#FEE2E2'),
+        }
+
+        base_style = [
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#667EEA')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 9),
+            ('FONTSIZE', (0, 1), (-1, -1), 8),
+            ('GRID', (0, 0), (-1, -1), 0.4, colors.HexColor('#E5E7EB')),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#F9FAFB')]),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('LEFTPADDING', (0, 0), (-1, -1), 6),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+            ('TOPPADDING', (0, 0), (-1, -1), 5),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+        ]
+
+        # Color por estado
+        for i, job in enumerate(jobs[:200], start=1):
+            st = job.get('status', '')
+            if st in status_color_map:
+                base_style.append(('BACKGROUND', (3, i), (3, i), status_color_map[st]))
+
+        table.setStyle(TableStyle(base_style))
+        elements.append(table)
+
+        doc.build(elements)
+        output.seek(0)
+
+        filename = f"EmpleoIA_Tracker_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf"
+        return send_file(output, as_attachment=True, download_name=filename, mimetype='application/pdf')
+
+    except Exception as e:
+        logger.error(f"Error exporting tracker to PDF: {e}")
+        flash(f'Error al exportar PDF: {str(e)}', 'danger')
+        return redirect(url_for('tracker'))
+
+
+@app.route('/export/results/<filename>/excel')
+def export_results_excel(filename):
+    """Exporta un CSV de resultados como Excel formateado."""
+    try:
+        import openpyxl
+        from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+        from openpyxl.utils import get_column_letter
+
+        file_path = os.path.join('results', filename)
+        if not os.path.exists(file_path) or not filename.endswith('.csv'):
+            flash('Archivo no encontrado', 'danger')
+            return redirect(url_for('results'))
+
+        df = pd.read_csv(file_path, encoding='latin-1')
+
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Resultados"
+
+        header_fill = PatternFill(start_color="764BA2", end_color="764BA2", fill_type="solid")
+        header_font = Font(name='Calibri', bold=True, color="FFFFFF", size=10)
+        center_align = Alignment(horizontal='center', vertical='center', wrap_text=True)
+        thin_border  = Border(
+            left=Side(style='thin', color='E5E7EB'), right=Side(style='thin', color='E5E7EB'),
+            top=Side(style='thin', color='E5E7EB'), bottom=Side(style='thin', color='E5E7EB')
+        )
+
+        # Encabezados
+        for col_idx, col_name in enumerate(df.columns, start=1):
+            cell = ws.cell(row=1, column=col_idx, value=col_name)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = center_align
+            cell.border = thin_border
+
+        ws.row_dimensions[1].height = 20
+
+        # Datos
+        alt_fill = PatternFill(start_color="F3F4F6", end_color="F3F4F6", fill_type="solid")
+        for row_idx, row in enumerate(df.itertuples(index=False), start=2):
+            row_fill = alt_fill if row_idx % 2 == 0 else PatternFill()
+            for col_idx, value in enumerate(row, start=1):
+                cell = ws.cell(row=row_idx, column=col_idx, value=str(value) if value is not None else '')
+                cell.fill = row_fill
+                cell.border = thin_border
+                cell.alignment = Alignment(horizontal='left', vertical='center', wrap_text=False)
+            ws.row_dimensions[row_idx].height = 15
+
+        # Auto-width
+        for col_idx, col_name in enumerate(df.columns, start=1):
+            max_len = max(len(str(col_name)), df[col_name].astype(str).str.len().max() if len(df) > 0 else 10)
+            ws.column_dimensions[get_column_letter(col_idx)].width = min(max_len + 4, 50)
+
+        ws.freeze_panes = 'A2'
+
+        output = io.BytesIO()
+        wb.save(output)
+        output.seek(0)
+
+        base = filename.replace('.csv', '')
+        dl_name = f"{base}_export.xlsx"
+        return send_file(output, as_attachment=True, download_name=dl_name,
+                         mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+    except Exception as e:
+        logger.error(f"Error exporting results to Excel: {e}")
+        flash(f'Error al exportar: {str(e)}', 'danger')
+        return redirect(url_for('results'))
+
+
+# ─────────────────────────────────────────────
+# Error Handlers
+# ─────────────────────────────────────────────
+
+@app.errorhandler(404)
+def not_found(e):
+    return render_template('error.html', code=404, message='Página no encontrada'), 404
+
+@app.errorhandler(500)
+def server_error(e):
+    logger.error(f"500 Internal Server Error: {e}")
+    return render_template('error.html', code=500, message=str(e)), 500
+
+
+# ─────────────────────────────────────────────
+# SocketIO: progreso del scraper en tiempo real
+# ─────────────────────────────────────────────
+
+@socketio.on('connect')
+def on_connect():
+    emit('connected', {'data': 'Connected to EmpleoIA SocketIO'})
+
+@socketio.on('check_status')
+def handle_check_status(data):
+    """Cliente puede pedir el estado actual de cualquier scraper."""
+    scraper_key = data.get('scraper', 'indeed_scraping')
+    status = job_status.get(scraper_key, {})
+    emit('scraper_status', status)
+
+
+def emit_scraper_progress(scraper_key: str):
+    """Emite el progreso del scraper via SocketIO (llamar desde los threads de scraping)."""
+    try:
+        socketio.emit('scraper_status', {
+            'scraper': scraper_key,
+            **job_status.get(scraper_key, {})
+        })
+    except Exception:
+        pass  # No romper el scraper si SocketIO falla
+
+
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', debug=True)
+    socketio.run(app, host='0.0.0.0', debug=True, allow_unsafe_werkzeug=True)

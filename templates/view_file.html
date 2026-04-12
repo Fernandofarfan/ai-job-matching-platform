@@ -1,4 +1,4 @@
-﻿{% extends "base.html" %} {% block content %}
+{% extends "base.html" %} {% block content %}
 <div class="container-fluid mt-3">
   <div class="row mb-3">
     <div class="col-12">
@@ -24,8 +24,55 @@
     </div>
   </div>
 
+  <!-- Advanced Filters + Table -->  
   <div class="row">
-    <div class="col-12">
+    <!-- Filter Sidebar -->
+    <div class="col-lg-2 mb-3">
+      <div class="card border-0 shadow-sm p-3" style="position: sticky; top: 1rem;">
+        <h6 class="fw-bold mb-3 text-dark"><i class="bi bi-funnel me-2 text-primary"></i>Filtros</h6>
+
+        <div class="mb-3">
+          <label class="form-label small fw-bold text-muted">Buscar</label>
+          <div class="input-group input-group-sm">
+            <span class="input-group-text bg-light border-end-0"><i class="bi bi-search"></i></span>
+            <input type="text" id="filterKeyword" class="form-control border-start-0" placeholder="Empresa, título..." oninput="applyFilters()">
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label small fw-bold text-muted">Modalidad</label>
+          <div class="d-flex flex-column gap-1">
+            <div class="form-check form-check-sm">
+              <input class="form-check-input" type="checkbox" id="filterRemote" checked onchange="applyFilters()">
+              <label class="form-check-label small" for="filterRemote">Remoto</label>
+            </div>
+            <div class="form-check form-check-sm">
+              <input class="form-check-input" type="checkbox" id="filterHybrid" checked onchange="applyFilters()">
+              <label class="form-check-label small" for="filterHybrid">Híbrido</label>
+            </div>
+            <div class="form-check form-check-sm">
+              <input class="form-check-input" type="checkbox" id="filterOnsite" checked onchange="applyFilters()">
+              <label class="form-check-label small" for="filterOnsite">Presencial</label>
+            </div>
+            <div class="form-check form-check-sm">
+              <input class="form-check-input" type="checkbox" id="filterOther" checked onchange="applyFilters()">
+              <label class="form-check-label small" for="filterOther">Sin Especif.</label>
+            </div>
+          </div>
+        </div>
+
+        <button class="btn btn-sm btn-outline-secondary w-100" onclick="resetFilters()">
+          <i class="bi bi-arrow-counterclockwise me-1"></i>Limpiar
+        </button>
+
+        <div class="mt-3 pt-3 border-top">
+          <small class="text-muted">Mostrando <span id="filterCount" class="fw-bold text-primary">...</span> empleos</small>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Table -->
+    <div class="col-lg-10">
       <div class="table-responsive">{{ table_html | safe }}</div>
     </div>
   </div>
@@ -402,6 +449,63 @@
         alert('ÔØî Error: ' + (error.message || 'Error desconocido'));
       });
   }
+
+  // ── Advanced Filters ──────────────────────────────────
+  function applyFilters() {
+    const keyword = document.getElementById('filterKeyword').value.toLowerCase();
+    const showRemote  = document.getElementById('filterRemote').checked;
+    const showHybrid  = document.getElementById('filterHybrid').checked;
+    const showOnsite  = document.getElementById('filterOnsite').checked;
+    const showOther   = document.getElementById('filterOther').checked;
+
+    const rows = document.querySelectorAll('#jobTable tbody tr');
+    let visible = 0;
+
+    rows.forEach(row => {
+      const text = row.textContent.toLowerCase();
+      const loc  = text;
+
+      // Keyword filter
+      if (keyword && !text.includes(keyword)) {
+        row.style.display = 'none';
+        return;
+      }
+
+      // Modality filter (keyword detection in row text)
+      const isRemote  = /remot|remote/.test(loc);
+      const isHybrid  = /h[íi]brido|hybrid/.test(loc);
+      const isOnsite  = /presencial|on.?site|oficina/.test(loc);
+      const isOther   = !isRemote && !isHybrid && !isOnsite;
+
+      const allowed = (isRemote && showRemote) ||
+                      (isHybrid && showHybrid) ||
+                      (isOnsite && showOnsite) ||
+                      (isOther  && showOther);
+
+      row.style.display = allowed ? '' : 'none';
+      if (allowed) visible++;
+    });
+
+    const countEl = document.getElementById('filterCount');
+    if (countEl) countEl.textContent = visible;
+  }
+
+  function resetFilters() {
+    document.getElementById('filterKeyword').value = '';
+    ['filterRemote','filterHybrid','filterOnsite','filterOther']
+      .forEach(id => document.getElementById(id).checked = true);
+    applyFilters();
+  }
+
+  // Run on load to set count
+  document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(() => {
+      const total = document.querySelectorAll('#jobTable tbody tr').length;
+      const countEl = document.getElementById('filterCount');
+      if (countEl) countEl.textContent = total;
+    }, 200);
+  });
+
 </script>
 
 

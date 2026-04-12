@@ -1,0 +1,338 @@
+/* ============================================================
+   analytics_premium.css — Dashboard de Analytics
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+* { font-family: 'Inter', sans-serif; }
+
+/* ── Header ── */
+.analytics-header {
+  padding: 1.5rem 0;
+}
+
+.analytics-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #667eea;
+  background: rgba(102, 126, 234, 0.1);
+  border: 1px solid rgba(102, 126, 234, 0.25);
+  padding: 0.3rem 0.9rem;
+  border-radius: 50px;
+  margin-bottom: 0.75rem;
+}
+
+.analytics-title {
+  font-size: 2rem;
+  font-weight: 800;
+  color: #1a1a2e;
+  margin: 0 0 0.25rem;
+}
+
+.analytics-subtitle {
+  color: #6b7280;
+  font-size: 1rem;
+  margin: 0;
+}
+
+.btn-analytics-outline {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.6rem 1.4rem;
+  border-radius: 50px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-decoration: none;
+  color: #667eea;
+  border: 2px solid rgba(102, 126, 234, 0.35);
+  transition: all 0.2s ease;
+}
+
+.btn-analytics-outline:hover {
+  background: rgba(102, 126, 234, 0.08);
+  color: #667eea;
+  border-color: #667eea;
+  transform: translateY(-1px);
+}
+
+/* ── KPI Cards ── */
+.kpi-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.06);
+  border: 1px solid rgba(0,0,0,0.05);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.kpi-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 4px;
+  border-radius: 16px 16px 0 0;
+}
+
+.kpi-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 30px rgba(0,0,0,0.1);
+}
+
+.kpi-blue::before  { background: linear-gradient(90deg, #667eea, #764ba2); }
+.kpi-purple::before { background: linear-gradient(90deg, #764ba2, #a855f7); }
+.kpi-green::before  { background: linear-gradient(90deg, #22c55e, #16a34a); }
+.kpi-gold::before   { background: linear-gradient(90deg, #f59e0b, #d97706); }
+
+.kpi-icon {
+  font-size: 1.6rem;
+  margin-bottom: 0.75rem;
+}
+
+.kpi-blue .kpi-icon  { color: #667eea; }
+.kpi-purple .kpi-icon { color: #764ba2; }
+.kpi-green .kpi-icon  { color: #22c55e; }
+.kpi-gold .kpi-icon   { color: #f59e0b; }
+
+.kpi-value {
+  font-size: 2.4rem;
+  font-weight: 800;
+  color: #1a1a2e;
+  line-height: 1;
+  margin-bottom: 0.35rem;
+}
+
+.kpi-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 0.5rem;
+}
+
+.kpi-trend {
+  font-size: 0.78rem;
+  color: #9ca3af;
+}
+
+/* ── Analytics Cards ── */
+.analytics-card {
+  background: #fff;
+  border-radius: 18px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 20px rgba(0,0,0,0.06);
+  border: 1px solid rgba(0,0,0,0.05);
+  height: 100%;
+}
+
+.analytics-card-header {
+  margin-bottom: 1.25rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+}
+
+.analytics-card-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1a1a2e;
+  margin: 0;
+  display: flex;
+  align-items: center;
+}
+
+.chart-wrapper {
+  position: relative;
+  height: 220px;
+}
+
+/* ── Funnel ── */
+.funnel-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.funnel-stage {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.funnel-bar-wrap {
+  flex: 1;
+  height: 10px;
+  background: rgba(0,0,0,0.05);
+  border-radius: 50px;
+  overflow: hidden;
+}
+
+.funnel-bar {
+  height: 100%;
+  border-radius: 50px;
+  transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.funnel-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 120px;
+  justify-content: space-between;
+}
+
+.funnel-label {
+  font-size: 0.8rem;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.funnel-count {
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+/* ── Top List ── */
+.top-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.top-list-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.top-list-rank {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.top-list-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #374151;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.top-list-bar-wrap {
+  width: 100px;
+  height: 6px;
+  background: rgba(0,0,0,0.06);
+  border-radius: 50px;
+  overflow: hidden;
+}
+
+.top-list-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #667eea, #764ba2);
+  border-radius: 50px;
+}
+
+.top-list-count {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #667eea;
+  width: 24px;
+  text-align: right;
+}
+
+/* ── Table ── */
+.analytics-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0 6px;
+}
+
+.analytics-table thead th {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #9ca3af;
+  padding: 0 1rem 0.5rem;
+  border: none;
+}
+
+.analytics-table tbody tr {
+  background: rgba(0,0,0,0.02);
+  border-radius: 10px;
+}
+
+.analytics-table tbody td {
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  color: #374151;
+  border: none;
+}
+
+.analytics-table tbody tr:hover td {
+  background: rgba(102, 126, 234, 0.05);
+}
+
+.badge-count {
+  background: rgba(102, 126, 234, 0.1);
+  color: #667eea;
+  font-weight: 700;
+  padding: 0.2rem 0.6rem;
+  border-radius: 50px;
+  font-size: 0.8rem;
+}
+
+.platform-badge {
+  padding: 0.2rem 0.65rem;
+  border-radius: 50px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.platform-indeed      { background: #fef3c7; color: #92400e; }
+.platform-linkedin    { background: #dbeafe; color: #1e40af; }
+.platform-computrabajo { background: #d1fae5; color: #065f46; }
+.platform-bumeran     { background: #ede9fe; color: #5b21b6; }
+
+.btn-table-action {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #667eea;
+  text-decoration: none;
+  padding: 0.3rem 0.8rem;
+  border-radius: 50px;
+  border: 1px solid rgba(102,126,234,0.3);
+  transition: all 0.2s;
+}
+
+.btn-table-action:hover {
+  background: rgba(102, 126, 234, 0.08);
+  color: #667eea;
+}
+
+/* ── No data ── */
+.no-data-msg {
+  text-align: center;
+  padding: 2rem;
+  color: #9ca3af;
+}
+
+.no-data-msg i { font-size: 2.5rem; display: block; margin-bottom: 1rem; }
+.no-data-msg p { font-size: 0.9rem; line-height: 1.6; }
