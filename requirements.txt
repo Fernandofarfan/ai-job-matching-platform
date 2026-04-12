@@ -6,6 +6,8 @@
 Flask==2.3.3
 Werkzeug==2.3.7
 flask-wtf==1.1.1
+fastapi>=0.100.0
+uvicorn[standard]>=0.23.0
 
 # --- Real-time / WebSockets ---
 flask-socketio==5.3.6
@@ -19,12 +21,13 @@ celery[redis]>=5.3.0
 redis>=5.0.0
 
 # --- Scraping ---
-selenium==4.12.0
-undetected-chromedriver==3.5.3
-webdriver-manager==4.0.0
+playwright==1.42.0
 beautifulsoup4==4.12.2
 lxml
 requests==2.31.0
+undetected-chromedriver
+selenium
+webdriver-manager
 
 # --- NLP & Parsing ---
 spacy
@@ -45,6 +48,12 @@ alembic>=1.13.0
 
 # --- Inteligencia Artificial ---
 google-generativeai
+pydantic>=2.0.0
+
+# --- Email integration ---
+google-api-python-client
+google-auth-httplib2
+google-auth-oauthlib
 
 # --- Exportación de datos ---
 openpyxl>=3.1.0

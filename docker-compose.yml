@@ -137,7 +137,7 @@ services:
   mysql:
     image: mysql:8.0
     ports:
-      - "3306:3306"
+      - "3307:3306"
     environment:
       - MYSQL_ROOT_PASSWORD=${DB_PASSWORD:-empleoia_pass}
       - MYSQL_DATABASE=job_tracker

@@ -14,6 +14,11 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 - Gamificación: Sistema de logros y estadísticas personales
 - Mobile App: Aplicación nativa iOS/Android
 
+### 🔧 Correcciones Recientes de Entorno (Local/Docker)
+- 🐛 **Dockerfile Oficial**: Creación de `Dockerfile` principal asado en `mcr.microsoft.com/playwright/python:v1.42.0-jammy` listo para correr Selenium y Playwright, solventando problemas con C++ Build Tools en host.
+- 🐛 **Resolución de Puertos MySQL**: Modificado `docker-compose.yml` para exponer MySQL en el puerto `3307` del host, evitando el choque `bind: Only one usage of each socket address` con instalaciones locales.
+- 🐛 **Dependencias Omitidas**: Añadidos dinámicamente `undetected-chromedriver`, `selenium` y `webdriver-manager` a `requirements.txt` tras rastrear `ModuleNotFoundError` que pausaba el contenedor `web`.
+
 ---
 
 ## [3.0.0] - 2025-04-12 — EmpleoIA Enterprise 🚀
