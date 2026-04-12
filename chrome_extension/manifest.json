@@ -1,0 +1,49 @@
+{
+  "manifest_version": 3,
+  "name": "EmpleoIA Saver",
+  "version": "1.0.0",
+  "description": "Guardá ofertas de trabajo directamente en tu EmpleoIA con 1 click desde LinkedIn, Indeed, Bumeran y Computrabajo.",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage"
+  ],
+  "host_permissions": [
+    "https://www.linkedin.com/*",
+    "https://ar.indeed.com/*",
+    "https://www.indeed.com/*",
+    "https://www.bumeran.com.ar/*",
+    "https://ar.computrabajo.com/*",
+    "http://localhost:5000/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    },
+    "default_title": "EmpleoIA — Guardar trabajo"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.linkedin.com/jobs/*",
+        "https://ar.indeed.com/viewjob*",
+        "https://www.indeed.com/viewjob*",
+        "https://www.bumeran.com.ar/empleos-*",
+        "https://ar.computrabajo.com/ofertas-de-trabajo*"
+      ],
+      "js": ["content.js"],
+      "css": ["content.css"]
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  }
+}

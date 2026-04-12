@@ -1,0 +1,667 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid px-4">
+
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="interview-header d-flex align-items-center gap-3">
+                <div class="header-icon">
+                    <i class="bi bi-mic-fill"></i>
+                </div>
+                <div>
+                    <h1 class="page-title mb-1">Mock Interview</h1>
+                    <p class="page-subtitle text-muted mb-0">Practicá entrevistas con IA · Feedback en tiempo real</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Setup Panel (visible when no interview active) -->
+    <div id="setup-panel" class="row g-4 mb-4">
+
+        <!-- Job Selector -->
+        <div class="col-lg-6">
+            <div class="card-premium h-100">
+                <div class="card-header-premium">
+                    <i class="bi bi-briefcase me-2 text-primary-gradient"></i>
+                    <strong>Seleccionar Posición</strong>
+                </div>
+                <div class="card-body-premium">
+                    <label class="form-label text-muted mb-2">Desde tu Job Tracker:</label>
+                    <select class="form-select form-select-dark mb-3" id="tracker-job-select">
+                        <option value="">— Seleccioná un trabajo guardado —</option>
+                        {% for job in tracked_jobs %}
+                        <option value="{{ job.id }}"
+                                data-title="{{ job.title }}"
+                                data-company="{{ job.company }}"
+                                data-description="{{ job.description or '' }}">
+                            {{ job.title }} · {{ job.company }}
+                        </option>
+                        {% endfor %}
+                    </select>
+
+                    <div class="divider-text my-3">— o ingresá manualmente —</div>
+
+                    <input type="text" id="manual-title" class="form-control form-control-dark mb-2"
+                           placeholder="Título del puesto (ej: Data Analyst)">
+                    <input type="text" id="manual-company" class="form-control form-control-dark mb-2"
+                           placeholder="Empresa (ej: Mercado Libre)">
+                    <textarea id="manual-description" class="form-control form-control-dark"
+                              rows="4"
+                              placeholder="Pegá la descripción del trabajo aquí (opcional pero mejora la calidad de las preguntas)"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- Interview Config -->
+        <div class="col-lg-6">
+            <div class="card-premium h-100">
+                <div class="card-header-premium">
+                    <i class="bi bi-sliders me-2 text-success-gradient"></i>
+                    <strong>Configurar Entrevista</strong>
+                </div>
+                <div class="card-body-premium">
+
+                    <label class="form-label text-muted">Dificultad:</label>
+                    <div class="difficulty-selector mb-4">
+                        <button class="diff-btn active" data-diff="junior">
+                            <i class="bi bi-1-circle"></i> Junior
+                        </button>
+                        <button class="diff-btn" data-diff="medio">
+                            <i class="bi bi-2-circle"></i> Medio
+                        </button>
+                        <button class="diff-btn" data-diff="senior">
+                            <i class="bi bi-3-circle"></i> Senior
+                        </button>
+                    </div>
+
+                    <label class="form-label text-muted">Número de preguntas:</label>
+                    <div class="d-flex align-items-center gap-3 mb-4">
+                        <input type="range" class="form-range" id="questions-count"
+                               min="5" max="15" value="10" step="5">
+                        <span class="badge bg-primary-gradient px-3 py-2" id="questions-label">10</span>
+                    </div>
+
+                    <label class="form-label text-muted">Modo de práctica:</label>
+                    <div class="mode-selector mb-4">
+                        <label class="mode-option active" id="mode-text-label">
+                            <input type="radio" name="interview-mode" value="text" checked>
+                            <i class="bi bi-chat-dots"></i>
+                            <span>Texto</span>
+                        </label>
+                        <label class="mode-option" id="mode-timed-label">
+                            <input type="radio" name="interview-mode" value="timed">
+                            <i class="bi bi-stopwatch"></i>
+                            <span>Con tiempo</span>
+                        </label>
+                    </div>
+
+                    <button class="btn btn-primary-gradient w-100 btn-lg" id="start-interview-btn"
+                            onclick="startInterview()">
+                        <i class="bi bi-play-circle me-2"></i>
+                        Comenzar Entrevista
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Interview Panel (hidden initially) -->
+    <div id="interview-panel" class="d-none">
+        <div class="row g-4">
+
+            <!-- Question Area -->
+            <div class="col-lg-8">
+                <div class="card-premium">
+
+                    <!-- Progress -->
+                    <div class="card-header-premium d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="badge bg-primary-gradient me-2" id="question-badge">Pregunta 1/10</span>
+                            <span class="badge bg-secondary" id="question-type-badge">Técnica</span>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <span id="timer-display" class="timer-badge d-none">
+                                <i class="bi bi-clock"></i> <span id="timer-value">2:00</span>
+                            </span>
+                            <button class="btn btn-sm btn-outline-danger" onclick="endInterview()">
+                                <i class="bi bi-x-circle me-1"></i> Terminar
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="card-body-premium">
+                        <!-- Question Progress Bar -->
+                        <div class="progress mb-4" style="height:6px;border-radius:3px;">
+                            <div class="progress-bar bg-primary-gradient" id="question-progress"
+                                 style="width:10%;transition:width 0.5s ease;"></div>
+                        </div>
+
+                        <!-- Question Text -->
+                        <div class="question-bubble mb-4">
+                            <div class="question-icon">
+                                <i class="bi bi-robot"></i>
+                            </div>
+                            <div class="question-content">
+                                <p id="question-text" class="question-text mb-1">
+                                    Cargando pregunta...
+                                </p>
+                                <small id="question-hint" class="text-muted d-none">
+                                    <i class="bi bi-lightbulb me-1"></i>
+                                    <span id="hint-text"></span>
+                                </small>
+                            </div>
+                        </div>
+
+                        <!-- Hint Toggle -->
+                        <button class="btn btn-sm btn-outline-warning mb-3" onclick="toggleHint()" id="hint-btn">
+                            <i class="bi bi-lightbulb me-1"></i> Ver pista
+                        </button>
+
+                        <!-- Answer Input -->
+                        <div class="answer-section">
+                            <label class="form-label text-muted">
+                                <i class="bi bi-pencil me-1"></i> Tu respuesta:
+                            </label>
+                            <textarea id="user-answer" class="form-control form-control-dark answer-textarea"
+                                      rows="6" placeholder="Escribí tu respuesta aquí. Intentá usar el método STAR: Situación, Tarea, Acción, Resultado..."></textarea>
+                        </div>
+
+                        <div class="d-flex gap-2 mt-3">
+                            <button class="btn btn-primary-gradient flex-grow-1" id="submit-answer-btn"
+                                    onclick="submitAnswer()">
+                                <i class="bi bi-send me-2"></i> Enviar y ver feedback
+                            </button>
+                            <button class="btn btn-outline-secondary" onclick="skipQuestion()">
+                                <i class="bi bi-skip-forward me-1"></i> Saltar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar: Info + Progress -->
+            <div class="col-lg-4">
+
+                <!-- Job Info -->
+                <div class="card-premium mb-3">
+                    <div class="card-header-premium">
+                        <i class="bi bi-briefcase me-2"></i> <strong id="interview-job-title">Puesto</strong>
+                    </div>
+                    <div class="card-body-premium py-2">
+                        <small class="text-muted">
+                            <i class="bi bi-building me-1"></i>
+                            <span id="interview-company">Empresa</span>
+                        </small>
+                    </div>
+                </div>
+
+                <!-- Answers History -->
+                <div class="card-premium">
+                    <div class="card-header-premium">
+                        <i class="bi bi-list-check me-2"></i> <strong>Progreso</strong>
+                    </div>
+                    <div class="card-body-premium p-0">
+                        <div id="answers-history" class="answers-history-list">
+                            <p class="text-muted text-center py-3 px-3 mb-0">
+                                <small>Las respuestas evaluadas aparecerán aquí</small>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Feedback Modal -->
+        <div class="feedback-modal d-none" id="feedback-modal">
+            <div class="feedback-modal-inner">
+                <div class="feedback-header d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="mb-0">
+                        <i class="bi bi-stars me-2 text-warning"></i>
+                        Feedback de la IA
+                    </h5>
+                    <button class="btn btn-sm btn-primary-gradient" onclick="nextQuestion()">
+                        Siguiente →
+                    </button>
+                </div>
+
+                <div class="score-display mb-4">
+                    <div class="score-circle">
+                        <span id="feedback-score">8.0</span>
+                        <small>/10</small>
+                    </div>
+                    <div id="feedback-stars" class="stars-display">★★★★☆</div>
+                </div>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-6">
+                        <div class="feedback-section strengths">
+                            <h6><i class="bi bi-check-circle-fill text-success me-1"></i>Fortalezas</h6>
+                            <ul id="feedback-strengths" class="feedback-list"></ul>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="feedback-section improvements">
+                            <h6><i class="bi bi-arrow-up-circle-fill text-warning me-1"></i>Mejorar</h6>
+                            <ul id="feedback-improvements" class="feedback-list"></ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="improved-answer mb-3">
+                    <h6><i class="bi bi-magic me-2 text-primary"></i>Respuesta mejorada:</h6>
+                    <div id="feedback-improved" class="improved-text"></div>
+                </div>
+
+                <div class="key-advice">
+                    <i class="bi bi-lightbulb-fill text-warning me-2"></i>
+                    <span id="feedback-advice"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Results Panel (shown when interview complete) -->
+    <div id="results-panel" class="d-none">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="card-premium text-center">
+                    <div class="card-body-premium py-5">
+                        <div class="results-trophy mb-3">🏆</div>
+                        <h2 class="mb-2">¡Entrevista Completada!</h2>
+                        <p class="text-muted mb-4">Aquí está tu evaluación final</p>
+
+                        <div class="final-score-display mb-5">
+                            <div class="final-score-ring">
+                                <canvas id="score-chart" width="200" height="200"></canvas>
+                                <div class="score-overlay">
+                                    <span id="final-score-text">8.5</span>
+                                    <small>/10</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mb-4" id="results-breakdown">
+                            <!-- Filled by JS -->
+                        </div>
+
+                        <div class="general-advice text-start mb-4" id="general-advice-text"></div>
+
+                        <div class="d-flex gap-3 justify-content-center">
+                            <button class="btn btn-primary-gradient px-4"
+                                    onclick="startNewInterview()">
+                                <i class="bi bi-arrow-repeat me-2"></i> Nueva entrevista
+                            </button>
+                            <button class="btn btn-outline-secondary px-4"
+                                    onclick="downloadResults()">
+                                <i class="bi bi-download me-2"></i> Descargar reporte
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/mock_interview.css') }}">
+<script>
+// ── State ──────────────────────────────────────────────────────────────────
+let interviewState = {
+    questions: [],
+    currentIndex: 0,
+    answers: [],
+    scores: [],
+    jobTitle: '',
+    company: '',
+    jobDescription: '',
+    difficulty: 'medio',
+    mode: 'text',
+    totalQuestions: 10,
+    timer: null,
+    timerSeconds: 120,
+};
+
+// ── Setup ──────────────────────────────────────────────────────────────────
+
+// Difficulty buttons
+document.querySelectorAll('.diff-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        interviewState.difficulty = btn.dataset.diff;
+    });
+});
+
+// Mode selector
+document.querySelectorAll('input[name="interview-mode"]').forEach(radio => {
+    radio.addEventListener('change', () => {
+        document.querySelectorAll('.mode-option').forEach(m => m.classList.remove('active'));
+        radio.parentElement.classList.add('active');
+        interviewState.mode = radio.value;
+    });
+});
+
+// Questions count slider
+const slider = document.getElementById('questions-count');
+const label = document.getElementById('questions-label');
+slider.addEventListener('input', () => {
+    label.textContent = slider.value;
+    interviewState.totalQuestions = parseInt(slider.value);
+});
+
+// Populate from tracker job selector
+document.getElementById('tracker-job-select').addEventListener('change', function() {
+    const opt = this.options[this.selectedIndex];
+    if (opt.value) {
+        document.getElementById('manual-title').value = opt.dataset.title || '';
+        document.getElementById('manual-company').value = opt.dataset.company || '';
+        document.getElementById('manual-description').value = opt.dataset.description || '';
+    }
+});
+
+// ── Start Interview ────────────────────────────────────────────────────────
+async function startInterview() {
+    const title = document.getElementById('manual-title').value.trim();
+    const company = document.getElementById('manual-company').value.trim();
+    const description = document.getElementById('manual-description').value.trim();
+
+    if (!title) {
+        showToast('⚠️ Ingresá el título del puesto para comenzar', 'warning');
+        return;
+    }
+
+    interviewState.jobTitle = title;
+    interviewState.company = company;
+    interviewState.jobDescription = description;
+    interviewState.currentIndex = 0;
+    interviewState.answers = [];
+    interviewState.scores = [];
+
+    const btn = document.getElementById('start-interview-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Generando preguntas...';
+
+    try {
+        const response = await fetch('/api/ai/interview/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                job_title: title,
+                job_description: description,
+                difficulty: interviewState.difficulty,
+            })
+        });
+        const data = await response.json();
+
+        if (data.success && data.questions) {
+            interviewState.questions = data.questions.slice(0, interviewState.totalQuestions);
+            showInterviewPanel();
+            loadQuestion(0);
+        } else {
+            showToast('Error al generar preguntas: ' + (data.error || 'desconocido'), 'danger');
+        }
+    } catch (error) {
+        showToast('Error de conexión: ' + error.message, 'danger');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-play-circle me-2"></i> Comenzar Entrevista';
+    }
+}
+
+function showInterviewPanel() {
+    document.getElementById('setup-panel').classList.add('d-none');
+    document.getElementById('interview-panel').classList.remove('d-none');
+    document.getElementById('interview-job-title').textContent = interviewState.jobTitle;
+    document.getElementById('interview-company').textContent = interviewState.company;
+}
+
+function loadQuestion(index) {
+    const q = interviewState.questions[index];
+    if (!q) return;
+
+    const total = interviewState.questions.length;
+
+    document.getElementById('question-badge').textContent = `Pregunta ${index + 1}/${total}`;
+    document.getElementById('question-type-badge').textContent = capitalize(q.tipo || 'técnica');
+    document.getElementById('question-text').textContent = q.pregunta;
+    document.getElementById('hint-text').textContent = q.pista_respuesta || '';
+    document.getElementById('user-answer').value = '';
+    document.getElementById('question-progress').style.width = `${((index + 1) / total) * 100}%`;
+    document.getElementById('question-hint').classList.add('d-none');
+    document.getElementById('hint-btn').innerHTML = '<i class="bi bi-lightbulb me-1"></i> Ver pista';
+
+    // Hide feedback if showing
+    document.getElementById('feedback-modal').classList.add('d-none');
+
+    // Start timer if timed mode
+    if (interviewState.mode === 'timed') {
+        startTimer(parseInt(q.tiempo_sugerido) || 120);
+    }
+
+    document.getElementById('user-answer').focus();
+}
+
+function toggleHint() {
+    const hint = document.getElementById('question-hint');
+    const btn = document.getElementById('hint-btn');
+    if (hint.classList.contains('d-none')) {
+        hint.classList.remove('d-none');
+        btn.innerHTML = '<i class="bi bi-lightbulb-fill me-1 text-warning"></i> Ocultar pista';
+    } else {
+        hint.classList.add('d-none');
+        btn.innerHTML = '<i class="bi bi-lightbulb me-1"></i> Ver pista';
+    }
+}
+
+function startTimer(seconds) {
+    clearInterval(interviewState.timer);
+    interviewState.timerSeconds = seconds;
+    const display = document.getElementById('timer-value');
+    const timerEl = document.getElementById('timer-display');
+    timerEl.classList.remove('d-none');
+
+    interviewState.timer = setInterval(() => {
+        interviewState.timerSeconds--;
+        const m = Math.floor(interviewState.timerSeconds / 60);
+        const s = interviewState.timerSeconds % 60;
+        display.textContent = `${m}:${s.toString().padStart(2, '0')}`;
+        if (interviewState.timerSeconds <= 10) {
+            timerEl.classList.add('timer-urgent');
+        }
+        if (interviewState.timerSeconds <= 0) {
+            clearInterval(interviewState.timer);
+            submitAnswer();
+        }
+    }, 1000);
+}
+
+// ── Answer Submission ──────────────────────────────────────────────────────
+async function submitAnswer() {
+    clearInterval(interviewState.timer);
+    const answer = document.getElementById('user-answer').value.trim();
+    const q = interviewState.questions[interviewState.currentIndex];
+
+    if (!answer) {
+        showToast('⚠️ Escribí algo antes de enviar', 'warning');
+        return;
+    }
+
+    const btn = document.getElementById('submit-answer-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Evaluando...';
+
+    try {
+        const response = await fetch('/api/ai/interview/evaluate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                question: q.pregunta,
+                answer: answer,
+                job_title: interviewState.jobTitle,
+            })
+        });
+        const data = await response.json();
+
+        if (data.success) {
+            const evaluation = data.evaluation;
+            interviewState.answers.push({ question: q, answer, evaluation });
+            interviewState.scores.push(evaluation.puntaje || 5);
+            showFeedback(evaluation);
+            addToHistory(interviewState.currentIndex, evaluation.puntaje);
+        } else {
+            showToast('Error al evaluar: ' + (data.error || ''), 'danger');
+        }
+    } catch (error) {
+        showToast('Error: ' + error.message, 'danger');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-send me-2"></i> Enviar y ver feedback';
+    }
+}
+
+function showFeedback(eval_data) {
+    document.getElementById('feedback-score').textContent = (eval_data.puntaje || 0).toFixed(1);
+    document.getElementById('feedback-stars').textContent = '★'.repeat(Math.round(eval_data.puntaje / 2)) +
+        '☆'.repeat(5 - Math.round(eval_data.puntaje / 2));
+
+    const strengthsList = document.getElementById('feedback-strengths');
+    strengthsList.innerHTML = (eval_data.fortalezas || []).map(f => `<li>${f}</li>`).join('');
+
+    const improvList = document.getElementById('feedback-improvements');
+    improvList.innerHTML = (eval_data.areas_mejora || []).map(a => `<li>${a}</li>`).join('');
+
+    document.getElementById('feedback-improved').textContent = eval_data.respuesta_mejorada || '';
+    document.getElementById('feedback-advice').textContent = eval_data.consejo_clave || '';
+    document.getElementById('feedback-modal').classList.remove('d-none');
+}
+
+function addToHistory(index, score) {
+    const history = document.getElementById('answers-history');
+    const q = interviewState.questions[index];
+    const scoreColor = score >= 7 ? '#22c55e' : score >= 5 ? '#f59e0b' : '#ef4444';
+    const item = document.createElement('div');
+    item.className = 'history-item';
+    item.innerHTML = `
+        <div class="d-flex justify-content-between align-items-center p-2 border-bottom" style="border-color:rgba(255,255,255,0.05)!important;">
+            <small class="text-muted text-truncate pe-2" style="max-width:70%;">P${index + 1}: ${q.pregunta.substring(0, 50)}...</small>
+            <span class="badge" style="background:${scoreColor};min-width:42px;">${score.toFixed(1)}</span>
+        </div>`;
+    if (history.querySelector('p')) history.innerHTML = '';
+    history.appendChild(item);
+}
+
+function nextQuestion() {
+    document.getElementById('feedback-modal').classList.add('d-none');
+    interviewState.currentIndex++;
+
+    if (interviewState.currentIndex >= interviewState.questions.length) {
+        showResults();
+    } else {
+        loadQuestion(interviewState.currentIndex);
+    }
+}
+
+function skipQuestion() {
+    interviewState.answers.push({
+        question: interviewState.questions[interviewState.currentIndex],
+        answer: '',
+        evaluation: { puntaje: 0 }
+    });
+    interviewState.scores.push(0);
+    nextQuestion();
+}
+
+function showResults() {
+    clearInterval(interviewState.timer);
+    document.getElementById('interview-panel').classList.add('d-none');
+    document.getElementById('results-panel').classList.remove('d-none');
+
+    const avg = interviewState.scores.length > 0
+        ? interviewState.scores.reduce((a, b) => a + b, 0) / interviewState.scores.length
+        : 0;
+
+    document.getElementById('final-score-text').textContent = avg.toFixed(1);
+    drawScoreChart(avg);
+}
+
+function drawScoreChart(score) {
+    const canvas = document.getElementById('score-chart');
+    const ctx = canvas.getContext('2d');
+    const angle = (score / 10) * 2 * Math.PI;
+
+    ctx.clearRect(0, 0, 200, 200);
+    // Background ring
+    ctx.beginPath();
+    ctx.arc(100, 100, 80, 0, 2 * Math.PI);
+    ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+    ctx.lineWidth = 15;
+    ctx.stroke();
+    // Score ring
+    ctx.beginPath();
+    ctx.arc(100, 100, 80, -Math.PI / 2, -Math.PI / 2 + angle);
+    const gradient = ctx.createLinearGradient(0, 0, 200, 200);
+    gradient.addColorStop(0, '#667eea');
+    gradient.addColorStop(1, '#764ba2');
+    ctx.strokeStyle = gradient;
+    ctx.lineWidth = 15;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+}
+
+function endInterview() {
+    if (!confirm('¿Terminás la entrevista? Se perderán las últimas respuestas sin enviar.')) return;
+    if (interviewState.answers.length > 0) {
+        showResults();
+    } else {
+        startNewInterview();
+    }
+}
+
+function startNewInterview() {
+    clearInterval(interviewState.timer);
+    document.getElementById('results-panel').classList.add('d-none');
+    document.getElementById('setup-panel').classList.remove('d-none');
+    document.getElementById('interview-panel').classList.add('d-none');
+    document.getElementById('answers-history').innerHTML = '<p class="text-muted text-center py-3 px-3 mb-0"><small>Las respuestas evaluadas aparecerán aquí</small></p>';
+    interviewState = { ...interviewState, questions: [], currentIndex: 0, answers: [], scores: [] };
+}
+
+function downloadResults() {
+    const data = {
+        job: interviewState.jobTitle,
+        company: interviewState.company,
+        date: new Date().toLocaleDateString('es-AR'),
+        score: (interviewState.scores.reduce((a,b)=>a+b,0)/interviewState.scores.length).toFixed(1),
+        qa: interviewState.answers.map((a, i) => ({
+            pregunta: a.question.pregunta,
+            respuesta: a.answer,
+            puntaje: a.evaluation.puntaje,
+            feedback: a.evaluation.consejo_clave,
+        }))
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `entrevista_${interviewState.jobTitle.replace(/\s+/g, '_')}_${Date.now()}.json`;
+    a.click();
+}
+
+// ── Utilities ─────────────────────────────────────────────────────────────
+function capitalize(str) { return str ? str.charAt(0).toUpperCase() + str.slice(1) : ''; }
+
+function showToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.className = `alert alert-${type} position-fixed bottom-0 end-0 m-3 shadow`;
+    toast.style.cssText = 'z-index:9999;border-radius:12px;min-width:280px;';
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 4000);
+}
+</script>
+{% endblock %}

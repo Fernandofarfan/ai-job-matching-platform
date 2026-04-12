@@ -1,0 +1,370 @@
+/* static/css/mock_interview.css — Estilos para Mock Interview */
+
+/* ── Card Premium reutilizable ─────────────────────────────────────── */
+.card-premium {
+    background: linear-gradient(145deg, #1e1e35, #232340);
+    border: 1px solid rgba(102, 126, 234, 0.2);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.card-header-premium {
+    padding: 16px 20px;
+    background: rgba(102, 126, 234, 0.08);
+    border-bottom: 1px solid rgba(102, 126, 234, 0.15);
+    color: #e0e0e0;
+    font-size: 0.95rem;
+}
+
+.card-body-premium {
+    padding: 20px;
+}
+
+/* ── Page Header ───────────────────────────────────────────────────── */
+.interview-header { margin-bottom: 0; }
+
+.header-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: white;
+    flex-shrink: 0;
+    box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4);
+}
+
+.page-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #e0e0e0;
+    margin: 0;
+}
+
+.page-subtitle { font-size: 0.9rem; }
+
+/* ── Form Controls Dark ────────────────────────────────────────────── */
+.form-select-dark,
+.form-control-dark {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(102, 126, 234, 0.25);
+    color: #e0e0e0;
+    border-radius: 10px;
+    transition: border-color 0.2s ease;
+}
+
+.form-select-dark:focus,
+.form-control-dark:focus {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: #667eea;
+    color: #e0e0e0;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+}
+
+.form-select-dark option { background: #1e1e35; }
+
+/* ── Difficulty Selector ───────────────────────────────────────────── */
+.difficulty-selector {
+    display: flex;
+    gap: 8px;
+}
+
+.diff-btn {
+    flex: 1;
+    padding: 10px 8px;
+    border: 1px solid rgba(102, 126, 234, 0.25);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.03);
+    color: #94a3b8;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+}
+
+.diff-btn:hover { border-color: #667eea; color: #e0e0e0; }
+
+.diff-btn.active {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    border-color: transparent;
+    color: white;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+/* ── Mode Selector ─────────────────────────────────────────────────── */
+.mode-selector { display: flex; gap: 10px; }
+
+.mode-option {
+    flex: 1;
+    padding: 12px;
+    border: 1px solid rgba(102, 126, 234, 0.2);
+    border-radius: 10px;
+    cursor: pointer;
+    text-align: center;
+    color: #94a3b8;
+    transition: all 0.2s ease;
+    font-size: 0.85rem;
+}
+
+.mode-option input[type="radio"] { display: none; }
+.mode-option i { display: block; font-size: 1.3rem; margin-bottom: 4px; }
+.mode-option:hover { border-color: #667eea; color: #e0e0e0; }
+
+.mode-option.active {
+    border-color: #667eea;
+    background: rgba(102, 126, 234, 0.12);
+    color: #a78bfa;
+}
+
+/* ── Buttons ───────────────────────────────────────────────────────── */
+.btn-primary-gradient {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    border: none;
+    color: white;
+    font-weight: 600;
+    border-radius: 10px;
+    transition: all 0.2s ease;
+}
+
+.btn-primary-gradient:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+    color: white;
+}
+
+.btn-primary-gradient:disabled {
+    opacity: 0.7;
+    transform: none;
+}
+
+.bg-primary-gradient { background: linear-gradient(135deg, #667eea, #764ba2) !important; }
+.bg-success-gradient { background: linear-gradient(135deg, #22c55e, #16a34a) !important; }
+
+/* ── Divider ───────────────────────────────────────────────────────── */
+.divider-text {
+    position: relative;
+    text-align: center;
+    color: #4a5568;
+    font-size: 0.8rem;
+}
+
+.divider-text::before, .divider-text::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    width: 42%;
+    height: 1px;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.divider-text::before { left: 0; }
+.divider-text::after { right: 0; }
+
+/* ── Question Bubble ───────────────────────────────────────────────── */
+.question-bubble {
+    display: flex;
+    gap: 15px;
+    background: rgba(102, 126, 234, 0.08);
+    border: 1px solid rgba(102, 126, 234, 0.2);
+    border-radius: 16px;
+    padding: 20px;
+}
+
+.question-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+.question-text {
+    font-size: 1.1rem;
+    color: #e0e0e0;
+    line-height: 1.65;
+    font-weight: 500;
+}
+
+/* ── Answer Textarea ───────────────────────────────────────────────── */
+.answer-textarea {
+    min-height: 160px;
+    resize: vertical;
+    font-size: 0.95rem;
+    line-height: 1.7;
+}
+
+/* ── Timer ─────────────────────────────────────────────────────────── */
+.timer-badge {
+    padding: 6px 14px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 20px;
+    color: #94a3b8;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.timer-badge.timer-urgent {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: #ef4444;
+    color: #ef4444;
+    animation: pulse 0.8s ease infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
+/* ── Answers History ───────────────────────────────────────────────── */
+.answers-history-list { max-height: 360px; overflow-y: auto; }
+
+.answers-history-list::-webkit-scrollbar { width: 4px; }
+.answers-history-list::-webkit-scrollbar-track { background: transparent; }
+.answers-history-list::-webkit-scrollbar-thumb { background: rgba(102, 126, 234, 0.4); border-radius: 2px; }
+
+/* ── Feedback Modal ────────────────────────────────────────────────── */
+.feedback-modal {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 1050;
+    padding: 20px;
+    pointer-events: none;
+}
+
+.feedback-modal:not(.d-none) { pointer-events: auto; }
+
+.feedback-modal-inner {
+    max-width: 700px;
+    margin: 0 auto;
+    background: linear-gradient(145deg, #1e1e35, #252540);
+    border: 1px solid rgba(102, 126, 234, 0.35);
+    border-radius: 20px 20px 0 0;
+    padding: 24px;
+    box-shadow: 0 -20px 60px rgba(0, 0, 0, 0.5);
+    animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+    from { transform: translateY(100%); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+/* ── Score Display ─────────────────────────────────────────────────── */
+.score-display {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.score-circle {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 800;
+    font-size: 1.4rem;
+    flex-shrink: 0;
+}
+
+.score-circle small { font-size: 0.7rem; font-weight: 400; opacity: 0.8; }
+
+.stars-display { font-size: 1.5rem; color: #f59e0b; letter-spacing: 2px; }
+
+/* ── Feedback Sections ─────────────────────────────────────────────── */
+.feedback-section {
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 12px;
+    padding: 14px;
+    height: 100%;
+}
+
+.feedback-section h6 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+
+.feedback-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    font-size: 0.85rem;
+    color: #94a3b8;
+}
+
+.feedback-list li { padding: 3px 0; }
+
+.improved-answer {
+    background: rgba(102, 126, 234, 0.08);
+    border-left: 3px solid #667eea;
+    border-radius: 0 10px 10px 0;
+    padding: 14px;
+}
+
+.improved-text { font-size: 0.9rem; color: #c7d2e8; line-height: 1.65; }
+.improved-answer h6 { font-size: 0.8rem; margin-bottom: 8px; color: #a78bfa; }
+
+.key-advice {
+    background: rgba(245, 158, 11, 0.1);
+    border-radius: 10px;
+    padding: 12px;
+    font-size: 0.9rem;
+    color: #fbbf24;
+}
+
+/* ── Results ───────────────────────────────────────────────────────── */
+.results-trophy { font-size: 4rem; }
+
+.final-score-display {
+    position: relative;
+    display: inline-block;
+}
+
+.score-overlay {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    color: white;
+    font-size: 2.2rem;
+    font-weight: 800;
+}
+
+.score-overlay small { display: block; font-size: 0.8rem; font-weight: 400; color: #94a3b8; }
+
+/* ── Gradient texts ────────────────────────────────────────────────── */
+.text-primary-gradient {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.text-success-gradient {
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+/* ── General advice ────────────────────────────────────────────────── */
+.general-advice {
+    background: rgba(102, 126, 234, 0.08);
+    border-radius: 12px;
+    padding: 20px;
+    color: #c7d2e8;
+    line-height: 1.7;
+}

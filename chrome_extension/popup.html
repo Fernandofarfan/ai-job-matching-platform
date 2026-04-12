@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EmpleoIA Saver</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      width: 340px;
+      min-height: 200px;
+      background: #0f0f1a;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      color: #e0e0e0;
+    }
+
+    /* Header */
+    .header {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .header-logo { font-size: 1.3rem; }
+
+    .header-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: white;
+      flex: 1;
+    }
+
+    .header-badge {
+      font-size: 0.65rem;
+      background: rgba(255,255,255,0.2);
+      padding: 2px 8px;
+      border-radius: 10px;
+      color: white;
+    }
+
+    /* Settings link */
+    .settings-btn {
+      background: none;
+      border: none;
+      color: rgba(255,255,255,0.7);
+      cursor: pointer;
+      font-size: 1rem;
+      padding: 2px;
+    }
+
+    /* Content area */
+    .content { padding: 14px; }
+
+    /* Server config panel */
+    .server-panel {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+
+    .server-panel label {
+      font-size: 0.75rem;
+      color: #94a3b8;
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .server-input {
+      width: 100%;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(102,126,234,0.3);
+      border-radius: 6px;
+      color: #e0e0e0;
+      padding: 7px 10px;
+      font-size: 0.8rem;
+    }
+
+    /* Job info */
+    .job-info {
+      display: none;
+      background: rgba(102,126,234,0.08);
+      border: 1px solid rgba(102,126,234,0.2);
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+
+    .job-title-preview {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #e0e0e0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 4px;
+    }
+
+    .job-meta {
+      font-size: 0.75rem;
+      color: #94a3b8;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .platform-badge {
+      display: inline-block;
+      font-size: 0.65rem;
+      padding: 2px 8px;
+      border-radius: 8px;
+      background: rgba(102,126,234,0.2);
+      color: #a78bfa;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    /* Status selector */
+    .status-selector {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 12px;
+    }
+
+    .status-option {
+      flex: 1;
+      text-align: center;
+      padding: 5px 2px;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 6px;
+      font-size: 0.65rem;
+      cursor: pointer;
+      color: #94a3b8;
+      transition: all 0.15s ease;
+    }
+
+    .status-option:hover { border-color: #667eea; color: #c7d2e8; }
+
+    .status-option.active {
+      background: rgba(102,126,234,0.2);
+      border-color: #667eea;
+      color: #a78bfa;
+      font-weight: 600;
+    }
+
+    /* Buttons */
+    .btn-extract {
+      width: 100%;
+      padding: 10px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(102,126,234,0.3);
+      border-radius: 8px;
+      color: #c7d2e8;
+      font-size: 0.85rem;
+      cursor: pointer;
+      margin-bottom: 8px;
+      transition: all 0.2s ease;
+    }
+
+    .btn-extract:hover {
+      background: rgba(102,126,234,0.15);
+      border-color: #667eea;
+    }
+
+    .btn-save {
+      width: 100%;
+      padding: 11px;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      border: none;
+      border-radius: 8px;
+      color: white;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-save:hover { box-shadow: 0 6px 20px rgba(102,126,234,0.4); }
+    .btn-save:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    /* Messages */
+    .message {
+      font-size: 0.8rem;
+      padding: 8px 12px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      display: none;
+    }
+
+    .message.success {
+      background: rgba(34,197,94,0.12);
+      border: 1px solid rgba(34,197,94,0.3);
+      color: #86efac;
+    }
+
+    .message.error {
+      background: rgba(239,68,68,0.12);
+      border: 1px solid rgba(239,68,68,0.3);
+      color: #fca5a5;
+    }
+
+    /* Loading spinner */
+    .spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Footer */
+    .footer {
+      padding: 10px 14px;
+      border-top: 1px solid rgba(255,255,255,0.05);
+      font-size: 0.7rem;
+      color: #4a5568;
+      text-align: center;
+    }
+
+    .footer a { color: #667eea; text-decoration: none; }
+
+    /* Not supported page */
+    .not-supported {
+      text-align: center;
+      padding: 30px 20px;
+      color: #6b7280;
+    }
+
+    .not-supported .icon { font-size: 2rem; margin-bottom: 10px; }
+    .not-supported h4 { color: #9ca3af; font-size: 0.9rem; margin-bottom: 8px; }
+    .not-supported p { font-size: 0.78rem; }
+
+    .supported-sites {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      justify-content: center;
+      margin-top: 12px;
+    }
+
+    .site-chip {
+      font-size: 0.7rem;
+      padding: 3px 10px;
+      background: rgba(102,126,234,0.12);
+      border: 1px solid rgba(102,126,234,0.2);
+      border-radius: 10px;
+      color: #a78bfa;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <span class="header-logo">🤖</span>
+    <span class="header-title">EmpleoIA Saver</span>
+    <span class="header-badge">v1.0</span>
+    <button class="settings-btn" id="settings-toggle" title="Configuración">⚙️</button>
+  </div>
+
+  <div class="content">
+
+    <!-- Settings panel (collapsible) -->
+    <div class="server-panel" id="settings-panel" style="display:none;">
+      <label>URL del servidor EmpleoIA:</label>
+      <input type="url" class="server-input" id="server-url"
+             placeholder="http://localhost:5000" value="http://localhost:5000">
+    </div>
+
+    <!-- Message area -->
+    <div class="message" id="message-area"></div>
+
+    <!-- Not supported message -->
+    <div class="not-supported" id="not-supported" style="display:none;">
+      <div class="icon">🔍</div>
+      <h4>Página no compatible</h4>
+      <p>Navegá a una oferta de trabajo en:</p>
+      <div class="supported-sites">
+        <span class="site-chip">LinkedIn Jobs</span>
+        <span class="site-chip">Indeed</span>
+        <span class="site-chip">Bumeran</span>
+        <span class="site-chip">Computrabajo</span>
+      </div>
+    </div>
+
+    <!-- Main interface -->
+    <div id="main-interface">
+      <!-- Job preview -->
+      <div class="job-info" id="job-preview">
+        <div class="platform-badge" id="platform-name">LinkedIn</div>
+        <div class="job-title-preview" id="preview-title">Cargando...</div>
+        <div class="job-meta" id="preview-meta"></div>
+      </div>
+
+      <!-- Status selector -->
+      <div style="font-size:0.75rem;color:#94a3b8;margin-bottom:6px;">Guardar como:</div>
+      <div class="status-selector">
+        <div class="status-option" data-status="bookmarked">📌 Guardado</div>
+        <div class="status-option active" data-status="applying">📝 Aplicando</div>
+        <div class="status-option" data-status="applied">✅ Aplicado</div>
+      </div>
+
+      <!-- Action buttons -->
+      <button class="btn-extract" id="extract-btn" onclick="extractJob()">
+        🔍 Extraer datos de esta página
+      </button>
+      <button class="btn-save" id="save-btn" onclick="saveJob()" disabled>
+        💾 Guardar en Job Tracker
+      </button>
+    </div>
+
+  </div>
+
+  <div class="footer">
+    <a href="http://localhost:5000/tracker" target="_blank">Abrir Job Tracker →</a>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

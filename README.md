@@ -2,14 +2,16 @@
 
 # 🤖 EmpleoIA
 
-### *Plataforma Inteligente de Búsqueda de Empleo*
+### *Plataforma Inteligente de Búsqueda de Empleo con IA*
 
 [![Python Version](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![Flask](https://img.shields.io/badge/flask-2.3.3-green.svg)](https://flask.palletsprojects.com/)
 [![License](https://img.shields.io/badge/license-MIT-orange.svg)](LICENSE)
 [![Status](https://img.shields.io/badge/status-active-success.svg)]()
+[![Celery](https://img.shields.io/badge/celery-5.3+-brightgreen.svg)](https://docs.celeryq.dev/)
+[![Gemini](https://img.shields.io/badge/AI-Gemini%201.5-blueviolet.svg)](https://aistudio.google.com/)
 
-*Automatizá tu búsqueda laboral con scraping inteligente y optimización de CVs*
+*Automatizá tu búsqueda laboral con scraping inteligente, IA generativa y optimización de CVs*
 
 [Características](#-características) •
 [Instalación](#-instalación-rápida) •
@@ -31,6 +33,8 @@
 - [Guía de Uso](#-guía-de-uso)
 - [Estructura del Proyecto](#-estructura-del-proyecto)
 - [Configuración](#-configuración)
+- [Extensión de Chrome](#-extensión-de-chrome)
+- [Despliegue en la Nube](#-despliegue-en-la-nube)
 - [Solución de Problemas](#-solución-de-problemas)
 - [Contribuir](#-contribuir)
 - [Licencia](#-licencia)
@@ -40,50 +44,69 @@
 
 ## 🎯 Descripción
 
-**EmpleoIA** es una plataforma integral de automatización de búsqueda de empleo que combina web scraping inteligente con optimización de currículums. Diseñada para profesionales que buscan optimizar su proceso de búsqueda laboral.
+**EmpleoIA** es una plataforma integral de automatización de búsqueda de empleo que combina web scraping multi-plataforma con inteligencia artificial generativa (Google Gemini). Diseñada para profesionales que buscan optimizar su proceso de búsqueda laboral en Argentina y Latinoamérica.
 
 ### ¿Qué hace diferente a EmpleoIA?
 
-- ✅ **Scraping sin APIs**: Extrae ofertas de Indeed y LinkedIn sin costos de API
-- ✅ **Parsing Inteligente**: Sistema de extracción automática de habilidades y matching con 90%+ de compatibilidad ATS
-- ✅ **Gestión Completa**: Desde la búsqueda hasta el seguimiento de postulaciones
-- ✅ **100% en Español**: Interfaz completamente localizada para Argentina/Latinoamérica
-- ✅ **Open Source**: Código abierto y personalizable
+- ✅ **AI Copilot integrado**: Chat en tiempo real con Gemini para estrategia laboral personalizada
+- ✅ **Mock Interviews**: Entrevistas simuladas con feedback instantáneo de IA
+- ✅ **Análisis semántico**: Match entre CV y ofertas usando IA generativa (no solo keywords)
+- ✅ **Scraping sin APIs**: Extrae ofertas de Indeed, LinkedIn, Bumeran y Computrabajo
+- ✅ **Celery + Redis**: Scraping asíncrono, no bloquea la app mientras trabaja en segundo plano
+- ✅ **Extensión de Chrome**: Guardá ofertas con 1 click desde cualquier portal de empleo
+- ✅ **Notificaciones por Email**: Alertas de follow-up, digest de nuevas ofertas y resúmenes semanales
+- ✅ **Análisis salarial**: Detecta y analiza rangos salariales de las ofertas scrapeadas
+- ✅ **Despliegue en la nube**: Infraestructura como código con Terraform para GCP
 
 ---
 
 ## ✨ Características
 
-### 🔍 **Scraping Multi-Plataforma**
-- Búsqueda automatizada en **Indeed**, **LinkedIn**, **Bumeran** y **Computrabajo**
-- **🚀 Scraper Universal**: Ejecuta Computrabajo y Bumeran simultáneamente con un solo clic
-- Filtrado inteligente por habilidades, ubicación y nivel de experiencia
-- **Extracción Profunda**: Obtención de enlaces directos de postulación ("Apply URL")
-- Exportación a CSV consolidado para análisis posterior
-- Sistema anti-detección para scraping confiable
+### 🤖 **IA Generativa (NEW)**
+- **AI Copilot**: Chat lateral con Gemini en todas las páginas — preguntá sobre tu búsqueda, estrategia, salarios, LinkedIn
+- **Mock Interviews**: Entrevistas simuladas con preguntas personalizadas, timer, evaluación STAR y feedback en tiempo real
+- **Análisis completo de ofertas**: Cultura de empresa, skills requeridas vs tus skills, rango salarial inferido, red flags
+- **Reescritura de CV**: Mejora bullet points de tu CV para hacer match perfecto con una oferta
+- **Plan de aprendizaje**: Genera ruta de skills para cerrar el gap con una posición target
+- **Insights de mercado**: Salarios, demanda y tendencias por rol y nivel de experiencia
 
-### 🎨 **Experiencia de Usuario (v2.0)**
+### 🔍 **Scraping Asíncrono Multi-Plataforma (MEJORADO)**
+- Búsqueda automatizada en **Indeed**, **LinkedIn**, **Bumeran** y **Computrabajo**
+- **Celery + Redis**: Scraping en segundo plano sin congelar la app web
+- **Flower Dashboard**: Monitor de tareas en `localhost:5555` para ver el progreso
+- **🚀 Scraper Universal**: Ejecuta múltiples plataformas simultáneamente en paralelo
+- Filtrado inteligente por habilidades, ubicación y nivel de experiencia
+- Sistema anti-detección con `undetected-chromedriver`
+
+### 🎨 **Experiencia de Usuario**
 - **🌙 Dark Mode**: Tema oscuro nativo para reducir fatiga visual
 - **⚡ Filtros Dinámicos**: Búsqueda instantánea en resultados
 - **📱 Diseño Responsive**: Interfaz moderna adaptada a todos los dispositivos
-
-### 🤖 **Optimización de CVs**
-- Generación de currículums adaptados con algoritmos avanzados
-- Optimización para sistemas ATS (Applicant Tracking Systems)
-- Análisis de compatibilidad con descripciones de trabajo
-- Procesamiento por lotes para múltiples aplicaciones
+- **🌐 Extensión de Chrome**: Guardá ofertas de cualquier portal con 1 click (LinkedIn, Indeed, Bumeran, Computrabajo)
 
 ### 📊 **Sistema de Seguimiento (Job Tracker)**
 - Tablero Kanban para gestionar postulaciones
-- Estados: Guardados → Aplicando → Aplicados → Entrevistando → Negociando → Aceptados
+- Estados: Guardado → Aplicando → Aplicado → Entrevistando → Negociando → Aceptado
+- Filtros avanzados: por estado, empresa, modal
 - Notas y recordatorios personalizados
-- Métricas de progreso
+
+### 💰 **Análisis Salarial (NEW)**
+- Extracción automática de rangos salariales de texto libre (regex + NLP)
+- Histograma de distribución salarial por CSV
+- Ranking de empresas por salario promedio
+- Insights de mercado por rol/nivel con caché de 7 días
 
 ### 📈 **Analytics y Reportes Avanzados**
 - Dashboard interactivo con métricas de embudo (funnels) y tasas de conversión
-- Gráficos y visualizaciones (heatmap semanal) integrados con Chart.js
-- Extracción de Insights impulsados por reglas avanzadas para mejorar la búsqueda
-- Exportación de resultados y postulaciones en formatos profesionales (Excel y PDF)
+- Gráficos con Chart.js: heatmap semanal, distribución salarial, progreso
+- Exportación a Excel con formato premium (colores por estado, auto-width)
+- Exportación a PDF
+
+### 📧 **Notificaciones por Email (NEW)**
+- Recordatorios de follow-up para postulaciones con fecha vencida
+- Digest de nuevas ofertas encontradas
+- Resumen semanal de actividad (postulaciones, entrevistas, tasa de respuesta)
+- Template HTML premium en dark mode
 
 ### ⚡ **Rendimiento y Modo Offline (PWA)**
 - Soporte para Progressive Web App (PWA) con modo de instalación
@@ -91,15 +114,15 @@
 - Acceso continuo a las postulaciones guardadas incluso sin conexión a internet
 
 ### 👤 **Gestión de Perfiles**
-- Soporte para múltiples perfiles profesionales
-- Extracción automática de habilidades desde CVs
-- Almacenamiento seguro de credenciales
+- Soporte para múltiples perfiles profesionales por rol
+- Extracción automática de habilidades desde CVs (PDF/DOCX)
 - Historial de postulaciones
 
 ### 📝 **Generación de Cartas de Presentación**
-- Creación automática personalizada
-- Personalización según empresa y puesto
-- Plantillas profesionales
+- Creación automática personalizada con Gemini
+- Selección de tono: formal, semi-formal, casual, audaz
+- Análisis de cultura de empresa para adaptar el tono
+- Procesamiento por lotes para múltiples aplicaciones
 - Exportación a DOCX
 
 ---
@@ -108,47 +131,57 @@
 
 <table>
 <tr>
-<td align="center" width="25%">
+<td align="center" width="20%">
 <img src="https://www.python.org/static/community_logos/python-logo.png" width="60px" height="60px" alt="Python" />
 <br><strong>Python 3.12</strong>
 <br><sub>Backend</sub>
 </td>
-<td align="center" width="25%">
+<td align="center" width="20%">
 <img src="https://flask.palletsprojects.com/en/2.3.x/_images/flask-logo.png" width="60px" height="60px" alt="Flask" />
 <br><strong>Flask 2.3</strong>
 <br><sub>Web Framework</sub>
 </td>
-<td align="center" width="25%">
+<td align="center" width="20%">
 <img src="https://www.selenium.dev/images/selenium_logo_square_green.png" width="60px" height="60px" alt="Selenium" />
 <br><strong>Selenium</strong>
 <br><sub>Web Scraping</sub>
 </td>
-<td align="center" width="25%">
+<td align="center" width="20%">
 <img src="https://www.mysql.com/common/logos/logo-mysql-170x115.png" width="60px" height="60px" alt="MySQL" />
 <br><strong>MySQL</strong>
 <br><sub>Base de Datos</sub>
 </td>
+<td align="center" width="20%">
+<img src="https://docs.celeryq.dev/en/stable/_static/celery_512.png" width="60px" height="60px" alt="Celery" />
+<br><strong>Celery + Redis</strong>
+<br><sub>Task Queue</sub>
+</td>
 </tr>
 <tr>
-<td align="center" width="25%">
+<td align="center" width="20%">
 <img src="https://getbootstrap.com/docs/5.3/assets/brand/bootstrap-logo-shadow.png" width="60px" height="60px" alt="Bootstrap" />
 <br><strong>Bootstrap 5</strong>
 <br><sub>UI Framework</sub>
 </td>
-<td align="center" width="25%">
+<td align="center" width="20%">
 <img src="https://upload.wikimedia.org/wikipedia/commons/6/6a/JavaScript-logo.png" width="60px" height="60px" alt="JavaScript" />
 <br><strong>JavaScript</strong>
 <br><sub>Frontend</sub>
 </td>
-<td align="center" width="25%">
+<td align="center" width="20%">
 <img src="https://www.docker.com/wp-content/uploads/2022/03/vertical-logo-monochromatic.png" width="60px" height="60px" alt="Docker" />
 <br><strong>Docker</strong>
 <br><sub>Containerización</sub>
 </td>
-<td align="center" width="25%">
+<td align="center" width="20%">
 <img src="https://upload.wikimedia.org/wikipedia/commons/8/87/Sql_data_base_with_logo.png" width="60px" height="60px" alt="NLP" />
 <br><strong>spaCy NLP</strong>
 <br><sub>Parsing</sub>
+</td>
+<td align="center" width="20%">
+<img src="https://lh3.googleusercontent.com/qnCkZuSQ0uqIwJoOCZS3l5ZLLcq2T8aPHEqYqCJ19BzxnA6qjhVscOuDoVG1cSo6qg6BxBnM0RKQwRvqWBRN9dkSPQ=s120" width="60px" height="60px" alt="Gemini" />
+<br><strong>Google Gemini</strong>
+<br><sub>IA Generativa</sub>
 </td>
 </tr>
 </table>
@@ -163,6 +196,7 @@ Antes de comenzar, asegurate de tener instalado:
 - ✅ **MySQL 8.0+** - [Descargar](https://dev.mysql.com/downloads/)
 - ✅ **Google Chrome** - Para Selenium WebDriver
 - ✅ **Git** - Para clonar el repositorio
+- ✅ **Redis** (opcional, para Celery) - [Descargar](https://redis.io/download/) o usar Docker
 
 ---
 
@@ -188,30 +222,47 @@ python -m spacy download en_core_web_sm
 
 # 5. Configurar base de datos MySQL
 mysql -u root -p < setup_database.sql
-# O ejecutar manualmente:
-# CREATE DATABASE job_tracker;
-# USE job_tracker;
-# (copiar y ejecutar el contenido de setup_database.sql)
 
 # 6. Configurar variables de entorno
 cp .env.example .env
-# Editar .env con tus credenciales:
-# - DB_PASSWORD: Tu contraseña de MySQL
-# - (Opcional) Credenciales de Indeed y LinkedIn
+# Editar .env con tus credenciales
 
 # 7. Ejecutar la aplicación
 python app.py
 ```
 
-### Opción 2: Docker
+> [!TIP]
+> Para aprovechar el scraping asíncrono con Celery, también ejecutá en terminales separadas:
+> ```bash
+> # Terminal 2: Celery Worker
+> celery -A celery_app worker --loglevel=info -Q scraping,ai_processing
+>
+> # Terminal 3: Flower Dashboard (monitor de tareas)
+> celery -A celery_app flower --port=5555
+> ```
+> Flower estará disponible en `http://localhost:5555`
+
+### Opción 2: Docker (Todo incluido)
 
 ```bash
+# Copia y configura las variables de entorno
+cp .env.example .env
+# Editar .env con GEMINI_API_KEY y DB_PASSWORD
+
+# Levanta todo: Flask + MySQL + Redis + Celery + Flower
 docker-compose up -d
+
+# Ver logs
+docker-compose logs -f web
 ```
 
 ### 🌐 Acceder a la Aplicación
 
-Abrí tu navegador en: **http://localhost:5000**
+| Servicio | URL |
+|----------|-----|
+| **EmpleoIA App** | `http://localhost:5000` |
+| **Flower (monitor)** | `http://localhost:5555` |
+| **Redis** | `localhost:6379` |
 
 ---
 
@@ -225,37 +276,45 @@ Abrí tu navegador en: **http://localhost:5000**
 3. Subí tu CV en formato PDF o DOCX
 4. El sistema extraerá automáticamente tus habilidades
 
+#### Configurar el AI Copilot
+1. Agregá `GEMINI_API_KEY` a tu archivo `.env` ([obtenela gratis aquí](https://aistudio.google.com/app/apikey))
+2. El ícono 🤖 aparecerá en la esquina inferior derecha de todas las páginas
+3. Hacé clic para abrir el chat con el AI Copilot
+
 ### 2️⃣ Buscar Empleos
 
-#### 🔵 LinkedIn
-1. Andá a **Buscar Empleos** → Pestaña LinkedIn
-2. Ingresá puesto y ubicación
-3. **Configurá credenciales en `.env`**:
-   ```env
-   LINKEDIN_EMAIL=tu_email@ejemplo.com
-   LINKEDIN_PASSWORD=tu_password
-   ```
-4. Hacé clic en **Iniciar Scraper**
+#### Instalar la Extensión de Chrome (Recomendado)
+1. Abrí Chrome y andá a `chrome://extensions`
+2. Activá el **Modo desarrollador**
+3. Hacé clic en **Cargar descomprimida** y seleccioná la carpeta `chrome_extension/`
+4. La extensión 🤖 aparecerá en la barra de herramientas
 
-#### 🟢 Indeed
-1. Andá a **Buscar Empleos** → Pestaña Indeed
-2. Ingresá credenciales (o configuralas en `.env`)
-3. Seleccioná puesto y ubicación
-4. Hacé clic en **Iniciar Scraper**
+#### Usar el Scraper Integrado
+- **LinkedIn**: Andá a **Buscar Empleos** → LinkedIn → Configurá credenciales → Iniciar
+- **Indeed**: Andá a **Buscar Empleos** → Indeed → Configurá credenciales → Iniciar
+- **Universal**: Ejecuta Computrabajo + Bumeran simultáneamente
 
-### 3️⃣ Optimizar Currículums
+### 3️⃣ Mock Interviews (NEW)
 
-1. Andá a **Resultados**
-2. Seleccioná un archivo CSV
-3. Hacé clic en **Optimización por Lotes**
-4. Los CVs optimizados se guardan en `temp/resumes/`
+1. Andá a **Entrevistas** en el menú
+2. Seleccioná un trabajo del tracker o ingresá el puesto manualmente
+3. Configurá la dificultad (Junior/Medio/Senior) y cantidad de preguntas
+4. Respondé las preguntas y recibí feedback instantáneo de IA
+5. Descargá el reporte de tu sesión de práctica
 
-### 4️⃣ Seguimiento de Aplicaciones
+### 4️⃣ Analizar Ofertas con IA
 
-1. Andá a **Seguimiento**
-2. Agregá trabajos desde resultados o manualmente
+1. Andá a **Resultados** y abrí un CSV
+2. Hacé clic en **🤖 Analizar con IA** en cualquier fila
+3. La IA muestra: compatibilidad con tu CV, skills faltantes, cultura de empresa, salario estimado
+
+### 5️⃣ Seguimiento de Aplicaciones
+
+1. Andá a **Tracker**
+2. Agregá trabajos desde resultados, manualmente o con la extensión de Chrome
 3. Arrastrá y soltá entre columnas del Kanban
-4. Agregá notas y fechas de seguimiento
+4. Agregá notas y fechas de follow-up
+5. Activá las notificaciones por email para recordatorios automáticos
 
 ---
 
@@ -265,33 +324,53 @@ Abrí tu navegador en: **http://localhost:5000**
 EmpleoIA/
 │
 ├── 📂 scrapers/              # Módulos de web scraping
-│   ├── indeed_scraper.py     # Scraper de Indeed
-│   ├── linkedin_scraper.py   # Scraper de LinkedIn
-│   ├── bumeran_scraper.py   # Scraper de Bumeran
-│   └── computrabajo_scraper.py # Scraper de Computrabajo
+│   ├── indeed_scraper.py
+│   ├── linkedin_scraper.py
+│   ├── bumeran_scraper.py
+│   └── computrabajo_scraper.py
+│
+├── 📂 tasks/                 # 🆕 Tareas asíncronas Celery
+│   ├── scraping_tasks.py     # Scraping en background
+│   ├── ai_tasks.py           # Análisis IA por lotes
+│   └── notification_tasks.py # Notificaciones por email
 │
 ├── 📂 templates/             # Plantillas HTML (Frontend)
-│   ├── base.html             # Plantilla base
+│   ├── base.html             # Plantilla base + AI Copilot
 │   ├── index.html            # Página principal
 │   ├── scraper.html          # Interfaz de scraping
 │   ├── results.html          # Visualización de resultados
 │   ├── job_tracker.html      # Tablero Kanban
+│   ├── analytics.html        # Dashboard de analytics
+│   ├── mock_interview.html   # 🆕 Entrevistas simuladas
 │   └── profile.html          # Gestión de perfiles
 │
-├── 📂 uploads/               # CVs subidos por usuarios
-├── 📂 results/               # Datos scrapeados (CSV)
-├── 📂 profiles/              # Perfiles de usuario
-├── 📂 temp/resumes/          # CVs optimizados generados
-├── 📂 logs/                  # Logs de la aplicación
+├── 📂 static/css/            # Estilos por módulo
+│   ├── mock_interview.css    # 🆕 Estilos de entrevistas
+│   └── ...
 │
-├── 📄 app.py                 # Aplicación principal Flask
-├── 📄 db_config.py           # Configuración de MySQL
+├── 📂 chrome_extension/      # 🆕 Extensión de Chrome
+│   ├── manifest.json
+│   ├── popup.html / popup.js
+│   ├── content.js
+│   └── background.js
+│
+├── 📂 terraform/             # 🆕 Infraestructura como código (GCP)
+│   ├── main.tf
+│   └── variables.tf
+│
+├── 📄 app.py                 # Aplicación principal Flask (+ API routes)
+├── 📄 ai_engine.py           # 🆕 Motor de IA centralizado (Gemini)
+├── 📄 celery_app.py          # 🆕 Configuración de Celery
+├── 📄 models.py              # 🆕 Modelos SQLAlchemy ORM
+├── 📄 market_analyzer.py     # 🆕 Análisis salarial
+├── 📄 notifier.py            # 🆕 Notificaciones por email
 ├── 📄 resume_parser.py       # Parser de CVs
+├── 📄 db_config.py           # Configuración de MySQL
 │
 ├── 📄 requirements.txt       # Dependencias Python
+├── 📄 docker-compose.yml     # 🆕 Stack completo con Redis + Celery
 ├── 📄 setup_database.sql     # Script de BD
 ├── 📄 .env.example           # Plantilla de configuración
-├── 📄 .gitignore             # Archivos ignorados
 └── 📄 README.md              # Este archivo
 ```
 
@@ -307,46 +386,90 @@ Creá un archivo `.env` en la raíz del proyecto copiando `.env.example`:
 cp .env.example .env
 ```
 
-Luego editá el archivo `.env` con tus credenciales:
+#### Variables principales:
 
 ```env
-# MySQL Database (OBLIGATORIO)
+# === IA (OBLIGATORIO para funciones de IA) ===
+GEMINI_API_KEY=tu_api_key_aqui
+
+# === Base de Datos ===
 DB_HOST=127.0.0.1
 DB_USER=root
 DB_PASSWORD=tu_password_mysql
 DB_NAME=job_tracker
 
-# Indeed Scraper - Credenciales de Google (Opcional)
-# El scraper de Indeed usa autenticación de Google
-INDEED_EMAIL=tu_email_google@gmail.com
-INDEED_PASSWORD=tu_password_google
+# === Redis (para Celery) ===
+REDIS_URL=redis://localhost:6379/0
 
-# LinkedIn Credentials (Opcional)
-# Podés usar email y contraseña:
-LINKEDIN_EMAIL=tu_email@ejemplo.com
-LINKEDIN_PASSWORD=tu_password
-# O el token li_at (más estable):
-LINKEDIN_TOKEN=tu_linkedin_cookie_token
-
-# Bumeran & Computrabajo (Opcional - Para extracción profunda)
-BUMERAN_EMAIL=tu_email@ejemplo.com
-BUMERAN_PASSWORD=tu_password
-COMPUTRABAJO_EMAIL=tu_email@ejemplo.com
-COMPUTRABAJO_PASSWORD=tu_password
+# === Notificaciones por Email ===
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=tu_email@gmail.com
+SMTP_PASSWORD=tu_app_password_google
+NOTIFICATION_EMAIL=tu_email@gmail.com
 ```
 
 > [!IMPORTANT]
-> **Nunca subas el archivo `.env` al repositorio**. Este archivo contiene tus credenciales personales y está incluido en `.gitignore`.
+> **Nunca subas el archivo `.env` al repositorio**. Está incluido en `.gitignore`.
 
 > [!TIP]
-> **Verificación en 2 pasos (2FA) para Indeed**: Si tenés 2FA activada en tu cuenta de Google, deberás aprobar el inicio de sesión en tu celular cuando arranque el scraper. Alternativamente, podés crear una [contraseña de aplicación](https://support.google.com/accounts/answer/185833) en tu cuenta de Google.
+> **Gmail + 2FA**: Creá una "Contraseña de Aplicación" en [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords) para usar como `SMTP_PASSWORD`.
+
+---
+
+## 🌐 Extensión de Chrome
+
+La extensión **EmpleoIA Saver** permite guardar ofertas de trabajo con 1 click.
+
+### Instalación en Chrome
+
+1. Abrí `chrome://extensions`
+2. Activá el **Modo desarrollador** (esquina superior derecha)
+3. Clic en **Cargar descomprimida**
+4. Seleccioná la carpeta `chrome_extension/`
+
+### Plataformas compatibles
+
+- ✅ LinkedIn Jobs
+- ✅ Indeed (ar.indeed.com)
+- ✅ Bumeran (bumeran.com.ar)
+- ✅ Computrabajo (ar.computrabajo.com)
+- ✅ Click derecho → Guardar en EmpleoIA (cualquier página)
+
+---
+
+## ☁️ Despliegue en la Nube
+
+EmpleoIA incluye infraestructura como código con Terraform para desplegar en **Google Cloud Platform**.
+
+```bash
+cd terraform
+
+# Inicializar
+terraform init
+
+# Planificar
+terraform plan \
+  -var="project_id=tu-proyecto-gcp" \
+  -var="db_password=tu-password-segura" \
+  -var="gemini_api_key=tu-api-key"
+
+# Aplicar
+terraform apply
+```
+
+Recursos que se crean:
+- **Cloud Run**: Flask app con auto-scaling
+- **Cloud SQL**: MySQL 8.0 en VPC privada
+- **Memorystore**: Redis para Celery
+- **Artifact Registry**: Para imágenes Docker
+- **Secret Manager**: Para secretos sensibles
 
 ---
 
 ## 🔧 Solución de Problemas
 
 ### ❌ Error: "MySQL connection failed"
-**Solución:**
 ```bash
 # Verificar que MySQL esté corriendo
 mysql -u root -p
@@ -355,53 +478,51 @@ mysql -u root -p
 CREATE DATABASE job_tracker;
 ```
 
-### ❌ LinkedIn no encuentra empleos
-**Causas comunes:**
-- Credenciales incorrectas o expiradas
-- LinkedIn detectó scraping excesivo (esperar 24h)
-- Búsqueda demasiado amplia (ser más específico)
-
-### ❌ Indeed requiere 2FA
-**Solución:**
-- Desactivar 2FA temporalmente en Indeed
-- O usar credenciales de una cuenta sin 2FA
-
-### ❌ Archivos CSV no aparecen
-**Solución:**
+### ❌ Celery no conecta a Redis
 ```bash
-# Verificar permisos de carpeta
-chmod 755 results/
+# Verificar que Redis esté corriendo
+redis-cli ping  # Debe responder PONG
 
-# Verificar logs
-tail -f logs/app.log
+# En Windows (WSL):
+wsl redis-server
+
+# O con Docker:
+docker run -d -p 6379:6379 redis:7-alpine
 ```
+
+### ❌ AI Copilot no responde
+- Verificá que `GEMINI_API_KEY` esté en tu `.env`
+- La API key debe estar activa en [aistudio.google.com](https://aistudio.google.com/app/apikey)
+
+### ❌ LinkedIn/Indeed detecta scraping
+**Soluciones:**
+- Esperá 24h antes de volver a intentar
+- Usá la extensión de Chrome en lugar del scraper automático
+- Revisá que tenés `LINKEDIN_TOKEN` (cookie `li_at`) en el `.env`
+
+### ❌ Extensión de Chrome no extrae datos
+- Recargá la página del trabajo antes de hacer clic en la extensión
+- Verificá que EmpleoIA esté corriendo en `localhost:5000`
+- Si el portal cambió su estructura de HTML, abrí un issue
 
 ---
 
 ## 🚀 Future Enhancements
 
 ### 🔴 En Desarrollo Activo
-- **Sistema de Notificaciones**: Alertas por email cuando aparecen nuevos trabajos relevantes
-- **Más Plataformas**: Glassdoor, ZipRecruiter, Monster, CareerBuilder
+- **Auto-Apply**: Postulación automática a trabajos "Easy Apply" de LinkedIn
+- **Email Tracking**: Detección automática de respuestas de empleadores vía Gmail/Outlook
+- **Playwright**: Migración de Selenium a Playwright para mayor velocidad y estabilidad
 
 ### 🟡 Próximas Funcionalidades
-- **Filtros Avanzados**: Rango salarial, tipo de contrato, modalidad remota/híbrida
-- **Machine Learning**: Predicción de probabilidad de conseguir entrevista
-- **Recomendación de Skills**: Sugerir habilidades para aprender basado en el mercado
-
-### 🟢 Ideas a Largo Plazo
-- **Machine Learning**: Predicción de probabilidad de conseguir entrevista
-- **Recomendación de Skills**: Sugerir habilidades para aprender basado en el mercado
-- **Mobile App**: Aplicación nativa para iOS y Android
-- **API REST Pública**: Permitir integraciones de terceros
+- **API REST Pública**: FastAPI con documentación OpenAPI/Swagger para integraciones
 - **Gamificación**: Sistema de logros y estadísticas personales
 - **Integración con Calendarios**: Sincronizar entrevistas con Google Calendar/Outlook
+
+### 🟢 Ideas a Largo Plazo
+- **Mobile App**: Aplicación nativa para iOS y Android
+- **Machine Learning Local**: Modelo de predicción de probabilidad de conseguir entrevista
 - **Multiidioma**: Soporte completo para inglés y portugués
-
-### 💡 Contribuciones Bienvenidas
-¿Tenés una idea para mejorar EmpleoIA? ¡Abrí un [issue](https://github.com/Fernandofarfan/EmpleoIA/issues) o enviá un PR!
-
-Ver [CONTRIBUTING.md](CONTRIBUTING.md) para el roadmap completo y áreas de contribución prioritarias.
 
 ---
 
@@ -415,12 +536,12 @@ Ver [CONTRIBUTING.md](CONTRIBUTING.md) para el roadmap completo y áreas de cont
 4. **Push** a la branch (`git push origin feature/AmazingFeature`)
 5. Abrí un **Pull Request**
 
-### Guías de Contribución
+### Áreas de contribución prioritarias
 
-- Seguí el estilo de código existente
-- Agregá tests para nuevas funcionalidades
-- Actualizá la documentación
-- Escribí mensajes de commit descriptivos
+- 🕷️ Nuevos scrapers (Glassdoor, ZipRecruiter, Getonboard)
+- 🤖 Mejoras al AI Copilot y Mock Interview
+- 🌍 Soporte para más países latinoamericanos
+- 🧪 Tests adicionales
 
 Ver [CONTRIBUTING.md](CONTRIBUTING.md) para más detalles.
 
@@ -439,14 +560,17 @@ Este proyecto está bajo la Licencia MIT. Ver el archivo [LICENSE](LICENSE) para
 - **Fernando Farfan** - Desarrollo y mantenimiento principal
 - GitHub: [@Fernandofarfan](https://github.com/Fernandofarfan)
 
-Proyecto desarrollado desde cero para automatizar la búsqueda de empleo con tecnologías modernas de web scraping y procesamiento inteligente de datos.
+Proyecto desarrollado desde cero para automatizar la búsqueda de empleo con tecnologías modernas de web scraping, procesamiento inteligente de datos e IA generativa.
 
 ### Tecnologías
 
-- **Web Scraping**: [Selenium](https://www.selenium.dev/)
-- **Framework**: [Flask](https://flask.palletsprojects.com/)
+- **Web Scraping**: [Selenium](https://www.selenium.dev/) + [undetected-chromedriver](https://github.com/ultrafunkamsterdam/undetected-chromedriver)
+- **Framework**: [Flask](https://flask.palletsprojects.com/) + [Flask-SocketIO](https://flask-socketio.readthedocs.io/)
+- **Task Queue**: [Celery](https://docs.celeryq.dev/) + [Redis](https://redis.io/)
 - **NLP**: [spaCy](https://spacy.io/)
 - **UI**: [Bootstrap 5](https://getbootstrap.com/)
+- **IA Generativa**: [Google Gemini](https://ai.google.dev/)
+- **Infraestructura**: [Terraform](https://www.terraform.io/) + [Google Cloud](https://cloud.google.com/)
 
 ---
 

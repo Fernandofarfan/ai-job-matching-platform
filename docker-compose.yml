@@ -1,0 +1,165 @@
+version: "3.9"
+
+# ============================================================
+# EmpleoIA — Docker Compose
+# Levanta: Flask app + MySQL + Redis + Celery Worker + Flower
+# ============================================================
+
+services:
+
+  # ── Flask Application ────────────────────────────────────────────
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    environment:
+      - DB_HOST=mysql
+      - DB_USER=root
+      - DB_PASSWORD=${DB_PASSWORD:-empleoia_pass}
+      - DB_NAME=job_tracker
+      - REDIS_URL=redis://redis:6379/0
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - SMTP_HOST=${SMTP_HOST:-smtp.gmail.com}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
+      - NOTIFICATION_EMAIL=${NOTIFICATION_EMAIL:-}
+      - LINKEDIN_EMAIL=${LINKEDIN_EMAIL:-}
+      - LINKEDIN_PASSWORD=${LINKEDIN_PASSWORD:-}
+      - INDEED_EMAIL=${INDEED_EMAIL:-}
+      - INDEED_PASSWORD=${INDEED_PASSWORD:-}
+    volumes:
+      - ./uploads:/app/uploads
+      - ./results:/app/results
+      - ./profiles:/app/profiles
+      - ./temp:/app/temp
+      - ./logs:/app/logs
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+    networks:
+      - empleoia-net
+
+  # ── Celery Worker (Scraping + AI tasks) ──────────────────────────
+  celery_worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: >
+      celery -A celery_app worker
+      --loglevel=info
+      --queues=scraping,ai_processing,notifications
+      --concurrency=2
+    environment:
+      - DB_HOST=mysql
+      - DB_USER=root
+      - DB_PASSWORD=${DB_PASSWORD:-empleoia_pass}
+      - DB_NAME=job_tracker
+      - REDIS_URL=redis://redis:6379/0
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
+      - NOTIFICATION_EMAIL=${NOTIFICATION_EMAIL:-}
+    volumes:
+      - ./uploads:/app/uploads
+      - ./results:/app/results
+      - ./profiles:/app/profiles
+      - ./temp:/app/temp
+      - ./logs:/app/logs
+    depends_on:
+      - redis
+      - mysql
+    restart: unless-stopped
+    networks:
+      - empleoia-net
+
+  # ── Celery Beat (Scheduled Tasks) ────────────────────────────────
+  celery_beat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: celery -A celery_app beat --loglevel=info --scheduler celery.beat:PersistentScheduler
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - DB_HOST=mysql
+      - DB_PASSWORD=${DB_PASSWORD:-empleoia_pass}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
+      - NOTIFICATION_EMAIL=${NOTIFICATION_EMAIL:-}
+    volumes:
+      - ./logs:/app/logs
+    depends_on:
+      - redis
+      - celery_worker
+    restart: unless-stopped
+    networks:
+      - empleoia-net
+
+  # ── Flower (Celery Dashboard) ─────────────────────────────────────
+  flower:
+    image: mher/flower:2.0.0
+    command: celery flower --broker=redis://redis:6379/0 --port=5555
+    ports:
+      - "5555:5555"
+    depends_on:
+      - redis
+      - celery_worker
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - FLOWER_BASIC_AUTH=${FLOWER_USER:-admin}:${FLOWER_PASSWORD:-admin123}
+    restart: unless-stopped
+    networks:
+      - empleoia-net
+
+  # ── Redis (Broker + Backend) ──────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    restart: unless-stopped
+    networks:
+      - empleoia-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ── MySQL ─────────────────────────────────────────────────────────
+  mysql:
+    image: mysql:8.0
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=${DB_PASSWORD:-empleoia_pass}
+      - MYSQL_DATABASE=job_tracker
+      - MYSQL_CHARACTER_SET_SERVER=utf8mb4
+      - MYSQL_COLLATION_SERVER=utf8mb4_unicode_ci
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./setup_database.sql:/docker-entrypoint-initdb.d/setup_database.sql:ro
+    restart: unless-stopped
+    networks:
+      - empleoia-net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${DB_PASSWORD:-empleoia_pass}"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+volumes:
+  mysql_data:
+  redis_data:
+
+networks:
+  empleoia-net:
+    driver: bridge

@@ -8,13 +8,95 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Planeado
-- Sistema de notificaciones por email
-- Integración con más plataformas (Glassdoor, ZipRecruiter)
-- Tests unitarios completos
-- CI/CD con GitHub Actions
-- Dashboard de analytics avanzado
-- Modo offline para búsquedas guardadas
-- Exportación de datos a PDF/Excel
+- Auto-Apply: Postulación automática a trabajos "Easy Apply" de LinkedIn con Playwright
+- Email Tracking: Detección de respuestas vía Gmail/Outlook API
+- API REST Pública con FastAPI y documentación OpenAPI/Swagger
+- Gamificación: Sistema de logros y estadísticas personales
+- Mobile App: Aplicación nativa iOS/Android
+
+---
+
+## [3.0.0] - 2025-04-12 — EmpleoIA Enterprise 🚀
+
+### 🤖 AI Engine (NEW)
+- ✨ **AI Engine Centralizado** (`ai_engine.py`): Motor de IA usando Google Gemini para análisis semántico, reescritura de CVs, chat copilot y insights de mercado
+- ✨ **AI Copilot Sidebar**: Chat lateral disponible en todas las páginas con base.html, powered by Gemini, con quick actions y typing indicator animado
+- ✨ **Mock Interviews** (`/mock-interview`): Entrevistas simuladas con IA — preguntas personalizadas por rol/dificultad, timer opcional, evaluación STAR, feedback con puntaje y respuesta mejorada, reporte descargable
+- ✨ **Análisis Completo de Ofertas** (`/api/ai/analyze-job`): Cultura de empresa, skills match, salario estimado, red flags, red flags y resumen ejecutivo
+- ✨ **Reescritura de CV** (`/api/ai/rewrite-bullet`): Mejora bullet points del CV para hacer match con una oferta específica
+- ✨ **Plan de Aprendizaje** (`/api/ai/learning-path`): Genera ruta personalizada de skills faltantes para una posición target
+- ✨ **Insights de Mercado** (`/api/ai/market-insights`): Salarios, demanda y tendencias por rol y nivel con caché de 7 días
+
+### ⚡ Arquitectura Asíncrona (NEW)
+- ✨ **Celery + Redis** (`celery_app.py`): Arquitectura asíncrona completa — scraping en background sin bloquear la app web
+- ✨ **Colas especializadas**: `scraping` (alta prioridad), `ai_processing`, `notifications`
+- ✨ **Tareas programadas** (Celery Beat): Follow-up reminders automáticos y limpieza de temporales
+- ✨ **Flower Dashboard**: Monitor de tareas Celery disponible en `localhost:5555`
+- ✨ **tasks/ai_tasks.py**: Análisis IA por lotes, exportación Excel asíncrona, limpieza de temporales
+- ✨ **tasks/notification_tasks.py**: Envío de emails asíncrono (follow-ups, digests, resúmenes semanales)
+- ✨ **tasks/scraping_tasks.py**: Scraping de Indeed, LinkedIn, Bumeran y Computrabajo como tareas Celery
+
+### 🗄️ Base de Datos (MEJORADO)
+- ✨ **SQLAlchemy ORM** (`models.py`): Modelos completos — Application, ConnectionRequest, MarketInsight, MockInterview, UserSettings
+- ✨ **SQLAlchemyManager**: Wrapper compatible con db_config.py para migración gradual
+- ✨ **Índices optimizados**: Para status, company, applied_date y overall_match
+- ✨ **Connection pooling mejorado**: `pool_pre_ping=True`, `pool_recycle=3600`
+
+### 🌐 Extensión de Chrome (NEW)
+- ✨ **EmpleoIA Saver** (`chrome_extension/`): Extensión Manifest V3 para guardar ofertas con 1 click
+- ✨ **Extractores por plataforma**: LinkedIn, Indeed, Bumeran, Computrabajo con fallback genérico
+- ✨ **Auto-extracción**: La extensión extrae datos automáticamente al abrir el popup
+- ✨ **Context menu**: Click derecho → "Guardar en EmpleoIA" desde cualquier página
+- ✨ **Toast de confirmación**: Indicador visual en la página cuando se guarda correctamente
+- ✨ **Endpoint Flask** (`/api/tracker/save-from-extension`): Recibe datos de la extensión
+
+### 📧 Notificaciones (NEW)
+- ✨ **NotificationManager** (`notifier.py`): Manager de alto nivel con fallback Celery → SMTP directo
+- ✨ **Templates HTML premium**: Emails en dark mode con gradientes y formato responsive
+- ✨ **Follow-up reminders**: Alertas automáticas para postulaciones con fecha de seguimiento vencida
+- ✨ **Digest de nuevas ofertas**: Email semanal con las mejores ofertas encontradas
+- ✨ **Resumen semanal**: Estadísticas de actividad: postulaciones, entrevistas, tasa de respuesta
+- ✨ **Test de configuración** (`/api/notifications/test`): Verifica la configuración SMTP enviando un email de prueba
+- ✨ **API de notificaciones**: `/api/notifications/config`, `/api/notifications/test`, `/api/notifications/trigger-digest`
+
+### 💰 Análisis Salarial (NEW)
+- ✨ **market_analyzer.py**: Extracción de salarios con regex multi-patrón (USD, ARS, EUR)
+- ✨ **Análisis de distribución**: Histograma, percentiles, estadísticas descriptivas por CSV
+- ✨ **Ranking por empresa**: Top 20 empresas por salario promedio
+- ✨ **Enriquecimiento de CSV**: Agrega columnas salary_min, salary_max, salary_avg, currency
+- ✨ **API de salarios** (`/api/salary/analyze-csv`): Análisis salarial por CSV scrapeado
+
+### 🏗️ Infraestructura (NEW)
+- ✨ **Docker Compose completo** (`docker-compose.yml`): Flask + MySQL + Redis + Celery Worker + Celery Beat + Flower con healthchecks
+- ✨ **Terraform para GCP** (`terraform/`): Cloud Run (Flask), Cloud SQL (MySQL 8.0), Memorystore (Redis), Artifact Registry, Secret Manager, VPC privada
+- ✨ **Configuraciones de entorno**: Soporte completo dev/staging/prod en Terraform
+
+### 📱 UI/UX (MEJORADO)
+- ✨ **base.html unificado**: Navbar actualizada con entrada Mock Interviews
+- ✨ **mock_interview.html**: Template completo con animaciones, timer, feedback modal slide-up y gráfico de resultados circular (Canvas API)
+- ✨ **mock_interview.css**: Estilos premium dark mode con difficulty selector, mode selector, feedback modal animado y timer urgente pulsante
+
+### 🔌 API Routes (NEW)
+- ✨ `POST /api/ai/analyze-job` — Análisis completo de oferta laboral
+- ✨ `POST /api/ai/copilot` — Chat con AI Copilot (Gemini)
+- ✨ `POST /api/ai/rewrite-bullet` — Reescritura de bullet points del CV
+- ✨ `POST /api/ai/interview/generate` — Generación de preguntas de entrevista
+- ✨ `POST /api/ai/interview/evaluate` — Evaluación de respuestas de entrevista
+- ✨ `GET/POST /api/ai/market-insights` — Insights salariales de mercado con caché
+- ✨ `POST /api/ai/learning-path` — Plan de aprendizaje personalizado
+- ✨ `POST /api/tracker/save-from-extension` — Guardado desde extensión de Chrome
+- ✨ `POST /api/salary/analyze-csv` — Análisis salarial de CSV
+- ✨ `GET /api/notifications/config` — Configuración de notificaciones
+- ✨ `POST /api/notifications/test` — Prueba de configuración SMTP
+- ✨ `POST /api/notifications/trigger-digest` — Envío manual de digest
+
+### 📦 Dependencias Añadidas
+- ✨ `celery[redis]>=5.3.0` — Task queue asíncrono
+- ✨ `redis>=5.0.0` — Broker y backend de Celery
+- ✨ `SQLAlchemy>=2.0.0` — ORM para MySQL
+- ✨ `Flask-SQLAlchemy>=3.1.0` — Integración Flask-SQLAlchemy
+- ✨ `alembic>=1.13.0` — Migraciones de base de datos
+- ✨ `openpyxl>=3.1.0` — Exportación Excel premium
 
 ## [2.2.0] - 2025-12-10
 
