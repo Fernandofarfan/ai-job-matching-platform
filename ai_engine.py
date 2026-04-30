@@ -7,11 +7,42 @@ import json
 import logging
 import re
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 from dotenv import load_dotenv
+from pydantic import BaseModel, Field, ValidationError
 
 load_dotenv()
 logger = logging.getLogger(__name__)
+
+# Pydantic Schemas for AI Engine validation
+class CulturaSchema(BaseModel):
+    tipo: str = Field(default="desconocido")
+    tono_recomendado: str = Field(default="formal")
+    descripcion: str = Field(default="")
+
+class SalarioEstimadoSchema(BaseModel):
+    minimo: str = Field(default="no disponible")
+    maximo: str = Field(default="no disponible")
+    moneda: str = Field(default="no especificado")
+    fuente: str = Field(default="no disponible")
+
+class JobAnalysisSchema(BaseModel):
+    cultura: CulturaSchema = Field(default_factory=CulturaSchema)
+    skills_requeridas: List[str] = Field(default_factory=list)
+    skills_deseadas: List[str] = Field(default_factory=list)
+    skills_del_cv_que_aplican: List[str] = Field(default_factory=list)
+    skills_faltantes: List[str] = Field(default_factory=list)
+    nivel_experiencia: str = Field(default="no especificado")
+    modalidad: str = Field(default="no especificado")
+    tipo_contrato: str = Field(default="no especificado")
+    salario_estimado: SalarioEstimadoSchema = Field(default_factory=SalarioEstimadoSchema)
+    match_score: float = Field(default=0.0)
+    match_explicacion: str = Field(default="")
+    puntos_fuertes: List[str] = Field(default_factory=list)
+    areas_mejora: List[str] = Field(default_factory=list)
+    red_flags: List[str] = Field(default_factory=list)
+    resumen_ejecutivo: str = Field(default="")
+    error: Optional[str] = None
 
 # ── Gemini client ─────────────────────────────────────────────────────────────
 try:
@@ -103,18 +134,17 @@ Respondé con este JSON exacto (sin markdown, sin bloques de código):
     raw = re.sub(r'```\s*', '', raw)
 
     try:
-        return json.loads(raw)
+        data = json.loads(raw)
+        validated = JobAnalysisSchema(**data)
+        return validated.model_dump()
     except json.JSONDecodeError:
         logger.warning(f"Could not parse Gemini JSON response, returning raw text")
-        return {
-            "resumen_ejecutivo": raw,
-            "error": "No se pudo parsear la respuesta de IA",
-            "match_score": 0.0,
-            "skills_requeridas": [],
-            "skills_faltantes": [],
-            "salario_estimado": {"minimo": "no disponible", "maximo": "no disponible", "moneda": "no especificado", "fuente": "no disponible"},
-            "cultura": {"tipo": "desconocido", "tono_recomendado": "formal", "descripcion": ""},
-        }
+        fallback = JobAnalysisSchema(resumen_ejecutivo=raw, error="No se pudo parsear la respuesta de IA JSONDecodeError")
+        return fallback.model_dump()
+    except ValidationError as e:
+        logger.warning(f"Validation Error with Gemini JSON response: {e}")
+        fallback = JobAnalysisSchema(resumen_ejecutivo=raw, error=f"Error validacion de JSON: {e}")
+        return fallback.model_dump()
 
 
 def analyze_company_culture(job_description: str) -> dict:

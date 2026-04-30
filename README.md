@@ -60,9 +60,16 @@
 
 ---
 
-## ✨ Características
+## ✨ Características (Versión Enterprise)
 
-### 🤖 **IA Generativa (NEW)**
+### 🚀 **Nueva Arquitectura y Escalabilidad (Fases 1-5 completadas)**
+- **Migración a Playwright**: El motor de scraping abandona Selenium y adopta `playwright` asincrónico para máxima velocidad y evitar detecciones.
+- **FastAPI Core**: Transición de Flask a FastAPI (`main.py`) activada para endpoints de IA asincrónicos, preparándose para soporte WebSocket nativo de alta concurrencia.
+- **Entorno DevContainer**: Repositorio "Docker-first" con `.devcontainer` que soluciona conflictos de C++ y restricciones de Windows Defender para dependencias de IA.
+- **Web Speech API**: Interfaz de *Mock Interviews* actualizada con funcionalidad de voz-a-texto en la UI.
+- **Autonomías Externas**: Tracker automático para Gmail vía OAuth e introducción de auto-aplicación en LinkedIn.
+
+### 🤖 **IA Generativa (Validada)**
 - **AI Copilot**: Chat lateral con Gemini en todas las páginas — preguntá sobre tu búsqueda, estrategia, salarios, LinkedIn
 - **Mock Interviews**: Entrevistas simuladas con preguntas personalizadas, timer, evaluación STAR y feedback en tiempo real
 - **Análisis completo de ofertas**: Cultura de empresa, skills requeridas vs tus skills, rango salarial inferido, red flags

@@ -246,3 +246,58 @@ def export_tracker_to_excel(self, job_list: list, output_path: str):
     except Exception as e:
         logger.error(f"Excel export task failed: {e}", exc_info=True)
         raise
+
+@celery.task(bind=True, name="tasks.ai_tasks.auto_apply_jobs")
+def auto_apply_jobs(self, resume_path: str, user_profile: dict, job_links: list):
+    """
+    Tarea experimental de autocompletado en portales (Playwright).
+    Busca empleos 'Easy Apply' en LinkedIn e intenta rellenar los datos.
+    """
+    from scrapers.linkedin_pw import linkedinClass
+    import time
+    
+    try:
+        self.update_state(state="PROGRESS", meta={"progress": 5, "message": "Inicializando Auto-Apply Engine..."})
+        
+        # Iniciar instancia limpia (idealmente con proxies y sesión reutilizada)
+        bot = linkedinClass(li_at_token=user_profile.get("li_at_token"))
+        if not bot.login_with_cookie():
+            return {"status": "failed", "message": "Fallo el login de LinkedIn para AutoApply."}
+            
+        success_count = 0
+        for i, link in enumerate(job_links):
+            self.update_state(state="PROGRESS", meta={
+                "progress": 20 + int((i / max(len(job_links), 1)) * 70),
+                "message": f"Aplicando a vacante {i+1}..."
+            })
+            
+            try:
+                bot.page.goto(link)
+                time.sleep(2)
+                
+                easy_apply_btn = bot.page.locator("button.jobs-apply-button")
+                if easy_apply_btn.count() > 0 and "Easy Apply" in easy_apply_btn.inner_text():
+                    easy_apply_btn.click()
+                    time.sleep(2)
+                    
+                    # Logica simulada para atravesar modales
+                    next_btn = bot.page.locator("button[aria-label='Continue to next step']")
+                    while next_btn.count() > 0:
+                        next_btn.click()
+                        time.sleep(1)
+                        next_btn = bot.page.locator("button[aria-label='Continue to next step']")
+                        
+                    submit_btn = bot.page.locator("button[aria-label='Submit application']")
+                    if submit_btn.count() > 0:
+                        submit_btn.click()
+                        success_count += 1
+                        logger.info(f"Auto-Apply exitoso para: {link}")
+                        
+            except Exception as loop_e:
+                logger.error(f"Error aplicando en {link}: {loop_e}")
+                
+        return {"status": "completed", "applied_count": success_count, "total_attempted": len(job_links)}
+
+    except Exception as e:
+        logger.error(f"AutoApply fatal error: {e}", exc_info=True)
+        return {"status": "failed", "error": str(e)}

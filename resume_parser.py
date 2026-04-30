@@ -6,12 +6,23 @@ import docx
 import PyPDF2
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-import spacy
+try:
+    import spacy
+    _SPACY_AVAILABLE = True
+except (ImportError, Exception):
+    spacy = None
+    _SPACY_AVAILABLE = False
 from collections import Counter
 import json
 from datetime import datetime
 
-import google.generativeai as genai
+try:
+    import google.generativeai as genai
+    _GENAI_AVAILABLE = True
+except (ImportError, Exception) as e:
+    genai = None
+    _GENAI_AVAILABLE = False
+    print(f"Warning: google.generativeai not available: {e}")
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -20,7 +31,10 @@ class resumeParser:
     def __init__(self):
         
         try:
-            self.nlp = spacy.load("en_core_web_sm")
+            if _SPACY_AVAILABLE:
+                self.nlp = spacy.load("en_core_web_sm")
+            else:
+                self.nlp = None
         except OSError:
             print("Warning: spaCy model not found. Install with: python -m spacy download en_core_web_sm")
             self.nlp = None
@@ -64,13 +78,21 @@ class resumeParser:
             self.all_technical_skills.extend(category)
 
     def configure_genai(self):
+        if not getattr(self, '__module__', None) and not globals().get('_GENAI_AVAILABLE', False):
+            self.use_ai = False
+            print("Warning: AI API not available (import failed). Using regex-based parsing.")
+            return
+
         api_key = os.getenv("GEMINI_API_KEY")  # Internal: Google Gemini
         if api_key:
             try:
-                genai.configure(api_key=api_key)
-                self.model = genai.GenerativeModel('gemini-2.5-flash-lite')
-                self.use_ai = True
-                print("✅ AI parser configured successfully")
+                if 'genai' in globals() and genai is not None:
+                    genai.configure(api_key=api_key)
+                    self.model = genai.GenerativeModel('gemini-2.5-flash-lite')
+                    self.use_ai = True
+                    print("✅ AI parser configured successfully")
+                else:
+                    self.use_ai = False
             except Exception as e:
                 print(f"Error configuring AI parser: {e}")
                 self.use_ai = False

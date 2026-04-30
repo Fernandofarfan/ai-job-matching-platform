@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2 class="display-6"><i class="fas fa-chart-pie me-2"></i>Dashboard Analytics</h2>
+            <p class="text-muted">Métricas de adopción y rendimiento del Embudo de Conversión Automático</p>
+        </div>
+    </div>
+
+    <!-- Counters Row -->
+    <div class="row mb-4 text-center" id="countersRow" style="display:none;">
+        <div class="col-md-3">
+            <div class="card premium-card bg-dark text-light border-secondary">
+                <div class="card-body">
+                    <h5 class="card-title text-muted">Ofertas Encontradas</h5>
+                    <h2 class="display-5 fw-bold text-primary" id="kpiFound">0</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card premium-card bg-dark text-light border-secondary">
+                <div class="card-body">
+                    <h5 class="card-title text-muted">Aplicaciones (Auto/Man)</h5>
+                    <h2 class="display-5 fw-bold text-info" id="kpiApplied">0</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card premium-card bg-dark text-light border-secondary">
+                <div class="card-body">
+                    <h5 class="card-title text-muted">Entrevistas Logradas</h5>
+                    <h2 class="display-5 fw-bold text-warning" id="kpiInterviews">0</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card premium-card bg-dark text-light border-secondary">
+                <div class="card-body">
+                    <h5 class="card-title text-muted">Ofertas / Avanzado</h5>
+                    <h2 class="display-5 fw-bold text-success" id="kpiOffers">0</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Funnel Chart -->
+        <div class="col-md-8">
+            <div class="card premium-card bg-dark text-light border-secondary mb-4">
+                <div class="card-header border-secondary bg-transparent">
+                    <h5 class="mb-0">Funnel de Conversión de Aplicaciones</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="funnelChart" height="120"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Status Breakdown -->
+        <div class="col-md-4">
+            <div class="card premium-card bg-dark text-light border-secondary mb-4">
+                <div class="card-header border-secondary bg-transparent">
+                    <h5 class="mb-0">Distribución de Estados</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="pieChart" height="240"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Estilos premium para las cards similares a index.html */
+.premium-card {
+    transition: transform 0.2s, box-shadow 0.2s;
+    border-radius: 12px;
+}
+.premium-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.4);
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", async function() {
+    try {
+        const response = await fetch('/api/analytics/funnel');
+        const data = await response.json();
+        
+        if (data.success) {
+            document.getElementById('countersRow').style.display = 'flex';
+            
+            // Populate Counters
+            document.getElementById('kpiFound').innerText = data.funnel.found;
+            document.getElementById('kpiApplied').innerText = data.funnel.applied;
+            document.getElementById('kpiInterviews').innerText = data.funnel.interviews;
+            document.getElementById('kpiOffers').innerText = data.funnel.offers;
+
+            // Bar Chart (Funnel representation)
+            const ctxFunnel = document.getElementById('funnelChart').getContext('2d');
+            new Chart(ctxFunnel, {
+                type: 'bar',
+                data: {
+                    labels: ['Oportunidades Encontradas', 'CVs Enviados', 'Llamadas/Entrevistas', 'Ofertas / Finalistas'],
+                    datasets: [{
+                        label: 'Volumen',
+                        data: [data.funnel.found, data.funnel.applied, data.funnel.interviews, data.funnel.offers],
+                        backgroundColor: [
+                            'rgba(13, 110, 253, 0.5)',  // Primary
+                            'rgba(13, 202, 240, 0.5)',  // Info
+                            'rgba(255, 193, 7, 0.5)',   // Warning
+                            'rgba(25, 135, 84, 0.5)'    // Success
+                        ],
+                        borderColor: [
+                            'rgb(13, 110, 253)',
+                            'rgb(13, 202, 240)',
+                            'rgb(255, 193, 7)',
+                            'rgb(25, 135, 84)'
+                        ],
+                        borderWidth: 1,
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: 'rgba(255,255,255,0.1)' },
+                            ticks: { color: '#adb5bd' }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: '#adb5bd' }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+
+            // Pie Chart (Raw Status)
+            const pureStats = data.raw_stats;
+            const labels = Object.keys(pureStats);
+            const values = Object.values(pureStats);
+            
+            const ctxPie = document.getElementById('pieChart').getContext('2d');
+            new Chart(ctxPie, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: values,
+                        backgroundColor: [
+                            '#0d6efd', '#6c757d', '#198754', '#dc3545', '#ffc107', '#0dcaf0'
+                        ],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { color: '#adb5bd' }
+                        }
+                    }
+                }
+            });
+        }
+    } catch (e) {
+        console.error("Error cargando dashboard:", e);
+    }
+});
+</script>
+{% endblock %}

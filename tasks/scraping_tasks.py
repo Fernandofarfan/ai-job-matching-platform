@@ -134,7 +134,7 @@ def run_indeed_scraper(self, credentials: dict, searches: list, filters: dict = 
 @celery.task(bind=True, name="tasks.scraping_tasks.run_linkedin_scraper", max_retries=2)
 def run_linkedin_scraper(self, credentials: dict, searches: list, filters: dict = None):
     """Tarea Celery para scraping de LinkedIn de forma asíncrona."""
-    from scrapers.linkedin_scraper import linkedinClass
+    from scrapers.linkedin_pw import linkedinClass
     from resume_parser import jobMatcher
 
     filters = filters or {}

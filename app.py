@@ -22,7 +22,7 @@ load_dotenv()
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from scrapers.indeed_scraper import indeedScraper
-from scrapers.linkedin_scraper import linkedinClass
+from scrapers.linkedin_pw import linkedinClass
 from scrapers.linkedin_connection import linkedinConnections
 from scrapers.computrabajo_scraper import ComputrabajoScraper
 from scrapers.bumeran_scraper import BumeranScraper

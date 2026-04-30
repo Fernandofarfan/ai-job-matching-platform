@@ -162,11 +162,14 @@
 
                         <!-- Answer Input -->
                         <div class="answer-section">
-                            <label class="form-label text-muted">
-                                <i class="bi bi-pencil me-1"></i> Tu respuesta:
+                            <label class="form-label text-muted d-flex justify-content-between align-items-center">
+                                <span><i class="bi bi-pencil me-1"></i> Tu respuesta:</span>
+                                <button class="btn btn-sm btn-outline-danger" id="voice-btn" onclick="toggleVoiceRecording()">
+                                    <i class="bi bi-mic me-1"></i> Hablar
+                                </button>
                             </label>
                             <textarea id="user-answer" class="form-control form-control-dark answer-textarea"
-                                      rows="6" placeholder="Escribí tu respuesta aquí. Intentá usar el método STAR: Situación, Tarea, Acción, Resultado..."></textarea>
+                                      rows="6" placeholder="Escribí tu respuesta aquí, o usá el micrófono para dictarla..."></textarea>
                         </div>
 
                         <div class="d-flex gap-2 mt-3">
@@ -662,6 +665,71 @@ function showToast(message, type = 'info') {
     toast.textContent = message;
     document.body.appendChild(toast);
     setTimeout(() => toast.remove(), 4000);
+}
+// ── Web Speech API (Voice API) ───────────────────────────────────────────
+let recognition;
+let isRecording = false;
+
+if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'es-AR';
+
+    recognition.onresult = function(event) {
+        let finalTranscript = '';
+        let interimTranscript = '';
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+            if (event.results[i].isFinal) {
+                finalTranscript += event.results[i][0].transcript;
+            } else {
+                interimTranscript += event.results[i][0].transcript;
+            }
+        }
+        
+        const textArea = document.getElementById('user-answer');
+        if (finalTranscript) {
+            textArea.value += (textArea.value ? ' ' : '') + finalTranscript;
+        }
+    };
+
+    recognition.onerror = function(event) {
+        console.error("Speech Recognition Error", event.error);
+        if (event.error === 'not-allowed') {
+            showToast('⚠️ Permiso de micrófono denegado', 'danger');
+            toggleVoiceRecording(true);
+        }
+    };
+    
+    recognition.onend = function() {
+        if (isRecording) { // If it stopped automatically but we still want recording
+            recognition.start();
+        }
+    };
+}
+
+function toggleVoiceRecording(forceStop = false) {
+    if (!recognition) {
+        showToast('🎙️ Tu navegador no soporta reconocimiento de voz', 'warning');
+        return;
+    }
+    
+    const btn = document.getElementById('voice-btn');
+    if (isRecording || forceStop) {
+        isRecording = false;
+        recognition.stop();
+        btn.innerHTML = '<i class="bi bi-mic me-1"></i> Hablar';
+        btn.classList.remove('btn-danger');
+        btn.classList.add('btn-outline-danger');
+    } else {
+        isRecording = true;
+        recognition.start();
+        btn.innerHTML = '<i class="bi bi-stop-circle me-1"></i> Detener grabación';
+        btn.classList.remove('btn-outline-danger');
+        btn.classList.add('btn-danger');
+        showToast('🎙️ Grabando... Empezá a hablar', 'info');
+    }
 }
 </script>
 {% endblock %}
