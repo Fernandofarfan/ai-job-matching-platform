@@ -399,6 +399,13 @@ cp .env.example .env
 # === IA (OBLIGATORIO para funciones de IA) ===
 GEMINI_API_KEY=tu_api_key_aqui
 
+# === Seguridad ===
+SECRET_KEY=            # obligatoria en producción: python -c "import secrets; print(secrets.token_hex(32))"
+CORS_ALLOWED_ORIGINS=  # orígenes WebSocket permitidos, separados por coma (vacío = mismo origen)
+FLASK_HOST=127.0.0.1   # python app.py solo escucha en localhost; usá 0.0.0.0 para exponerlo
+FLASK_PORT=5000
+FLASK_DEBUG=0          # 1 activa el debugger de Werkzeug: nunca lo expongas a la red
+
 # === Base de Datos ===
 DB_HOST=127.0.0.1
 DB_USER=root
@@ -415,6 +422,9 @@ SMTP_USER=tu_email@gmail.com
 SMTP_PASSWORD=tu_app_password_google
 NOTIFICATION_EMAIL=tu_email@gmail.com
 ```
+
+> [!NOTE]
+> En `docker-compose.yml`, MySQL (`3307`), Redis (`6379`) y Flower (`5555`) solo se publican en `127.0.0.1`. Los CVs subidos deben ser PDF, DOCX o TXT y se guardan con un nombre sanitizado.
 
 > [!IMPORTANT]
 > **Nunca subas el archivo `.env` al repositorio**. Está incluido en `.gitignore`.
