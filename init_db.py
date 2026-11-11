@@ -6,7 +6,7 @@ load_dotenv()
 
 host = os.getenv('DB_HOST', '127.0.0.1')
 user = os.getenv('DB_USER', 'root')
-password = os.getenv('DB_PASSWORD', '2306')
+password = os.getenv('DB_PASSWORD', '')
 
 print(f"Connecting to {host} as {user}...")
 
