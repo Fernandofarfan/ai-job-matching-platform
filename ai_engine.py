@@ -45,12 +45,14 @@ class JobAnalysisSchema(BaseModel):
     error: Optional[str] = None
 
 # ── Gemini client ─────────────────────────────────────────────────────────────
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+
 try:
-    import google.generativeai as genai
+    from google import genai
+    from google.genai import types as genai_types
     _api_key = os.getenv("GEMINI_API_KEY", "")
     if _api_key:
-        genai.configure(api_key=_api_key)
-        _gemini_model = genai.GenerativeModel("gemini-1.5-flash")
+        _gemini_client = genai.Client(api_key=_api_key)
         GEMINI_AVAILABLE = True
         logger.info("Gemini AI engine initialized ✓")
     else:
@@ -58,7 +60,7 @@ try:
         logger.warning("GEMINI_API_KEY not set — AI features disabled")
 except ImportError:
     GEMINI_AVAILABLE = False
-    logger.warning("google-generativeai not installed — AI features disabled")
+    logger.warning("google-genai not installed — AI features disabled")
 
 
 def _call_gemini(prompt: str, temperature: float = 0.7) -> str:
@@ -66,12 +68,13 @@ def _call_gemini(prompt: str, temperature: float = 0.7) -> str:
     if not GEMINI_AVAILABLE:
         return "⚠️ Gemini no está configurado. Agregá GEMINI_API_KEY al archivo .env"
     try:
-        response = _gemini_model.generate_content(
-            prompt,
-            generation_config=genai.types.GenerationConfig(
+        response = _gemini_client.models.generate_content(
+            model=GEMINI_MODEL,
+            contents=prompt,
+            config=genai_types.GenerateContentConfig(
                 temperature=temperature,
                 max_output_tokens=2048,
-            )
+            ),
         )
         return response.text.strip()
     except Exception as e:

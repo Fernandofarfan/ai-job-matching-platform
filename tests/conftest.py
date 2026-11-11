@@ -62,7 +62,7 @@ _ALL_MOCKS = [
     'apscheduler.schedulers', 'apscheduler.schedulers.background',
     'apscheduler.triggers', 'apscheduler.triggers.cron', 'apscheduler.triggers.interval',
     # Google AI
-    'google', 'google.generativeai', 'google.generativeai.types',
+    'google', 'google.genai', 'google.genai.types',
     # Security
     'cryptography', 'cryptography.fernet', 'cryptography.hazmat',
     'cryptography.hazmat.primitives', 'cryptography.hazmat.backends',
