@@ -5,7 +5,7 @@
 ### *Plataforma Inteligente de Búsqueda de Empleo con IA*
 
 [![Python Version](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
-[![Flask](https://img.shields.io/badge/flask-2.3.3-green.svg)](https://flask.palletsprojects.com/)
+[![Flask](https://img.shields.io/badge/flask-3.1.3-green.svg)](https://flask.palletsprojects.com/)
 [![License](https://img.shields.io/badge/license-MIT-orange.svg)](LICENSE)
 [![Status](https://img.shields.io/badge/status-active-success.svg)]()
 [![Celery](https://img.shields.io/badge/celery-5.3+-brightgreen.svg)](https://docs.celeryq.dev/)

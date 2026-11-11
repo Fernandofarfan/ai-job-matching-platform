@@ -76,7 +76,7 @@ _ALL_MOCKS = [
     # BeautifulSoup / parsing
     'bs4', 'beautifulsoup4', 'lxml', 'lxml.html',
     # Document parsing
-    'PyPDF2', 'docx', 'python_docx',
+    'pypdf', 'PyPDF2', 'docx', 'python_docx',
     # WSGI
     'waitress',
     # Playwright (scrapers/linkedin_pw.py)
