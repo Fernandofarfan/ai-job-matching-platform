@@ -7,12 +7,22 @@ from ai_engine import _call_gemini
 
 logger = logging.getLogger(__name__)
 
+# _call_gemini devuelve estos mensajes en lugar de lanzar excepciones
+GEMINI_ERROR_PREFIXES = ("⚠️ Gemini no está configurado", "Error al contactar Gemini")
+
 
 def _safe_filename(prefix: str, job_title: str, company: str, ext: str) -> str:
     def clean(value):
         return "".join(c for c in str(value) if c.isalnum() or c in (" ", "-", "_")).strip()[:50]
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
     return f"{prefix}_{clean(job_title)}_{clean(company)}_{timestamp}.{ext}".replace(" ", "_")
+
+
+def _generate(prompt: str) -> str:
+    text = _call_gemini(prompt)
+    if text.startswith(GEMINI_ERROR_PREFIXES):
+        raise RuntimeError(text)
+    return _strip_markdown(text)
 
 
 def _strip_markdown(text: str) -> str:
@@ -61,7 +71,7 @@ DESCRIPCIÓN:
 
 Estructura: saludo ("Estimado/a equipo de {company}" si no hay nombre), por qué le interesa el puesto, experiencia relevante del CV que calce con los requisitos, valor que aporta, cierre con disponibilidad para entrevista y despedida.
 No inventes datos de contacto. Devolvé SOLO el texto de la carta, sin markdown."""
-        return _strip_markdown(_call_gemini(prompt))
+        return _generate(prompt)
 
     def save_cover_letter(self, letter_text: str, job_title: str, company: str,
                           output_dir: str = os.path.join("temp", "cover_letters")) -> str:
@@ -74,7 +84,7 @@ class ResumeOptimizer:
         prompt = f"""Sos un experto en CVs y sistemas ATS. Reescribí el siguiente CV para maximizar el match con la oferta, sin inventar experiencia, empresas, fechas ni títulos que no estén en el CV original.
 
 CV ORIGINAL:
-{resume_text[:4000]}
+{resume_text[:12000]}
 
 PUESTO: {job_title}
 EMPRESA: {company}
@@ -83,7 +93,7 @@ DESCRIPCIÓN:
 
 Priorizá las habilidades y logros relevantes, usá las palabras clave de la oferta cuando sean verdaderas, y cuantificá logros cuando el CV lo permita.
 Secciones: RESUMEN PROFESIONAL, HABILIDADES TÉCNICAS, EXPERIENCIA, PROYECTOS (si hay), EDUCACIÓN. Usá viñetas con "-". Devolvé SOLO el CV, sin markdown."""
-        return _strip_markdown(_call_gemini(prompt))
+        return _generate(prompt)
 
     def save_resume(self, resume_text: str, job_title: str, company: str,
                     output_dir: str = os.path.join("temp", "resumes")) -> str:

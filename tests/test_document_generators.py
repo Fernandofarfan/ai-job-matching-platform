@@ -29,3 +29,14 @@ def test_save_resume_writes_file(tmp_path):
     filename = ResumeOptimizer().save_resume("RESUMEN\n\n- Python", "Dev", "Acme", output_dir=str(tmp_path))
     assert os.path.dirname(filename) == ""
     assert filename.startswith("resume_Dev_Acme_")
+
+
+def test_gemini_error_raises_instead_of_saving_document():
+    import pytest
+    with mock.patch.object(document_generators, "_call_gemini", return_value="Error al contactar Gemini: quota"):
+        with pytest.raises(RuntimeError):
+            ResumeOptimizer().optimize_resume("cv", "desc")
+
+
+def test_filenames_unique_within_same_second():
+    assert _safe_filename("r", "Dev", "Acme", "docx") != _safe_filename("r", "Dev", "Acme", "docx")
