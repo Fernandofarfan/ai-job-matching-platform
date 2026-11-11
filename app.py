@@ -29,6 +29,7 @@ from scrapers.bumeran_scraper import BumeranScraper
 
 
 from resume_parser import resumeParser, jobMatcher
+from document_generators import CoverLetterGenerator, ResumeOptimizer
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
@@ -294,7 +295,7 @@ def run_indeed_scraper_with_matching(credentials, searches, filters=None):
                 if os.path.exists(resume_path):
                     with open(resume_path, 'r', encoding='utf-8', errors='ignore') as f:
                         resume_text = f.read()
-                    user_skills = extract_skills_from_text(resume_text)
+                    user_skills = resume_parser.extract_skills(resume_text)
                     logger.info(f"Extracted {len(user_skills)} skills from resume")
             except Exception as e:
                 logger.error(f"Error extracting skills: {e}")
@@ -2352,7 +2353,7 @@ def optimize_resume():
                 flash('Please provide resume text or upload your resume first', 'warning')
                 return redirect(url_for('optimize_resume_page'))
         
-        optimizer = simpleResumeOptimizer()
+        optimizer = ResumeOptimizer()
         optimized_resume = optimizer.optimize_resume(resume_text, job_description, job_title, company)
         
         filename = optimizer.save_resume(optimized_resume, job_title, company)
@@ -2383,7 +2384,7 @@ def api_optimize_resume():
         if not resume_text:
             return jsonify({'success': False, 'error': 'Please upload your resume first'}), 400
         
-        optimizer = simpleResumeOptimizer()
+        optimizer = ResumeOptimizer()
         optimized_resume = optimizer.optimize_resume(resume_text, job_description, job_title, company)
         
         filename = optimizer.save_resume(optimized_resume, job_title, company)
@@ -2432,7 +2433,7 @@ def api_batch_optimize():
         if not description_col:
             return jsonify({'success': False, 'error': 'No job description column found'}), 400
         
-        optimizer = simpleResumeOptimizer()
+        optimizer = ResumeOptimizer()
         results = []
         
         jobs_to_process = df.head(num_jobs)
