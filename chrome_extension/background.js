@@ -44,12 +44,12 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 
       const response = await chrome.tabs.sendMessage(tab.id, { action: 'extractJobData' });
       if (response?.success && response?.data) {
-        const { serverUrl } = await chrome.storage.sync.get('serverUrl');
+        const { serverUrl, extensionToken } = await chrome.storage.sync.get(['serverUrl', 'extensionToken']);
         const url = serverUrl || 'http://localhost:5000';
 
         await fetch(`${url}/api/tracker/save-from-extension`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'X-Extension-Token': extensionToken || '' },
           body: JSON.stringify({ ...response.data, status: 'bookmarked' }),
         });
 

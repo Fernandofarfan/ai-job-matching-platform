@@ -54,3 +54,9 @@ variable "smtp_password" {
   sensitive   = true
   default     = ""
 }
+
+variable "app_password" {
+  description = "Contraseña de acceso a la app (login de usuario único). Obligatoria porque el servicio es público."
+  type        = string
+  sensitive   = true
+}

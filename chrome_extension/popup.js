@@ -14,13 +14,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 async function loadSettings() {
-  const data = await chrome.storage.sync.get(['serverUrl']);
+  const data = await chrome.storage.sync.get(['serverUrl', 'extensionToken']);
   const input = document.getElementById('server-url');
+  const tokenInput = document.getElementById('extension-token');
   if (data.serverUrl) {
     input.value = data.serverUrl;
   }
+  tokenInput.value = data.extensionToken || '';
   input.addEventListener('change', async () => {
     await chrome.storage.sync.set({ serverUrl: input.value });
+  });
+  tokenInput.addEventListener('change', async () => {
+    await chrome.storage.sync.set({ extensionToken: tokenInput.value });
   });
 }
 
@@ -120,7 +125,8 @@ async function saveJob() {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Extension-Source': 'empleoia-chrome-extension'
+        'X-Extension-Source': 'empleoia-chrome-extension',
+        'X-Extension-Token': document.getElementById('extension-token').value
       },
       body: JSON.stringify(payload)
     });

@@ -1,0 +1,63 @@
+"""Tests de login (APP_PASSWORD) y protección CSRF."""
+import io
+
+
+def _login(client, password):
+    """Envía el formulario de login."""
+    return client.post('/login', data={'password': password})
+
+
+def test_without_app_password_no_login_required(client, monkeypatch):
+    """Sin APP_PASSWORD la app funciona sin login (uso local)."""
+    monkeypatch.delenv('APP_PASSWORD', raising=False)
+    assert client.get('/tracker').status_code == 200
+
+
+def test_pages_redirect_to_login_when_enabled(client, monkeypatch):
+    """Con APP_PASSWORD, las páginas redirigen a /login y las APIs devuelven 401."""
+    monkeypatch.setenv('APP_PASSWORD', 'secreta')
+    response = client.get('/tracker')
+    assert response.status_code == 302
+    assert '/login' in response.headers['Location']
+    assert client.get('/api/tracker/jobs').status_code == 401
+    assert client.get('/api/health').status_code == 200
+
+
+def test_login_with_correct_password(client, monkeypatch):
+    """La contraseña correcta abre sesión; la incorrecta no."""
+    monkeypatch.setenv('APP_PASSWORD', 'secreta')
+    assert _login(client, 'mala').status_code == 200
+    assert client.get('/tracker').status_code == 302
+    assert _login(client, 'secreta').status_code == 302
+    assert client.get('/tracker').status_code == 200
+    client.post('/logout')
+    assert client.get('/tracker').status_code == 302
+
+
+def test_login_ignores_external_next(client, monkeypatch):
+    """El parámetro next no permite redirigir a otro dominio."""
+    monkeypatch.setenv('APP_PASSWORD', 'secreta')
+    response = client.post('/login?next=//evil.com', data={'password': 'secreta'})
+    assert response.headers['Location'] == '/'
+
+
+def test_extension_requires_token_when_login_enabled(client, monkeypatch):
+    """La extensión necesita EXTENSION_TOKEN cuando hay login."""
+    monkeypatch.setenv('APP_PASSWORD', 'secreta')
+    monkeypatch.setenv('EXTENSION_TOKEN', 'tok')
+    url = '/api/tracker/save-from-extension'
+    assert client.post(url, json={'title': 'x'}).status_code == 401
+    response = client.post(url, json={'title': 'x'}, headers={'X-Extension-Token': 'tok'})
+    assert response.status_code != 401
+
+
+def test_csrf_blocks_post_without_token(client, app, monkeypatch):
+    """Con CSRF activo, un POST sin token es rechazado."""
+    monkeypatch.delenv('APP_PASSWORD', raising=False)
+    app.config['WTF_CSRF_ENABLED'] = True
+    try:
+        data = {'role_type': 'dev', 'resume': (io.BytesIO(b'cv'), 'cv.txt')}
+        response = client.post('/upload_resume', data=data, content_type='multipart/form-data')
+        assert response.status_code == 400
+    finally:
+        app.config['WTF_CSRF_ENABLED'] = False
