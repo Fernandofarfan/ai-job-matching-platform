@@ -11,6 +11,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+from starlette.exceptions import HTTPException
 
 import auth
 
@@ -38,6 +39,39 @@ def _validation_message(exc: RequestValidationError) -> str:
     return f'Campo faltante o inválido: {field}' if field else 'Faltan datos en el pedido'
 
 
+class BodyTooLarge(Exception):
+    """El cuerpo del pedido supera MAX_CONTENT_LENGTH."""
+
+
+def _body_limit(request: Request) -> Optional[int]:
+    flask_factory = request.app.dependency_overrides.get(get_flask_app, get_flask_app)
+    return flask_factory().config.get('MAX_CONTENT_LENGTH')
+
+
+def _limit_body(request: Request, limit: int) -> Request:
+    """Corta el pedido apenas supera el tope, tenga o no Content-Length (chunked)."""
+    length = request.headers.get('content-length', '')
+    if length.isdigit() and int(length) > limit:
+        raise BodyTooLarge()
+    receive, received = request.receive, 0
+
+    async def limited_receive():
+        nonlocal received
+        message = await receive()
+        if message['type'] == 'http.request':
+            received += len(message.get('body', b''))
+            if received > limit:
+                raise BodyTooLarge()
+        return message
+
+    return Request(request.scope, limited_receive)
+
+
+def _too_large(limit: int) -> JSONResponse:
+    return JSONResponse({'success': False, 'error': f'El pedido supera el máximo de {max(limit // (1024 * 1024), 1)} MB'},
+                        status_code=413)
+
+
 class TrackerRoute(APIRoute):
     """Errores en JSON con `success: False` (400 en validación) y sin filtrar detalles internos."""
 
@@ -45,8 +79,16 @@ class TrackerRoute(APIRoute):
         handler = super().get_route_handler()
 
         async def wrapped(request: Request):
+            limit = _body_limit(request)
             try:
-                return await handler(request)
+                return await handler(_limit_body(request, limit) if limit else request)
+            except BodyTooLarge:
+                return _too_large(limit or 0)
+            except HTTPException as e:
+                # FastAPI convierte los errores al leer el cuerpo en un 400 genérico
+                if isinstance(e.__cause__, BodyTooLarge):
+                    return _too_large(limit or 0)
+                return JSONResponse({'success': False, 'error': str(e.detail)}, status_code=e.status_code)
             except ApiError as e:
                 return JSONResponse(e.payload, status_code=e.status_code)
             except RequestValidationError as e:
@@ -76,16 +118,8 @@ def flask_session(request: Request, flask_app=Depends(get_flask_app)) -> dict:
     return auth.load_session_cookie(flask_app, cookie)
 
 
-def limit_body(request: Request, flask_app=Depends(get_flask_app)) -> None:
-    """Mismo tope que Flask (MAX_CONTENT_LENGTH)."""
-    limit = flask_app.config.get('MAX_CONTENT_LENGTH')
-    length = request.headers.get('content-length', '')
-    if limit and length.isdigit() and int(length) > limit:
-        raise ApiError(413, f'El pedido supera el máximo de {max(limit // (1024 * 1024), 1)} MB')
-
-
 def require_browser_session(request: Request, session: dict = Depends(flask_session),
-                            flask_app=Depends(get_flask_app), _=Depends(limit_body)) -> None:
+                            flask_app=Depends(get_flask_app)) -> None:
     """Login (si hay APP_PASSWORD) y CSRF en los métodos que modifican datos, igual que en Flask."""
     if auth.auth_enabled() and not auth.is_session_valid(session, flask_app.secret_key):
         raise ApiError(401, 'No autenticado')
@@ -204,7 +238,7 @@ def delete_job(job_id: int, db=Depends(get_db)):
     return {'success': True, 'message': 'Job deleted successfully'}
 
 
-@router.post('/save-from-extension', dependencies=[Depends(limit_body)])
+@router.post('/save-from-extension')
 def save_from_extension(request: Request, data: dict = Body(...), session: dict = Depends(flask_session),
                         flask_app=Depends(get_flask_app), db=Depends(get_db)):
     """Extensión de Chrome: sin CSRF (viene de otro origen); con login exige sesión o EXTENSION_TOKEN."""

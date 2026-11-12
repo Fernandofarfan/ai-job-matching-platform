@@ -134,6 +134,19 @@ def test_body_limit_returns_json_413(api, app, monkeypatch):
     assert resp.status_code == 413 and 'error' in resp.json()
 
 
+def test_body_limit_applies_without_content_length(api, app, monkeypatch):
+    """Un cuerpo chunked (sin Content-Length) también se corta al pasar MAX_CONTENT_LENGTH."""
+    monkeypatch.setitem(app.config, 'MAX_CONTENT_LENGTH', 10)
+
+    def chunks():
+        yield b'{"title": "'
+        yield b'x' * 100
+        yield b'"}'
+
+    resp = api.post('/api/tracker/save-from-extension', content=chunks(), headers={'Content-Type': 'application/json'})
+    assert resp.status_code == 413 and 'error' in resp.json()
+
+
 def test_main_serves_tracker_api_with_fastapi():
     import main
     assert main.app.url_path_for('list_jobs') == '/api/tracker/jobs'
