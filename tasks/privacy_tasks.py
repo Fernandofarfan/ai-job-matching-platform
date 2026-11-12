@@ -32,7 +32,7 @@ def enforce_cv_retention():
 
     old = set(cv_storage.expired(days))
     deleted_profiles = 0
-    for uid in accounts.user_ids() or [None]:
+    for uid in accounts.owner_ids():
         with accounts.as_user(uid):
             for role, data in profile_store.get_all_profiles().items():
                 if data.get("resume_filename") in old and profile_store.delete_profile(role) is not None:

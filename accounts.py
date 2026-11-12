@@ -118,6 +118,14 @@ def first_user_id() -> Optional[int]:
     return ids[0] if ids else None
 
 
+def owner_ids() -> list:
+    """Dueños por los que corren las tareas periódicas; None cubre los datos sin cuenta (sin login)."""
+    ids = user_ids()
+    if not ids or os.getenv('LOGIN_REQUIRED', 'true').strip().lower() == 'false':
+        ids.append(None)
+    return ids
+
+
 def get_user(user_id) -> Optional[dict]:
     """Cuenta por id como dict, o None."""
     if not user_id:
