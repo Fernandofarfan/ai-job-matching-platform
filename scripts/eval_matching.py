@@ -56,6 +56,7 @@ def compare(min_ndcg=0.0, as_json=False):
             original = embeddings.similarity
 
             def counted(profile_text, job_text, _similarity=original):
+                """Similitud de embeddings que anota cuántas veces cayó a TF-IDF (devolvió None)."""
                 nonlocal fallbacks
                 value = _similarity(profile_text, job_text)
                 fallbacks += value is None

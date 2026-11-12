@@ -536,12 +536,12 @@ class jobMatcher:
             matches = re.findall(pattern, text_lower)
             for match in matches:
                 try:
-                    n = int(match)
+                    required_years = int(match)
                 except ValueError:
                     continue
                 # "empresa con 30 años de experiencia" habla de la empresa, no del puesto
-                if n <= MAX_REQUIRED_YEARS:
-                    years.append(n)
+                if required_years <= MAX_REQUIRED_YEARS:
+                    years.append(required_years)
         
         
         return min(years) if years else 0
