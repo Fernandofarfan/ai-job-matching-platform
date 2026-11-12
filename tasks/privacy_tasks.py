@@ -18,6 +18,10 @@ def enforce_cv_retention():
     if days <= 0:
         return {"encrypted": encrypted, "deleted_cvs": 0, "deleted_profiles": 0, "deleted_generated": 0}
 
+    if not profile_store.primary_available():
+        logger.warning("Retención de CVs postergada: MySQL no responde y quedarían perfiles sin borrar")
+        return {"encrypted": encrypted, "deleted_cvs": 0, "deleted_profiles": 0, "deleted_generated": 0}
+
     old = set(cv_storage.expired(days))
     deleted_profiles = 0
     for role, data in profile_store.get_all_profiles().items():

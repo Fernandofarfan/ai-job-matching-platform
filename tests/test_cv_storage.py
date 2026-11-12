@@ -88,6 +88,7 @@ def test_retention_task_deletes_old_cv_and_profile(workdir, monkeypatch):
     profiles = {'data': {'resume_filename': 'old.pdf'}, 'dev': {'resume_filename': 'new.pdf'}}
     monkeypatch.setattr(profile_store, 'get_all_profiles', lambda: dict(profiles))
     monkeypatch.setattr(profile_store, 'delete_profile', lambda role: profiles.pop(role))
+    monkeypatch.setattr(profile_store, 'primary_available', lambda: True)
     monkeypatch.setenv('CV_RETENTION_DAYS', '30')
     result = privacy_tasks.enforce_cv_retention.run()
     assert result['deleted_cvs'] == 1 and result['deleted_profiles'] == 1
@@ -101,3 +102,16 @@ def test_wrong_key_fails_instead_of_returning_ciphertext(workdir, monkeypatch):
     monkeypatch.setenv('CV_ENCRYPTION_KEY', Fernet.generate_key().decode())
     with pytest.raises(RuntimeError):
         cv_storage.read_bytes('cv.txt')
+
+
+def test_retention_waits_while_mysql_is_down(workdir, monkeypatch):
+    """Sin MySQL no borra CVs dejando sus perfiles en la base."""
+    import profile_store
+    from tasks import privacy_tasks
+
+    old = cv_storage.save(b'a', 'old.pdf')
+    os.utime(old, (time.time() - 40 * 86400,) * 2)
+    monkeypatch.setattr(profile_store, 'primary_available', lambda: False)
+    monkeypatch.setenv('CV_RETENTION_DAYS', '30')
+    assert privacy_tasks.enforce_cv_retention.run()['deleted_cvs'] == 0
+    assert os.listdir('uploads') == ['old.pdf']

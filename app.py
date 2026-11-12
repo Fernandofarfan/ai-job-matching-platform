@@ -257,8 +257,7 @@ def delete_user_profile():
     try:
         if os.path.exists(profile_path):
             os.remove(profile_path)
-        for role_type in list(profile_store.get_all_profiles()):
-            profile_store.delete_profile(role_type)
+        profile_store.delete_all()
         cv_storage.delete_all()
         return True
     except Exception as e:
