@@ -19,6 +19,22 @@
       <p class="small mb-0"><code>AI_USER_MONTHLY_TOKEN_LIMIT</code></p>
     </div></div></div>
   </div>
+  {% if activation %}
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+      <h2 class="h6 text-muted">{{ _('Activación: primeros pasos') }}</h2>
+      <table class="table table-sm align-middle mb-0" id="admin-activation">
+        <caption class="visually-hidden">{{ _('Cuántas cuentas llegaron a cada paso del primer uso') }}</caption>
+        <thead><tr><th scope="col">{{ _('Paso') }}</th><th scope="col">{{ _('Cuentas') }}</th><th scope="col">{{ _('Del paso anterior') }}</th></tr></thead>
+        <tbody>
+          {% for row in activation %}
+          <tr data-step="{{ row.key }}"><td>{{ _(row.label) }}</td><td>{{ row.count }}</td><td>{{ '%s%%'|format(row.conversion) if row.conversion is not none else '—' }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
   <div class="card border-0 shadow-sm">
     <div class="table-responsive" tabindex="0">
       <table class="table align-middle mb-0" id="admin-users">
