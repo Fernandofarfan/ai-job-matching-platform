@@ -5,3 +5,4 @@
 5836eb18a7ac1841dd83cd6f4bf1aebaf10c766f:terraform/tests/plan.tftest.hcl:hashicorp-tf-password:19
 5836eb18a7ac1841dd83cd6f4bf1aebaf10c766f:terraform/tests/plan.tftest.hcl:hashicorp-tf-password:21
 5836eb18a7ac1841dd83cd6f4bf1aebaf10c766f:terraform/tests/plan.tftest.hcl:generic-api-key:22
+906bfb9ec1936aafc51381f0a7eadaa87a63d182:CHANGELOG.md:linkedin-client-id:11
