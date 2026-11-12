@@ -6,6 +6,13 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar] - Indeed y conexiones de LinkedIn en Playwright
+
+- `scrapers/indeed_scraper.py` y `scrapers/linkedin_connection.py` usan Playwright (`scrapers.common.Browser`, Chromium sin ventana, `PLAYWRIGHT_WS_ENDPOINT`/`PROXY_SERVER`). Salen del proyecto Selenium, `webdriver-manager` y `undetected-chromedriver`.
+- Indeed busca por URL pública, sin login: `date_posted`, `experience_level`, `remote_work` y `salary_range` pasan a parámetros de Indeed; `education_level` se ignora. Ante un captcha la búsqueda se corta y devuelve lo que juntó. El CSV va a la carpeta de resultados de la cuenta.
+- Conexiones de LinkedIn: búsqueda de personas en Argentina por URL; solo invita a quien nombra la empresa en su tarjeta; saltea pendientes y perfiles repetidos; "Enviar sin nota".
+- Probado con HTML guardado y Chromium; no contra los portales reales.
+
 ## [Sin publicar] - Passkeys (WebAuthn)
 
 - Mi cuenta → **Passkeys**: agregar (pide la contraseña actual), ver nombre, alta y último uso, y borrar. Hasta 10 por cuenta.
