@@ -61,6 +61,7 @@ def evaluate(dataset=None, matcher=None):
     metrics = ('ndcg@5', 'precision@3', 'mrr')
 
     def average(rows):
+        """Promedio de cada métrica sobre las filas dadas."""
         return {m: sum(r[m] for r in rows) / len(rows) for m in metrics}
     by_language = {lang: average([p for name, p in per_profile.items() if language(name) == lang])
                    for lang in sorted({language(name) for name in per_profile})}

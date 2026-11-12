@@ -58,14 +58,17 @@ class _FakeGemini:
     """Cliente de embeddings determinístico: trigramas de letras en 64 dimensiones (sin red)."""
 
     def __init__(self):
+        """`client.models.embed_content` apunta a este mismo objeto."""
         self.models = self
         self.calls = 0
 
     def embed_content(self, model, contents, config):
+        """Respuesta con la forma de google-genai: `.embeddings[i].values`."""
         from types import SimpleNamespace
         self.calls += 1
 
         def vector(text):
+            """Conteo de trigramas de letras, agrupados en 64 posiciones."""
             values = [0.0] * 64
             text = text.lower()
             for i in range(len(text) - 2):
@@ -95,5 +98,6 @@ def test_compare_measures_embeddings_by_language(monkeypatch, capsys):
 
 
 def test_language_of_ids():
+    """El idioma sale del prefijo o sufijo del id."""
     ids = ('qa_es', 'es_qa', 'frontend_pt', 'pt_fe', 'ux')
     assert [matching_eval.language(n) for n in ids] == ['es', 'es', 'pt', 'pt', 'en']
