@@ -86,7 +86,8 @@ def require_login():
 
 def _safe_next(target):
     is_local = target and target.startswith('/') and not target.startswith('//') and '\\' not in target
-    return target if is_local else url_for('index')
+    loops = is_local and target.split('?')[0].rstrip('/') in ('/login', '/logout')
+    return target if is_local and not loops else url_for('index')
 
 
 @app.route('/login', methods=['GET', 'POST'])

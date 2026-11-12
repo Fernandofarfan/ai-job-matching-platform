@@ -89,3 +89,11 @@ def test_login_page_keeps_offline_data_with_active_session(client, monkeypatch):
     response = client.get('/login')
     assert response.status_code == 302
     assert 'Clear-Site-Data' not in response.headers
+
+
+def test_login_next_to_login_does_not_loop(client, monkeypatch):
+    """next=/login no redirige al propio login (evita un bucle con sesión activa)."""
+    monkeypatch.setenv('APP_PASSWORD', 'secreta')
+    _login(client, 'secreta')
+    assert client.get('/login?next=/login').headers['Location'] == '/'
+    assert client.get('/login?next=/login/?x=1').headers['Location'] == '/'
