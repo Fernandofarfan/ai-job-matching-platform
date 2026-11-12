@@ -22,27 +22,36 @@ app.include_router(insights.router)
 app.include_router(documents.router)
 app.include_router(push_router.router)
 
+import accounts  # noqa: E402
 import rate_limit  # noqa: E402
 from fastapi.responses import JSONResponse  # noqa: E402
 from starlette.routing import Match  # noqa: E402
 
+PUBLIC_API_PATHS = {"/api/health"}
+
 
 @app.middleware("http")
 async def rate_limit_ai(request: Request, call_next):
-    """Cuenta las rutas de IA nativas de FastAPI; las de Flask las cuenta app.py con el mismo contador."""
+    """Límites por cuenta (o por IP sin sesión): API_RATE_LIMIT para todo /api/* y AI_RATE_LIMIT para la IA.
+
+    Corre dentro de require_login, que ya fijó la cuenta. Las rutas de IA que siguen en Flask
+    las cuenta app.py con el mismo contador.
+    """
+    client_ip = rate_limit.client_ip(request.client.host if request.client else None,
+                                     request.headers.get("x-forwarded-for"))
+    key = rate_limit.client_key(accounts.current_user_id(), client_ip)
+    path = request.url.path
+    if path.startswith("/api/") and path not in PUBLIC_API_PATHS and not rate_limit.hit_api_limit(key):
+        return JSONResponse({"error": "Demasiadas solicitudes, probá de nuevo en un minuto"}, status_code=429)
     if any(route.matches(request.scope)[0] != Match.NONE for route in ai.router.routes):
-        client_ip = request.client.host if request.client else "unknown"
-        if not rate_limit.hit_ai_limit(client_ip):
+        if not rate_limit.hit_ai_limit(key):
             return JSONResponse({"error": "Demasiadas solicitudes de IA, probá de nuevo en un minuto"}, status_code=429)
     return await call_next(request)
 
-import accounts  # noqa: E402
 import auth  # noqa: E402
 from starlette.concurrency import run_in_threadpool  # noqa: E402
 from fastapi.responses import RedirectResponse  # noqa: E402
 from urllib.parse import quote  # noqa: E402
-
-PUBLIC_API_PATHS = {"/api/health"}
 
 
 @app.middleware("http")

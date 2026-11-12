@@ -15,7 +15,7 @@ import data_export
 import integrations
 import security_events
 import user_sessions
-from app import _clear_offline_data, app, delete_user_profile, limiter
+from app import _clear_offline_data, app, client_ip, delete_user_profile, email_limit_key, limiter
 
 logger = logging.getLogger(__name__)
 LOCAL_HOSTS = {'localhost', '127.0.0.1', '::1'}
@@ -49,12 +49,12 @@ def send_verification(user: dict) -> bool:
 
 def client_info() -> tuple:
     """IP y navegador del pedido, para registrar la sesión."""
-    return request.remote_addr, request.headers.get('User-Agent')
+    return client_ip(), request.headers.get('User-Agent')
 
 
 def audit(user_id, kind: str) -> bool:
     """Registra el evento con la IP y el navegador del pedido."""
-    return security_events.record(user_id, kind, request.remote_addr, request.headers.get('User-Agent'))
+    return security_events.record(user_id, kind, client_ip(), request.headers.get('User-Agent'))
 
 
 def audit_login(user: dict, kind: str):
@@ -69,7 +69,7 @@ def audit_login(user: dict, kind: str):
     link = _public_url('account') if new_device else None
     if link:
         body = ('<p>Se inició sesión en tu cuenta desde un navegador nuevo:</p>'
-                f'<p>{escape(agent or "navegador desconocido")}<br>IP {escape(request.remote_addr or "?")}</p>'
+                f'<p>{escape(agent or "navegador desconocido")}<br>IP {escape(client_ip())}</p>'
                 '<p>Si no fuiste vos, cambiá la contraseña ya.</p>')
         accounts.thread(_deliver, (user['email'], 'Nuevo inicio de sesión en EmpleoIA', body, link,
                                    'Revisar mi cuenta'), daemon=True).start()
@@ -81,7 +81,8 @@ def _account_enabled():
 
 
 @app.route('/forgot_password', methods=['GET', 'POST'])
-@limiter.limit('5 per minute', methods=['POST'])
+@limiter.limit('5 per minute', methods=['POST'], key_func=client_ip)
+@limiter.limit('5 per hour', methods=['POST'], key_func=email_limit_key)
 def forgot_password():
     """Pide el email y manda el enlace de recuperación (la respuesta no dice si la cuenta existe)."""
     if not _account_enabled():
@@ -101,7 +102,7 @@ def forgot_password():
 
 
 @app.route('/reset_password/<token>', methods=['GET', 'POST'])
-@limiter.limit('10 per minute', methods=['POST'])
+@limiter.limit('10 per minute', methods=['POST'], key_func=client_ip)
 def reset_password(token):
     """Elige una contraseña nueva con el enlace del email; cierra las sesiones abiertas."""
     if not _account_enabled():

@@ -10,7 +10,6 @@ from flask_wtf.csrf import CSRFProtect
 import accounts
 import auth
 import user_sessions
-from flask_limiter.util import get_remote_address
 import os
 import logging
 import glob
@@ -63,9 +62,24 @@ if os.getenv('SENTRY_DSN'):
     import sentry_sdk
     sentry_sdk.init(dsn=os.getenv('SENTRY_DSN'), traces_sample_rate=float(os.getenv('SENTRY_TRACES_SAMPLE_RATE', '0')))
 
+def client_ip() -> str:
+    """IP del cliente respetando TRUSTED_PROXY_HOPS (ver rate_limit.client_ip)."""
+    return rate_limit.client_ip(request.remote_addr, request.headers.get('X-Forwarded-For'))
+
+
+def limit_key() -> str:
+    """Los límites cuentan por cuenta si hay sesión: una red compartida no bloquea a todos."""
+    return rate_limit.client_key(g.get('user_id'), client_ip())
+
+
+def email_limit_key() -> str:
+    """Clave por email del formulario: frena probar contraseñas de una cuenta desde muchas IPs."""
+    return 'email:' + (request.form.get('email') or '').strip().lower()[:254]
+
+
+# init_app va después de require_login: así el limiter ya sabe qué cuenta hizo el pedido.
 limiter = Limiter(
-    get_remote_address,
-    app=app,
+    limit_key,
     storage_uri=os.getenv('RATELIMIT_STORAGE_URI', 'memory://'),
     swallow_errors=True,
 )
@@ -89,6 +103,9 @@ def require_login():
     return redirect(url_for('login', next=request.full_path if request.query_string else request.path))
 
 
+limiter.init_app(app)
+
+
 def _safe_next(target):
     is_local = target and target.startswith('/') and not target.startswith('//') and '\\' not in target
     loops = is_local and target.split('?')[0].rstrip('/') in ('/login', '/logout', '/register')
@@ -96,7 +113,8 @@ def _safe_next(target):
 
 
 @app.route('/login', methods=['GET', 'POST'])
-@limiter.limit('10 per minute', methods=['POST'])
+@limiter.limit('10 per minute', methods=['POST'], key_func=client_ip)
+@limiter.limit('20 per hour', methods=['POST'], key_func=email_limit_key)
 def login():
     next_url = request.args.get('next', '')
     if not auth.auth_enabled():
@@ -130,7 +148,7 @@ def login():
 
 
 @app.route('/register', methods=['GET', 'POST'])
-@limiter.limit('5 per minute', methods=['POST'])
+@limiter.limit('5 per minute', methods=['POST'], key_func=client_ip)
 def register():
     """Alta de cuenta: siempre para la primera; después solo con ALLOW_SIGNUP=true."""
     next_url = request.args.get('next', '')
@@ -192,8 +210,8 @@ def inject_auth():
 
 @app.before_request
 def limit_ai_requests():
-    """Cada llamada a /api/ai/* consume cuota de Gemini: un solo contador por IP (compartido con FastAPI)."""
-    if request.path.startswith('/api/ai/') and not rate_limit.hit_ai_limit(request.remote_addr):
+    """Cada llamada a /api/ai/* consume cuota de Gemini: un contador por cuenta (compartido con FastAPI)."""
+    if request.path.startswith('/api/ai/') and not rate_limit.hit_ai_limit(limit_key()):
         return rate_limited(None)
 
 
