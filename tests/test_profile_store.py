@@ -22,7 +22,8 @@ def test_save_get_delete_in_db(db):
     profile_store.save_profile('backend', {'skills': ['python'], 'resume_filename': 'cv.pdf'})
     profile_store.save_profile('data', {'skills': ['sql']})
     profile_store.save_profile('backend', {'skills': ['go']})
-    assert profile_store.get_all_profiles() == {'backend': {'skills': ['go']}, 'data': {'skills': ['sql']}}
+    assert profile_store.get_all_profiles() == {
+        'backend': {'skills': ['go']}, 'data': {'skills': ['sql']}}
     assert profile_store.get_profile('data') == {'skills': ['sql']}
     assert profile_store.get_first_profile() == {'skills': ['go']}
     assert profile_store.delete_profile('backend') == {'skills': ['go']}
@@ -69,10 +70,31 @@ def test_db_outage_falls_back_to_json_and_syncs_on_recovery(db, monkeypatch):
         raise OperationalError('SELECT 1', {}, Exception('MySQL caído'))
     profile_store.configure(broken)
     profile_store.save_profile('backend', {'skills': ['go']})
-    profile_store.delete_profile('data')
+    profile_store.save_profile('nuevo', {'skills': ['rust']})
+    profile_store.delete_profile('nuevo')
+    assert profile_store.delete_profile('data') is None  # solo está en MySQL: no se puede borrar
     assert profile_store._session_factory is None
     assert profile_store.get_all_profiles() == {'backend': {'skills': ['go']}}
 
     profile_store.configure(working)
     profile_store._import_legacy_json()
-    assert profile_store.get_all_profiles() == {'backend': {'skills': ['go']}}
+    assert profile_store.get_all_profiles() == {
+        'backend': {'skills': ['go']}, 'data': {'skills': ['sql']}}
+
+
+def test_recovery_keeps_rows_updated_after_the_json(db):
+    """Un JSON más viejo que la fila de MySQL (otra instancia la actualizó) no la pisa."""
+    import os
+    import time
+    profile_store._write_json({'backend': {'skills': ['viejo']}}, {'data'})
+    old = time.time() - 3600
+    os.utime(profile_store.JSON_PATH, (old, old))
+    with profile_store._session_factory() as session:
+        session.add_all([
+            profile_store.UserProfile(role_type='backend', data={'skills': ['nuevo']}),
+            profile_store.UserProfile(role_type='data', data={'skills': ['sql']}),
+        ])
+        session.commit()
+    profile_store._import_legacy_json()
+    assert profile_store.get_all_profiles() == {
+        'backend': {'skills': ['nuevo']}, 'data': {'skills': ['sql']}}
