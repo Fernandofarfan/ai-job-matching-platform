@@ -1,3 +1,4 @@
+import secrets
 """Perfiles de CV por rol: subida, vista y borrado."""
 import os
 from datetime import datetime
@@ -58,7 +59,7 @@ def upload_resume():
             return redirect(url_for('profile'))
 
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        filename = f"resume_{role_type}_{timestamp}_{original_name}"
+        filename = f"resume_{role_type}_{timestamp}_{secrets.token_hex(4)}_{original_name}"
         cv_storage.save(file.read(), filename)
 
         try:
