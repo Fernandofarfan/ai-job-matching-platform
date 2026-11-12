@@ -10,7 +10,7 @@ import json
 import logging
 import os
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
 from urllib.parse import urlparse
 
@@ -44,6 +44,17 @@ class Passkey(Base):
     last_used_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
+class WebauthnChallenge(Base):
+    """Desafío emitido y todavía sin usar: la cookie de sesión vieja no alcanza para reusarlo."""
+    __tablename__ = 'webauthn_challenges'
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    challenge_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    purpose: Mapped[str] = mapped_column(String(20), nullable=False)
+    user_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
+
+
 class PasskeyError(Exception):
     """La passkey no se pudo registrar o no sirve para entrar (mensaje para mostrar)."""
 
@@ -75,15 +86,30 @@ def _unb64(value: str) -> bytes:
 def new_challenge(session: dict, purpose: str, user_id: Optional[int] = None) -> bytes:
     """Desafío de un solo uso, guardado en la sesión por `CHALLENGE_MAX_AGE` segundos."""
     challenge = os.urandom(32)
+    now = datetime.now()
+    with accounts._sessions()() as db:
+        db.execute(sql_delete(WebauthnChallenge).where(WebauthnChallenge.expires_at < now))
+        db.add(WebauthnChallenge(challenge_hash=_sha(_b64(challenge)), purpose=purpose, user_id=user_id,
+                                 expires_at=now + timedelta(seconds=CHALLENGE_MAX_AGE)))
+        db.commit()
     session['webauthn'] = {'c': _b64(challenge), 'p': purpose, 'uid': user_id, 'ts': time.time()}
     return challenge
 
 
 def take_challenge(session: dict, purpose: str, user_id: Optional[int] = None) -> Optional[bytes]:
-    """Saca el desafío de la sesión (sirve una vez); None si no hay, es de otro uso o venció."""
+    """Saca el desafío de la sesión y lo borra de la base (sirve una vez, aunque se restaure una cookie vieja);
+    None si no hay, es de otro uso, venció o ya se usó."""
     data = session.pop('webauthn', None)
     if (not isinstance(data, dict) or data.get('p') != purpose or data.get('uid') != user_id
             or time.time() - float(data.get('ts') or 0) > CHALLENGE_MAX_AGE):
+        return None
+    owner = WebauthnChallenge.user_id.is_(None) if user_id is None else WebauthnChallenge.user_id == user_id
+    with accounts._sessions()() as db:
+        result = db.execute(sql_delete(WebauthnChallenge).where(
+            WebauthnChallenge.challenge_hash == _sha(str(data.get('c'))), WebauthnChallenge.purpose == purpose,
+            owner, WebauthnChallenge.expires_at >= datetime.now()))
+        db.commit()
+    if getattr(result, 'rowcount', 0) != 1:
         return None
     return _unb64(data['c'])
 
