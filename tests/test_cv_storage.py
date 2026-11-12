@@ -130,6 +130,7 @@ def test_purge_generated_skips_undeletable_files(workdir, monkeypatch):
     os.utime(gen, (time.time() - 40 * 86400,) * 2)
 
     def fail(path):
+        """Simula un archivo sin permiso de borrado."""
         raise PermissionError(path)
     monkeypatch.setattr(cv_storage.os, 'remove', fail)
     assert cv_storage.purge_generated(30) == 0
