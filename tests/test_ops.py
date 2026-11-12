@@ -15,8 +15,7 @@ def test_ready_ok_without_redis(client, monkeypatch):
     """Con la base respondiendo y sin Redis configurado, /api/ready da 200."""
     import main
     monkeypatch.setattr(main, '_check_database', lambda: None)
-    for name in main.READY_REDIS_ENV:
-        monkeypatch.delenv(name, raising=False)
+    monkeypatch.delenv('RATELIMIT_STORAGE_URI', raising=False)
     response = client.get('/api/ready')
     assert response.status_code == 200
     assert response.get_json() == {'status': 'ok', 'checks': {'database': 'ok', 'redis': 'ok'}}
@@ -37,8 +36,8 @@ def test_ready_503_when_database_down(client, monkeypatch):
     assert client.get('/api/health').status_code == 200
 
 
-def test_ready_pings_each_configured_redis(monkeypatch):
-    """Hace ping a cada Redis configurado (una vez por URL) y falla si alguno no responde."""
+def test_ready_pings_rate_limit_redis_only(monkeypatch):
+    """Solo hace ping al Redis de los límites (sin él la web no atiende); REDIS_URL tiene respaldo local."""
     import redis
 
     import main
@@ -56,12 +55,15 @@ def test_ready_pings_each_configured_redis(monkeypatch):
         def close(self):
             pass
     monkeypatch.setattr(redis.Redis, 'from_url', staticmethod(lambda url, **kw: FakeRedis(url)))
-    monkeypatch.setenv('REDIS_URL', 'redis://a:6379/0')
+    monkeypatch.setenv('REDIS_URL', 'redis://down:6379/0')
+    monkeypatch.setenv('CELERY_BROKER_URL', 'redis://down:6379/0')
+    monkeypatch.setenv('RATELIMIT_STORAGE_URI', 'memory://')
+    main._check_redis()
+    assert pinged == []
     monkeypatch.setenv('RATELIMIT_STORAGE_URI', 'redis://a:6379/0')
-    monkeypatch.setenv('CELERY_BROKER_URL', 'memory://')
     main._check_redis()
     assert pinged == ['redis://a:6379/0']
-    monkeypatch.setenv('CELERY_BROKER_URL', 'redis://down:6379/0')
+    monkeypatch.setenv('RATELIMIT_STORAGE_URI', 'redis://down:6379/0')
     with pytest.raises(redis.ConnectionError):
         main._check_redis()
 
