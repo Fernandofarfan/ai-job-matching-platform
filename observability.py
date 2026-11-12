@@ -120,7 +120,8 @@ def render():
 
 def requests_excluded_urls():
     """URLs salientes sin trazar: la API de Telegram lleva el token del bot en el path."""
-    extra = os.getenv('OTEL_PYTHON_REQUESTS_EXCLUDED_URLS', '')
+    # Igual que el fallback de RequestsInstrumentor: la variable específica pisa a la global
+    extra = os.getenv('OTEL_PYTHON_REQUESTS_EXCLUDED_URLS') or os.getenv('OTEL_PYTHON_EXCLUDED_URLS', '')
     return ','.join(u for u in ('api.telegram.org', extra) if u)
 
 

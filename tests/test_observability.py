@@ -74,3 +74,13 @@ def test_metrics_endpoint_runs_off_event_loop():
     import asyncio
     import main
     assert not asyncio.iscoroutinefunction(main.metrics)
+
+
+def test_global_excluded_urls_still_apply(monkeypatch):
+    """Sin la variable de requests, se respeta OTEL_PYTHON_EXCLUDED_URLS además de Telegram."""
+    from opentelemetry.util.http import parse_excluded_urls
+    monkeypatch.delenv('OTEL_PYTHON_REQUESTS_EXCLUDED_URLS', raising=False)
+    monkeypatch.setenv('OTEL_PYTHON_EXCLUDED_URLS', 'internal.example')
+    excluded = parse_excluded_urls(observability.requests_excluded_urls())
+    assert excluded.url_disabled('https://internal.example/x')
+    assert excluded.url_disabled('https://api.telegram.org/botX/sendMessage')
