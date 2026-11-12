@@ -47,3 +47,9 @@ def test_process_job_dataframe_orders_by_match(monkeypatch):
     out = matcher.process_job_dataframe(df, profile)
     assert list(out['Title'])[0] == 'Data'
     assert out.set_index('Title').loc['Vacía', 'overall_match'] == 0.0
+
+
+def test_role_after_education_still_counts(parser):
+    """Un título universitario justo antes de un puesto no hace perder los años de ese puesto."""
+    cv = 'Bachelor degree in Computer Science\nData Engineer\n2016 - 2020\n'
+    assert 4.5 < parser.calculate_work_experience(cv) < 5.5

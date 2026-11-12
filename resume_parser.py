@@ -259,6 +259,8 @@ class resumeParser:
         lines = text.split('\n')
         # cada línea con fechas cuenta una sola vez, aunque la vean como contexto las 3 líneas anteriores
         seen_dates = set()
+        # fechas descartadas por estar junto a estudios: solo las cuenta una línea con un puesto
+        skipped_dates = set()
         
         # Track if we're in experience section (helpful but not required)
         in_education_section = False
@@ -306,9 +308,9 @@ class resumeParser:
                         match = re.search(pattern, context_line, re.IGNORECASE)
                         if match:
                             date_range = match.group()
-                            if i + context_index in seen_dates:
+                            date_index = i + context_index
+                            if date_index in seen_dates:
                                 break
-                            seen_dates.add(i + context_index)
                             
                             # Build job context from current line and matched line
                             job_context = line
@@ -334,12 +336,17 @@ class resumeParser:
                             has_job_title = any(keyword in job_context.lower() for keyword in job_keywords)
                             
                             # Only count if it looks like work experience
-                            if not should_skip or (has_job_title and not 'intern' in job_context.lower()):
+                            counts = not should_skip or (has_job_title and not 'intern' in job_context.lower())
+                            if date_index in skipped_dates and not has_job_title:
+                                counts = False
+                            if counts:
+                                seen_dates.add(date_index)
                                 years_for_job = self.parse_date_range(date_range)
                                 if years_for_job > 0:  # Only count positive years
                                     total_years += years_for_job
                                     print(f"Found work experience: {line} - {date_range} = {years_for_job:.1f} years")
                             else:
+                                skipped_dates.add(date_index)
                                 print(f"Skipping non-work experience: {job_context[:50]}... - {date_range}")
                             
                             break  # Move to next line once we found a date
