@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session, send_from_directory
 from flask_limiter import Limiter
 import rate_limit
 import profile_store
@@ -72,7 +72,7 @@ limiter = Limiter(
 if not auth.auth_enabled():
     logger.warning("APP_PASSWORD no definida: la app no pide login (usala solo en local)")
 
-PUBLIC_ENDPOINTS = {'login', 'static', 'health', 'api_save_from_extension'}
+PUBLIC_ENDPOINTS = {'login', 'static', 'health', 'service_worker', 'api_save_from_extension'}
 
 
 @app.before_request
@@ -751,6 +751,14 @@ except ImportError:
 def health():
     """Health check del servidor Flask."""
     return jsonify({'status': 'ok', 'gemini': bool(AI_AVAILABLE)})
+
+
+@app.route('/sw.js')
+def service_worker():
+    """Service worker servido desde la raíz para que su scope cubra toda la app."""
+    resp = send_from_directory(app.static_folder, 'sw.js', mimetype='application/javascript')
+    resp.headers['Cache-Control'] = 'no-cache'
+    return resp
 
 
 @app.errorhandler(413)
