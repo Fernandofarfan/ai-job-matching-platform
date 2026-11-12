@@ -39,6 +39,8 @@ def test_login_ignores_external_next(client, monkeypatch):
     monkeypatch.setenv('APP_PASSWORD', 'secreta')
     response = client.post('/login?next=//evil.com', data={'password': 'secreta'})
     assert response.headers['Location'] == '/'
+    response = client.post('/login?next=/%5Cevil.com', data={'password': 'secreta'})
+    assert response.headers['Location'] == '/'
 
 
 def test_extension_requires_token_when_login_enabled(client, monkeypatch):
