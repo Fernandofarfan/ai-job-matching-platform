@@ -88,12 +88,15 @@ class DatabaseManager:
         result = self._write(query, params)
         return result is not None and result.rowcount > 0
 
+    STATUS_HISTORY_INSERT = """
+        INSERT INTO application_status_history (application_id, user_id, old_status, new_status, changed_at)
+        VALUES (:id, :uid, :old, :new, NOW())
+    """
+
     def _log_status(self, job_id, old_status, new_status):
         """Anota un cambio de estado en el historial (si falla, el cambio igual queda guardado)."""
-        self._write("""
-            INSERT INTO application_status_history (application_id, user_id, old_status, new_status, changed_at)
-            VALUES (:id, :uid, :old, :new, NOW())
-        """, {'id': job_id, 'old': old_status, 'new': new_status}, label='status history')
+        self._write(self.STATUS_HISTORY_INSERT, {'id': job_id, 'old': old_status, 'new': new_status},
+                    label='status history')
 
     def get_status_history(self, job_id=None):
         """Cambios de estado de la cuenta (o de una postulación), del más viejo al más nuevo."""
@@ -289,16 +292,17 @@ class DatabaseManager:
         params = self._params({'status': new_status, 'id': job_id})
         try:
             with self.engine.begin() as conn:
-                old_status = conn.execute(text("SELECT status FROM applications WHERE id = :id AND user_id <=> :uid"),
-                                          params).scalar()
+                # FOR UPDATE: dos cambios simultáneos se ordenan y el historial queda en la misma transacción
+                old_status = conn.execute(text("SELECT status FROM applications WHERE id = :id AND user_id <=> :uid "
+                                               "FOR UPDATE"), params).scalar()
                 if old_status is None:
                     return False
                 conn.execute(text(query), params)
+                if old_status != new_status:
+                    conn.execute(text(self.STATUS_HISTORY_INSERT), {**params, 'old': old_status, 'new': new_status})
         except SQLAlchemyError as err:
             logger.error(f"Error writing applications: {err}")
             return False
-        if old_status != new_status:
-            self._log_status(job_id, old_status, new_status)
         return True
 
     def delete_tracked_job(self, job_id):
