@@ -1,7 +1,7 @@
 """Perfiles de CV por rol: subida, vista y borrado."""
 import os
 from datetime import datetime
-from flask import flash, jsonify, redirect, render_template, request, url_for
+from flask import flash, redirect, render_template, request, url_for
 from werkzeug.utils import secure_filename
 
 import cv_storage
@@ -128,24 +128,3 @@ def confirm_delete_profile(role_type):
         flash('Error deleting profile', 'danger')
     return redirect(url_for('profile'))
 
-@app.route('/api/all_profiles')
-def api_all_profiles():
-    profiles = get_all_user_profiles()
-    return jsonify({
-        'success': True,
-        'profiles': profiles,
-        'count': len(profiles)
-    })
-
-@app.route('/api/profile_summary')
-def api_profile_summary():
-    user_profile = get_user_profile()
-    if not user_profile:
-        return jsonify({'error': 'No profile found'}), 404
-    
-    return jsonify({
-        'skills_count': len(user_profile.get('skills', [])),
-        'experience_years': user_profile.get('experience_years', 0),
-        'education_count': len(user_profile.get('education', [])),
-        'upload_date': user_profile.get('upload_date')
-    })

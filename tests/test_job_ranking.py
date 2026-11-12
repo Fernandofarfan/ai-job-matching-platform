@@ -73,13 +73,13 @@ def test_rank_without_model_keeps_match_order(monkeypatch):
     assert [j['title'] for j in ranked] == ['b', 'a'] and 'preference' not in ranked[0]
 
 
-def test_api_ranking(client, monkeypatch):
+def test_api_ranking(api, monkeypatch):
     """/api/ranking dice si está activo y qué aprendió."""
     monkeypatch.setattr(job_ranking, 'load_model', lambda: None)
-    assert client.get('/api/ranking').get_json()['enabled'] is False
+    assert api.get('/api/ranking').json()['enabled'] is False
     model = job_ranking.train(_history(), TODAY)
     monkeypatch.setattr(job_ranking, 'load_model', lambda: model)
-    data = client.get('/api/ranking').get_json()
+    data = api.get('/api/ranking').json()
     assert data['enabled'] and data['positives'] == 5 and data['likes']
 
 

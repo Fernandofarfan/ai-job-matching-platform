@@ -47,10 +47,10 @@ class TestMainRoutes:
 class TestTrackerAPI:
     """Endpoints de la API del Tracker."""
 
-    def test_tracker_stats(self, client):
-        response = client.get('/api/tracker/stats')
+    def test_tracker_stats(self, api):
+        response = api.get('/api/tracker/stats')
         assert response.status_code == 200
-        data = json.loads(response.data)
+        data = response.json()
         assert data['success'] is True
         assert 'stats' in data
         # Los jobs del mock tienen applied, interviewing, bookmarked
@@ -61,10 +61,10 @@ class TestTrackerAPI:
 class TestProfileAPI:
     """Endpoints relacionados al perfil de usuario."""
 
-    def test_api_all_profiles_returns_ok(self, client):
-        response = client.get('/api/all_profiles')
+    def test_api_all_profiles_returns_ok(self, api):
+        response = api.get('/api/all_profiles')
         assert response.status_code == 200
-        data = json.loads(response.data)
+        data = response.json()
         assert data['success'] is True
 
     def test_upload_resume_no_file_redirects(self, client):
