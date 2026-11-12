@@ -67,8 +67,10 @@ async function finishLink(tabId, url) {
   if (!token) {
     return;
   }
-  await chrome.storage.local.set({ extensionToken: token });
+  await chrome.storage.local.set({ extensionToken: token, tokenMigrated: true });
   await chrome.storage.session.remove('linkState');
+  // el token nuevo reemplaza al anterior en la cuenta, así que la copia vieja en sync ya no sirve
+  await chrome.storage.sync.remove('extensionToken');
 }
 
 chrome.tabs.onUpdated.addListener((tabId, info, tab) => {

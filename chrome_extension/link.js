@@ -36,16 +36,18 @@ const EmpleoIALink = (() => {
   }
 
   // Versiones anteriores guardaban el token en storage.sync (se copiaba a todos los Chrome de la cuenta de Google)
+  // Se copia una sola vez por dispositivo y no se borra de sync: el borrado se propagaría a los otros Chrome
+  // antes de que se actualicen y los dejaría sin token. Vincular de nuevo genera otro token y ahí sí se borra.
   async function migrateToken(storage) {
-    const { extensionToken } = await storage.sync.get('extensionToken');
-    if (!extensionToken) {
+    if ((await storage.local.get('tokenMigrated')).tokenMigrated) {
       return;
     }
+    const { extensionToken } = await storage.sync.get('extensionToken');
     const local = await storage.local.get('extensionToken');
-    if (!local.extensionToken) {
+    if (extensionToken && !local.extensionToken) {
       await storage.local.set({ extensionToken });
     }
-    await storage.sync.remove('extensionToken');
+    await storage.local.set({ tokenMigrated: true });
   }
 
   async function getToken(storage) {
