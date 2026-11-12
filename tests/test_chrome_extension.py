@@ -71,3 +71,10 @@ def test_package_contains_only_extension_files(tmp_path):
         names = zf.namelist()
     assert 'manifest.json' in names and 'icons/icon128.png' in names
     assert all(n.endswith(package_extension.ALLOWED_SUFFIXES) for n in names)
+
+
+def test_navent_offer_urls_get_the_content_script():
+    """Bumeran y ZonaJobs publican ofertas en /empleos/<slug>.html: el extractor tiene que inyectarse ahí."""
+    matches = json.load(open(os.path.join(EXT, 'manifest.json'), encoding='utf-8'))['content_scripts'][0]['matches']
+    assert 'https://www.zonajobs.com.ar/empleos/*' in matches
+    assert 'https://www.bumeran.com.ar/empleos/*' in matches
