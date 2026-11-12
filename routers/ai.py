@@ -140,6 +140,8 @@ def interview_evaluate(payload: dict = JsonBody, ai=Depends(get_ai)):
         raise ApiError(400, 'question y answer requeridos')
     evaluation = _call('Interview evaluate error', ai.engine.evaluate_interview_answer,
                        question, answer, _text(payload, 'job_title'))
+    if evaluation.get('error'):
+        raise ApiError(503, evaluation['error'])
     return {'success': True, 'evaluation': evaluation}
 
 
