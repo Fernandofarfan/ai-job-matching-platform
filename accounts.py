@@ -62,7 +62,7 @@ def configure(session_factory: sessionmaker[Session]) -> None:
 
 def rowcount(result: Result[Any]) -> int:
     """Filas que tocó un UPDATE/DELETE (session.execute lo tipa como Result, pero es un CursorResult)."""
-    return cast(CursorResult[Any], result).rowcount
+    return int(cast(CursorResult[Any], result).rowcount)
 
 
 def _sessions() -> sessionmaker[Session]:
@@ -240,7 +240,7 @@ def register(email: str, password: str, terms_accepted: bool = False) -> int:
         user_id = user.id
     if first:
         claim_orphans(user_id)
-    return user_id
+    return int(user_id)
 
 
 def authenticate(email: str, password: str) -> Optional[int]:

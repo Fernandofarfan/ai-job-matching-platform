@@ -137,8 +137,8 @@ def _token_fp(purpose: str, user: dict[str, Any]) -> str:
 def account_token(secret_key: str, purpose: str, user: dict[str, Any]) -> str:
     """Enlace firmado para recuperar la contraseña o verificar el email; deja de valer al usarse."""
     from itsdangerous import URLSafeTimedSerializer
-    return URLSafeTimedSerializer(secret_key, salt=f'account-{purpose}').dumps(
-        {'uid': user['id'], 'fp': _token_fp(purpose, user)})
+    return str(URLSafeTimedSerializer(secret_key, salt=f'account-{purpose}').dumps(
+        {'uid': user['id'], 'fp': _token_fp(purpose, user)}))
 
 
 def read_account_token(secret_key: str, purpose: str, token: str, max_age: int) -> Optional[dict[str, Any]]:
