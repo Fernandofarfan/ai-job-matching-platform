@@ -289,7 +289,8 @@ def run_search(search_id, notify, make_scraper=None, profile=None):
     if profile and search['min_score']:
         jobs = [j for j in jobs if j.get('match_percent', 0) >= search['min_score']]
     new = find_new(jobs)
-    new.sort(key=lambda j: j.get('match_percent', 0), reverse=True)
+    import job_ranking
+    new = job_ranking.rank(new)
     pending = len(new)
     new = new[:MAX_JOBS_PER_ALERT]
     sent = notify(search, new) if new and search['channels'] else {}

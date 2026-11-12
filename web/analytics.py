@@ -201,6 +201,19 @@ def avg_days_to_apply(jobs):
     return round(sum(days) / len(days), 1) if days else None
 
 
+@app.route('/api/ranking')
+def api_ranking():
+    """Qué aprendió el ranking personal del tracker (palabras, empresas y portales que suben o bajan)."""
+    import job_ranking
+    model = job_ranking.load_model()
+    if model is None:
+        return jsonify({'success': True, 'enabled': False,
+                        'message': f'Hacen falta al menos {job_ranking.MIN_EXAMPLES} postulaciones y '
+                                   f'{job_ranking.MIN_EXAMPLES} ofertas guardadas sin postular'})
+    return jsonify({'success': True, 'enabled': True, 'positives': model['n_pos'],
+                    'negatives': model['n_neg'], **job_ranking.top_signals(model)})
+
+
 @app.route('/api/analytics/advanced')
 def api_analytics_advanced():
     """Métricas avanzadas: tiempos promedio por etapa, tasa respuesta, heatmap."""
