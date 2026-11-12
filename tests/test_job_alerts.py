@@ -137,11 +137,11 @@ def test_run_all_skips_paused(db):
 
 
 def test_telegram_message_escapes_and_truncates(monkeypatch):
-    """El texto scrapeado se escapa y el mensaje se corta en 10 ofertas."""
-    jobs = [_job(f'<b>Dev {i}</b>', match_percent=75.0) for i in range(12)]
+    """El texto scrapeado se escapa."""
+    jobs = [_job(f'<b>Dev {i}</b>', match_percent=75.0) for i in range(3)]
     text = notification_tasks.alert_telegram_text({'name': 'Py & Go'}, jobs)
     assert '&lt;b&gt;Dev 0&lt;/b&gt;' in text and '<b>Dev' not in text
-    assert 'Py &amp; Go' in text and '75%' in text and '…y 2 más' in text
+    assert 'Py &amp; Go' in text and '75%' in text
 
 
 def test_send_telegram_posts_to_bot_api(monkeypatch):
@@ -215,3 +215,15 @@ def test_failed_delivery_retries_next_run(db):
     notify.return_value = {'telegram': True}
     assert job_alerts.run_search(search['id'], notify, make, profile={})['new'] == 1
     assert job_alerts.run_search(search['id'], notify, make, profile={})['new'] == 0
+
+
+def test_jobs_beyond_alert_limit_wait_for_next_alert(db, monkeypatch):
+    """Lo que no entra en un aviso no se marca como visto y sale en el siguiente."""
+    monkeypatch.setattr(job_alerts, 'MAX_JOBS_PER_ALERT', 2)
+    search = job_alerts.create_search({'position': 'Python', 'portals': ['computrabajo'], 'channels': ['telegram']})
+    make = lambda p: _FakeScraper([_job(f'Dev {i}') for i in range(3)])  # noqa: E731
+    notify = mock.Mock(return_value={'telegram': True})
+    assert job_alerts.run_search(search['id'], notify, make, profile={})['new'] == 3
+    assert len(notify.call_args.args[1]) == 2
+    job_alerts.run_search(search['id'], notify, make, profile={})
+    assert [j['Title'] for j in notify.call_args.args[1]] == ['Dev 2']

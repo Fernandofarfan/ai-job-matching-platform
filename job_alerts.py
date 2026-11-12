@@ -18,6 +18,8 @@ Base = declarative_base()
 PORTALS = ('computrabajo', 'bumeran')
 CHANNELS = ('email', 'telegram')
 MAX_JOBS_PER_PORTAL = 30
+# Las que no entran en un aviso quedan sin marcar y salen en el siguiente
+MAX_JOBS_PER_ALERT = 15
 _ANONYMOUS = {'', 'confidential', 'confidencial', 'empresa confidencial', 'importante empresa'}
 
 _session_factory = None
@@ -277,10 +279,14 @@ def run_search(search_id, notify, make_scraper=None, profile=None):
         jobs = [j for j in jobs if j.get('match_percent', 0) >= search['min_score']]
     new = find_new(jobs)
     new.sort(key=lambda j: j.get('match_percent', 0), reverse=True)
+    pending = len(new)
+    new = new[:MAX_JOBS_PER_ALERT]
     sent = notify(search, new) if new and search['channels'] else {}
     if any(sent.values()):
         mark_seen(new, search_id)
-    result = f"{len(new)} nuevas de {len(jobs)}"
+    result = f"{pending} nuevas de {len(jobs)}"
+    if pending > len(new):
+        result += f"; {pending - len(new)} quedan para el próximo aviso"
     if new and not any(sent.values()):
         result += " (sin avisar: se reintenta en la próxima corrida)"
     with _sessions()() as session:
