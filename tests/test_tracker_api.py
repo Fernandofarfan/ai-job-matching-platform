@@ -139,3 +139,12 @@ def test_main_serves_tracker_api_with_fastapi():
     assert main.app.url_path_for('list_jobs') == '/api/tracker/jobs'
     assert main.app.url_path_for('update_reminder', job_id=1) == '/api/tracker/job/1/reminder'
     assert main.app.url_path_for('save_from_extension') == '/api/tracker/save-from-extension'
+
+
+def test_entry_points_serve_fastapi_app():
+    """`python app.py` y el launcher de Windows sirven main:app; con Flask solo, la API del tracker daría 404."""
+    from pathlib import Path
+    root = Path(__file__).resolve().parent.parent
+    assert "'main:app'" in (root / 'app.py').read_text(encoding='utf-8')
+    launcher = (root / 'scripts' / 'start_server.ps1').read_text(encoding='utf-8')
+    assert 'uvicorn main:app' in launcher and 'waitress' not in launcher

@@ -239,7 +239,7 @@ alembic upgrade head   # tablas versionadas (user_profiles)
 cp .env.example .env
 # Editar .env con tus credenciales
 
-# 7. Ejecutar la aplicación
+# 7. Ejecutar la aplicación (levanta main:app con uvicorn: FastAPI + Flask)
 python app.py
 ```
 
