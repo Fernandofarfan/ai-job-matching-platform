@@ -54,6 +54,7 @@ celery.conf.update(
         "tasks.scraping_tasks.*": {"queue": "scraping"},
         "tasks.ai_tasks.*": {"queue": "ai_processing"},
         "tasks.notification_tasks.*": {"queue": "notifications"},
+        "tasks.privacy_tasks.*": {"queue": "notifications"},
     },
 
     # Rate limits para scraping (evitar bloqueos)
