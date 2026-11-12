@@ -45,10 +45,20 @@ def test_ai_limit_fails_open_when_storage_down(monkeypatch):
     """Si Redis no responde, la llamada de IA se permite en vez de dar error."""
     import rate_limit
 
-    def broken_hit(*args):
+    def broken_limiter():
         raise ConnectionError('redis caído')
-    monkeypatch.setattr(rate_limit._limiter, 'hit', broken_hit)
+    monkeypatch.setattr(rate_limit, '_limiter', broken_limiter)
     assert rate_limit.hit_ai_limit('1.2.3.4') is True
+
+
+def test_ai_limit_reads_env_on_first_use(monkeypatch):
+    """AI_RATE_LIMIT se lee en el primer uso (después de load_dotenv), no al importar."""
+    import rate_limit
+    monkeypatch.setenv('AI_RATE_LIMIT', '2 per minute')
+    rate_limit.reset()
+    assert [rate_limit.hit_ai_limit('9.9.9.9') for _ in range(3)] == [True, True, False]
+    monkeypatch.delenv('AI_RATE_LIMIT')
+    rate_limit.reset()
 
 
 def test_api_upload_too_large_returns_json_413(client, app):
