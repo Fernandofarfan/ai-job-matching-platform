@@ -3,19 +3,23 @@ models.py — Modelos SQLAlchemy para EmpleoIA
 ORM completo reemplazando queries SQL manuales en db_config.py
 """
 import os
-from datetime import datetime
+from collections.abc import Iterator
+from datetime import date, datetime
+from typing import Optional
 from sqlalchemy import (
-    create_engine, Column, Integer, String, Text, DateTime,
-    Date, Float, Boolean, Enum, ForeignKey, Index
+    create_engine, Integer, String, Text, DateTime, Date, Float, Boolean, Enum, ForeignKey, Index
 )
 from sqlalchemy.engine import URL
-from sqlalchemy.orm import declarative_base, relationship, sessionmaker, Session
+from sqlalchemy.orm import DeclarativeBase, relationship, sessionmaker, Session, Mapped, mapped_column
 from sqlalchemy.pool import QueuePool
 from dotenv import load_dotenv
 
 load_dotenv()
 
-Base = declarative_base()
+
+class Base(DeclarativeBase):
+    """Base declarativa de los modelos de este módulo."""
+
 
 # ── Database URL ──────────────────────────────────────────────────────────────
 def get_database_url() -> str:
@@ -44,7 +48,7 @@ engine = create_engine(
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
-def get_db() -> Session:
+def get_db() -> Iterator[Session]:
     """Dependency injector para FastAPI."""
     db = SessionLocal()
     try:
@@ -61,52 +65,52 @@ class Application(Base):
     """Tabla principal de postulaciones (anteriormente usada como job_tracker también)."""
     __tablename__ = "applications"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, index=True)
-    title = Column(String(255), nullable=False)
-    company = Column(String(255), nullable=False)
-    location = Column(String(255))
-    salary = Column(String(100))
-    job_link = Column(Text)
-    description = Column(Text)
-    experience_category = Column(String(100))
-    job_type = Column(String(100))
-    suggested_address = Column(String(255))
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int | None] = mapped_column(Integer, index=True)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    company: Mapped[str] = mapped_column(String(255), nullable=False)
+    location: Mapped[str | None] = mapped_column(String(255))
+    salary: Mapped[str | None] = mapped_column(String(100))
+    job_link: Mapped[str | None] = mapped_column(Text)
+    description: Mapped[str | None] = mapped_column(Text)
+    experience_category: Mapped[str | None] = mapped_column(String(100))
+    job_type: Mapped[str | None] = mapped_column(String(100))
+    suggested_address: Mapped[str | None] = mapped_column(String(255))
 
     # Tracking
-    status = Column(
+    status: Mapped[str] = mapped_column(
         Enum("bookmarked", "applying", "applied", "interviewing",
              "negotiating", "accepted", "rejected", name="app_status"),
         default="bookmarked", nullable=False
     )
-    excitement = Column(Integer, default=0)
-    applied_date = Column(DateTime, default=datetime.now)
-    date_applied = Column(Date, nullable=True)
-    deadline = Column(Date, nullable=True)
-    follow_up = Column(Date, nullable=True)
-    last_reminder_at = Column(DateTime, nullable=True)
-    notes = Column(Text)
+    excitement: Mapped[int | None] = mapped_column(Integer, default=0)
+    applied_date: Mapped[datetime | None] = mapped_column(DateTime, default=datetime.now)
+    date_applied: Mapped[date | None] = mapped_column(Date, nullable=True)
+    deadline: Mapped[date | None] = mapped_column(Date, nullable=True)
+    follow_up: Mapped[date | None] = mapped_column(Date, nullable=True)
+    last_reminder_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text)
 
     # AI scores
-    overall_match = Column(Float, default=0.0)
-    skill_match = Column(Float, default=0.0)
-    experience_match = Column(Float, default=0.0)
-    text_similarity = Column(Float, default=0.0)
-    ai_match_score = Column(Float, default=0.0)
-    ai_nivel = Column(String(50))
-    ai_modalidad = Column(String(50))
-    ai_resumen = Column(Text)
+    overall_match: Mapped[float | None] = mapped_column(Float, default=0.0)
+    skill_match: Mapped[float | None] = mapped_column(Float, default=0.0)
+    experience_match: Mapped[float | None] = mapped_column(Float, default=0.0)
+    text_similarity: Mapped[float | None] = mapped_column(Float, default=0.0)
+    ai_match_score: Mapped[float | None] = mapped_column(Float, default=0.0)
+    ai_nivel: Mapped[str | None] = mapped_column(String(50))
+    ai_modalidad: Mapped[str | None] = mapped_column(String(50))
+    ai_resumen: Mapped[str | None] = mapped_column(Text)
 
     # Market data
-    salary_min_usd = Column(Float, nullable=True)
-    salary_max_usd = Column(Float, nullable=True)
+    salary_min_usd: Mapped[float | None] = mapped_column(Float, nullable=True)
+    salary_max_usd: Mapped[float | None] = mapped_column(Float, nullable=True)
 
     # Timestamps
-    created_at = Column(DateTime, default=datetime.now)
-    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+    created_at: Mapped[datetime | None] = mapped_column(DateTime, default=datetime.now)
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now)
 
     # Source platform
-    source_platform = Column(String(50), default="manual")
+    source_platform: Mapped[str | None] = mapped_column(String(50), default="manual")
 
     __table_args__ = (
         Index("idx_status", "status"),
@@ -126,17 +130,17 @@ class ConnectionRequest(Base):
     """Solicitudes de conexión enviadas en LinkedIn."""
     __tablename__ = "connection_requests"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    company = Column(String(255), nullable=False)
-    contact_name = Column(String(255))
-    contact_profile_url = Column(Text)
-    sent_date = Column(DateTime, default=datetime.now)
-    status = Column(
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    company: Mapped[str] = mapped_column(String(255), nullable=False)
+    contact_name: Mapped[str | None] = mapped_column(String(255))
+    contact_profile_url: Mapped[str | None] = mapped_column(Text)
+    sent_date: Mapped[datetime | None] = mapped_column(DateTime, default=datetime.now)
+    status: Mapped[str | None] = mapped_column(
         Enum("sent", "accepted", "pending", "withdrawn", name="conn_status"),
         default="sent"
     )
-    application_ids = Column(String(500))  # CSV of application IDs
-    message_sent = Column(Text)
+    application_ids: Mapped[str | None] = mapped_column(String(500))  # CSV of application IDs
+    message_sent: Mapped[str | None] = mapped_column(Text)
 
     def to_dict(self) -> dict:
         return {c.name: getattr(self, c.name) for c in self.__table__.columns}
@@ -146,39 +150,39 @@ class NetworkingExclusion(Base):
     """Empresas excluidas del networking automatizado."""
     __tablename__ = "networking_exclusions"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    company_name = Column(String(255), nullable=False, unique=True)
-    excluded_at = Column(DateTime, default=datetime.now)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    company_name: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
+    excluded_at: Mapped[datetime | None] = mapped_column(DateTime, default=datetime.now)
 
 
 class ProcessedFile(Base):
     """Registro de archivos CSV procesados."""
     __tablename__ = "processed_files"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    filename = Column(String(500), unique=True, nullable=False)
-    total_jobs = Column(Integer, default=0)
-    jobs_applied = Column(Integer, default=0)
-    processed_date = Column(DateTime, default=datetime.now)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    filename: Mapped[str] = mapped_column(String(500), unique=True, nullable=False)
+    total_jobs: Mapped[int | None] = mapped_column(Integer, default=0)
+    jobs_applied: Mapped[int | None] = mapped_column(Integer, default=0)
+    processed_date: Mapped[datetime | None] = mapped_column(DateTime, default=datetime.now)
 
 
 class MarketInsight(Base):
     """Cache de insights de mercado salarial generados por IA."""
     __tablename__ = "market_insights"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    role = Column(String(255), nullable=False)
-    experience_level = Column(String(50))
-    location = Column(String(100), default="Argentina")
-    salary_avg_usd = Column(Float)
-    salary_low_usd = Column(Float)
-    salary_high_usd = Column(Float)
-    demand_level = Column(String(20))
-    trend = Column(String(50))
-    top_skills = Column(Text)          # JSON array as string
-    raw_data = Column(Text)            # Full JSON from AI
-    generated_at = Column(DateTime, default=datetime.now)
-    expires_at = Column(DateTime)      # Para invalidar caché
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    role: Mapped[str] = mapped_column(String(255), nullable=False)
+    experience_level: Mapped[str | None] = mapped_column(String(50))
+    location: Mapped[str | None] = mapped_column(String(100), default="Argentina")
+    salary_avg_usd: Mapped[float | None] = mapped_column(Float)
+    salary_low_usd: Mapped[float | None] = mapped_column(Float)
+    salary_high_usd: Mapped[float | None] = mapped_column(Float)
+    demand_level: Mapped[str | None] = mapped_column(String(20))
+    trend: Mapped[str | None] = mapped_column(String(50))
+    top_skills: Mapped[str | None] = mapped_column(Text)          # JSON array as string
+    raw_data: Mapped[str | None] = mapped_column(Text)            # Full JSON from AI
+    generated_at: Mapped[datetime | None] = mapped_column(DateTime, default=datetime.now)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime)      # Para invalidar caché
 
     __table_args__ = (
         Index("idx_role_level", "role", "experience_level"),
@@ -189,28 +193,28 @@ class MockInterview(Base):
     """Sesiones de entrevistas simuladas con IA."""
     __tablename__ = "mock_interviews"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    job_title = Column(String(255), nullable=False)
-    company = Column(String(255))
-    application_id = Column(Integer, ForeignKey("applications.id", ondelete="SET NULL"), nullable=True)
-    questions_json = Column(Text)      # JSON array of questions
-    answers_json = Column(Text)        # JSON array of user answers + evaluations
-    overall_score = Column(Float)
-    completed = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.now)
-    completed_at = Column(DateTime, nullable=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    job_title: Mapped[str] = mapped_column(String(255), nullable=False)
+    company: Mapped[str | None] = mapped_column(String(255))
+    application_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("applications.id", ondelete="SET NULL"), nullable=True)
+    questions_json: Mapped[str | None] = mapped_column(Text)      # JSON array of questions
+    answers_json: Mapped[str | None] = mapped_column(Text)        # JSON array of user answers + evaluations
+    overall_score: Mapped[float | None] = mapped_column(Float)
+    completed: Mapped[bool | None] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime | None] = mapped_column(DateTime, default=datetime.now)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
-    application = relationship("Application", foreign_keys=[application_id])
+    application: Mapped["Application | None"] = relationship("Application", foreign_keys=[application_id])
 
 
 class UserSettings(Base):
     """Configuración del usuario (notificaciones, preferencias)."""
     __tablename__ = "user_settings"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    key = Column(String(100), nullable=False, unique=True)
-    value = Column(Text)
-    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    key: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
+    value: Mapped[str | None] = mapped_column(Text)
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now)
 
 
 # ── Utility functions ─────────────────────────────────────────────────────────
@@ -239,7 +243,7 @@ class SQLAlchemyManager:
     def get_session(self) -> Session:
         return SessionLocal()
 
-    def get_applications(self, filters: dict = None) -> list:
+    def get_applications(self, filters: Optional[dict] = None) -> list:
         with SessionLocal() as session:
             query = session.query(Application)
             if filters:
@@ -273,7 +277,7 @@ class SQLAlchemyManager:
 
     def update_job_status(self, job_id: int, new_status: str) -> bool:
         with SessionLocal() as session:
-            app = session.query(Application).get(job_id)
+            app = session.get(Application, job_id)
             if not app:
                 return False
             app.status = new_status
@@ -288,14 +292,14 @@ class SQLAlchemyManager:
             jobs = session.query(Application).order_by(Application.applied_date.desc()).all()
             return [j.to_dict() for j in jobs]
 
-    def get_tracked_job_by_id(self, job_id: int) -> dict:
+    def get_tracked_job_by_id(self, job_id: int) -> Optional[dict]:
         with SessionLocal() as session:
-            job = session.query(Application).get(job_id)
+            job = session.get(Application, job_id)
             return job.to_dict() if job else None
 
     def delete_tracked_job(self, job_id: int) -> bool:
         with SessionLocal() as session:
-            job = session.query(Application).get(job_id)
+            job = session.get(Application, job_id)
             if not job:
                 return False
             session.delete(job)
@@ -340,7 +344,7 @@ class SQLAlchemyManager:
             session.commit()
             return insight.id
 
-    def get_cached_market_insight(self, role: str, level: str, location: str) -> dict:
+    def get_cached_market_insight(self, role: str, level: str, location: str) -> Optional[dict]:
         with SessionLocal() as session:
             insight = (
                 session.query(MarketInsight)
@@ -353,13 +357,14 @@ class SQLAlchemyManager:
                 .order_by(MarketInsight.generated_at.desc())
                 .first()
             )
-            if not insight:
+            if not insight or not insight.raw_data:
                 return None
             import json
             return json.loads(insight.raw_data)
 
 
 # Instancia global compatible con el código existente
+orm_manager: Optional[SQLAlchemyManager]
 try:
     orm_manager = SQLAlchemyManager()
 except Exception as e:

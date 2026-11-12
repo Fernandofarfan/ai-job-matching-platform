@@ -7,7 +7,8 @@ from datetime import datetime
 from typing import Optional
 from urllib.parse import urlsplit
 
-from sqlalchemy import Column, DateTime, Integer, String, Text, delete, select
+from sqlalchemy import DateTime, Integer, String, Text, delete, select
+from sqlalchemy.orm import Mapped, mapped_column
 
 import accounts
 
@@ -20,18 +21,18 @@ MAX_ENDPOINT = 2048
 DEAD_STATUSES = (404, 410)
 
 
-class PushSubscription(accounts.Base):  # type: ignore[misc,valid-type]
+class PushSubscription(accounts.Base):
     """Un dispositivo/navegador suscripto; el endpoint se indexa por hash (puede superar 255 caracteres)."""
 
     __tablename__ = 'push_subscriptions'
     __table_args__ = {'extend_existing': True}
-    id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, nullable=True, index=True)
-    endpoint_hash = Column(String(64), nullable=False, unique=True)
-    endpoint = Column(Text, nullable=False)
-    p256dh = Column(String(255), nullable=False)
-    auth = Column(String(255), nullable=False)
-    created_at = Column(DateTime, default=datetime.now)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    endpoint_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    endpoint: Mapped[str] = mapped_column(Text, nullable=False)
+    p256dh: Mapped[str] = mapped_column(String(255), nullable=False)
+    auth: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_at: Mapped[datetime | None] = mapped_column(DateTime, default=datetime.now)
 
 
 class PushError(ValueError):

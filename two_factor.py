@@ -14,7 +14,8 @@ from typing import Optional
 
 import pyotp
 import segno
-from sqlalchemy import Column, DateTime, Integer, String, Text, delete, or_, select, update
+from sqlalchemy import DateTime, Integer, String, Text, delete, or_, select, update
+from sqlalchemy.orm import Mapped, mapped_column
 
 import accounts
 
@@ -24,16 +25,16 @@ RECOVERY_CODES = 10
 VALID_WINDOW = 1  # acepta el código anterior y el siguiente (30 s de desfase de reloj)
 
 
-class UserTotp(accounts.Base):  # type: ignore[misc,valid-type]
+class UserTotp(accounts.Base):
     """Una fila por cuenta; `enabled_at` NULL = configuración empezada y no confirmada."""
 
     __tablename__ = 'user_totp'
     __table_args__ = {'extend_existing': True}
-    user_id = Column(Integer, primary_key=True, autoincrement=False)
-    secret = Column(String(255), nullable=False)
-    recovery_hashes = Column(Text, nullable=True)
-    last_step = Column(Integer, nullable=True)
-    enabled_at = Column(DateTime, nullable=True)
+    user_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=False)
+    secret: Mapped[str] = mapped_column(String(255), nullable=False)
+    recovery_hashes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    last_step: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    enabled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
 class TwoFactorError(RuntimeError):
