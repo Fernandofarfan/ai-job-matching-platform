@@ -37,6 +37,7 @@ def send_verification(user: dict) -> bool:
 
 
 def _account_enabled():
+    """Las páginas de cuenta solo existen con login."""
     return auth.auth_enabled()
 
 
