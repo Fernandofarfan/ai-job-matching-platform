@@ -229,8 +229,10 @@ def find_new(jobs):
     return [job for fp, job in batch.items() if fp not in seen]
 
 
-def seen_since(since: datetime, limit: int = 10, until: datetime | None = None) -> tuple[int, list[dict]]:
-    """Ofertas que las alertas de la cuenta encontraron desde `since` (y antes de `until`): total y las más recientes."""
+def seen_since(since: datetime, limit: int = 10,
+               until: datetime | None = None) -> tuple[int, list[dict]]:
+    """Ofertas que las alertas de la cuenta encontraron desde `since` (y antes de `until`):
+    total y las más recientes."""
     with _sessions()() as session:
         mine = (_mine(SeenJob), SeenJob.first_seen_at >= since,
                 *(() if until is None else (SeenJob.first_seen_at < until,)))
