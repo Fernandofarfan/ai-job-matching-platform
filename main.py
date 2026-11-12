@@ -32,7 +32,6 @@ async def rate_limit_ai(request: Request, call_next):
     return await call_next(request)
 
 import auth  # noqa: E402
-from starlette.routing import Match  # noqa: E402
 from fastapi.responses import RedirectResponse  # noqa: E402
 from urllib.parse import quote  # noqa: E402
 
