@@ -3,8 +3,7 @@
 La cookie `session` se lee y se escribe con el serializador de la app Flask montada en main.py,
 así una sesión abierta en Flask sirve en FastAPI y viceversa mientras dure la migración.
 """
-import hashlib
-import os
+import secrets
 from datetime import datetime, timezone
 from typing import Any, Optional, TypeVar
 from urllib.parse import urlencode
@@ -99,7 +98,7 @@ def csrf_token(request: Request) -> str:
     flask_app = flask_app_for(request)
     session = get_session(request)
     if 'csrf_token' not in session:
-        session['csrf_token'] = hashlib.sha1(os.urandom(64)).hexdigest()
+        session['csrf_token'] = secrets.token_hex(20)
     return URLSafeTimedSerializer(flask_app.secret_key, salt='wtf-csrf-token').dumps(session['csrf_token'])
 
 
