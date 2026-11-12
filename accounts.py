@@ -186,7 +186,7 @@ def authenticate(email: str, password: str) -> Optional[int]:
 
 OWNED_TABLES = ('applications', 'application_status_history', 'user_profiles', 'saved_searches', 'seen_jobs',
                 'networking_exclusions', 'connection_requests', 'processed_files', 'user_integrations',
-                'push_subscriptions', 'security_events')
+                'push_subscriptions', 'security_events', 'user_sessions')
 
 
 RESULTS_ROOT = 'results'
@@ -282,6 +282,8 @@ def set_password(user_id: int, password: str, expected_hash: Optional[str] = Non
         session.commit()
     if not changed:
         raise AccountError('La cuenta no existe o la contraseña ya se cambió')
+    import user_sessions
+    user_sessions.revoke_all(user_id)
 
 
 def change_password(user_id: int, current: str, new: str):

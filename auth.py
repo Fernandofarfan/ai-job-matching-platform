@@ -8,6 +8,7 @@ from typing import Optional
 from sqlalchemy.exc import SQLAlchemyError
 
 import accounts
+import user_sessions
 
 logger = logging.getLogger(__name__)
 
@@ -23,14 +24,16 @@ def session_fingerprint(secret_key, user: dict) -> str:
     return hmac.new(key, f"{user['id']}:{user['password_hash']}".encode(), 'sha256').hexdigest()
 
 
-def start_session(session, secret_key, user_id: int):
-    """Abre la sesión de `user_id` (borra lo anterior para evitar fijación de sesión)."""
+def start_session(session, secret_key, user_id: int, ip: Optional[str] = None, user_agent: Optional[str] = None):
+    """Abre la sesión de `user_id` (borra lo anterior para evitar fijación de sesión) y la registra en user_sessions."""
     user = accounts.get_user(user_id)
     if user is None:
         raise ValueError(f'No existe el usuario {user_id}')
+    user_sessions.revoke_sid(session.get('sid'))
     session.clear()
     session['user_id'] = user_id
     session['auth_fp'] = session_fingerprint(secret_key, user)
+    session['sid'] = user_sessions.create(user_id, ip, user_agent)
     session.permanent = True
 
 
@@ -46,8 +49,13 @@ def session_user_id(session_data, secret_key) -> Optional[int]:
         return None
     if user is None or (verification_required() and not user.get('email_verified', True)):
         return None
-    ok = hmac.compare_digest(str(session_data.get('auth_fp', '')), session_fingerprint(secret_key, user))
-    return user['id'] if ok else None
+    if not hmac.compare_digest(str(session_data.get('auth_fp', '')), session_fingerprint(secret_key, user)):
+        return None
+    try:
+        return user['id'] if user_sessions.is_active(user['id'], session_data.get('sid')) else None
+    except SQLAlchemyError as e:
+        logger.error(f"No se pudo validar la sesión: {e}")
+        return None
 
 
 def is_session_valid(session_data, secret_key) -> bool:

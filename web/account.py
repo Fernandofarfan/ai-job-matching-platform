@@ -14,6 +14,7 @@ import auth
 import data_export
 import integrations
 import security_events
+import user_sessions
 from app import _clear_offline_data, app, delete_user_profile, limiter
 
 logger = logging.getLogger(__name__)
@@ -44,6 +45,11 @@ def send_verification(user: dict) -> bool:
     return bool(link) and _deliver(user['email'], 'Confirmá tu email en EmpleoIA',
                                    '<p>Entrá al enlace para confirmar tu cuenta. Vence en 3 días.</p>',
                                    link, 'Confirmar email')
+
+
+def client_info() -> tuple:
+    """IP y navegador del pedido, para registrar la sesión."""
+    return request.remote_addr, request.headers.get('User-Agent')
 
 
 def audit(user_id, kind: str) -> bool:
@@ -152,7 +158,7 @@ def _render_account(new_token=None):
         'account.html', user=accounts.get_user(user_id), min_password=accounts.MIN_PASSWORD,
         integ=integrations.status(user_id), telegram_bot=bool(os.getenv('TELEGRAM_BOT_TOKEN')),
         gmail_available=os.path.exists(_gmail_client_file()), new_token=new_token,
-        events=security_events.recent(user_id)))
+        events=security_events.recent(user_id), open_sessions=user_sessions.active(user_id, session.get('sid'))))
     if new_token:
         response.headers['Cache-Control'] = 'no-store'
     return response
@@ -288,9 +294,35 @@ def change_password():
     except accounts.AccountError as e:
         flash(str(e), 'danger')
         return redirect(url_for('account'))
-    auth.start_session(session, app.secret_key, user_id)
+    auth.start_session(session, app.secret_key, user_id, *client_info())
     audit(user_id, 'password_changed')
     flash('Contraseña cambiada; se cerraron las otras sesiones', 'success')
+    return redirect(url_for('account'))
+
+
+@app.route('/account/sessions/<int:session_id>/revoke', methods=['POST'])
+def revoke_session(session_id):
+    """Cierra una sesión de la cuenta (si es la actual, también sale)."""
+    user_id = accounts.current_user_id()
+    current = next((s for s in user_sessions.active(user_id, session.get('sid')) if s['current']), None)
+    if not user_sessions.revoke(user_id, session_id):
+        flash('Esa sesión ya estaba cerrada', 'warning')
+        return redirect(url_for('account'))
+    audit(user_id, 'session_revoked')
+    if current and current['id'] == session_id:
+        session.clear()
+        return _clear_offline_data(redirect(url_for('login')))
+    flash('Sesión cerrada', 'success')
+    return redirect(url_for('account'))
+
+
+@app.route('/account/sessions/revoke_others', methods=['POST'])
+def revoke_other_sessions():
+    """Cierra todas las sesiones de la cuenta menos esta."""
+    user_id = accounts.current_user_id()
+    closed = user_sessions.revoke_all(user_id, except_sid=session.get('sid'))
+    audit(user_id, 'sessions_revoked')
+    flash(f'Se cerraron {closed} sesiones' if closed != 1 else 'Se cerró 1 sesión', 'success')
     return redirect(url_for('account'))
 
 

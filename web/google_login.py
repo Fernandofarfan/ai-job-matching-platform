@@ -12,7 +12,7 @@ from flask import flash, redirect, request, session, url_for
 import accounts
 import auth
 from app import _safe_next, app, limiter
-from web.account import _public_url, audit_login
+from web.account import _public_url, audit_login, client_info
 
 logger = logging.getLogger(__name__)
 AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth'
@@ -92,6 +92,6 @@ def google_callback():
         accounts.set_password(user_id, secrets.token_urlsafe(32))
     # Google ya comprobó que el email es suyo
     accounts.mark_verified(user_id)
-    auth.start_session(session, app.secret_key, user_id)
+    auth.start_session(session, app.secret_key, user_id, *client_info())
     audit_login(accounts.get_user(user_id), 'login_google')
     return redirect(_safe_next(pending.get('next', '')))

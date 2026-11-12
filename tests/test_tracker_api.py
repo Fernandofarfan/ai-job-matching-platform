@@ -103,7 +103,9 @@ def test_login_required(api, app, accounts_db):
     assert api.get('/api/tracker/jobs').status_code == 401
     user_id = accounts.register('ana@example.com', 'clave-larga-1')
     user = accounts.get_user(user_id)
-    cookie, _ = _session_cookie(app, user_id=user_id, auth_fp=auth.session_fingerprint(app.secret_key, user))
+    import user_sessions
+    cookie, _ = _session_cookie(app, user_id=user_id, auth_fp=auth.session_fingerprint(app.secret_key, user),
+                                sid=user_sessions.create(user_id))
     api.cookies.set('session', cookie)
     assert api.get('/api/tracker/jobs').status_code == 200
     from sqlalchemy import text

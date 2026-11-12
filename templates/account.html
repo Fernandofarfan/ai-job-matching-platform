@@ -106,6 +106,37 @@
   </div>
   <div class="card border-0 shadow-sm mb-4">
     <div class="card-body p-4">
+      <h2 class="h5 fw-bold">Sesiones abiertas</h2>
+      <p class="text-muted small">Navegadores donde tu cuenta está abierta. Cerrá los que no reconozcas.</p>
+      <ul class="list-group list-group-flush mb-3" id="open-sessions">
+        {% for s in open_sessions %}
+        <li class="list-group-item d-flex justify-content-between align-items-center gap-2 px-0">
+          <div class="small text-break">
+            <div class="fw-semibold">{{ s.user_agent or 'Navegador desconocido' }}
+              {% if s.current %}<span class="badge text-bg-success ms-1">Este navegador</span>{% endif %}</div>
+            <div class="text-muted">IP {{ s.ip or '?' }} · iniciada {{ s.created_at.strftime('%d/%m/%Y %H:%M') if s.created_at else '' }}
+              · última actividad {{ s.last_seen_at.strftime('%d/%m/%Y %H:%M') if s.last_seen_at else '' }}</div>
+          </div>
+          <form method="POST" action="{{ url_for('revoke_session', session_id=s.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-sm btn-outline-danger"
+                    aria-label="Cerrar la sesión {{ s.user_agent or '' }}">Cerrar</button>
+          </form>
+        </li>
+        {% else %}
+        <li class="list-group-item px-0 small">No hay sesiones registradas.</li>
+        {% endfor %}
+      </ul>
+      {% if open_sessions|length > 1 %}
+      <form method="POST" action="{{ url_for('revoke_other_sessions') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-outline-danger" id="revokeOthersBtn">Cerrar las demás sesiones</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-body p-4">
       <h2 class="h5 fw-bold">Actividad reciente</h2>
       <p class="text-muted small">Inicios de sesión y cambios de seguridad de tu cuenta. Si ves algo que no hiciste, cambiá la contraseña.</p>
       {% if events %}

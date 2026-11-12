@@ -133,7 +133,7 @@ def app():
     # Fuera del patch.dict para que app y los tests compartan el mismo módulo (y su JSON_PATH temporal)
     import profile_store  # noqa: F401
     # Modelos sobre accounts.Base: reimportarlos duplicaría sus índices en la metadata
-    import integrations, push, security_events  # noqa: F401,E401
+    import integrations, push, security_events, user_sessions  # noqa: F401,E401
 
     with mock.patch.dict('sys.modules', {}):
         import db_config

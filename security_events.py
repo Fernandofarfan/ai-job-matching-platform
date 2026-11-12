@@ -25,6 +25,8 @@ LABELS = {
     'gmail_connected': 'Gmail conectado',
     'gmail_disconnected': 'Gmail desconectado',
     'data_exported': 'Datos exportados',
+    'session_revoked': 'Sesión cerrada desde Mi cuenta',
+    'sessions_revoked': 'Otras sesiones cerradas',
 }
 LOGIN_KINDS = ('login', 'login_google')
 
