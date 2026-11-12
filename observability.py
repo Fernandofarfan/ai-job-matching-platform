@@ -114,7 +114,14 @@ def metrics_allowed(authorization):
 
 
 def render():
+    """Texto de exposición Prometheus del registro global."""
     return generate_latest(REGISTRY)
+
+
+def requests_excluded_urls():
+    """URLs salientes sin trazar: la API de Telegram lleva el token del bot en el path."""
+    extra = os.getenv('OTEL_PYTHON_REQUESTS_EXCLUDED_URLS', '')
+    return ','.join(u for u in ('api.telegram.org', extra) if u)
 
 
 def tracing_enabled():
@@ -135,7 +142,7 @@ def setup_tracing(fastapi_app=None, celery_worker=False):
         provider = TracerProvider()
         provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter()))
         trace.set_tracer_provider(provider)
-        RequestsInstrumentor().instrument()
+        RequestsInstrumentor().instrument(excluded_urls=requests_excluded_urls())
         if fastapi_app is not None:
             from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
             FastAPIInstrumentor.instrument_app(fastapi_app, excluded_urls='api/health,metrics')
