@@ -823,6 +823,14 @@ CONTENT_PAGES = {  # routers/content_pages.py
     'run_alert': '/alerts/<int:search_id>/run', 'analytics': '/analytics',
 }
 
+SCRAPER_PAGES = {  # routers/scraper_pages.py
+    'start_indeed_scraper': '/start_indeed_scraper', 'start_linkedin_scraper': '/start_linkedin_scraper',
+    'start_computrabajo_scraper': '/start_computrabajo_scraper', 'start_bumeran_scraper': '/start_bumeran_scraper',
+    'start_universal_scraper': '/start_universal_scraper', 'run_test_scraper': '/run_test_scraper',
+    'test_task_status': '/test_task_status', 'stop_connection_requests': '/stop_connection_requests',
+    'start_connection_requests': '/start_connection_requests',
+}
+
 # Páginas que ya atiende FastAPI (routers/pages.py): Flask solo las usa para armar URLs con url_for
 for _rule, _endpoint in [('/', 'index'), ('/scraper', 'scraper'), ('/results', 'results'), ('/profile', 'profile'),
                          ('/mock-interview', 'mock_interview'), ('/tracker', 'tracker'),
@@ -831,11 +839,10 @@ for _rule, _endpoint in [('/', 'index'), ('/scraper', 'scraper'), ('/results', '
                          ('/forgot_password', 'forgot_password'), ('/reset_password/<token>', 'reset_password'),
                          ('/verify_email/<token>', 'verify_email'), ('/login/2fa', 'login_two_factor'),
                          ('/login/google', 'google_login'), ('/login/google/callback', 'google_callback'),
-                         *[(r, e) for e, r in {**ACCOUNT_PAGES, **CONTENT_PAGES}.items()]]:
+                         *[(r, e) for e, r in {**ACCOUNT_PAGES, **CONTENT_PAGES, **SCRAPER_PAGES}.items()]]:
     app.url_map.add(Rule(_rule, endpoint=_endpoint, build_only=True))
 
 # Las rutas viven en web/ y se registran sobre `app` al importarse
-from web import scrapers  # noqa: E402,F401
 
 
 # Helpers de este módulo para las páginas que ya sirve FastAPI (fastapi_web.legacy)

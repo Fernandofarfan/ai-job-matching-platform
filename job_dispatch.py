@@ -18,9 +18,9 @@ TASK_NAME = 'tasks.scraping_tasks.run_web_job'
 JOBS = {
     'run_indeed_scraper_with_matching': 'app',
     'run_linkedin_scraper_with_matching': 'app',
-    'run_computrabajo_job': 'web.scrapers',
-    'run_bumeran_job': 'web.scrapers',
-    'run_universal_job': 'web.scrapers',
+    'run_computrabajo_job': 'scraping_jobs',
+    'run_bumeran_job': 'scraping_jobs',
+    'run_universal_job': 'scraping_jobs',
 }
 ACTIVE = ('queued', 'running', 'idle')
 _TASK_TTL = 24 * 3600

@@ -1,5 +1,5 @@
 """API de documentos (lotes de cartas/CVs, puntaje ATS y CV optimizado) servida por FastAPI.
-Antes vivía en web/documents.py; las páginas siguen en Flask. Comparte sesión, CSRF y formato
+Antes vivía en web/documents.py. Comparte sesión, CSRF y formato
 de error con routers/tracker.py."""
 import logging
 
