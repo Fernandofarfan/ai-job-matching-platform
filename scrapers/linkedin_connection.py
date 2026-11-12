@@ -196,7 +196,8 @@ class linkedinConnections:
             return False
         self.connection_count = 0
         try:
-            return self.send_connection_requests_with_rules(company, company, 10, min(15, max_connections),
+            limit = min(15, max_connections)
+            return self.send_connection_requests_with_rules(company, company, min(10, limit), limit,
                                                             max_pages, stop_check_callback)
         except Exception as e:
             logger.error(f"Error con la empresa {company}: {type(e).__name__}")
