@@ -141,6 +141,17 @@ def test_learn_weight_keeps_match_when_it_already_separates(monkeypatch):
     assert job_ranking.learn_weight(marks)['weight'] == 0.3
 
 
+def test_learn_weight_ignores_tracker_copy_of_held_out_offer(monkeypatch):
+    """La copia en el tracker de una oferta marcada no entra al modelo que puntúa esa oferta."""
+    monkeypatch.setenv('RANKING_WEIGHT', '0.0')
+    marks = ([{'title': f'alpha{i}', 'company': f'A{i}', 'interested': True, 'match_score': 50} for i in range(6)]
+             + [{'title': f'beta{i}', 'company': f'B{i}', 'interested': False, 'match_score': 50} for i in range(6)])
+    tracker = ([{'title': f'alpha{i}', 'company': f'A{i}', 'status': 'interviewing'} for i in range(6)]
+               + [{'title': f'beta{i}', 'company': f'B{i}', 'status': 'bookmarked', 'created_at': '2020-01-01'}
+                  for i in range(6)])
+    assert job_ranking.learn_weight(tracker + marks)['auc'] == 0.5
+
+
 def test_learn_weight_needs_enough_marks_with_match():
     """Sin `MIN_TUNING` marcas con match de cada lado no se ajusta."""
     marks = _marked(6, 'Backend', 'Acme', True, 40) + _marked(4, 'Vendedor', 'Tienda', False, 60)
