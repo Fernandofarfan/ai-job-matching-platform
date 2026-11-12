@@ -4,3 +4,4 @@ subnet_cidr            = "10.20.0.0/24"
 db_tier                = "db-custom-2-7680"
 backup_retention_count = 30
 cv_retention_days      = 180
+# alert_email          = "alertas@example.com"

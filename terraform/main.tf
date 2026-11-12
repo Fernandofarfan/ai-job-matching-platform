@@ -11,6 +11,7 @@ locals {
 
   apis = [
     "artifactregistry.googleapis.com",
+    "monitoring.googleapis.com",
     "compute.googleapis.com",
     "redis.googleapis.com",
     "run.googleapis.com",

@@ -103,6 +103,39 @@ run "prod" {
   }
 }
 
+run "alerts" {
+  command = plan
+
+  variables {
+    environment = "staging"
+    alert_email = "alertas@example.com"
+  }
+
+  assert {
+    condition     = length(google_monitoring_notification_channel.email) == 1 && length(google_monitoring_uptime_check_config.health) == 1
+    error_message = "Con alert_email y acceso público debe haber canal de email y uptime check de /api/health"
+  }
+
+  assert {
+    condition     = google_monitoring_uptime_check_config.health[0].http_check[0].path == "/api/health"
+    error_message = "El uptime check debe pegarle a /api/health"
+  }
+}
+
+run "alerts_private_without_email" {
+  command = plan
+
+  variables {
+    environment   = "staging"
+    public_access = false
+  }
+
+  assert {
+    condition     = length(google_monitoring_notification_channel.email) == 0 && length(google_monitoring_uptime_check_config.health) == 0 && length(google_monitoring_alert_policy.uptime) == 0
+    error_message = "Sin email no se crea canal, y con el servicio privado no hay uptime check"
+  }
+}
+
 run "worker_requires_redis" {
   command = plan
 

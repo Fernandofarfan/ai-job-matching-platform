@@ -145,3 +145,9 @@ variable "extra_secrets" {
   sensitive   = true
   default     = {}
 }
+
+variable "alert_email" {
+  description = "Email que recibe las alertas de Cloud Monitoring (vacío: las políticas se crean sin canal)"
+  type        = string
+  default     = ""
+}
