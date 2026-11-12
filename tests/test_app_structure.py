@@ -8,8 +8,3 @@ def test_routes_are_split_into_web_modules(app):
     assert {'web.pages', 'web.profiles', 'web.tracker', 'web.scrapers', 'web.exports'} <= web
     assert len(app.url_map._rules) >= 68
 
-
-def test_extension_endpoint_stays_csrf_exempt(app, client):
-    """La exención de CSRF de la extensión sigue aplicando tras moverla a web.tracker."""
-    csrf = app.view_functions['api_save_from_extension'].__globals__['csrf']
-    assert 'web.tracker.api_save_from_extension' in csrf._exempt_views

@@ -8,6 +8,7 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Agregado
+- API JSON del tracker (`/api/tracker/jobs`, `/api/tracker/job/...`, `/api/tracker/save-from-extension`) migrada de Flask a FastAPI (`routers/tracker.py`) con modelos Pydantic. Usa la misma cookie de sesión y el mismo token CSRF de Flask; los errores internos ya no devuelven el mensaje de la excepción.
 - Portales ZonaJobs (reutiliza el parser de Bumeran) y GetOnBoard (API JSON pública) en búsqueda universal, alertas y monitor de scrapers. El parser de Bumeran ya no toma "Apto discapacidad" como empresa.
 - Puntaje ATS sin IA (`ats_score.py`): página en `/optimize_resume` y `POST /api/ats_score`.
 - Recordatorios del tracker: fecha de seguimiento, fecha límite y notas editables (`PUT /api/tracker/job/<id>/reminder`), aviso diario único por email o Telegram que no se repite (`last_reminder_at`, migración `0004_tracker_reminders`) y `FOLLOWUP_DAYS` para postulaciones sin fecha.

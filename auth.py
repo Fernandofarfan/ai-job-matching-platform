@@ -32,13 +32,31 @@ def check_extension_token(candidate: str) -> bool:
     return bool(expected) and hmac.compare_digest((candidate or '').encode(), expected.encode())
 
 
-def is_authenticated_cookie(flask_app, cookie_value: str) -> bool:
-    """Decodifica la cookie de sesión de Flask (para rutas servidas por FastAPI)."""
+def load_session_cookie(flask_app, cookie_value) -> dict:
+    """Contenido de la cookie de sesión de Flask (para rutas servidas por FastAPI); {} si no vale."""
     if not cookie_value:
-        return False
+        return {}
     serializer = flask_app.session_interface.get_signing_serializer(flask_app)
     try:
         data = serializer.loads(cookie_value, max_age=int(flask_app.permanent_session_lifetime.total_seconds()))
     except Exception:
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def is_authenticated_cookie(flask_app, cookie_value) -> bool:
+    """La cookie de sesión de Flask está autenticada."""
+    return is_session_valid(load_session_cookie(flask_app, cookie_value), flask_app.secret_key)
+
+
+def check_csrf_token(session_data: dict, token: str, secret_key, time_limit=3600) -> bool:
+    """Mismo chequeo que Flask-WTF: token firmado (salt wtf-csrf-token) igual al guardado en la sesión."""
+    from itsdangerous import BadData, URLSafeTimedSerializer
+    expected = session_data.get('csrf_token')
+    if not token or not expected:
         return False
-    return is_session_valid(data, flask_app.secret_key)
+    try:
+        raw = URLSafeTimedSerializer(secret_key, salt='wtf-csrf-token').loads(token, max_age=time_limit)
+    except BadData:
+        return False
+    return hmac.compare_digest(str(expected), str(raw))

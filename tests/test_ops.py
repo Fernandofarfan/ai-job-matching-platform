@@ -66,7 +66,7 @@ def test_api_upload_too_large_returns_json_413(client, app):
     previous = app.config['MAX_CONTENT_LENGTH']
     app.config['MAX_CONTENT_LENGTH'] = 10
     try:
-        response = client.post('/api/tracker/save-from-extension', json={'title': 'x' * 100})
+        response = client.post('/api/ats_score', json={'resume_text': 'x' * 100})
         assert response.status_code == 413
         assert 'error' in response.get_json()
     finally:

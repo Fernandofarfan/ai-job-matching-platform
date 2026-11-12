@@ -72,6 +72,8 @@ jobs:
             alembic==1.20.1 \
             pytest \
             pytest-flask \
+            fastapi \
+            httpx \
             pytest-mock \
             pydantic \
             pypdf \

@@ -73,7 +73,7 @@ limiter = Limiter(
 if not auth.auth_enabled():
     logger.warning("APP_PASSWORD no definida: la app no pide login (usala solo en local)")
 
-PUBLIC_ENDPOINTS = {'login', 'static', 'health', 'service_worker', 'api_save_from_extension'}
+PUBLIC_ENDPOINTS = {'login', 'static', 'health', 'service_worker'}
 
 
 @app.before_request
