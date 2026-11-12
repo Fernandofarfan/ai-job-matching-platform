@@ -466,13 +466,17 @@ class DatabaseManager:
                 WHERE id = %s
                 """
             else:
+                # De guardada directo a entrevista/oferta: la postulación fue ahora, no al guardarla
                 query = """
-                UPDATE applications 
-                SET status = %s 
+                UPDATE applications
+                SET applied_date = IF(status IN ('bookmarked', 'applying') AND %s NOT IN ('bookmarked', 'applying'),
+                                      CURDATE(), applied_date),
+                    status = %s
                 WHERE id = %s
                 """
             
-            cursor.execute(query, (new_status, job_id))
+            params = (new_status, job_id) if new_status == 'applied' else (new_status, new_status, job_id)
+            cursor.execute(query, params)
             connection.commit()
             
             return True
