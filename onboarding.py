@@ -64,7 +64,7 @@ def funnel() -> list[dict[str, Any]]:
             if not done[key]:
                 break
             reached[key] += 1
-    rows = [{'key': 'registered', 'label': 'Se registraron', 'count': len(users), 'conversion': None}]
+    rows: list[dict[str, Any]] = [{'key': 'registered', 'label': 'Se registraron', 'count': len(users), 'conversion': None}]
     for key, label, _ in STEPS:
         previous = rows[-1]['count']
         rows.append({'key': key, 'label': label, 'count': reached[key],
