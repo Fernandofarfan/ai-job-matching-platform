@@ -257,6 +257,8 @@ class resumeParser:
         """Calculate total work experience from job date ranges, excluding internships"""
         total_years = 0
         lines = text.split('\n')
+        # cada línea con fechas cuenta una sola vez, aunque la vean como contexto las 3 líneas anteriores
+        seen_dates = set()
         
         # Track if we're in experience section (helpful but not required)
         in_education_section = False
@@ -304,6 +306,9 @@ class resumeParser:
                         match = re.search(pattern, context_line, re.IGNORECASE)
                         if match:
                             date_range = match.group()
+                            if i + context_index in seen_dates:
+                                break
+                            seen_dates.add(i + context_index)
                             
                             # Build job context from current line and matched line
                             job_context = line
