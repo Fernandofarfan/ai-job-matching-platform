@@ -1,5 +1,6 @@
 """App ASGI de EmpleoIA: páginas, APIs, métricas y páginas de error."""
 import logging
+import os
 import time
 from urllib.parse import quote
 
@@ -16,6 +17,7 @@ import auth
 import fastapi_web
 import observability
 import rate_limit
+import security_headers
 from routers import account_pages, ai, analytics, auth_pages, content_pages, scraper_pages, documents, insights, pages, tracker
 from routers import push as push_router
 
@@ -115,7 +117,10 @@ async def server_error(request: Request, exc: Exception):
 
 def create_app(web_app=None) -> FastAPI:
     """FastAPI con sus routers; `web_app` (por defecto la de app.py) tiene la clave, la config y los globals."""
-    app = FastAPI(title="EmpleoIA API", description="FastAPI Core para EmpleoIA", version="1.0.0")
+    docs = os.getenv("ENABLE_API_DOCS", "0") == "1"
+    app = FastAPI(title="EmpleoIA API", description="FastAPI Core para EmpleoIA", version="1.0.0",
+                  docs_url="/docs" if docs else None, redoc_url="/redoc" if docs else None,
+                  openapi_url="/openapi.json" if docs else None)
     try:
         app.mount("/static", StaticFiles(directory="static"), name="static")
     except Exception as e:
@@ -136,8 +141,8 @@ def create_app(web_app=None) -> FastAPI:
 
     app.get("/metrics", include_in_schema=False)(metrics)
     app.get("/api/health", name="health_check")(health_check)
-    # el último registrado es el más externo: métricas > login > límites
-    for middleware in (rate_limit_ai, require_login, record_metrics):
+    # el último registrado es el más externo: métricas > cabeceras > login > límites
+    for middleware in (rate_limit_ai, require_login, security_headers.add_security_headers, record_metrics):
         app.middleware("http")(middleware)
 
     observability.setup_tracing(fastapi_app=app)

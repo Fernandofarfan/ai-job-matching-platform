@@ -27,6 +27,8 @@ from scrapers.linkedin_connection import linkedinConnections
 
 
 from resume_parser import resumeParser, jobMatcher
+# los routers lo usan vía legacy(request) (conexiones, excluir empresas y guardar postulaciones)
+from db_config import db_manager  # noqa: F401
 
 app = web_settings.WebApp()
 # Con `python app.py` este módulo es __main__: los routers deben importar este mismo módulo

@@ -70,7 +70,7 @@
                             </div>
                         </div>
                         <div class="progress mb-2" style="height: 10px;">
-                            <div id="connection-progress" class="progress-bar" role="progressbar" style="width: 0%">
+                            <div id="connection-progress" class="progress-bar" role="progressbar" aria-label="Progreso de las conexiones" aria-valuemin="0" aria-valuemax="100" style="width: 0%">
                             </div>
                         </div>
                         <p id="connection-message" class="small text-muted mb-0 fst-italic text-truncate mt-2"></p>
@@ -120,13 +120,13 @@
                             <label class="form-label small fw-bold text-muted">Modo de Búsqueda</label>
                             <div class="d-flex gap-3 mb-3">
                                 <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="search_mode" id="mode_companies" value="companies" checked onchange="toggleSearchMode()">
+                                    <input class="form-check-input" type="radio" name="search_mode" id="mode_companies" value="companies" checked data-onchange="toggleSearchMode">
                                     <label class="form-check-label" for="mode_companies">
                                         Lista de Empresas
                                     </label>
                                 </div>
                                 <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="search_mode" id="mode_general" value="general" onchange="toggleSearchMode()">
+                                    <input class="form-check-input" type="radio" name="search_mode" id="mode_general" value="general" data-onchange="toggleSearchMode">
                                     <label class="form-check-label" for="mode_general">
                                         Búsqueda General (Reclutadores)
                                     </label>
@@ -168,7 +168,7 @@
                                         </label>
                                     </div>
                                     <button type="button" class="btn btn-link text-danger p-0 ms-2 opacity-50 hover-opacity-100" 
-                                            onclick="excludeCompany('{{ company }}', this)" title="Eliminar de la lista"
+                                            data-onclick="excludeCompany" data-args='{{ [company, "$el"]|tojson }}' title="Eliminar de la lista"
                                             style="text-decoration: none;">
                                         <i class="bi bi-trash"></i>
                                     </button>
@@ -199,7 +199,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script>
+<script nonce="{{ csp_nonce() }}">
     document.addEventListener('DOMContentLoaded', function () {
         pollConnectionStatus();
     });

@@ -6,6 +6,15 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar] - Cabeceras de seguridad y accesibilidad en todas las páginas
+
+- Todas las respuestas llevan CSP con nonce por pedido (sin `'unsafe-inline'` en scripts), `X-Content-Type-Options`, `X-Frame-Options: DENY`, `Referrer-Policy`, `Permissions-Policy` y `Cross-Origin-Opener-Policy`; HSTS solo bajo HTTPS (`X-Forwarded-Proto` o `SESSION_COOKIE_SECURE=1`). `CSP_REPORT_ONLY=1` solo informa y `CSP_REPORT_URI` recibe los reportes.
+- Se quitan los `onclick`/`onchange` del HTML: `static/js/actions.js` los reemplaza con `data-onclick` y `data-confirm`. Bootstrap, sus íconos y Chart.js se cargan con versión fija e integridad (SRI).
+- La respuesta del Copilot se escapa antes de mostrarla y la tabla de un CSV ya no arma HTML con sus datos (evita XSS).
+- `/docs` y `/openapi.json` quedan apagados salvo `ENABLE_API_DOCS=1`.
+- axe revisa todas las páginas (antes 7); se corrigen contrastes y barras de progreso sin nombre en búsquedas, conexiones, entrevista y Administración.
+- Arreglos: `/connections`, excluir empresas y guardar postulaciones daban 500 (faltaba `db_manager`); búsqueda en lote sin archivos tiraba un error de JavaScript.
+
 ## [Sin publicar] - Sin Flask (6/6)
 
 - Se quitan Flask, Flask-WTF, Flask-Limiter y pytest-flask. `web_settings.py` guarda la config (`SECRET_KEY`, `MAX_UPLOAD_MB`, cookies) y firma la cookie `session` con el mismo formato que Flask: las sesiones y los tokens CSRF abiertos antes siguen valiendo.

@@ -130,7 +130,7 @@
                 <h5 class="fw-bold mb-2">Arrastra tu CV aquí</h5>
                 <p class="text-muted mb-3">o haz clic para seleccionar</p>
                 <button type="button" class="btn btn-outline-primary"
-                  onclick="document.getElementById('resume').click()">
+                  data-onclick="openResumePicker">
                   <i class="bi bi-folder2-open me-2"></i>Seleccionar Archivo
                 </button>
                 <p class="small text-muted mt-3 mb-0">Formatos soportados: PDF, DOCX, TXT (Máx. 10MB)</p>
@@ -146,7 +146,7 @@
                       <div class="small text-muted" id="fileSize"></div>
                     </div>
                   </div>
-                  <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeFile()">
+                  <button type="button" class="btn btn-sm btn-outline-danger" data-onclick="removeFile">
                     <i class="bi bi-x-lg"></i>
                   </button>
                 </div>
@@ -165,7 +165,7 @@
     <div class="card border-0 shadow-sm">
       <div class="card-header bg-white border-0 pt-4 px-4 pb-0 d-flex justify-content-between align-items-center">
         <h4 class="fw-bold mb-0">Mis Perfiles Activos</h4>
-        <button class="btn btn-sm btn-outline-secondary" onclick="loadAllProfiles()" aria-label="Actualizar perfiles" title="Actualizar perfiles">
+        <button class="btn btn-sm btn-outline-secondary" data-onclick="loadAllProfiles" aria-label="Actualizar perfiles" title="Actualizar perfiles">
           <i class="bi bi-arrow-clockwise" aria-hidden="true"></i>
         </button>
       </div>
@@ -184,7 +184,7 @@
       <div class="card-body p-4">
         <h4 class="fw-bold mb-2">Privacidad</h4>
         <p class="text-muted small mb-3">Podés borrar en cualquier momento tus perfiles, los CVs subidos y los documentos generados (Ley 25.326).</p>
-        <form method="POST" action="/delete_profile" onsubmit="return confirm('¿Borrar todos tus perfiles, CVs y documentos generados? No se puede deshacer.');">
+        <form method="POST" action="/delete_profile" data-confirm="¿Borrar todos tus perfiles, CVs y documentos generados? No se puede deshacer.">
           {% if csrf_token is defined %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
           <button type="submit" class="btn btn-outline-danger btn-sm" id="deleteAllDataBtn">
             <i class="bi bi-shield-x me-1" aria-hidden="true"></i> Borrar mis datos
@@ -293,7 +293,7 @@
   }
 </style>
 
-<script>
+<script nonce="{{ csp_nonce() }}">
   document.addEventListener("DOMContentLoaded", function () {
     loadAllProfiles();
     setupDragAndDrop();
@@ -357,6 +357,10 @@
     } else {
       icon.className = 'bi bi-file-earmark-text-fill fs-1 text-secondary';
     }
+  }
+
+  function openResumePicker() {
+    document.getElementById('resume').click();
   }
 
   function removeFile() {
@@ -483,7 +487,7 @@
               <i class="bi bi-eye"></i>
             </a>
             <a href="/delete_profile/${roleType}" class="btn btn-sm btn-outline-danger" 
-               title="Eliminar" onclick="return confirm('¿Eliminar este perfil?')">
+               title="Eliminar" data-confirm="¿Eliminar este perfil?">
               <i class="bi bi-trash"></i>
             </a>
           </div>

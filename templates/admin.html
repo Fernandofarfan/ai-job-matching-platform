@@ -41,7 +41,7 @@
               {% if not u.is_admin and u.id != users[0].id %}
               <form method="POST" action="{{ url_for('admin_unblock' if u.disabled else 'admin_block', user_id=u.id) }}" class="d-inline">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <button type="submit" class="btn btn-sm {{ 'btn-outline-success' if u.disabled else 'btn-outline-warning' }}">{{ _('Desbloquear') if u.disabled else _('Bloquear') }}</button>
+                <button type="submit" class="btn btn-sm {{ 'btn-outline-success' if u.disabled else 'btn-outline-danger' }}">{{ _('Desbloquear') if u.disabled else _('Bloquear') }}</button>
               </form>
               <details class="d-inline-block ms-1">
                 <summary class="btn btn-sm btn-outline-secondary">{{ _('Más') }}</summary>
@@ -51,7 +51,7 @@
                   <input type="password" class="form-control form-control-sm mb-2" id="admin-password-{{ u.id }}" name="password" required autocomplete="current-password">
                   {% if u.two_factor %}<button type="submit" class="btn btn-sm btn-outline-secondary mb-1" formaction="{{ url_for('admin_reset_two_factor', user_id=u.id) }}">{{ _('Quitar dos pasos') }}</button>{% endif %}
                   <button type="submit" class="btn btn-sm btn-danger mb-1" formaction="{{ url_for('admin_delete', user_id=u.id) }}"
-                          data-confirm="{{ _('¿Borrar esta cuenta y todos sus datos? No se puede deshacer.') }}" onclick="return confirm(this.dataset.confirm)">{{ _('Borrar cuenta') }}</button>
+                          data-confirm="{{ _('¿Borrar esta cuenta y todos sus datos? No se puede deshacer.') }}">{{ _('Borrar cuenta') }}</button>
                 </form>
               </details>
               {% endif %}

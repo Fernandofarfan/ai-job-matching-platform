@@ -110,8 +110,9 @@
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/document_batch.js') }}"></script>
-<script>
-  document.getElementById('start_optimization').addEventListener('click', function () {
+<script nonce="{{ csp_nonce() }}">
+  // sin archivos de búsqueda no se muestra el botón
+  document.getElementById('start_optimization')?.addEventListener('click', function () {
     const filename = document.getElementById('job_file_select').value;
     const numJobs = parseInt(document.getElementById('num_jobs').value) || 5;
     const btn = this;

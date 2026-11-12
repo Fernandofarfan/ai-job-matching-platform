@@ -61,11 +61,18 @@ def test_tracker_add_job(page):
 
 
 def test_pages_load_without_console_errors(page):
-    """Las páginas principales cargan sin recursos 404 y el service worker se registra."""
+    """Las páginas cargan sin recursos 404, sin errores de JS ni de la CSP, y el service worker se registra."""
     errors = []
-    page.on('console', lambda m: errors.append(m.text) if m.type == 'error' else None)
+    page.on('console', lambda m: errors.append(f'{page.url}: {m.text}') if m.type == 'error' else None)
+    page.on('pageerror', lambda e: errors.append(f'{page.url}: {e}'))
+    for path in ('/login', '/forgot_password'):
+        page.goto(path)
+        page.wait_for_load_state('networkidle')
     _login(page)
-    for path in ('/', '/profile', '/tracker', '/alerts'):
+    # incluye las violaciones de la CSP ("Refused to execute inline script...") de cada página
+    for path in ('/', '/scraper', '/results', '/profile', '/view_profile', '/mock-interview', '/tracker',
+                 '/analytics', '/alerts', '/optimize_resume', '/batch_cover_letters', '/batch_optimize',
+                 '/connections', '/account', '/admin'):
         page.goto(path)
         page.wait_for_load_state('networkidle')
     registered = False
@@ -76,3 +83,21 @@ def test_pages_load_without_console_errors(page):
         page.wait_for_timeout(250)
     assert registered
     assert errors == [], errors
+
+
+def test_declared_actions_and_confirmations_work_under_csp(page):
+    """Los data-onclick y data-confirm reemplazan a los onclick inline que la CSP bloquea."""
+    _login(page)
+    page.goto('/')
+    assert 'nonce-' in page.evaluate("fetch('/').then(r => r.headers.get('content-security-policy'))")
+    page.click('#copilot-toggle-btn')
+    page.wait_for_selector('#copilot-sidebar.open')
+    page.click('.copilot-close-btn')
+    page.wait_for_selector('#copilot-sidebar:not(.open)')
+    page.goto('/account')
+    dialogs = []
+    page.once('dialog', lambda d: (dialogs.append(d.message), d.dismiss()))
+    page.fill('#delete-password', 'no-se-envia')
+    page.click('#deleteAccountBtn')
+    page.wait_for_timeout(300)
+    assert dialogs and page.url.endswith('/account')

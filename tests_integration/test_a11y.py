@@ -4,7 +4,10 @@ import pytest
 from tests_integration.test_e2e import _login
 
 AXE_URL = 'https://cdn.jsdelivr.net/npm/axe-core@4.10.2/axe.min.js'
-PAGES = ['/', '/profile', '/tracker', '/analytics', '/alerts', '/optimize_resume', '/results']
+PAGES = ['/', '/scraper', '/results', '/profile', '/view_profile', '/mock-interview', '/tracker', '/analytics',
+         '/alerts', '/optimize_resume', '/batch_cover_letters', '/batch_optimize', '/connections', '/account',
+         '/admin', '/no-existe']
+PUBLIC_PAGES = ['/login', '/forgot_password']
 BLOCKING = {'serious', 'critical'}
 
 
@@ -18,9 +21,10 @@ def _violations(page):
     ]
 
 
-def test_login_page_is_accessible(page):
-    """La pantalla de login no tiene violaciones serias de accesibilidad."""
-    page.goto('/login')
+@pytest.mark.parametrize('path', PUBLIC_PAGES)
+def test_public_pages_are_accessible(page, path):
+    """Las pantallas sin sesión no tienen violaciones serias de accesibilidad."""
+    page.goto(path)
     assert _violations(page) == []
 
 
