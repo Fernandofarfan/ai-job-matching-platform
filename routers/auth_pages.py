@@ -29,6 +29,7 @@ PENDING_MAX_AGE = 300
 
 
 def _secret(request: Request):
+    """Clave de la app Flask montada (firma la sesión y los enlaces)."""
     return flask_app_for(request).secret_key
 
 
@@ -38,14 +39,17 @@ def _email_key(form: dict) -> str:
 
 
 def _audit(request: Request, user_id, kind: str) -> bool:
+    """Registra el evento de seguridad con la IP y el navegador del pedido."""
     return account_notify.audit(user_id, kind, *client_info(request))
 
 
 def _audit_login(request: Request, user: dict, kind: str) -> None:
+    """Registra el login y avisa por email si es un navegador nuevo."""
     account_notify.audit_login(user, kind, *client_info(request), lambda: public_url(request, 'account'))
 
 
 def _send_verification(request: Request, user: dict) -> bool:
+    """Manda el enlace para confirmar el email de la cuenta."""
     token = auth.account_token(_secret(request), 'verify', user)
     return account_notify.send_verification(user, public_url(request, 'verify_email', token=token))
 
@@ -73,6 +77,7 @@ def begin_login(request: Request, user: dict, kind: str, next_url: str) -> Optio
 
 
 def _finish_login(request: Request, user: dict, kind: str, next_url: str) -> Response:
+    """Abre la sesión, registra el login y vuelve a `next_url` si es local."""
     auth.start_session(get_session(request), _secret(request), user['id'], *client_info(request))
     _audit_login(request, user, kind)
     return redirect(request, safe_next(next_url))
@@ -80,12 +85,14 @@ def _finish_login(request: Request, user: dict, kind: str, next_url: str) -> Res
 
 @router.api_route("/login", methods=["GET", "POST"], name="login")
 async def login(request: Request):
+    """Email y contraseña; con segundo factor sigue en /login/2fa."""
     form, error = await _post(request, [('10 per minute', 'login', lambda f: client_ip(request)),
                                         ('20 per hour', 'login_email', _email_key)])
     return error or await run_in_threadpool(_login, request, form)
 
 
 def _login(request: Request, form: Optional[dict]) -> Response:
+    """Muestra el login o comprueba el formulario (corre fuera del event loop)."""
     next_url = request.query_params.get('next', '')
     session = get_session(request)
     if not auth.auth_enabled():
@@ -129,6 +136,7 @@ async def register(request: Request):
 
 
 def _register(request: Request, form: Optional[dict]) -> Response:
+    """Muestra el registro o crea la cuenta (corre fuera del event loop)."""
     next_url = request.query_params.get('next', '')
     if not auth.auth_enabled():
         return redirect(request, safe_next(next_url))
@@ -169,6 +177,7 @@ def _register(request: Request, form: Optional[dict]) -> Response:
 
 @router.post("/logout", name="logout")
 async def logout(request: Request):
+    """Cierra la sesión y borra el caché offline del navegador."""
     _form, error = await read_form(request)
     if error:
         return error
@@ -187,6 +196,7 @@ async def forgot_password(request: Request):
 
 
 def _forgot_password(request: Request, form: Optional[dict]) -> Response:
+    """Muestra el formulario o manda el enlace de recuperación."""
     if not auth.auth_enabled():
         return redirect(request, url_for(request, 'index'))
     if form is not None:
@@ -208,6 +218,7 @@ async def reset_password(request: Request, token: str):
 
 
 def _reset_password(request: Request, token: str, form: Optional[dict]) -> Response:
+    """Comprueba el enlace y guarda la contraseña nueva."""
     if not auth.auth_enabled():
         return redirect(request, url_for(request, 'index'))
     user = auth.read_account_token(_secret(request), 'reset', token, auth.RESET_MAX_AGE)
@@ -269,6 +280,7 @@ async def login_two_factor(request: Request):
 
 
 def _login_two_factor(request: Request, form: Optional[dict]) -> Response:
+    """Muestra el pedido de código o lo comprueba y termina el login pendiente."""
     session = get_session(request)
     pending = _pending(request)
     user = accounts.get_user(pending['uid']) if pending else None
