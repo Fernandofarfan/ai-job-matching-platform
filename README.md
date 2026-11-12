@@ -112,6 +112,7 @@
 ### 📧 **Notificaciones por Email (NEW)**
 - Recordatorios de seguimiento (email o Telegram) para postulaciones con fecha vencida
 - Digest de nuevas ofertas encontradas
+- Passkeys (WebAuthn): se agregan en Mi cuenta y sirven para entrar sin contraseña ni código, con la huella, la cara o el PIN del dispositivo. `WEBAUTHN_RP_ID` y `WEBAUTHN_ORIGIN` (o `APP_BASE_URL`) fijan el dominio
 - Emails por SMTP o SendGrid (`EMAIL_PROVIDER`), con reintentos ante fallas temporales y sin volver a mandar a direcciones que rebotaron o denunciaron spam (webhook firmado `POST /webhooks/sendgrid`)
 - Resumen semanal por email (worker con Celery beat y SMTP): ofertas nuevas de las alertas, postulaciones sin respuesta hace `FOLLOWUP_DAYS` días o más, y seguimientos o cierres de los próximos 7 días. No se manda si no hay novedades; cada cuenta lo apaga en Mi cuenta
 - Template HTML premium en dark mode

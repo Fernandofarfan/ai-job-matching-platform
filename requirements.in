@@ -73,5 +73,6 @@ pytest-mock==3.17.0
 # --- Utilidades ---
 python-dotenv==1.2.4
 cryptography==50.0.2
+webauthn==2.7.1
 pyotp==2.9.0
 segno==1.6.6

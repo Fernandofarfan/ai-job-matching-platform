@@ -6,6 +6,14 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar] - Passkeys (WebAuthn)
+
+- Mi cuenta → **Passkeys**: agregar (pide la contraseña actual), ver nombre, alta y último uso, y borrar. Hasta 10 por cuenta.
+- Login → **Entrar con una passkey**: sin email ni contraseña (passkeys guardadas en el dispositivo). Se exige verificación del usuario en el dispositivo, así que no pide además el código de la app. Respeta bloqueo de cuenta y email sin confirmar, y registra `login_passkey` en los eventos de seguridad (con aviso de navegador nuevo).
+- `passkeys.py` con `webauthn==2.7.1`: desafío de un solo uso en la sesión (5 min), origen y RP ID desde `WEBAUTHN_ORIGIN`/`APP_BASE_URL` y `WEBAUTHN_RP_ID`, contador de firmas. Solo se guarda la clave pública.
+- Tabla `passkeys` (migración `0019_passkeys`), borrada con la cuenta.
+- E2E con Chromium y un autenticador virtual (CDP WebAuthn).
+
 ## [Sin publicar] - Emails por proveedor, con reintentos y rebotes
 
 - `email_delivery.py`: `EMAIL_PROVIDER=smtp` (por defecto; sirve para SES SMTP) o `sendgrid` (`SENDGRID_API_KEY`, `EMAIL_FROM`). Todos los emails pasan por ahí.

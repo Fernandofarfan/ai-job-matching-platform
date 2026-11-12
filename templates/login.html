@@ -24,6 +24,11 @@
           <input type="password" class="form-control mb-3" id="password" name="password" required autocomplete="current-password">
           <button type="submit" class="btn btn-primary w-100">{{ _('Ingresar') }}</button>
         </form>
+        <button type="button" class="btn btn-outline-primary w-100 mt-3" id="passkeyLogin"
+                data-options-url="{{ url_for('passkey_login_options') }}" data-login-url="{{ url_for('passkey_login') }}"
+                data-next="{{ next_url }}" data-cancelled="{{ _('Se canceló la passkey') }}"
+                data-failed="{{ _('No se pudo entrar con la passkey') }}">{{ _('Entrar con una passkey') }}</button>
+        <p class="text-danger small mt-2 mb-0 d-none" id="passkeyLoginStatus" role="alert"></p>
         {% if google_login %}
         <a href="{{ url_for('google_login', next=next_url) }}" class="btn btn-outline-dark w-100 mt-3">{{ _('Entrar con Google') }}</a>
         <p class="form-text text-center mb-0">{% set terms_link %}<a href="{{ url_for('terms') }}">{{ _('Términos') }}</a>{% endset %}{% set privacy_link %}<a href="{{ url_for('privacy') }}">{{ _('Política de privacidad') }}</a>{% endset %}{{ _('Si es tu primera vez, continuar con Google crea una cuenta y acepta los %(terms)s y la %(privacy)s.', terms=terms_link, privacy=privacy_link) }}</p>
@@ -42,5 +47,6 @@
     caches.keys().then((names) => names.forEach((name) => caches.delete(name)));
   }
   </script>
+  <script src="{{ url_for('static', filename='js/passkeys.js') }}"></script>
 </body>
 </html>

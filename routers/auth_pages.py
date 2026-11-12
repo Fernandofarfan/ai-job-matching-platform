@@ -3,6 +3,7 @@
 Los nombres de ruta son los endpoints que usaba Flask; la sesión es la misma cookie (fastapi_web).
 """
 import hmac
+import json
 import logging
 import os
 import secrets
@@ -10,7 +11,7 @@ import time
 from typing import Optional
 
 from fastapi import APIRouter, Request
-from fastapi.responses import Response
+from fastapi.responses import JSONResponse, Response
 from sqlalchemy.exc import SQLAlchemyError
 from starlette.concurrency import run_in_threadpool
 
@@ -18,9 +19,10 @@ import account_notify
 import accounts
 import auth
 import google_oauth
+import passkeys
 import two_factor
 import user_sessions
-from fastapi_web import (TextForm, clear_offline_data, client_info, client_ip, flash, web_app_for, get_session,
+from fastapi_web import (TextForm, _body_within, _csrf_ok, clear_offline_data, save_session, client_info, client_ip, flash, web_app_for, get_session,
                          hit_limit, limit_key, public_url, read_form, redirect, render, safe_next,
                          too_many_requests, url_for)
 
@@ -313,6 +315,70 @@ def _login_two_factor(request: Request, form: Optional[TextForm]) -> Response:
         audit(request, user['id'], 'two_factor_failed')
         flash(request, 'El código no es correcto', 'danger')
     return render(request, 'login_2fa.html')
+
+
+def request_origin(request: Request) -> str:
+    """Origen que ve el navegador (sin proxy); passkeys.origin prefiere WEBAUTHN_ORIGIN o APP_BASE_URL."""
+    return passkeys.origin(f'{request.url.scheme}://{request.url.netloc}')
+
+
+async def passkey_json(request: Request, limit: str, namespace: str, key: str):
+    """(cuerpo JSON, error): límite de tamaño, CSRF por header y límite de pedidos."""
+    if not await _body_within(request, 64 * 1024):
+        return None, JSONResponse({'error': 'Pedido demasiado grande'}, status_code=413)
+    if not _csrf_ok(request, None):
+        return None, JSONResponse({'error': 'Token CSRF inválido o vencido: recargá la página'}, status_code=400)
+    if not hit_limit(request, limit, namespace, key):
+        return None, JSONResponse({'error': 'Demasiados intentos: esperá un momento'}, status_code=429)
+    try:
+        data = json.loads(await request.body() or b'{}')
+    except ValueError:
+        return None, JSONResponse({'error': 'JSON inválido'}, status_code=400)
+    if not isinstance(data, dict):
+        return None, JSONResponse({'error': 'JSON inválido'}, status_code=400)
+    return data, None
+
+
+@router.post("/login/passkey/options", name="passkey_login_options")
+async def passkey_login_options(request: Request):
+    """Desafío para entrar con una passkey del dispositivo."""
+    _, error = await passkey_json(request, '20 per minute', 'passkey_login', client_ip(request))
+    if error:
+        return error
+    site = request_origin(request)
+    challenge = passkeys.new_challenge(get_session(request), 'login')
+    return save_session(request, Response(passkeys.authentication_options(site, challenge),
+                                          media_type='application/json'))
+
+
+@router.post("/login/passkey", name="passkey_login")
+async def passkey_login(request: Request):
+    """Comprueba la firma de la passkey y abre la sesión (la passkey ya verificó al usuario: sin código)."""
+    data, error = await passkey_json(request, '10 per minute', 'passkey_login_finish', client_ip(request))
+    return error or await run_in_threadpool(_passkey_login, request, data or {})
+
+
+def _passkey_login(request: Request, data: dict) -> Response:
+    """Valida la passkey y la cuenta, y responde a dónde ir."""
+    challenge = passkeys.take_challenge(get_session(request), 'login')
+    if challenge is None:
+        return save_session(request, JSONResponse({'error': 'El pedido venció: probá de nuevo'}, status_code=400))
+    try:
+        user = accounts.get_user(passkeys.authenticate(data.get('credential') or {}, challenge,
+                                                       request_origin(request)))
+    except passkeys.PasskeyError as e:
+        return save_session(request, JSONResponse({'error': str(e)}, status_code=400))
+    if user is None:
+        return save_session(request, JSONResponse({'error': 'La cuenta ya no existe'}, status_code=400))
+    if user['disabled']:
+        audit(request, user['id'], 'login_blocked')
+        return save_session(request, JSONResponse(
+            {'error': 'Tu cuenta está bloqueada: hablá con el administrador'}, status_code=403))
+    if auth.verification_required() and not user['email_verified']:
+        return save_session(request, JSONResponse({'error': 'Antes de entrar confirmá tu email'}, status_code=403))
+    auth.start_session(get_session(request), _secret(request), user['id'], *client_info(request))
+    _audit_login(request, user, 'login_passkey')
+    return save_session(request, JSONResponse({'redirect': safe_next(str(data.get('next') or ''))}))
 
 
 @router.get("/login/google", name="google_login")
