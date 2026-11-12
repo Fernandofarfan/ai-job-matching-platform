@@ -233,8 +233,10 @@ python -m venv .venv
 .venv\Scripts\activate  # Windows
 # source .venv/bin/activate  # Mac/Linux
 
-# 3. Instalar dependencias (requirements.txt trae versión y hash de cada paquete)
-pip install --require-hashes -r requirements.txt
+# 3. Instalar dependencias. requirements.txt trae versión y hash de cada paquete, resuelto para
+#    Linux (Docker y CI); en Windows/Mac usá requirements.in (mismas dependencias directas, sin hashes)
+pip install --require-hashes -r requirements.txt   # Linux
+# pip install -r requirements.in                   # Windows/Mac
 
 # 4. Instalar modelo de spaCy (IMPORTANTE)
 python -m spacy download en_core_web_sm

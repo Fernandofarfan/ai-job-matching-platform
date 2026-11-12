@@ -189,7 +189,7 @@ pip install pip-tools==7.6.2
 pip-compile --generate-hashes --allow-unsafe --no-strip-extras requirements.in -o requirements.txt
 ```
 
-El CI falla si `requirements.txt` no coincide con `requirements.in`.
+El CI falla si `requirements.txt` no coincide con `requirements.in`. Regeneralo en Linux con Python 3.12 (o en el contenedor): el archivo se resuelve para esa plataforma y en Windows no instala (`uvloop` no existe ahí y faltan `colorama` y `tzdata`).
 
 Instalá los hooks una vez (`pip install pre-commit && pre-commit install`): en cada commit corren Ruff, mypy y gitleaks. A mano: `ruff check .` y `mypy`.
 
