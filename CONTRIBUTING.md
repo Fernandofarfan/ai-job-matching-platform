@@ -182,6 +182,8 @@ Antes de enviar tu PR, asegurate de que:
 
 ## 🧪 Testing
 
+Instalá los hooks una vez (`pip install pre-commit && pre-commit install`): en cada commit corren Ruff, mypy y gitleaks. A mano: `ruff check .` y `mypy`.
+
 Antes de enviar un PR, ejecutá los tests:
 
 ```bash
