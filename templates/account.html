@@ -77,8 +77,12 @@
       {% else %}
       <p class="text-muted small">Además de la contraseña, al entrar te pide un código de una app autenticadora del teléfono. Protege tus CVs aunque te roben la contraseña.</p>
       {% if two_factor.error %}<p class="text-danger small">No se pudo leer el estado; probá de nuevo más tarde.</p>{% endif %}
-      <form method="POST" action="{{ url_for('two_factor_setup') }}">
+      <form method="POST" action="{{ url_for('two_factor_setup') }}" class="d-flex gap-2 align-items-end">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div>
+          <label for="tf-setup-password" class="form-label small">Tu contraseña</label>
+          <input type="password" class="form-control" id="tf-setup-password" name="password" required autocomplete="current-password">
+        </div>
         <button type="submit" class="btn btn-outline-primary" id="setupTotpBtn">Configurar</button>
       </form>
       {% endif %}

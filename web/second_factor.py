@@ -81,6 +81,9 @@ def _setup_context(user_id: int) -> dict:
 def two_factor_setup():
     """Genera el secreto y muestra el QR para escanear."""
     user_id = accounts.current_user_id()
+    if not accounts.check_password(user_id, request.form.get('password', '')):
+        flash('La contraseña no es correcta', 'danger')
+        return redirect(url_for('account'))
     try:
         two_factor.start_setup(user_id)
     except two_factor.TwoFactorError as e:

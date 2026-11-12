@@ -27,7 +27,7 @@ def _code(secret, offset=0):
 
 def _enable(client):
     """Configura y activa el segundo factor desde Mi cuenta; devuelve secreto y códigos."""
-    page = client.post('/account/2fa/setup').get_data(as_text=True)
+    page = client.post('/account/2fa/setup', data={'password': PASSWORD}).get_data(as_text=True)
     secret = re.search(r'id="totp-secret">([A-Z2-7]+)<', page).group(1)
     assert '<svg' in page
     page = client.post('/account/2fa/enable', data={'code': _code(secret)}).get_data(as_text=True)
@@ -41,7 +41,7 @@ def _login(client):
 
 
 def test_setup_shows_qr_and_recovery_codes_once(client, ana):
-    response = client.post('/account/2fa/setup')
+    response = client.post('/account/2fa/setup', data={'password': PASSWORD})
     assert response.headers['Cache-Control'] == 'no-store'
     secret = re.search(r'id="totp-secret">([A-Z2-7]+)<', response.get_data(as_text=True)).group(1)
     assert not two_factor.is_enabled(ana)
@@ -148,3 +148,9 @@ def test_google_login_also_requires_code(client, ana, monkeypatch, app):
     response = client.get(f"/login/google/callback?state={params['state'][0]}&code=c")
     assert response.headers['Location'].endswith('/login/2fa')
     assert client.get('/account').status_code == 302
+
+
+def test_setup_requires_password(client, ana):
+    """Con una sesión robada no se puede enrolar otro autenticador sin la contraseña."""
+    response = client.post('/account/2fa/setup', data={'password': 'mal'})
+    assert response.status_code == 302 and two_factor.pending_secret(ana) is None
