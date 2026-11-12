@@ -153,6 +153,10 @@ def delete_account():
     if not accounts.check_password(user_id, request.form.get('password', '')):
         flash('La contraseña no es correcta: la cuenta no se borró', 'danger')
         return redirect(url_for('account'))
+    if user_id == accounts.first_user_id() and accounts.count_users() > 1:
+        # Telegram, Gmail y la extensión son de la primera cuenta: pasarían a la siguiente
+        flash('La primera cuenta (administradora) no se puede borrar mientras haya otras cuentas', 'danger')
+        return redirect(url_for('account'))
     if not delete_user_profile():
         flash('No se pudieron borrar tus CVs: la cuenta no se borró', 'danger')
         return redirect(url_for('account'))
