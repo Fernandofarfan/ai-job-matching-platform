@@ -102,6 +102,10 @@ def _call_gemini(prompt: str, temperature: float = 0.7, model: Optional[str] = N
         ai_usage.record(input_tokens, output_tokens)
         logger.info(f"Gemini: {input_tokens} tokens de entrada, {output_tokens} de salida")
         text = (response.text or "").strip()
+        if not text:
+            # sin texto (bloqueo de seguridad, tope de tokens): no se guarda para no repetir la respuesta vacía
+            logger.warning("Gemini devolvió una respuesta vacía")
+            return "Error al contactar Gemini: respuesta vacía"
         ai_usage.cache_set(model, prompt, temperature, text)
         return text
     except Exception as e:
