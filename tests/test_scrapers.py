@@ -174,6 +174,7 @@ def test_linkedin_text_helpers():
     from scrapers import linkedin_pw
     assert linkedin_pw.extract_years_of_experience('Requires 8+ years of experience in Go') == '8+ years'
     assert linkedin_pw.extract_years_of_experience('2-3 years of experience with SQL') == '2-3 years'
+    assert linkedin_pw.extract_years_of_experience('3-5+ years of experience') == '3-5 years'
     assert linkedin_pw.extract_years_of_experience('at least 4 years in data') == '4 years'
     assert linkedin_pw.extract_years_of_experience('Great team') == 'Not specified'
     assert linkedin_pw.extract_years_of_experience('2 years of experience with SQL and 5+ years of Go experience') == '5+ years'
