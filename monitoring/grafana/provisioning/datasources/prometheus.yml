@@ -1,0 +1,9 @@
+# Grafana carga este datasource al arrancar (docker compose --profile monitoring up).
+apiVersion: 1
+datasources:
+  - name: Prometheus
+    uid: prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true

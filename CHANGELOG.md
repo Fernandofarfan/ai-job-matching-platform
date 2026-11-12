@@ -6,6 +6,11 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar] - Tablero de Grafana
+
+- `monitoring/grafana/dashboards/empleoia.json`: estado del servicio, costo de IA y salud de los scrapers, con los umbrales de las alertas.
+- `docker compose --profile monitoring up`: Prometheus (con `alerts.yml`) y Grafana con el datasource y el tablero ya cargados. Sin el perfil, el compose no cambia.
+
 ## [Sin publicar] - Más casos para medir el matching
 
 - `eval/matching_dataset.json`: de 6 CVs y 12 ofertas a 16 CVs y 25 ofertas, con CVs y ofertas en español y portugués, y ofertas que piden más años de los que tiene el CV.
