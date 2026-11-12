@@ -34,6 +34,7 @@ class User(Base):  # type: ignore[misc,valid-type]
     password_hash = Column(String(255), nullable=False)
     created_at = Column(DateTime, default=datetime.now)
     email_verified_at = Column(DateTime, nullable=True)
+    disabled_at = Column(DateTime, nullable=True)
 
 
 class AccountError(ValueError):
@@ -119,9 +120,15 @@ def first_user_id() -> Optional[int]:
     return ids[0] if ids else None
 
 
-def owner_ids() -> list:
-    """Dueños por los que corren las tareas periódicas; None cubre los datos sin cuenta (sin login)."""
+def owner_ids(active_only: bool = False) -> list:
+    """Dueños por los que corren las tareas periódicas; None cubre los datos sin cuenta (sin login).
+
+    `active_only` deja afuera las cuentas bloqueadas (avisos); la retención de datos sí las recorre."""
     ids = user_ids()
+    if active_only and ids:
+        with _sessions()() as session:
+            blocked = set(session.execute(select(User.id).where(User.disabled_at.isnot(None))).scalars())
+        ids = [i for i in ids if i not in blocked]
     if not ids or os.getenv('LOGIN_REQUIRED', 'true').strip().lower() == 'false':
         ids.append(None)
     return ids
@@ -136,7 +143,38 @@ def get_user(user_id) -> Optional[dict]:
         if user is None:
             return None
         return {'id': user.id, 'email': user.email, 'password_hash': user.password_hash,
-                'email_verified': user.email_verified_at is not None}
+                'email_verified': user.email_verified_at is not None, 'disabled': user.disabled_at is not None}
+
+
+def is_admin(user_id) -> bool:
+    """Administra la instancia la cuenta de ADMIN_EMAIL o, sin esa variable, la primera cuenta."""
+    user = get_user(user_id)
+    if user is None or user['disabled']:
+        return False
+    admin = normalize_email(os.getenv('ADMIN_EMAIL', ''))
+    return user['email'] == admin if admin else user['id'] == first_user_id()
+
+
+def list_users() -> list:
+    """Todas las cuentas para el panel de administración, de la más vieja a la más nueva."""
+    with _sessions()() as session:
+        rows = session.execute(select(User).order_by(User.id)).scalars()
+        return [{'id': u.id, 'email': u.email, 'created_at': u.created_at,
+                 'email_verified': u.email_verified_at is not None, 'disabled': u.disabled_at is not None}
+                for u in rows]
+
+
+def set_disabled(user_id: int, disabled: bool) -> bool:
+    """Bloquea (cierra todas sus sesiones) o desbloquea la cuenta; False si no existe."""
+    from sqlalchemy import update
+    with _sessions()() as session:
+        changed = session.execute(update(User).where(User.id == user_id).values(
+            disabled_at=datetime.now() if disabled else None)).rowcount
+        session.commit()
+    if changed and disabled:
+        import user_sessions
+        user_sessions.revoke_all(user_id)
+    return bool(changed)
 
 
 def normalize_email(email: str) -> str:

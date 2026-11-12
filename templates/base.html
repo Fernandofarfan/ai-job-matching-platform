@@ -341,6 +341,7 @@
                 </ul>
                 {% if auth_enabled %}
                 <form method="POST" action="{{ url_for('logout') }}" class="d-flex align-items-center">
+                    {% if current_user_is_admin %}<a class="navbar-text text-white small me-3" href="{{ url_for('admin_panel') }}"><i class="bi bi-shield-lock me-1" aria-hidden="true"></i>Administración</a>{% endif %}
                     {% if current_user_email %}<a class="navbar-text text-white small me-2" href="{{ url_for('account') }}" title="Mi cuenta"><i class="bi bi-person-circle me-1" aria-hidden="true"></i>{{ current_user_email }}</a>{% endif %}
                     <button type="submit" class="btn btn-sm btn-light"><i class="bi bi-box-arrow-right me-1" aria-hidden="true"></i>Salir</button>
                 </form>

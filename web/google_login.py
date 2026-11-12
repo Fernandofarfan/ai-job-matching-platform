@@ -89,6 +89,10 @@ def google_callback():
             flash(str(e), 'warning')
             return redirect(url_for('login'))
         audit(user_id, 'register')
+    if accounts.get_user(user_id)['disabled']:
+        audit(user_id, 'login_blocked')
+        flash('Tu cuenta está bloqueada: hablá con el administrador', 'danger')
+        return redirect(url_for('login'))
     if not accounts.get_user(user_id)['email_verified']:
         # la cuenta pudo crearla otro con este email: su contraseña y sus sesiones dejan de valer
         accounts.set_password(user_id, secrets.token_urlsafe(32))

@@ -132,6 +132,9 @@ def login():
                     flash('Antes de entrar confirmá tu email: te mandamos un enlace', 'warning')
                 else:
                     flash('Tenés que confirmar tu email, pero no se pudo mandar el enlace: avisale al administrador', 'danger')
+            elif user and user['disabled']:
+                account.audit(user['id'], 'login_blocked')
+                flash('Tu cuenta está bloqueada: hablá con el administrador', 'danger')
             elif user:
                 pending = second_factor.begin_login(user, 'login', next_url)
                 if pending:
@@ -208,7 +211,8 @@ def _clear_offline_data(response):
 @app.context_processor
 def inject_auth():
     user = accounts.get_user(g.get('user_id')) if auth.auth_enabled() and g.get('user_id') else None
-    return {'auth_enabled': auth.auth_enabled(), 'current_user_email': user['email'] if user else ''}
+    return {'auth_enabled': auth.auth_enabled(), 'current_user_email': user['email'] if user else '',
+            'current_user_is_admin': bool(user) and accounts.is_admin(user['id'])}
 
 
 @app.before_request
@@ -886,7 +890,7 @@ def server_error(e):
 
 # Las rutas viven en web/ y se registran sobre `app` al importarse
 from web import (  # noqa: E402,F401
-    account, alerts, analytics, documents, exports, files, google_login, pages, profiles, scrapers, second_factor,
+    account, admin, alerts, analytics, documents, exports, files, google_login, pages, profiles, scrapers, second_factor,
     tracker,
 )
 

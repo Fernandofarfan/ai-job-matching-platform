@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-4">
+  <h1 class="h3 fw-bold mb-4">Administración</h1>
+  <div class="row g-3 mb-4">
+    <div class="col-md-4"><div class="card border-0 shadow-sm h-100"><div class="card-body">
+      <h2 class="h6 text-muted">Cuentas</h2>
+      <p class="h4 mb-1">{{ users|length }}</p>
+      <p class="small mb-0">Registro {{ 'abierto' if signup_open else 'cerrado' }} (<code>ALLOW_SIGNUP</code>)</p>
+    </div></div></div>
+    <div class="col-md-4"><div class="card border-0 shadow-sm h-100"><div class="card-body">
+      <h2 class="h6 text-muted">IA este mes ({{ usage.month }})</h2>
+      <p class="h4 mb-1">{{ '{:,}'.format(usage.total_tokens) }} tokens</p>
+      <p class="small mb-0">Tope total: {{ '{:,}'.format(usage.monthly_token_limit) if usage.monthly_token_limit else 'sin tope' }}{% if usage.estimated_cost_usd is defined %} · USD {{ usage.estimated_cost_usd }}{% endif %}</p>
+    </div></div></div>
+    <div class="col-md-4"><div class="card border-0 shadow-sm h-100"><div class="card-body">
+      <h2 class="h6 text-muted">Tope por cuenta</h2>
+      <p class="h4 mb-1">{{ '{:,}'.format(user_limit) if user_limit else 'Sin tope' }}</p>
+      <p class="small mb-0"><code>AI_USER_MONTHLY_TOKEN_LIMIT</code></p>
+    </div></div></div>
+  </div>
+  <div class="card border-0 shadow-sm">
+    <div class="table-responsive">
+      <table class="table align-middle mb-0" id="admin-users">
+        <caption class="visually-hidden">Cuentas de la instancia</caption>
+        <thead><tr>
+          <th scope="col">Email</th><th scope="col">Creada</th><th scope="col">Última actividad</th>
+          <th scope="col">Dos pasos</th><th scope="col">IA este mes</th><th scope="col">Estado</th><th scope="col">Acciones</th>
+        </tr></thead>
+        <tbody>
+        {% for u in users %}
+          <tr>
+            <td>{{ u.email }}{% if u.is_admin %} <span class="badge text-bg-primary">Administrador</span>{% endif %}
+              {% if not u.email_verified %}<br><span class="small text-muted">Email sin confirmar</span>{% endif %}</td>
+            <td class="small">{{ u.created_at.strftime('%d/%m/%Y') if u.created_at else '—' }}</td>
+            <td class="small">{{ u.last_seen.strftime('%d/%m/%Y %H:%M') if u.last_seen else '—' }}</td>
+            <td>{{ 'Sí' if u.two_factor else 'No' }}</td>
+            <td class="small">{{ '{:,}'.format(u.ai.total_tokens) }} tokens · {{ u.ai.calls }} llamadas</td>
+            <td>{% if u.disabled %}<span class="badge text-bg-danger">Bloqueada</span>{% else %}<span class="badge text-bg-success">Activa</span>{% endif %}</td>
+            <td>
+              {% if not u.is_admin and u.id != users[0].id %}
+              <form method="POST" action="{{ url_for('admin_unblock' if u.disabled else 'admin_block', user_id=u.id) }}" class="d-inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-sm {{ 'btn-outline-success' if u.disabled else 'btn-outline-warning' }}">{{ 'Desbloquear' if u.disabled else 'Bloquear' }}</button>
+              </form>
+              <details class="d-inline-block ms-1">
+                <summary class="btn btn-sm btn-outline-secondary">Más</summary>
+                <form method="POST" class="mt-2" style="min-width: 220px;">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <label for="admin-password-{{ u.id }}" class="form-label small">Tu contraseña</label>
+                  <input type="password" class="form-control form-control-sm mb-2" id="admin-password-{{ u.id }}" name="password" required autocomplete="current-password">
+                  {% if u.two_factor %}<button type="submit" class="btn btn-sm btn-outline-secondary mb-1" formaction="{{ url_for('admin_reset_two_factor', user_id=u.id) }}">Quitar dos pasos</button>{% endif %}
+                  <button type="submit" class="btn btn-sm btn-danger mb-1" formaction="{{ url_for('admin_delete', user_id=u.id) }}"
+                          onclick="return confirm('¿Borrar esta cuenta y todos sus datos? No se puede deshacer.')">Borrar cuenta</button>
+                </form>
+              </details>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

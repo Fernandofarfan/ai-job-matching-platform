@@ -284,7 +284,7 @@ def _for_each_user(func):
     """Corre func() una vez por cuenta (o una sola vez sin usuario si todavía no hay cuentas)."""
     import accounts
     results = {}
-    for uid in accounts.owner_ids():
+    for uid in accounts.owner_ids(active_only=True):
         with accounts.as_user(uid):
             results[uid] = func()
     return results

@@ -47,7 +47,7 @@ def session_user_id(session_data, secret_key) -> Optional[int]:
     except SQLAlchemyError as e:
         logger.error(f"No se pudo validar la sesión: {e}")
         return None
-    if user is None or (verification_required() and not user.get('email_verified', True)):
+    if user is None or user.get('disabled') or (verification_required() and not user.get('email_verified', True)):
         return None
     if not hmac.compare_digest(str(session_data.get('auth_fp', '')), session_fingerprint(secret_key, user)):
         return None
@@ -69,9 +69,10 @@ def extension_token_user(candidate: str) -> Optional[int]:
         return None
     import integrations
     uid = integrations.user_for_extension_token(candidate)
-    if uid is not None:
-        return uid
-    return accounts.first_user_id() if legacy_extension_token(candidate) else None
+    if uid is None and legacy_extension_token(candidate):
+        uid = accounts.first_user_id()
+    user = accounts.get_user(uid) if uid is not None else None
+    return uid if user and not user['disabled'] else None
 
 
 def legacy_extension_token(candidate: str) -> bool:

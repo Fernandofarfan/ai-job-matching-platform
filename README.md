@@ -121,7 +121,8 @@
 - **Alertas de empleo** (`/alerts`): guardá una búsqueda y recibí por email o Telegram solo las ofertas nuevas, sin duplicados entre portales y con match mínimo opcional contra tu CV. Configurá `TELEGRAM_BOT_TOKEN` y `ALERTS_INTERVAL_HOURS` en `.env`; cada cuenta carga su chat de Telegram en **Mi cuenta** (`TELEGRAM_CHAT_ID` queda como chat de la primera cuenta).
 - **Exportar mis datos** (**Mi cuenta**): descarga un ZIP con el tracker, el historial de estados, perfiles, CVs originales (descifrados), alertas, resultados de búsquedas y documentos generados. Pide la contraseña y no incluye contraseñas, tokens ni claves push.
 - **Sesiones abiertas** (**Mi cuenta**): lista los navegadores con la cuenta abierta (IP, inicio y última actividad) y permite cerrar uno o todos los demás. Salir, cambiar o recuperar la contraseña también cierra las sesiones. Las sesiones vencen a los 31 días sin uso.
-- **Verificación en dos pasos** (**Mi cuenta**): app autenticadora (TOTP) con QR, pedida después de la contraseña o de Google, y 10 códigos de recuperación de un uso. El secreto se cifra con `CV_ENCRYPTION_KEY`. Sin el teléfono ni códigos, un administrador puede borrar la fila de `user_totp` de la cuenta.
+- **Verificación en dos pasos** (**Mi cuenta**): app autenticadora (TOTP) con QR, pedida después de la contraseña o de Google, y 10 códigos de recuperación de un uso. El secreto se cifra con `CV_ENCRYPTION_KEY`. Sin el teléfono ni códigos, el administrador la quita desde **Administración**.
+- **Administración** (`/admin`, solo la cuenta de `ADMIN_EMAIL` o, sin esa variable, la primera): lista las cuentas con fecha de alta, última actividad, verificación en dos pasos y consumo de IA del mes. Permite bloquear y desbloquear (una cuenta bloqueada no entra, pierde sus sesiones, su token de la extensión deja de valer y no recibe avisos), quitar la verificación en dos pasos y borrar la cuenta con todos sus datos; las dos últimas piden la contraseña del administrador. Las demás cuentas reciben 404.
 - **Actividad reciente** (**Mi cuenta**): registro de inicios de sesión (con contraseña o Google), contraseñas incorrectas, cambios y recuperación de contraseña, Telegram, Gmail, token de la extensión y exportaciones, con IP y navegador. Un login desde un navegador nuevo manda un aviso por email (`LOGIN_ALERTS=false` lo apaga). Los eventos se borran a los `SECURITY_EVENTS_DAYS` días (180).
 - **Notificaciones push** (PWA): en **Mi cuenta** cada dispositivo se suscribe a los avisos de alertas y recordatorios, sin email ni Telegram. Generá las claves con `python scripts/generate_vapid_keys.py` y cargá `VAPID_PUBLIC_KEY` y `VAPID_PRIVATE_KEY` (en Cloud Run, la privada va en `EXTRA_SECRETS_JSON`). En iPhone hay que agregar la app a la pantalla de inicio primero.
 
@@ -416,7 +417,7 @@ GEMINI_API_KEY=tu_api_key_aqui
 
 # === Seguridad ===
 SECRET_KEY=            # obligatoria en producción: python -c "import secrets; print(secrets.token_hex(32))"
-ADMIN_EMAIL=           # email obligatorio de la primera cuenta (la que se queda con los datos previos)
+ADMIN_EMAIL=           # email obligatorio de la primera cuenta (la que se queda con los datos previos) y administrador de /admin
 ALLOW_SIGNUP=false     # true = registro abierto en /register; por defecto solo se crea la primera cuenta
 REQUIRE_EMAIL_VERIFICATION=false  # true = las cuentas nuevas entran solo después de confirmar el email (necesita SMTP)
 PUBLIC_BASE_URL=               # URL pública de la app para los enlaces de los emails (obligatoria en Cloud Run)
