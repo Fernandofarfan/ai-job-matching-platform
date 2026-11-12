@@ -147,6 +147,59 @@ def tracker_stats():
 # ANALYTICS AVANZADO – endpoint JSON (para llamadas AJAX)
 # ─────────────────────────────────────────────────────────────
 
+PORTALS = {
+    'computrabajo': 'Computrabajo', 'bumeran': 'Bumeran', 'zonajobs': 'ZonaJobs',
+    'getonbrd': 'GetOnBoard', 'getonboard': 'GetOnBoard', 'linkedin': 'LinkedIn', 'indeed': 'Indeed',
+}
+APPLIED_OR_LATER = {'applied', 'interviewing', 'negotiating', 'accepted', 'rejected'}
+RESPONDED = {'interviewing', 'negotiating', 'accepted'}
+
+
+def portal_of(link):
+    """Portal de una oferta según el dominio de su enlace ('Otros' si no es uno conocido)."""
+    from urllib.parse import urlparse
+    host = (urlparse(link or '').hostname or '').lower()
+    return next((name for key, name in PORTALS.items() if key in host), 'Otros')
+
+
+def _as_date(value):
+    from datetime import date, datetime
+    if isinstance(value, datetime):
+        return value.date()
+    if isinstance(value, date):
+        return value
+    try:
+        return datetime.strptime(str(value)[:10], '%Y-%m-%d').date() if value else None
+    except ValueError:
+        return None
+
+
+def portal_stats(jobs):
+    """Por portal: guardadas, postuladas, con respuesta y tasa de respuesta (respuestas / postuladas)."""
+    stats = {}
+    for job in jobs:
+        row = stats.setdefault(portal_of(job.get('job_link')), {'saved': 0, 'applied': 0, 'responses': 0})
+        row['saved'] += 1
+        status = job.get('status')
+        row['applied'] += status in APPLIED_OR_LATER
+        row['responses'] += status in RESPONDED
+    return sorted(
+        ({'portal': name, **row, 'response_rate': round(row['responses'] / row['applied'] * 100, 1) if row['applied'] else 0}
+         for name, row in stats.items()),
+        key=lambda r: (-r['saved'], r['portal']),
+    )
+
+
+def avg_days_to_apply(jobs):
+    """Días promedio entre que se guarda una oferta y se postula (None si no hay datos)."""
+    days = []
+    for job in jobs:
+        saved, applied = _as_date(job.get('created_at')), _as_date(job.get('applied_date'))
+        if saved and applied and applied >= saved and job.get('status') in APPLIED_OR_LATER:
+            days.append((applied - saved).days)
+    return round(sum(days) / len(days), 1) if days else None
+
+
 @app.route('/api/analytics/advanced')
 def api_analytics_advanced():
     """Métricas avanzadas: tiempos promedio por etapa, tasa respuesta, heatmap."""
@@ -237,11 +290,13 @@ def api_analytics_advanced():
             'heatmap': heatmap,
             'funnel': funnel,
             'insights': insights,
+            'by_portal': portal_stats(all_jobs),
+            'avg_days_to_apply': avg_days_to_apply(all_jobs),
         })
 
     except Exception as e:
         logger.error(f"Error in advanced analytics: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': 'Error interno del servidor'}), 500
 
 
 # ─────────────────────────────────────────────────────────────
