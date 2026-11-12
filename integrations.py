@@ -5,7 +5,7 @@ import secrets
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Column, DateTime, Integer, String, Text, select
+from sqlalchemy import Boolean, Column, DateTime, Integer, String, Text, select
 
 import accounts
 
@@ -13,7 +13,10 @@ CHAT_ID = re.compile(r'^-?\d{1,20}$')
 
 
 class UserIntegration(accounts.Base):  # type: ignore[misc,valid-type]
-    """Una fila por cuenta; el token de la extensión se guarda solo como hash y el de Gmail cifrado."""
+    """Una fila por cuenta; el token de la extensión se guarda solo como hash y el de Gmail cifrado.
+
+    '' en `telegram_chat_id` o `gmail_token` = la cuenta lo desconectó: no se vuelve al chat/token.json de la instancia.
+    """
 
     __tablename__ = 'user_integrations'
     __table_args__ = {'extend_existing': True}  # los tests reimportan el módulo
@@ -21,6 +24,7 @@ class UserIntegration(accounts.Base):  # type: ignore[misc,valid-type]
     telegram_chat_id = Column(String(64), nullable=True)
     extension_token_hash = Column(String(64), nullable=True, unique=True)
     gmail_token = Column(Text, nullable=True)
+    legacy_extension_off = Column(Boolean, nullable=False, default=False)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
 
@@ -64,11 +68,11 @@ def set_telegram_chat(user_id: int, chat_id: str):
     chat_id = (chat_id or '').strip()
     if chat_id and not CHAT_ID.match(chat_id):
         raise IntegrationError('El chat ID de Telegram es un número (ej. 123456789)')
-    _update(user_id, telegram_chat_id=chat_id or None)
+    _update(user_id, telegram_chat_id=chat_id)
 
 
 def telegram_chat_id(user_id: Optional[int]) -> Optional[str]:
-    """Chat de Telegram propio de la cuenta, o None."""
+    """Chat de Telegram propio de la cuenta; '' si lo desconectó, None si nunca lo configuró."""
     row = _row(user_id)
     return row.telegram_chat_id if row else None
 
@@ -76,13 +80,25 @@ def telegram_chat_id(user_id: Optional[int]) -> Optional[str]:
 def new_extension_token(user_id: int) -> str:
     """Genera un token nuevo para la extensión (reemplaza al anterior); se muestra una sola vez."""
     token = secrets.token_urlsafe(32)
-    _update(user_id, extension_token_hash=_hash(token))
+    _update(user_id, extension_token_hash=_hash(token), legacy_extension_off=True)
     return token
 
 
 def revoke_extension_token(user_id: int):
     """La extensión deja de poder guardar en esta cuenta."""
-    _update(user_id, extension_token_hash=None)
+    _update(user_id, extension_token_hash=None, legacy_extension_off=True)
+
+
+def legacy_allowed(user_id: Optional[int], kind: str) -> bool:
+    """La cuenta no tocó esta integración: puede usar la de la instancia (TELEGRAM_CHAT_ID, token.json, EXTENSION_TOKEN)."""
+    row = _row(user_id)
+    if row is None:
+        return True
+    if kind == 'telegram':
+        return row.telegram_chat_id is None
+    if kind == 'gmail':
+        return row.gmail_token is None
+    return not row.legacy_extension_off
 
 
 def user_for_extension_token(token: str) -> Optional[int]:
@@ -118,11 +134,11 @@ def gmail_token(user_id: int) -> Optional[str]:
 
 def clear_gmail(user_id: int):
     """Desconecta Gmail de la cuenta."""
-    _update(user_id, gmail_token=None)
+    _update(user_id, gmail_token='')
 
 
 def gmail_user_ids() -> list:
     """Cuentas con Gmail conectado."""
     with accounts._sessions()() as session:
         return list(session.execute(select(UserIntegration.user_id)
-                                    .where(UserIntegration.gmail_token.is_not(None))).scalars())
+                                    .where(UserIntegration.gmail_token.is_not(None), UserIntegration.gmail_token != '')).scalars())

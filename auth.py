@@ -67,9 +67,11 @@ def extension_token_user(candidate: str) -> Optional[int]:
 
 
 def legacy_extension_token(candidate: str) -> bool:
-    """True si es el EXTENSION_TOKEN del .env (de la primera cuenta)."""
+    """True si es el EXTENSION_TOKEN del .env y la primera cuenta no generó ni revocó su propio token."""
+    import integrations
     expected = os.getenv('EXTENSION_TOKEN', '')
-    return bool(expected and candidate) and hmac.compare_digest(candidate.encode(), expected.encode())
+    return (bool(expected and candidate) and hmac.compare_digest(candidate.encode(), expected.encode())
+            and integrations.legacy_allowed(accounts.first_user_id(), 'extension'))
 
 
 def load_session_cookie(flask_app, cookie_value) -> dict:

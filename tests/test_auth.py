@@ -392,3 +392,52 @@ def test_google_button_hidden_without_client(registered):
     """Sin cliente OAuth no aparece el botón ni funciona la ruta."""
     assert 'Entrar con Google' not in registered.get('/login').get_data(as_text=True)
     assert registered.get('/login/google').headers['Location'].endswith('/login')
+
+
+
+def test_disconnect_beats_instance_integrations(registered, monkeypatch):
+    """Si la primera cuenta desconecta Telegram o revoca su token, no se vuelve a TELEGRAM_CHAT_ID ni a EXTENSION_TOKEN."""
+    import auth
+    import integrations
+    from tasks import notification_tasks as nt
+    monkeypatch.setenv('TELEGRAM_CHAT_ID', '111')
+    monkeypatch.setenv('EXTENSION_TOKEN', 'viejo-token')
+    ana = accounts.find_user_id('ana@example.com')
+    integrations.set_telegram_chat(ana, '')
+    with accounts.as_user(ana):
+        assert nt._telegram_chat() is None
+    integrations.revoke_extension_token(ana)
+    assert auth.extension_token_user('viejo-token') is None
+    assert not auth.legacy_extension_token('viejo-token')
+
+
+def test_gmail_disconnect_skips_token_json(registered, monkeypatch):
+    """La primera cuenta que desconectó Gmail no vuelve a leer token.json."""
+    import sys
+    from types import ModuleType
+    import integrations
+    for name in ('googleapiclient', 'googleapiclient.discovery', 'google_auth_oauthlib', 'google_auth_oauthlib.flow',
+                 'google.auth.transport.requests', 'google.oauth2.credentials'):
+        stub = ModuleType(name)
+        stub.build = stub.InstalledAppFlow = stub.Request = stub.Credentials = object
+        monkeypatch.setitem(sys.modules, name, stub)
+    monkeypatch.delitem(sys.modules, 'tasks.gmail_tracker', raising=False)
+    from tasks import gmail_tracker
+    called = []
+    monkeypatch.setattr(gmail_tracker, 'get_gmail_service', lambda: called.append(1))
+    integrations.clear_gmail(accounts.find_user_id('ana@example.com'))
+    assert integrations.gmail_user_ids() == []
+    gmail_tracker.check_interview_emails()
+    assert not called
+
+
+def test_google_login_drops_password_of_unverified_account(registered, google, monkeypatch):
+    """Una cuenta sin verificar creada por otro con el email: al entrar con Google su contraseña deja de valer."""
+    monkeypatch.setenv('ALLOW_SIGNUP', 'true')
+    accounts.register('beto@example.com', PASSWORD)
+    google.email = 'beto@example.com'
+    params = _google_start(registered)
+    registered.get(f"/login/google/callback?state={params['state']}&code=c")
+    beto = accounts.find_user_id('beto@example.com')
+    assert accounts.get_user(beto)['email_verified']
+    assert accounts.authenticate('beto@example.com', PASSWORD) is None

@@ -260,8 +260,8 @@ def _telegram_chat():
     try:
         import integrations
         own = integrations.telegram_chat_id(uid)
-        if own:
-            return own
+        if own is not None:
+            return own or None
         return (os.getenv("TELEGRAM_CHAT_ID") or None) if uid == accounts.first_user_id() else None
     except Exception as e:
         logger.error(f"No se pudo leer el chat de Telegram de la cuenta: {type(e).__name__}")
