@@ -22,6 +22,7 @@ def run_migrations_offline():
 
 
 def run_migrations_online():
+    """Migra la base de DB_* comparando contra la metadata de todos los modelos."""
     import db_schema
     import models
     engine = create_engine(models.get_database_url())
