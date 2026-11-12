@@ -324,3 +324,39 @@ def test_gmail_callback_rejects_bad_state(registered):
     assert response.status_code == 302
     import integrations
     assert integrations.gmail_user_ids() == []
+
+
+def test_disconnect_beats_instance_integrations(registered, monkeypatch):
+    """Si la primera cuenta desconecta Telegram o revoca su token, no se vuelve a TELEGRAM_CHAT_ID ni a EXTENSION_TOKEN."""
+    import auth
+    import integrations
+    from tasks import notification_tasks as nt
+    monkeypatch.setenv('TELEGRAM_CHAT_ID', '111')
+    monkeypatch.setenv('EXTENSION_TOKEN', 'viejo-token')
+    ana = accounts.find_user_id('ana@example.com')
+    integrations.set_telegram_chat(ana, '')
+    with accounts.as_user(ana):
+        assert nt._telegram_chat() is None
+    integrations.revoke_extension_token(ana)
+    assert auth.extension_token_user('viejo-token') is None
+    assert not auth.legacy_extension_token('viejo-token')
+
+
+def test_gmail_disconnect_skips_token_json(registered, monkeypatch):
+    """La primera cuenta que desconectó Gmail no vuelve a leer token.json."""
+    import sys
+    from types import ModuleType
+    import integrations
+    for name in ('googleapiclient', 'googleapiclient.discovery', 'google_auth_oauthlib', 'google_auth_oauthlib.flow',
+                 'google.auth.transport.requests', 'google.oauth2.credentials'):
+        stub = ModuleType(name)
+        stub.build = stub.InstalledAppFlow = stub.Request = stub.Credentials = object
+        monkeypatch.setitem(sys.modules, name, stub)
+    monkeypatch.delitem(sys.modules, 'tasks.gmail_tracker', raising=False)
+    from tasks import gmail_tracker
+    called = []
+    monkeypatch.setattr(gmail_tracker, 'get_gmail_service', lambda: called.append(1))
+    integrations.clear_gmail(accounts.find_user_id('ana@example.com'))
+    assert integrations.gmail_user_ids() == []
+    gmail_tracker.check_interview_emails()
+    assert not called

@@ -21,6 +21,7 @@ def upgrade():
         sa.Column('telegram_chat_id', sa.String(64), nullable=True),
         sa.Column('extension_token_hash', sa.String(64), nullable=True, unique=True),
         sa.Column('gmail_token', sa.Text, nullable=True),
+        sa.Column('legacy_extension_off', sa.Boolean, nullable=False, server_default=sa.false()),
         sa.Column('updated_at', sa.DateTime, nullable=True),
     )
 
