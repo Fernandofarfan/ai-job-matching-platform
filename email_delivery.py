@@ -128,6 +128,8 @@ def _send_smtp(to, subject, html):
             raise TemporaryError(f'SMTP {code}') from e
         raise PermanentError(f'SMTP {code}', bounce=True) from e
     except smtplib.SMTPAuthenticationError as e:
+        if 400 <= e.smtp_code < 500:
+            raise TemporaryError(f'SMTP {e.smtp_code}: login') from e
         raise PermanentError(f'SMTP {e.smtp_code}: login rechazado') from e
     except smtplib.SMTPResponseException as e:
         if 400 <= e.smtp_code < 500:
