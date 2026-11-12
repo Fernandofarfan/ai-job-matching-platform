@@ -5,7 +5,7 @@ Permite ejecutar scrapers y tareas de IA de forma asíncrona.
 import os
 import sys
 from celery import Celery
-from celery.signals import worker_init, worker_process_init
+from celery.signals import celeryd_init, worker_init, worker_process_init
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -26,9 +26,13 @@ def _tracing(**_):
     observability.setup_tracing(celery_worker=True)
 
 
-@worker_process_init.connect
+@celeryd_init.connect
 def _error_reporting(**_):
-    """Tareas que fallan a Sentry si hay SENTRY_DSN."""
+    """Tareas que fallan a Sentry si hay SENTRY_DSN.
+
+    Va en el proceso principal, antes del fork: con prefork, los hijos arman los tracers de las tareas
+    antes de `worker_process_init`, y `CeleryIntegration` solo instrumenta los tracers creados después de iniciar.
+    """
     import error_reporting
     error_reporting.setup("worker")
 
