@@ -21,3 +21,5 @@ terraform
 tests
 tests_integration
 chrome_extension
+# Credenciales que google-github-actions/auth deja en el workspace durante el deploy
+gha-creds-*.json
