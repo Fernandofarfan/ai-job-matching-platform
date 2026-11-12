@@ -261,7 +261,7 @@ def send_telegram(text: str) -> bool:
 def _job_line(job: dict) -> tuple:
     """(título, empresa, ubicación, url, match) escapados para HTML."""
     from html import escape
-    get = lambda k: escape(str(job.get(k.capitalize()) or job.get(k) or ""))  # noqa: E731
+    get = lambda k: escape(str(job.get(k.capitalize()) or job.get(k.upper()) or job.get(k) or ""))  # noqa: E731
     match = job.get("match_percent")
     return get("title"), get("company"), get("location"), get("url"), match
 

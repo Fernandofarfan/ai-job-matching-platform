@@ -189,3 +189,11 @@ def test_alerts_page_rejects_invalid(client, db):
     resp = client.post('/alerts', data={'position': ''}, follow_redirects=True)
     assert 'Indicá el puesto'.encode() in resp.data
     assert job_alerts.list_searches() == []
+
+
+def test_alert_links_use_scraper_url_field():
+    """Los scrapers guardan el enlace en 'URL'; el aviso debe incluirlo."""
+    from tasks import notification_tasks
+    job = {'Title': 'Dev', 'Company': 'Acme', 'URL': 'https://www.computrabajo.com.ar/oferta-1'}
+    assert 'href="https://www.computrabajo.com.ar/oferta-1"' in notification_tasks.alert_telegram_text({'name': 'x'}, [job])
+    assert 'https://www.computrabajo.com.ar/oferta-1' in notification_tasks.alert_email_html({'name': 'x'}, [job])
