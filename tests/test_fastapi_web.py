@@ -72,3 +72,17 @@ def test_service_worker_from_root(client):
     assert response.status_code == 200
     assert response.mimetype == 'application/javascript'
     assert response.headers['cache-control'] == 'no-cache'
+
+
+def test_language_links_keep_current_fastapi_page(client):
+    """El selector de idioma de una página de FastAPI vuelve a esa página (con su query)."""
+    html = client.get('/results?x=1').get_data(as_text=True)
+    assert '?next=/results%3Fx%3D1' in html
+
+
+def test_permanent_session_is_renewed_on_fastapi_pages(client, app):
+    """Como Flask, una sesión permanente renueva la cookie en cada página aunque no cambie."""
+    cookie = app.session_interface.get_signing_serializer(app).dumps({'_permanent': True, 'n': 1})
+    client._c.cookies.set('session', cookie)
+    renewed = re.search(r'session=([^;]+);.*expires=', client.get('/').headers.get('set-cookie', ''), re.I)
+    assert renewed and auth.load_session_cookie(app, renewed.group(1).strip('"'))['n'] == 1

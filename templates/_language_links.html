@@ -1,3 +1,3 @@
 <p class="text-center small mt-3 mb-0" aria-label="{{ _('Idioma') }}">
-  {% for code, name in languages.items() %}{% if not loop.first %} · {% endif %}{% if code == current_lang %}<span class="fw-semibold">{{ name }}</span>{% else %}<a href="{{ url_for('set_language', code=code, next=request.full_path if request.query_string else request.path) }}" lang="{{ code }}">{{ name }}</a>{% endif %}{% endfor %}
+  {% for code, name in languages.items() %}{% if not loop.first %} · {% endif %}{% if code == current_lang %}<span class="fw-semibold">{{ name }}</span>{% else %}<a href="{{ url_for('set_language', code=code, next=current_path) }}" lang="{{ code }}">{{ name }}</a>{% endif %}{% endfor %}
 </p>

@@ -222,7 +222,8 @@ def inject_auth():
     user = accounts.get_user(g.get('user_id')) if auth.auth_enabled() and g.get('user_id') else None
     return {'auth_enabled': auth.auth_enabled(), 'current_user_email': user['email'] if user else '',
             'current_user_is_admin': bool(user) and accounts.is_admin(user['id']),
-            'current_lang': i18n.get_locale(), 'languages': i18n.LANGUAGES}
+            'current_lang': i18n.get_locale(), 'languages': i18n.LANGUAGES,
+            'current_path': request.full_path if request.query_string else request.path}
 
 
 @app.before_request

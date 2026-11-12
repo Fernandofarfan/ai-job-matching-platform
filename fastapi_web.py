@@ -71,11 +71,13 @@ ResponseT = TypeVar('ResponseT', bound=Response)
 
 def save_session(request: Request, response: ResponseT) -> ResponseT:
     """Escribe la cookie si la sesión cambió, con los mismos atributos que pone Flask."""
-    session = getattr(request.state, 'web_session', None)
-    if session is None or not session.modified:
-        return response
     flask_app = flask_app_for(request)
     config = flask_app.config
+    session = get_session(request)
+    # como Flask (SESSION_REFRESH_EACH_REQUEST): una sesión permanente renueva su vencimiento en cada página
+    refresh = bool(session.get('_permanent')) and config.get('SESSION_REFRESH_EACH_REQUEST', True)
+    if not session.modified and not refresh:
+        return response
     name = config.get('SESSION_COOKIE_NAME', 'session')
     common: dict[str, Any] = {'path': config.get('SESSION_COOKIE_PATH') or '/',
                               'domain': config.get('SESSION_COOKIE_DOMAIN') or None,
@@ -164,7 +166,8 @@ def render(request: Request, name: str, status_code: int = 200, **context) -> HT
     user = accounts.get_user(user_id) if user_id else None
     base = {'auth_enabled': auth.auth_enabled(), 'current_user_email': user['email'] if user else '',
             'current_user_is_admin': user is not None and accounts.is_admin(user['id']),
-            'current_lang': lang, 'languages': i18n.LANGUAGES}
+            'current_lang': lang, 'languages': i18n.LANGUAGES,
+            'current_path': request.url.path + (f'?{request.url.query}' if request.url.query else '')}
     response = templates.TemplateResponse(request=request, name=name, context={**base, **context},
                                           status_code=status_code)
     return save_session(request, response)
