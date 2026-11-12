@@ -38,17 +38,6 @@ def _mk(name):
 # (debe hacerse ANTES de cualquier import de app.py o scrapers)
 _ALL_MOCKS = [
     # Async
-    # Selenium (todos los subpaths conocidos)
-    'selenium', 'selenium.webdriver', 'selenium.webdriver.chrome',
-    'selenium.webdriver.chrome.options', 'selenium.webdriver.chrome.service',
-    'selenium.webdriver.remote', 'selenium.webdriver.remote.webdriver',
-    'selenium.webdriver.support', 'selenium.webdriver.support.ui',
-    'selenium.webdriver.support.expected_conditions',
-    'selenium.webdriver.common', 'selenium.webdriver.common.by',
-    'selenium.webdriver.common.keys', 'selenium.webdriver.common.action_chains',
-    'selenium.webdriver.common.desired_capabilities',
-    'selenium.common', 'selenium.common.exceptions',
-    'undetected_chromedriver', 'webdriver_manager', 'webdriver_manager.chrome',
     # NLP / ML
     'spacy', 'spacy.lang', 'spacy.lang.es',
     'nltk', 'nltk.tokenize', 'nltk.corpus', 'nltk.data', 'nltk.stem',
@@ -64,11 +53,6 @@ _ALL_MOCKS = [
     'google', 'google.genai', 'google.genai.types',
     # Database (usar mock en CI, real app usa MySQL)
     'mysql', 'mysql.connector', 'mysql.connector.pooling', 'mysql.connector.errors',
-    # Selenium remote (needed by indeed_scraper.py)
-    'selenium.webdriver.remote', 'selenium.webdriver.remote.webdriver',
-    'selenium.webdriver.remote.webelement', 'selenium.webdriver.remote.command',
-    'selenium.webdriver.remote.errorhandler', 'selenium.webdriver.remote.file_detector',
-    'selenium.webdriver.remote.shadowroot', 'selenium.webdriver.remote.switch_to',
     # BeautifulSoup / parsing
     # Document parsing
     'pypdf', 'PyPDF2', 'docx', 'python_docx',

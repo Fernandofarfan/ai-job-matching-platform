@@ -147,7 +147,7 @@ class linkedinConnections:
                 button.click()
                 return self._send_without_note()
         _, profile = card_name_and_profile(card)
-        return bool(profile) and self._connect_on_profile(profile)
+        return self._connect_on_profile(profile) if profile else False
 
     def send_connection_requests_with_rules(self, keywords: str, company: str, target_min: int, target_max: int,
                                             max_pages: int = 5, stop_check_callback=None) -> bool:

@@ -4,6 +4,7 @@ import logging
 import os
 import uuid
 from datetime import datetime
+from typing import Any
 
 from dotenv import dotenv_values
 from fastapi import APIRouter, Request
@@ -213,7 +214,7 @@ def _run_test(request: Request, name: str, position: str, location: str, max_job
         accounts.thread(target=_run_linkedin_test, args=(probe, task_id, token, position, location, max_jobs),
                         daemon=True).start()
         return JSONResponse({'task_id': task_id, 'status': 'started'}, status_code=202)
-    makers = {'bumeran': BumeranScraper, 'computrabajo': ComputrabajoScraper, 'indeed': indeedScraper}
+    makers: dict[str, Any] = {'bumeran': BumeranScraper, 'computrabajo': ComputrabajoScraper, 'indeed': indeedScraper}
     if name not in makers:
         return JSONResponse({'error': 'Unknown scraper: ' + name}, status_code=400)
     scraper = makers[name]()

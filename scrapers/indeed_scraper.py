@@ -28,7 +28,8 @@ EXPERIENCE = {'entry': 'ENTRY_LEVEL', 'mid': 'MID_LEVEL', 'senior': 'SENIOR_LEVE
 REMOTE = {'remote': 'DSQF7', 'hybrid': 'PAXZC'}
 
 
-def search_url(job_title: str, location: str, filters: Optional[Dict] = None, start: int = 0) -> str:
+def search_url(job_title: str, location: str, filters: Optional[Dict] = None, start: int = 0,
+               base_url: str = BASE_URL) -> str:
     """URL de búsqueda con los filtros del formulario como parámetros de Indeed.
 
     date_posted -> fromage, experience_level -> explvl, remote_work -> attr y salary_range -> salaryType.
@@ -49,7 +50,7 @@ def search_url(job_title: str, location: str, filters: Optional[Dict] = None, st
         params['salaryType'] = str(filters['salary_range'])
     if start:
         params['start'] = str(start)
-    return f"{BASE_URL}/jobs?{urlencode(params)}"
+    return f"{base_url}/jobs?{urlencode(params)}"
 
 
 def parse_card(card) -> Optional[Dict]:
@@ -80,6 +81,7 @@ class indeedScraper:
         self.all_jobs: List[Dict] = []
         self._browser_factory = browser_factory
         self._browser = None
+        self.base_url = BASE_URL
 
     @property
     def page(self):
@@ -87,6 +89,10 @@ class indeedScraper:
         if self._browser is None:
             self._browser = self._browser_factory()
         return self._browser.page
+
+    def _link(self, job_id: str) -> str:
+        """Enlace a la oferta."""
+        return f"{self.base_url}/viewjob?jk={job_id}"
 
     def login_with_google(self) -> bool:
         """La búsqueda pública no necesita sesión; queda por compatibilidad con los llamadores."""
@@ -107,7 +113,7 @@ class indeedScraper:
         """Texto de la oferta; None si no carga o si se postula con Indeed Apply."""
         page = self.page.context.new_page()
         try:
-            get_with_retries(page, f"{BASE_URL}/viewjob?jk={job_id}")
+            get_with_retries(page, self._link(job_id))
             if self._blocked(page):
                 return None
             page.wait_for_selector('#jobDescriptionText', timeout=10_000)
@@ -141,7 +147,7 @@ class indeedScraper:
         job.update({'Job_Description': self._clean_job_description(description),
                     'Experience_Category': category,
                     'Experience_Years': self.extract_years_of_experience(description),
-                    'Job_Link': f"{BASE_URL}/viewjob?jk={card_data['id']}",
+                    'Job_Link': self._link(card_data['id']),
                     'Apply_Type': 'Apply on company site'})
         return job
 
@@ -150,16 +156,16 @@ class indeedScraper:
         seen = {job.get('Job_Link') for job in self.all_jobs}
         found = 0
         for page_number in range(max_pages):
-            get_with_retries(self.page, search_url(job_title, location, filters, start=page_number * 10))
+            get_with_retries(self.page, search_url(job_title, location, filters, page_number * 10, self.base_url))
             if self._blocked(self.page):
                 break
-            cards = [parse_card(card) for card in self.page.query_selector_all(CARD)]
-            cards = [card for card in cards if card and f"{BASE_URL}/viewjob?jk={card['id']}" not in seen]
+            cards = [card for node in self.page.query_selector_all(CARD)
+                     if (card := parse_card(node)) and self._link(card['id']) not in seen]
             if not cards:
                 break
             for card in cards:
                 job = self.extract_job_details(card)
-                seen.add(f"{BASE_URL}/viewjob?jk={card['id']}")
+                seen.add(self._link(card['id']))
                 if job:
                     job.update({'Search_Position': job_title, 'Search_Location': location})
                     self.all_jobs.append(job)
