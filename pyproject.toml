@@ -1,5 +1,5 @@
 [tool.ruff]
-target-version = "py311"
+target-version = "py312"
 extend-exclude = ["alembic/versions", "chrome_extension", "static"]
 
 [tool.ruff.lint]

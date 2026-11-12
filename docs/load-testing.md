@@ -9,7 +9,7 @@ LOADTEST_EMAIL=usuario@ejemplo.com LOADTEST_PASSWORD=... \
   --headless -u 20 -r 5 -t 3m --csv results/loadtest
 ```
 
-Locust va en un entorno aparte: actualiza `greenlet` a una versión que Playwright no acepta.
+Locust va en un entorno aparte para no sumarle gevent a la app.
 
 - Termina con código 1 si el p95 supera `LOADTEST_P95_MS` (1500 ms por defecto) o si los errores pasan `LOADTEST_MAX_FAIL_RATIO` (1 % por defecto), así se puede usar como gate.
 - `/login` tiene un rate limit de 10 POST por minuto por IP: el script espera y reintenta los 429, así que con muchos usuarios el arranque tarda.

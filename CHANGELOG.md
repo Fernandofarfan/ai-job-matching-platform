@@ -6,6 +6,14 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar] - Python 3.12 y dependencias
+
+- Python 3.12 en todo el proyecto (CI, Docker, Ruff `py312`, mypy); los 385 tests unitarios pasan en 3.12.
+- `requirements.txt` con versiones exactas (antes había 25 sin fijar) y el job de tests del CI usa las mismas. SQLAlchemy queda en 2.0.57: la 2.1 rompe los tipos de mypy con los modelos `Column` actuales.
+- Playwright 1.55 → 1.65.1 (imagen `mcr.microsoft.com/playwright/python:v1.65.1-noble`). Con esta versión Locust ya no choca con el `greenlet` de Playwright.
+- Se quitan dependencias que nada importaba: `waitress`, `nltk`, `Flask-SQLAlchemy` y `APScheduler`.
+- `pip-audit` sin vulnerabilidades conocidas.
+
 ## [Sin publicar] - Privacidad y seguridad de cuentas
 
 - **Interfaz en inglés y portugués** (`i18n.py`, `translations/en.json`, `translations/pt.json`): selector de idioma en la barra y en las pantallas de ingreso (cookie `lang`, si no `Accept-Language`). Traducidos la barra, el Copilot, inicio, ingreso/registro/recuperación, verificación en dos pasos, Mi cuenta, Administración, errores, mensajes flash y eventos de seguridad. Lo no traducido sigue en español; un test exige que cada texto marcado con `_()` tenga traducción.
