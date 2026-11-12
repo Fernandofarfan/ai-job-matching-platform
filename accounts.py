@@ -186,7 +186,7 @@ def authenticate(email: str, password: str) -> Optional[int]:
 
 OWNED_TABLES = ('applications', 'application_status_history', 'user_profiles', 'saved_searches', 'seen_jobs',
                 'networking_exclusions', 'connection_requests', 'processed_files', 'user_integrations',
-                'push_subscriptions', 'security_events', 'user_sessions')
+                'push_subscriptions', 'security_events', 'user_sessions', 'user_totp')
 
 
 RESULTS_ROOT = 'results'

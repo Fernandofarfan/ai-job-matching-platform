@@ -15,7 +15,7 @@ import push
 logger = logging.getLogger(__name__)
 
 # Tablas que se exportan fila por fila; integraciones y push guardan secretos y van resumidas.
-EXPORTED_TABLES = tuple(t for t in accounts.OWNED_TABLES if t not in ('user_integrations', 'push_subscriptions', 'user_sessions'))
+EXPORTED_TABLES = tuple(t for t in accounts.OWNED_TABLES if t not in ('user_integrations', 'push_subscriptions', 'user_sessions', 'user_totp'))
 
 
 def _dump(data) -> str:

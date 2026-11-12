@@ -25,6 +25,11 @@ LABELS = {
     'gmail_connected': 'Gmail conectado',
     'gmail_disconnected': 'Gmail desconectado',
     'data_exported': 'Datos exportados',
+    'two_factor_enabled': 'Verificación en dos pasos activada',
+    'two_factor_disabled': 'Verificación en dos pasos desactivada',
+    'two_factor_failed': 'Código de verificación incorrecto',
+    'recovery_code_used': 'Código de recuperación usado',
+    'recovery_codes_regenerated': 'Códigos de recuperación nuevos',
     'session_revoked': 'Sesión cerrada desde Mi cuenta',
     'sessions_revoked': 'Otras sesiones cerradas',
 }
