@@ -31,6 +31,13 @@ async def dashboard_view(request: Request):
     return templates.TemplateResponse(request=request, name="dashboard.html")
 
 @router.get("/api/analytics/funnel")
+def _owned():
+    """Filtro de las postulaciones de la cuenta actual."""
+    import accounts
+    uid = accounts.current_user_id()
+    return Application.user_id.is_(None) if uid is None else Application.user_id == uid
+
+
 async def get_funnel_stats():
     """Retorna las estadísticas del embudo de reclutamiento."""
     if not orm_manager:
@@ -41,7 +48,7 @@ async def get_funnel_stats():
         status_counts = session.query(
             Application.status, 
             func.count(Application.id)
-        ).group_by(Application.status).all()
+        ).filter(_owned()).group_by(Application.status).all()
         
         # Convertir a un diccionario {status: count}
         stats = {row[0]: row[1] for row in status_counts}
