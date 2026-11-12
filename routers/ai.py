@@ -8,17 +8,13 @@ try:
 except ImportError:
     AI_AVAILABLE = False
 
+# /api/ai/copilot lo sirve Flask (web/ai_api.py): arma el contexto del perfil y responde `reply`, que lee el frontend
 router = APIRouter(prefix="/api/ai", tags=["ai"])
 
 class JobAnalysisRequest(BaseModel):
     job_title: str
     job_description: str
     resume_text: str = ""
-
-class CopilotChatRequest(BaseModel):
-    message: str
-    history: list = []
-    user_context: dict = {}
 
 @router.post("/analyze-job")
 async def api_analyze_job(request: JobAnalysisRequest):
@@ -34,12 +30,3 @@ async def api_analyze_job(request: JobAnalysisRequest):
     except Exception as e:
         logging.error(f"AI analyze-job error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-
-@router.post("/copilot")
-async def api_copilot_chat(request: CopilotChatRequest):
-    """Chat del copiloto usando FastAPI"""
-    if not AI_AVAILABLE:
-        return {"success": False, "reply": "⚠️ Gemini no configurado."}
-    
-    response = copilot_chat(request.message, request.history, request.user_context)
-    return {"success": True, "response": response}
