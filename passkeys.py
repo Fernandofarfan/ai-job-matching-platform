@@ -70,15 +70,18 @@ def rp_id(site: str) -> str:
 
 
 def _sha(value: str) -> str:
+    """SHA-256 en hex: clave única de IDs de credencial y desafíos."""
     return hashlib.sha256(value.encode()).hexdigest()
 
 
 def _b64(data: bytes) -> str:
+    """bytes -> base64url sin relleno."""
     from webauthn.helpers import bytes_to_base64url
     return bytes_to_base64url(data)
 
 
 def _unb64(value: str) -> bytes:
+    """base64url -> bytes."""
     from webauthn import base64url_to_bytes
     return base64url_to_bytes(value)
 
