@@ -30,7 +30,7 @@ def _storage():
 
 
 def _redis():
-    """Cliente Redis si RATELIMIT_STORAGE_URI es redis://, para compartir la caché entre instancias."""
+    """Cliente Redis si RATELIMIT_STORAGE_URI es redis://: caché compartida entre instancias."""
     uri = os.getenv('RATELIMIT_STORAGE_URI', '')
     if not uri.startswith(('redis://', 'rediss://')):
         return None
