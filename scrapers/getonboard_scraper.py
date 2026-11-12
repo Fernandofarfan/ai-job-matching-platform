@@ -34,6 +34,13 @@ def _salary(attrs):
     return 'No especificado'
 
 
+def _cities(attrs):
+    """Nombres de las ciudades (requiere expand=location_cities)."""
+    data = (attrs.get('location_cities') or {}).get('data') or []
+    return [c['attributes']['name'] for c in data
+            if isinstance(c, dict) and (c.get('attributes') or {}).get('name')]
+
+
 def parse_job(item):
     """Oferta en el formato de los demás scrapers; None si no tiene título."""
     attrs = item.get('attributes') or {}
@@ -48,7 +55,7 @@ def parse_job(item):
         'URL': url,
         'Apply_URL': url,
         'Company': company.get('name') or 'Confidencial',
-        'Location': ', '.join(countries) or ('Remoto' if attrs.get('remote') else 'No especificada'),
+        'Location': ', '.join(dict.fromkeys(_cities(attrs) + countries)) or ('Remoto' if attrs.get('remote') else 'No especificada'),
         'Salary': _salary(attrs),
         'Job_Type': 'Remoto' if attrs.get('remote') else 'Presencial/Híbrido',
         'Description': description[:DESCRIPTION_CHARS],
@@ -56,19 +63,32 @@ def parse_job(item):
     }
 
 
-def matches_location(job, location):
-    """Sin ubicación pedida, todo sirve; con ubicación, las ofertas de ese país/ciudad o remotas."""
-    wanted = _norm(location)
-    if not wanted:
+def matches_location(job, location, cities=()):
+    """Sin ubicación pedida, todo sirve. Con "Ciudad" o "Ciudad, País", las ofertas de esa ciudad
+    (o del país si la oferta no dice ciudad); con un país, todas las de ese país. Las remotas siempre."""
+    parts = [p.strip() for p in _norm(location).split(',') if p.strip()]
+    if not parts:
         return True
     where = _norm(job['Location'])
-    return wanted in where or job['Job_Type'] == 'Remoto' or 'remote' in where
+    if job['Job_Type'] == 'Remoto' or 'remote' in where:
+        return True
+    places = [p.strip() for p in where.split(',')]
+    city_names = {_norm(c) for c in cities}
+    if len(parts) == 1:
+        return any(parts[0] in place for place in places)
+    if city_names:
+        return any(parts[0] in city for city in city_names)
+    return any(part in place for part in parts[1:] for place in places)
 
 
 def parse_payload(payload, location=''):
     """Ofertas de una respuesta de la API, filtradas por ubicación."""
-    jobs = (parse_job(item) for item in payload.get('data') or [])
-    return [job for job in jobs if job and matches_location(job, location)]
+    jobs = []
+    for item in payload.get('data') or []:
+        job = parse_job(item)
+        if job and matches_location(job, location, _cities(item.get('attributes') or {})):
+            jobs.append(job)
+    return jobs
 
 
 class GetOnBoardScraper:
@@ -81,7 +101,7 @@ class GetOnBoardScraper:
         jobs, page = [], 1
         while len(jobs) < max_jobs:
             resp = self.session.get(API_URL, timeout=TIMEOUT, params={
-                'query': position, 'per_page': PER_PAGE, 'page': page, 'expand': '["company"]',
+                'query': position, 'per_page': PER_PAGE, 'page': page, 'expand': '["company","location_cities"]',
             })
             resp.raise_for_status()
             payload = resp.json()

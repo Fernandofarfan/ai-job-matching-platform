@@ -116,3 +116,16 @@ def test_getonboard_search_paginates_and_limits():
     assert len(jobs) == 3
     assert session.get.call_count == 2
     assert session.get.call_args.kwargs['params']['page'] == 2
+
+
+def test_getonboard_city_searches_keep_local_jobs():
+    """Las ciudades expandidas entran en Location y en el filtro "Ciudad, País"."""
+    from scrapers import getonboard_scraper
+    payload = _getonboard_payload()
+
+    def titles(location):
+        return [j['Title'] for j in getonboard_scraper.parse_payload(payload, location)]
+    assert 'Lima, Perú' in [j['Location'] for j in getonboard_scraper.parse_payload(payload)]
+    assert 'Data Engineer' in titles('Lima')
+    assert 'Data Engineer' in titles('Lima, Peru')
+    assert titles('Arequipa, Perú') == ['Backend Python Developer']
