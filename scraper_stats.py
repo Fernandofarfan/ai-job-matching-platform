@@ -39,11 +39,9 @@ def record(portal, jobs, error=None):
 
 
 def counts():
-    """{portal: {outcome: n}} de los portales con al menos una búsqueda registrada."""
+    """{portal: {outcome: n}} de todos los portales, en 0 si no corrieron.
+
+    Exponer los ceros desde el arranque hace que Prometheus vea también el incremento de la primera búsqueda.
+    """
     storage = ai_usage._storage()
-    found = {}
-    for portal in PORTALS:
-        row = {o: int(storage.get(_key(portal, o)) or 0) for o in OUTCOMES}
-        if any(row.values()):
-            found[portal] = row
-    return found
+    return {portal: {o: int(storage.get(_key(portal, o)) or 0) for o in OUTCOMES} for portal in PORTALS}

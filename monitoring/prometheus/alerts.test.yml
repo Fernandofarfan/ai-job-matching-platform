@@ -79,6 +79,9 @@ tests:
         values: '0+1x30'
       - series: 'empleoia_scraper_runs_total{portal="bumeran",outcome="ok",instance="a"}'
         values: '5x30'
+      # una segunda instancia expone los mismos totales compartidos: no deben contarse dos veces
+      - series: 'empleoia_scraper_runs_total{portal="bumeran",outcome="empty",instance="b"}'
+        values: '0+1x30'
       - series: 'empleoia_scraper_runs_total{portal="computrabajo",outcome="empty",instance="a"}'
         values: '0+1x30'
       - series: 'empleoia_scraper_runs_total{portal="computrabajo",outcome="ok",instance="a"}'

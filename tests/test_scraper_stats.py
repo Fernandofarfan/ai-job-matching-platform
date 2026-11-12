@@ -29,10 +29,11 @@ def test_record_counts_by_portal_and_outcome():
     scraper_stats.record('bumeran', [])
     scraper_stats.record('bumeran', [{'Title': 'Dev'}])
     scraper_stats.record('computrabajo', None, TimeoutError('caído'))
-    assert scraper_stats.counts() == {
-        'bumeran': {'ok': 1, 'empty': 2, 'error': 0},
-        'computrabajo': {'ok': 0, 'empty': 0, 'error': 1},
-    }
+    found = scraper_stats.counts()
+    assert found['bumeran'] == {'ok': 1, 'empty': 2, 'error': 0}
+    assert found['computrabajo'] == {'ok': 0, 'empty': 0, 'error': 1}
+    # los portales sin búsquedas salen en 0: así Prometheus ve el incremento de la primera
+    assert found['linkedin'] == {'ok': 0, 'empty': 0, 'error': 0}
 
 
 def test_record_never_breaks_the_search():
@@ -46,7 +47,7 @@ def test_metrics_expose_runs_per_portal():
     value = observability.REGISTRY.get_sample_value
     assert value('empleoia_scraper_runs_total', {'portal': 'zonajobs', 'outcome': 'empty'}) == 1
     assert value('empleoia_scraper_runs_total', {'portal': 'zonajobs', 'outcome': 'ok'}) == 1
-    assert value('empleoia_scraper_runs_total', {'portal': 'bumeran', 'outcome': 'ok'}) is None
+    assert value('empleoia_scraper_runs_total', {'portal': 'bumeran', 'outcome': 'ok'}) == 0
 
 
 def test_job_alert_scrape_records_each_portal():
@@ -59,7 +60,6 @@ def test_job_alert_scrape_records_each_portal():
 
     search = {'name': 'Python', 'position': 'python', 'portals': ['computrabajo', 'bumeran']}
     assert job_alerts.scrape(search, make) == []
-    assert scraper_stats.counts() == {
-        'computrabajo': {'ok': 0, 'empty': 1, 'error': 0},
-        'bumeran': {'ok': 0, 'empty': 0, 'error': 1},
-    }
+    found = scraper_stats.counts()
+    assert found['computrabajo'] == {'ok': 0, 'empty': 1, 'error': 0}
+    assert found['bumeran'] == {'ok': 0, 'empty': 0, 'error': 1}

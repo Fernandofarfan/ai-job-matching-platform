@@ -63,10 +63,11 @@ groups:
           description: Las funciones de IA quedan bloqueadas hasta el mes que viene o hasta subir AI_MONTHLY_TOKEN_LIMIT.
 
       - alert: EmpleoIAPortalSinOfertas
-        # 3 o más búsquedas en un día y ninguna con ofertas: el portal cambió su HTML o bloquea al scraper
+        # 3 o más búsquedas en un día y ninguna con ofertas: el portal cambió su HTML o bloquea al scraper.
+        # Cada instancia expone el mismo total de Redis: max por (portal, outcome) para no sumarlo una vez por instancia.
         expr: |
-          sum by (portal) (increase(empleoia_scraper_runs_total{outcome=~"empty|error"}[24h])) >= 3
-            unless sum by (portal) (increase(empleoia_scraper_runs_total{outcome="ok"}[24h])) > 0
+          sum by (portal) (max by (portal, outcome) (increase(empleoia_scraper_runs_total{outcome=~"empty|error"}[24h]))) >= 3
+            unless max by (portal) (increase(empleoia_scraper_runs_total{outcome="ok"}[24h])) > 0
         labels:
           severity: warning
         annotations:
