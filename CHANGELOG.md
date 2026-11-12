@@ -6,6 +6,12 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar] - Páginas de Flask a FastAPI (3/5): Mi cuenta, Administración y exportación
+
+- FastAPI sirve Mi cuenta (integraciones, contraseña, sesiones, segundo factor, exportar y borrar), `/admin` y `/export/*` (`routers/account_pages.py`), con los mismos límites por cuenta, CSRF y `Cache-Control: no-store`.
+- `tracker_export.py` arma los Excel/PDF sin depender del framework. Si la exportación falla, el aviso ya no muestra el error interno.
+- Se quitan `web/account.py`, `web/admin.py`, `web/second_factor.py` y `web/exports.py`.
+
 ## [Sin publicar] - Páginas de Flask a FastAPI (2/5): login y cuentas
 
 - FastAPI sirve login, registro, salir, recuperar contraseña, verificar email, verificación en dos pasos y login con Google (`routers/auth_pages.py`), con los mismos límites por IP, email y login pendiente, CSRF y `Clear-Site-Data`.
