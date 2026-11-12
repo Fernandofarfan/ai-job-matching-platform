@@ -9,14 +9,12 @@ PASSWORD = 'clave-larga-1'
 
 @pytest.fixture
 def limited(app, accounts_db, monkeypatch):
-    """Limiter de Flask encendido y con contadores vacíos."""
+    """Límites de páginas encendidos y con contadores vacíos."""
     monkeypatch.setenv('ALLOW_SIGNUP', 'true')
-    limiter = app.extensions['limiter']
-    limiter = next(iter(limiter)) if isinstance(limiter, (set, list, tuple)) else limiter
-    monkeypatch.setattr(limiter, 'enabled', True)
-    limiter.reset()
-    yield limiter
-    limiter.reset()
+    monkeypatch.setitem(app.config, 'RATELIMIT_ENABLED', True)
+    rate_limit._state.clear()
+    yield
+    rate_limit._state.clear()
 
 
 def _login(client, email):

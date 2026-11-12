@@ -1,5 +1,5 @@
 """
-test_app_routes.py – Tests de rutas principales de la app Flask.
+test_app_routes.py – Tests de rutas principales de la app.
 """
 import json
 

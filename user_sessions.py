@@ -11,7 +11,7 @@ import accounts
 
 logger = logging.getLogger(__name__)
 
-LIFETIME = timedelta(days=31)  # igual que PERMANENT_SESSION_LIFETIME de Flask
+LIFETIME = timedelta(days=31)  # igual que PERMANENT_SESSION_LIFETIME (web_settings.py)
 TOUCH_EVERY = timedelta(minutes=5)
 
 

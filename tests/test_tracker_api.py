@@ -1,11 +1,10 @@
-"""API del tracker en FastAPI (routers/tracker.py) con la sesión y el CSRF de Flask."""
+"""API del tracker (routers/tracker.py) con la sesión y el CSRF de la web."""
 from datetime import date, datetime
 from unittest import mock
 
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from flask_wtf.csrf import generate_csrf
 
 import accounts
 import auth
@@ -31,21 +30,20 @@ def db():
 
 @pytest.fixture
 def api(app, db):
-    """Cliente de una app FastAPI con el router del tracker y la app Flask de los tests."""
+    """Cliente de una app FastAPI con el router del tracker y la config de los tests."""
     fastapi_app = FastAPI()
     fastapi_app.include_router(tracker.router)
     fastapi_app.dependency_overrides[tracker.get_db] = lambda: db
-    fastapi_app.dependency_overrides[tracker.get_flask_app] = lambda: app
+    fastapi_app.dependency_overrides[tracker.get_web_app] = lambda: app
     return TestClient(fastapi_app)
 
 
 def _session_cookie(app, **data):
-    """Cookie de sesión de Flask firmada (como la que deja /login) y su token CSRF."""
-    with app.test_request_context():
-        from flask import session
-        session.update(data)
-        token = generate_csrf()
-        return app.session_interface.get_signing_serializer(app).dumps(dict(session)), token
+    """Cookie de sesión firmada (como la que deja /login) y su token CSRF."""
+    from itsdangerous import URLSafeTimedSerializer
+    data = {**data, 'csrf_token': 'raw-csrf'}
+    token = URLSafeTimedSerializer(app.secret_key, salt='wtf-csrf-token').dumps('raw-csrf')
+    return app.session_serializer().dumps(data), token
 
 
 def test_list_and_detail_return_iso_dates(api):

@@ -45,7 +45,7 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
 def get_db() -> Session:
-    """Dependency injector para Flask/FastAPI."""
+    """Dependency injector para FastAPI."""
     db = SessionLocal()
     try:
         yield db

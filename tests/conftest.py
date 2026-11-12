@@ -1,6 +1,6 @@
 """
 conftest.py – Fixtures globales de pytest para EmpleoIA.
-Provee un cliente de prueba Flask con mock de DB y módulos pesados.
+Provee un cliente de prueba de la app con mock de DB y módulos pesados.
 """
 import os
 import sys
@@ -37,7 +37,6 @@ def _mk(name):
 # ─── Lista exhaustiva de módulos a parchear ──────────────────────────────────
 # (debe hacerse ANTES de cualquier import de app.py o scrapers)
 _ALL_MOCKS = [
-    # Flask extensions
     # Async
     # Selenium (todos los subpaths conocidos)
     'selenium', 'selenium.webdriver', 'selenium.webdriver.chrome',
@@ -90,7 +89,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 @pytest.fixture(scope='session')
 def app():
     """
-    Crea la app Flask en modo testing.
+    Config de la web (web_settings.WebApp de app.py) en modo testing.
     Override de db_manager para evitar depender de MySQL durante CI.
     """
     # Parcheamos db_manager ANTES de importar app
@@ -141,16 +140,16 @@ def app():
         import db_config
         db_config.db_manager = mock_db
 
-        import app as flask_app
-        flask_app.db_manager = mock_db
+        import app as app_module
+        app_module.db_manager = mock_db
 
-    flask_app.app.config.update({
+    app_module.app.config.update({
         'TESTING': True,
         'SECRET_KEY': 'test-secret-key-12345',
         'WTF_CSRF_ENABLED': False,
     })
 
-    yield flask_app.app
+    yield app_module.app
 
 
 @pytest.fixture(autouse=True)
@@ -168,7 +167,7 @@ def _no_login_by_default(monkeypatch, tmp_path):
 
 
 class _Response:
-    """Respuesta de httpx con la interfaz del cliente de pruebas de Flask que usan los tests."""
+    """Respuesta de httpx con la interfaz (get_data, get_json) que usan los tests."""
 
     def __init__(self, response):
         self._r = response
@@ -197,12 +196,12 @@ class _Response:
 
 
 class WebClient:
-    """Cliente sobre main.create_app (FastAPI + Flask montado) con la API de app.test_client()."""
+    """Cliente sobre main.create_app con la API del cliente de pruebas que usan los tests."""
 
-    def __init__(self, flask_app):
+    def __init__(self, web_app):
         from fastapi.testclient import TestClient
         import main
-        self.app = main.create_app(flask_app)
+        self.app = main.create_app(web_app)
         self._c = TestClient(self.app, base_url='http://localhost')
 
     def open(self, method, path, data=None, json=None, query_string=None, headers=None,
@@ -242,7 +241,7 @@ class WebClient:
 
 @pytest.fixture
 def client(app):
-    """Cliente HTTP de prueba sobre la app completa (FastAPI + Flask), como en producción."""
+    """Cliente HTTP de prueba sobre la app completa, como en producción."""
     return WebClient(app)
 
 
@@ -255,26 +254,26 @@ def make_client(app):
 @pytest.fixture
 def mock_db(app):
     """Acceso directo al mock del DatabaseManager."""
-    import app as flask_app
-    return flask_app.db_manager
+    import app as app_module
+    return app_module.db_manager
 
 
 
 @pytest.fixture
 def tracker_db(app):
-    """Mock del DatabaseManager que usan las rutas (el mismo que ven las vistas de Flask)."""
+    """Mock del DatabaseManager que usan las rutas (el de app.db_manager)."""
     return app.extensions['empleoia_app_globals']['db_manager']
 
 
 @pytest.fixture
 def api(app, tracker_db):
-    """Cliente de las APIs FastAPI (tracker e insights) con el mock de la base y la app Flask de los tests."""
+    """Cliente de las APIs FastAPI (tracker e insights) con el mock de la base y la config de los tests."""
     from fastapi import FastAPI
     from fastapi.testclient import TestClient
 
     from routers import ai, documents, insights, tracker
     from routers import push as push_router
-    flask_globals = app.extensions['empleoia_app_globals']
+    app_globals = app.extensions['empleoia_app_globals']
     fastapi_app = FastAPI()
     fastapi_app.include_router(tracker.router)
     fastapi_app.include_router(insights.router)
@@ -283,12 +282,12 @@ def api(app, tracker_db):
     fastapi_app.include_router(documents.router)
     fastapi_app.include_router(push_router.router)
     fastapi_app.dependency_overrides[tracker.get_db] = lambda: tracker_db
-    fastapi_app.dependency_overrides[tracker.get_flask_app] = lambda: app
+    fastapi_app.dependency_overrides[tracker.get_web_app] = lambda: app
     fastapi_app.dependency_overrides[ai.get_ai] = lambda: SimpleNamespace(
         available=False, engine=None, notifier=None, resume_text=lambda: None, profile=lambda: None)
     fastapi_app.dependency_overrides[documents.get_resume_text] = lambda: lambda: None
     fastapi_app.dependency_overrides[insights.get_profiles] = lambda: (
-        flask_globals['get_all_user_profiles'], flask_globals['get_user_profile'])
+        app_globals['get_all_user_profiles'], app_globals['get_user_profile'])
     return TestClient(fastapi_app)
 
 
@@ -314,9 +313,6 @@ def _accounts_sqlite():
 @pytest.fixture
 def accounts_db(monkeypatch, app, _accounts_sqlite):
     """Login obligatorio, sin el límite de intentos de login/registro (lo cubre test_ops)."""
-    # El módulo app se importa dentro de patch.dict(sys.modules): el limiter se busca en la app
-    limiters = app.extensions['limiter']
-    for limiter in limiters if isinstance(limiters, (set, list, tuple)) else [limiters]:
-        monkeypatch.setattr(limiter, 'enabled', False)
+    monkeypatch.setitem(app.config, 'RATELIMIT_ENABLED', False)
     monkeypatch.setenv('LOGIN_REQUIRED', 'true')
     return _accounts_sqlite

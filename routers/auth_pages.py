@@ -19,7 +19,7 @@ import auth
 import google_oauth
 import two_factor
 import user_sessions
-from fastapi_web import (TextForm, clear_offline_data, client_info, client_ip, flash, flask_app_for, get_session,
+from fastapi_web import (TextForm, clear_offline_data, client_info, client_ip, flash, web_app_for, get_session,
                          hit_limit, limit_key, public_url, read_form, redirect, render, safe_next,
                          too_many_requests, url_for)
 
@@ -29,8 +29,8 @@ PENDING_MAX_AGE = 300
 
 
 def _secret(request: Request):
-    """Clave de la app Flask montada (firma la sesión y los enlaces)."""
-    return flask_app_for(request).secret_key
+    """SECRET_KEY de la web (firma la sesión y los enlaces)."""
+    return web_app_for(request).secret_key
 
 
 def _email_key(form: TextForm) -> str:

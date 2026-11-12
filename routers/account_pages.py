@@ -1,7 +1,7 @@
 """Mi cuenta (integraciones, contraseña, sesiones, segundo factor, exportar y borrar), Administración y
 exportación a Excel/PDF, en FastAPI.
 
-Los nombres de ruta son los endpoints que usaba Flask; los límites usan el limiter de Flask (fastapi_web.hit_limit)
+Los nombres de ruta son los endpoints que usaba Flask; los límites usan rate_limit (fastapi_web.hit_limit)
 con la misma clave por cuenta.
 """
 import logging
@@ -24,7 +24,7 @@ import security_events
 import tracker_export
 import two_factor
 import user_sessions
-from fastapi_web import (TextForm, clear_offline_data, client_info, flash, flask_app_for, get_session, hit_limit, legacy,
+from fastapi_web import (TextForm, clear_offline_data, client_info, flash, web_app_for, get_session, hit_limit, legacy,
                          limit_key, public_url, read_form, redirect, render, save_session, too_many_requests,
                          url_for)
 from routers.auth_pages import audit, send_verification
@@ -34,7 +34,7 @@ router = APIRouter(tags=["account"], include_in_schema=False)
 
 
 async def _form(request: Request, spec: Optional[str] = None, namespace: str = '') -> tuple[TextForm, Optional[Response]]:
-    """Formulario con CSRF y, si hay `spec`, el límite por cuenta del endpoint (como @limiter.limit de Flask)."""
+    """Formulario con CSRF y, si hay `spec`, el límite por cuenta del endpoint (como hacía @limiter.limit)."""
     form, error = await read_form(request)
     if error:
         return form, error
@@ -49,7 +49,7 @@ def _to_account(request: Request) -> Response:
 
 
 def _not_found(request: Request) -> Response:
-    """404 como el de Flask: el panel de administración no se anuncia."""
+    """404 genérico: el panel de administración no se anuncia."""
     return render(request, 'error.html', 404, code=404, message='Página no encontrada')
 
 
@@ -268,7 +268,7 @@ def _change_password(request: Request, form: dict) -> Response:
     except accounts.AccountError as e:
         flash(request, str(e), 'danger')
         return _to_account(request)
-    auth.start_session(get_session(request), flask_app_for(request).secret_key, user_id, *client_info(request))
+    auth.start_session(get_session(request), web_app_for(request).secret_key, user_id, *client_info(request))
     audit(request, user_id, 'password_changed')
     flash(request, 'Contraseña cambiada; se cerraron las otras sesiones', 'success')
     return _to_account(request)

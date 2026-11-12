@@ -73,7 +73,7 @@ def test_logout_and_password_change_close_sessions(two_browsers):
     chrome, firefox = two_browsers
     firefox.post('/logout')
     assert len(user_sessions.active(_uid())) == 1
-    other = type(chrome)(chrome.app.state.flask_app)
+    other = type(chrome)(chrome.app.state.web_app)
     other.post('/login', data={'email': 'ana@example.com', 'password': PASSWORD})
     chrome.post('/account/password', data={'current': PASSWORD, 'password': 'otra-clave-larga',
                                            'confirm': 'otra-clave-larga'})

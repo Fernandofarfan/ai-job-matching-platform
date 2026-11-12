@@ -1,4 +1,4 @@
-"""Páginas de FastAPI con la misma sesión, CSRF, avisos y URLs que Flask (fastapi_web.py)."""
+"""Páginas de FastAPI: sesión, CSRF, avisos y URLs compatibles con lo que dejaba Flask (fastapi_web.py)."""
 from unittest import mock
 import re
 
@@ -10,7 +10,7 @@ import fastapi_web
 
 
 def _add_route(client, path, endpoint):
-    """Ruta de prueba antes del montaje de Flask en `/` (que atrapa todo lo demás)."""
+    """Ruta de prueba agregada al principio del router."""
     client.app.router.routes.insert(0, APIRoute(path, endpoint))
 
 
@@ -18,8 +18,8 @@ def _csrf(html):
     return re.search(r'name="csrf-token" content="([^"]+)"', html).group(1)
 
 
-def test_csrf_token_from_fastapi_page_is_valid_in_flask(client, app, monkeypatch):
-    """El token que pone una página de FastAPI sirve para un POST de Flask (misma sesión, mismo formato)."""
+def test_csrf_token_from_page_is_valid_in_json_api(client, app, monkeypatch):
+    """El token que pone una página sirve para un POST JSON (misma sesión, mismo formato)."""
     monkeypatch.setitem(app.config, 'WTF_CSRF_ENABLED', True)
     token = _csrf(client.get('/').get_data(as_text=True))
     body = {'applied_jobs': {}}
@@ -44,13 +44,11 @@ def test_auth_pages_are_served_by_fastapi(client, app):
         assert client.app.url_path_for(name)
     assert client.app.url_path_for('reset_password', token='t') == '/reset_password/t'
     assert client.app.url_path_for('verify_email', token='t') == '/verify_email/t'
-    assert not (moved | {'reset_password', 'verify_email'}) & set(app.view_functions)
-    assert app.url_map.bind('').build('reset_password', {'token': 't'}) == '/reset_password/t'
 
 
 def test_logout_clears_session_and_offline_data(client, app):
     """Salir borra la sesión y pide al navegador borrar el caché offline."""
-    client._c.cookies.set('session', app.session_interface.get_signing_serializer(app).dumps({'uid': 1, 'x': 1}))
+    client._c.cookies.set('session', app.session_serializer().dumps({'uid': 1, 'x': 1}))
     response = client.post('/logout')
     assert response.status_code == 302 and response.headers['location'].endswith('/login')
     assert response.headers['Clear-Site-Data'] == '"cache", "storage"'
@@ -64,8 +62,8 @@ def test_safe_next_only_allows_local_pages():
         assert fastapi_web.safe_next(target) == '/'
 
 
-def test_flash_from_fastapi_is_shown_once_and_readable_by_flask(client, app):
-    """Los avisos van a `_flashes` de la cookie de Flask y se muestran una sola vez."""
+def test_flash_is_shown_once(client, app):
+    """Los avisos van a `_flashes` de la cookie de sesión y se muestran una sola vez."""
     def flash_and_redirect(request: Request):
         fastapi_web.flash(request, 'Aviso de prueba', 'info')
         return fastapi_web.redirect(request, '/')
@@ -79,23 +77,46 @@ def test_flash_from_fastapi_is_shown_once_and_readable_by_flask(client, app):
 
 
 def test_url_for_covers_fastapi_flask_and_static(client):
-    """url_for arma rutas de FastAPI y de Flask; lo que no es parámetro va en la query."""
+    """url_for arma rutas con nombre y estáticos; lo que no es parámetro va en la query."""
     def urls(request: Request):
         return {'lang': fastapi_web.url_for(request, 'set_language', code='en', next='/x'),
-                'flask': fastapi_web.url_for(request, 'alerts'),
+                'page': fastapi_web.url_for(request, 'alerts'),
                 'static': fastapi_web.url_for(request, 'static', filename='css/app.css')}
     _add_route(client, '/_urls', urls)
 
-    assert client.get('/_urls').get_json() == {'lang': '/lang/en?next=/x', 'flask': '/alerts',
+    assert client.get('/_urls').get_json() == {'lang': '/lang/en?next=/x', 'page': '/alerts',
                                                'static': '/static/css/app.css'}
 
 
-def test_flask_url_for_still_builds_migrated_pages(app):
-    """Flask conserva las URLs de las páginas que ya atiende FastAPI (reglas solo para armar URLs)."""
-    urls = app.url_map.bind('localhost')
-    assert urls.build('index') == '/'
-    assert urls.build('tracker') == '/tracker'
-    assert urls.build('set_language', {'code': 'pt', 'next': '/login'}) == '/lang/pt?next=/login'
+def test_url_for_unknown_endpoint_raises(client):
+    """Un endpoint que no existe es un error (antes caía en las reglas de Flask)."""
+    import pytest
+    from starlette.routing import NoMatchFound
+
+    def build(request: Request):
+        with pytest.raises(NoMatchFound):
+            fastapi_web.url_for(request, 'no_existe')
+        return {}
+    _add_route(client, '/_unknown', build)
+    assert client.get('/_unknown').status_code == 200
+
+
+def test_session_cookie_format_matches_flask(app):
+    """Una cookie firmada por Flask (tuplas en _flashes, sesión permanente) se lee igual sin Flask."""
+    from datetime import datetime, timezone
+    data = {'_flashes': [('info', 'hola')], '_permanent': True, 'uid': 1, 'when': datetime(2026, 1, 2, tzinfo=timezone.utc),
+            ' t': 'clave rara'}
+    serializer = app.session_serializer()
+    assert serializer.loads(serializer.dumps(data)) == data
+    assert serializer.dumps({'_flashes': [('info', 'hola')]}).startswith('eyJfZmxhc2hlcyI6W3siIHQiOlsiaW5mbyIsImhvbGEiXX1dfQ')
+
+
+def test_unknown_page_renders_error_and_api_stays_json(client):
+    """Sin Flask montado, una página inexistente muestra la página de error y /api/* responde JSON."""
+    page = client.get('/no-existe')
+    assert page.status_code == 404 and 'text/html' in page.content_type
+    api = client.get('/api/no-existe')
+    assert api.status_code == 404 and api.get_json() == {'detail': 'Not Found'}
 
 
 def test_language_selector_served_by_fastapi(client):
@@ -121,7 +142,7 @@ def test_language_links_keep_current_fastapi_page(client):
 
 def test_permanent_session_is_renewed_on_fastapi_pages(client, app):
     """Como Flask, una sesión permanente renueva la cookie en cada página aunque no cambie."""
-    cookie = app.session_interface.get_signing_serializer(app).dumps({'_permanent': True, 'n': 1})
+    cookie = app.session_serializer().dumps({'_permanent': True, 'n': 1})
     client._c.cookies.set('session', cookie)
     renewed = re.search(r'session=([^;]+);.*expires=', client.get('/').headers.get('set-cookie', ''), re.I)
     assert renewed and auth.load_session_cookie(app, renewed.group(1).strip('"'))['n'] == 1
@@ -134,15 +155,14 @@ def test_auth_form_rejects_oversized_body(client):
     assert client.post('/login', data={'email': 'a@b.c', 'password': 'x'}).status_code != 413
 
 
-def test_account_admin_and_export_pages_are_served_by_fastapi(client, app):
-    """Mi cuenta, segundo factor, Administración y exportación ya no son vistas de Flask."""
-    moved = set(app.extensions['empleoia_app_globals']['ACCOUNT_PAGES'])
-    params = {'revoke_session': {'session_id': 1}, 'admin_block': {'user_id': 1}, 'admin_unblock': {'user_id': 1},
-              'admin_reset_two_factor': {'user_id': 1}, 'admin_delete': {'user_id': 1},
-              'export_results_excel': {'filename': 'x.csv'}}
-    for name in moved:
-        assert client.app.url_path_for(name, **params.get(name, {}))
-    assert not moved & set(app.view_functions)
+def test_every_template_endpoint_exists(client):
+    """Cada url_for('...') de las plantillas apunta a una ruta de FastAPI (ya no hay reglas de Flask de respaldo)."""
+    import pathlib
+    names = {getattr(r, 'name', None) for r in fastapi_web.all_routes(client.app.router.routes)}
+    used = set()
+    for path in pathlib.Path(__file__).resolve().parent.parent.joinpath('templates').rglob('*.html'):
+        used |= set(re.findall(r"url_for\(\s*'([a-z_]+)'", path.read_text(encoding='utf-8')))
+    assert used and used - names - {'static'} == set()
 
 
 def test_account_forms_require_csrf(client, app, monkeypatch):
@@ -152,10 +172,8 @@ def test_account_forms_require_csrf(client, app, monkeypatch):
     assert client.post('/admin/users/1/block').status_code == 400
 
 
-def test_content_pages_are_served_by_fastapi(client, app):
-    """Resultados, documentos, perfiles y alertas ya no son vistas de Flask."""
-    moved = set(app.extensions['empleoia_app_globals']['CONTENT_PAGES'])
-    assert not moved & set(app.view_functions)
+def test_content_pages_are_served_by_fastapi(client):
+    """Resultados, documentos, perfiles y alertas los sirve FastAPI."""
     assert client.app.url_path_for('delete_csv', filename='a.csv') == '/delete_csv/a.csv'
 
 

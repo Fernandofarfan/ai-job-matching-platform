@@ -35,14 +35,13 @@ def test_requests_counted_by_route_template(monkeypatch):
     client.get('/api/health')
     assert _value('empleoia_http_requests_total', method='GET', route='/api/health', status='200') == before + 1
     import main
-    from app import app as flask_app
     scope = {'type': 'http', 'path': '/download_resume/cv.docx', 'method': 'GET', 'root_path': ''}
-    assert observability.route_label(main.app, scope, flask_app) == '/download_resume/{filename}'
+    assert observability.route_label(main.app, scope) == '/download_resume/{filename}'
     scope['path'] = '/api/tracker/job/7/reminder'
     scope['method'] = 'PUT'
-    assert observability.route_label(main.app, scope, flask_app) == '/api/tracker/job/{job_id}/reminder'
+    assert observability.route_label(main.app, scope) == '/api/tracker/job/{job_id}/reminder'
     scope['path'], scope['method'] = '/no/existe/123', 'GET'
-    assert observability.route_label(main.app, scope, flask_app) == 'unmatched'
+    assert observability.route_label(main.app, scope) == 'unmatched'
 
 
 def test_ai_usage_feeds_token_counters():

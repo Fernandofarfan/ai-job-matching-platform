@@ -6,6 +6,13 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar] - Sin Flask (6/6)
+
+- Se quitan Flask, Flask-WTF, Flask-Limiter y pytest-flask. `web_settings.py` guarda la config (`SECRET_KEY`, `MAX_UPLOAD_MB`, cookies) y firma la cookie `session` con el mismo formato que Flask: las sesiones y los tokens CSRF abiertos antes siguen valiendo.
+- Los límites de las páginas (login, registro, Mi cuenta, Administración) usan `rate_limit.py` (librería `limits`, `RATELIMIT_STORAGE_URI`), igual que las APIs.
+- Una página que no existe muestra la página de error 404; un 500 ya no muestra el error interno; `/api/*` sigue respondiendo JSON.
+- Las métricas de Prometheus etiquetan solo con rutas de FastAPI.
+
 ## [Sin publicar] - Páginas de Flask a FastAPI (5/6): búsquedas y conexiones
 
 - FastAPI sirve el arranque de las búsquedas, la prueba de scrapers y las solicitudes de conexión (`routers/scraper_pages.py`); las tareas de Computrabajo, Bumeran y universal pasan a `scraping_jobs.py`. Se quita la carpeta `web/`: Flask ya no tiene vistas.

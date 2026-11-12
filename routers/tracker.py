@@ -45,8 +45,8 @@ class BodyTooLarge(Exception):
 
 
 def _body_limit(request: Request) -> Optional[int]:
-    flask_factory = request.app.dependency_overrides.get(get_flask_app, get_flask_app)
-    return flask_factory().config.get('MAX_CONTENT_LENGTH')
+    web_factory = request.app.dependency_overrides.get(get_web_app, get_web_app)
+    return web_factory().config.get('MAX_CONTENT_LENGTH')
 
 
 def _limit_body(request: Request, limit: int) -> Request:
@@ -101,10 +101,10 @@ class TrackerRoute(APIRoute):
         return wrapped
 
 
-def get_flask_app():
-    """App Flask montada en main.py (dueña de la sesión y la config CSRF); se sobrescribe en tests."""
-    from app import app as flask_app
-    return flask_app
+def get_web_app():
+    """Config de la web (dueña de la sesión y del CSRF, web_settings.WebApp); se sobrescribe en tests."""
+    from app import app as web_app
+    return web_app
 
 
 def get_db():
@@ -113,23 +113,23 @@ def get_db():
     return db_manager
 
 
-def flask_session(request: Request, flask_app=Depends(get_flask_app)) -> dict:
-    """Datos de la cookie de sesión de Flask ({} si falta o la firma no vale)."""
-    cookie = request.cookies.get(flask_app.config.get('SESSION_COOKIE_NAME', 'session'))
-    return auth.load_session_cookie(flask_app, cookie)
+def cookie_session(request: Request, web_app=Depends(get_web_app)) -> dict:
+    """Datos de la cookie de sesión ({} si falta o la firma no vale)."""
+    cookie = request.cookies.get(web_app.config.get('SESSION_COOKIE_NAME', 'session'))
+    return auth.load_session_cookie(web_app, cookie)
 
 
-def require_browser_session(request: Request, session: dict = Depends(flask_session),
-                            flask_app=Depends(get_flask_app)) -> None:
+def require_browser_session(request: Request, session: dict = Depends(cookie_session),
+                            web_app=Depends(get_web_app)) -> None:
     """Login y CSRF en los métodos que modifican datos, igual que en Flask."""
-    if auth.auth_enabled() and not auth.is_session_valid(session, flask_app.secret_key):
+    if auth.auth_enabled() and not auth.is_session_valid(session, web_app.secret_key):
         raise ApiError(401, 'No autenticado')
-    if request.method in SAFE_METHODS or not flask_app.config.get('WTF_CSRF_ENABLED', True):
+    if request.method in SAFE_METHODS or not web_app.config.get('WTF_CSRF_ENABLED', True):
         return
-    headers = flask_app.config.get('WTF_CSRF_HEADERS', ['X-CSRFToken', 'X-CSRF-Token'])
+    headers = web_app.config.get('WTF_CSRF_HEADERS', ['X-CSRFToken', 'X-CSRF-Token'])
     token = next((request.headers[h] for h in headers if request.headers.get(h)), '')
-    secret = flask_app.config.get('WTF_CSRF_SECRET_KEY') or flask_app.secret_key
-    if not auth.check_csrf_token(session, token, secret, flask_app.config.get('WTF_CSRF_TIME_LIMIT', 3600)):
+    secret = web_app.config.get('WTF_CSRF_SECRET_KEY') or web_app.secret_key
+    if not auth.check_csrf_token(session, token, secret, web_app.config.get('WTF_CSRF_TIME_LIMIT', 3600)):
         raise ApiError(400, 'Token CSRF inválido o vencido: recargá la página')
 
 
@@ -240,10 +240,10 @@ def delete_job(job_id: int, db=Depends(get_db)):
 
 
 @router.post('/save-from-extension')
-def save_from_extension(request: Request, data: dict = Body(...), session: dict = Depends(flask_session),
-                        flask_app=Depends(get_flask_app), db=Depends(get_db)):
+def save_from_extension(request: Request, data: dict = Body(...), session: dict = Depends(cookie_session),
+                        web_app=Depends(get_web_app), db=Depends(get_db)):
     """Extensión de Chrome: sin CSRF (viene de otro origen); con login exige sesión o el token de la cuenta."""
-    if auth.auth_enabled() and not auth.is_session_valid(session, flask_app.secret_key):
+    if auth.auth_enabled() and not auth.is_session_valid(session, web_app.secret_key):
         token = request.headers.get('X-Extension-Token', '')
         uid = auth.extension_token_user(token)
         if uid is None and not auth.legacy_extension_token(token):
