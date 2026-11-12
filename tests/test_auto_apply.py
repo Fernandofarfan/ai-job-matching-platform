@@ -73,7 +73,7 @@ def test_submit_flag_sends_and_caps_form_steps(bot, monkeypatch):
 def test_only_linkedin_job_urls_and_capped(bot, monkeypatch):
     monkeypatch.setenv('AUTO_APPLY_ENABLED', 'true')
     links = ['http://www.linkedin.com/jobs/view/1/', 'https://evil.com/jobs/1', 'https://linkedin.com.evil.com/jobs/1',
-             'https://www.linkedin.com/feed/'] + [JOB] * 12
+             'https://www.linkedin.com/feed/', 'https://[roto/jobs/view/1/'] + [JOB] * 12
     out = run(links)
     assert out['total_attempted'] == ai_tasks.AUTO_APPLY_MAX_JOBS
     assert out['skipped'] == len(links) - ai_tasks.AUTO_APPLY_MAX_JOBS

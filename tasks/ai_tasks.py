@@ -279,8 +279,11 @@ def _env_flag(name: str) -> bool:
 def _is_linkedin_job(link) -> bool:
     from urllib.parse import urlparse
 
-    url = urlparse(str(link))
-    host = (url.hostname or "").lower()
+    try:
+        url = urlparse(str(link))
+        host = (url.hostname or "").lower()
+    except ValueError:
+        return False
     return (url.scheme == "https" and (host == "linkedin.com" or host.endswith(".linkedin.com"))
             and url.path.startswith("/jobs/"))
 
