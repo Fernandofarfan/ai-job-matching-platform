@@ -110,14 +110,16 @@ def _webpush(**kwargs):
     return webpush(**kwargs)
 
 
-def send(user_id: Optional[int], title: str, body: str, url: str = '/') -> int:
-    """Manda la notificación a cada dispositivo de la cuenta; borra los que el servicio dio de baja.
-
-    Devuelve cuántos la recibieron."""
+def send(user_id: Optional[int], title: str, body: str, url: str = '/', endpoint: Optional[str] = None) -> int:
+    """Manda la notificación a cada dispositivo de la cuenta (o solo a `endpoint`, si es de la cuenta);
+    borra los que el servicio dio de baja. Devuelve cuántos la recibieron."""
     if not configured():
         return 0
+    query = select(PushSubscription).where(_owner_filter(user_id))
+    if endpoint is not None:
+        query = query.where(PushSubscription.endpoint_hash == _hash(endpoint))
     with accounts._sessions()() as session:
-        subs = session.execute(select(PushSubscription).where(_owner_filter(user_id))).scalars().all()
+        subs = session.execute(query).scalars().all()
         targets = [(s.id, s.endpoint, s.p256dh, s.auth) for s in subs]
     payload = json.dumps({'title': title[:120], 'body': body[:300], 'url': url if url.startswith('/') else '/'})
     claims = {'sub': os.getenv('VAPID_SUBJECT') or f"mailto:{os.getenv('ADMIN_EMAIL') or 'admin@localhost'}"}

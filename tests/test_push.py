@@ -101,11 +101,13 @@ def test_push_api(api, vapid):
     body = {'endpoint': FCM, 'keys': {'p256dh': 'k', 'auth': 'a'}}
     assert api.post('/api/push/subscribe', json=body).status_code == 200
     assert api.post('/api/push/subscribe', json={**body, 'endpoint': 'https://10.0.0.1/x'}).status_code == 400
-    assert api.get('/api/push/config').json()['devices'] == 1
-    with mock.patch.object(push, '_webpush'):
-        assert api.post('/api/push/test').json()['sent'] == 1
+    assert api.post('/api/push/subscribe', json={**body, 'endpoint': FCM + '2'}).status_code == 200
+    assert api.get('/api/push/config').json()['devices'] == 2
+    with mock.patch.object(push, '_webpush') as webpush:
+        assert api.post('/api/push/test', json={'endpoint': FCM}).json()['sent'] == 1
+    assert webpush.call_args.kwargs['subscription_info']['endpoint'] == FCM
     assert api.post('/api/push/unsubscribe', json={'endpoint': FCM}).json()['removed']
-    assert api.post('/api/push/test').status_code == 502
+    assert api.post('/api/push/test', json={'endpoint': FCM}).status_code == 502
 
 
 def test_push_api_not_configured(api, monkeypatch):

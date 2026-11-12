@@ -59,11 +59,11 @@ def unsubscribe(body: Endpoint):
 
 
 @router.post('/test')
-def test():
-    """Manda una notificación de prueba a los dispositivos de la cuenta."""
+def test(body: Endpoint):
+    """Manda una notificación de prueba solo a este navegador (si está suscripto a la cuenta)."""
     _require_configured()
     sent = push.send(accounts.current_user_id(), 'EmpleoIA', 'Las notificaciones funcionan en este dispositivo',
-                     '/account')
+                     '/account', endpoint=body.endpoint)
     if not sent:
-        raise ApiError(502, 'No se pudo entregar a ningún dispositivo')
+        raise ApiError(502, 'No se pudo entregar en este dispositivo')
     return {'success': True, 'sent': sent}

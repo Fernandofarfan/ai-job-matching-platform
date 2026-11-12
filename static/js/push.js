@@ -77,7 +77,7 @@
     testBtn.addEventListener('click', async () => {
       testBtn.disabled = true;
       try {
-        await post('/api/push/test');
+        await post('/api/push/test', { endpoint: subscription.endpoint });
         status.textContent = 'Notificación de prueba enviada.';
       } catch (err) {
         status.textContent = `No se pudo mandar: ${err.message}`;
