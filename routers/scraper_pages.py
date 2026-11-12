@@ -175,6 +175,9 @@ def _run_linkedin_test(app_globals: dict, tid: str, token: str, position: str, l
     scraper = None
     try:
         scraper = linkedinClass(token)
+        if not scraper.login_with_cookie():
+            task.update(error='No se pudo iniciar sesión en LinkedIn con el token', status='failed', progress=0)
+            return
         task['progress'] = 30
         save(tid)
         task.update(result=_plain(scraper.search_jobs(position, location, max_jobs_per_search=max_jobs), max_jobs),
