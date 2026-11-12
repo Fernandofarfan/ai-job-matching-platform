@@ -36,6 +36,7 @@ def test_data_picks_waiting_upcoming_and_interviews():
     assert data['interviewing'] == 1 and data['new_total'] == 3
     assert not nt.weekly_digest_empty(data)
     assert nt.weekly_digest_empty(nt.weekly_digest_data([_job(applied_date=datetime(2026, 11, 19))], 0, [], TODAY))
+    assert nt.weekly_digest_empty(nt.weekly_digest_data([_job(status='interviewing')], 0, [], TODAY))
 
 
 def test_html_escapes_and_only_links_http():

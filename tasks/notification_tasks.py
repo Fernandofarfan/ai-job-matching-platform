@@ -209,8 +209,8 @@ def weekly_digest_data(jobs: list, new_total: int, new_offers: list, today: date
 
 
 def weekly_digest_empty(data: dict) -> bool:
-    """Sin nada para contar no se manda el email."""
-    return not (data["new_total"] or data["waiting"] or data["upcoming"] or data["interviewing"])
+    """Sin nada para contar no se manda el email (las entrevistas en curso solas no son novedad)."""
+    return not (data["new_total"] or data["waiting"] or data["upcoming"])
 
 
 def weekly_digest_html(data: dict) -> str:
