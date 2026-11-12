@@ -143,3 +143,23 @@ def test_optimize_resume_api(api):
     optimizer.save_resume.side_effect = OSError('/ruta/secreta')
     resp = api.post('/api/optimize_resume', json={'job_description': 'Python'})
     assert resp.status_code == 500 and 'secreta' not in resp.text
+
+
+def test_run_stops_when_account_is_deleted(results_csv, tmp_path):
+    """Si borran la cuenta mientras se genera el lote, no se vuelven a crear sus documentos."""
+    with mock.patch('document_generators._call_gemini', return_value='Carta lista'), \
+            mock.patch('document_batch._account_alive', return_value=False):
+        with pytest.raises(document_batch.BatchError) as err:
+            document_batch.run('cover_letters', results_csv, 5, 'mi cv', pause=0)
+    assert err.value.status == 410
+    assert not (tmp_path / 'gen' / 'cover_letters').exists()
+
+
+def test_account_alive_checks_current_account():
+    """Sin cuentas siempre sigue; con cuenta, solo si todavía existe."""
+    with mock.patch('accounts.current_user_id', return_value=None):
+        assert document_batch._account_alive()
+    with mock.patch('accounts.current_user_id', return_value=7), mock.patch('accounts.get_user', return_value=None):
+        assert not document_batch._account_alive()
+    with mock.patch('accounts.current_user_id', return_value=7), mock.patch('accounts.get_user', return_value={'id': 7}):
+        assert document_batch._account_alive()
