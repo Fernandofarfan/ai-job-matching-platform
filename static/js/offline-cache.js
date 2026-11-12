@@ -108,7 +108,7 @@ function showOfflineBanner(cachedCount = 0) {
         <i class="bi bi-wifi-off" style="margin-right:8px;"></i>
         Modo Offline – Mostrando ${cachedCount} registros en caché
       </span>
-      <button onclick="document.getElementById('offline-banner').remove()"
+      <button type="button" data-close-offline-banner
               style="background:rgba(255,255,255,0.2); border:none; color:white;
                      padding:4px 12px; border-radius:20px; cursor:pointer; font-weight:600;">
         Cerrar
@@ -116,6 +116,8 @@ function showOfflineBanner(cachedCount = 0) {
     </div>
   `;
   document.body.prepend(banner);
+  // sin onclick inline: la CSP bloquea los handlers en el HTML
+  banner.querySelector('[data-close-offline-banner]').addEventListener('click', () => banner.remove());
   // Ajustar el body para que no tape contenido
   document.body.style.paddingTop = '46px';
 }
@@ -189,7 +191,7 @@ function showUpdateToast() {
       font-family: Inter, sans-serif; z-index: 10000;
     ">
       <span style="font-size:0.9rem;">🔄 Nueva versión disponible</span>
-      <button onclick="location.reload()" style="
+      <button type="button" data-reload style="
         background: #667eea; border: none; color: white;
         padding: 6px 14px; border-radius: 8px; cursor: pointer;
         font-weight: 600; font-size: 0.82rem;
@@ -197,6 +199,7 @@ function showUpdateToast() {
     </div>
   `;
   document.body.appendChild(toast);
+  toast.querySelector('[data-reload]').addEventListener('click', () => location.reload());
   setTimeout(() => toast.remove(), 8000);
 }
 

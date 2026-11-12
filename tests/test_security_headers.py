@@ -69,7 +69,8 @@ def test_api_docs_disabled_by_default(app, monkeypatch):
 
 
 def test_templates_have_no_inline_handlers_or_javascript_urls():
-    offenders = [f'{p.name}:{n}' for p in TEMPLATES.glob('*.html')
+    files = [*TEMPLATES.glob('*.html'), *(TEMPLATES.parent / 'static' / 'js').glob('*.js')]
+    offenders = [f'{p.name}:{n}' for p in files
                  for n, line in enumerate(p.read_text(encoding='utf-8').splitlines(), 1)
                  if INLINE_HANDLER.search(line) or 'javascript:' in line]
     assert offenders == []
@@ -126,3 +127,24 @@ def test_elements_with_several_handlers_use_per_event_args():
     for path in sorted(TEMPLATES.glob('*.html')):
         for tag in re.findall(r'<[a-z][^>]*>', path.read_text(), re.S):
             assert tag.count('data-args=') <= 1, f'{path.name}: {tag[:120]}'
+
+
+def test_server_error_keeps_security_headers(app):
+    """El 500 se arma fuera de los middlewares; igual lleva la CSP y el anti-framing."""
+    from fastapi.testclient import TestClient
+
+    import main
+    api = main.create_app(app)
+
+    @api.get('/boom')
+    @api.get('/api/boom')
+    def boom():
+        raise RuntimeError('detalle-secreto')
+
+    client = TestClient(api, raise_server_exceptions=False)
+    for path in ('/boom', '/api/boom'):
+        response = client.get(path)
+        assert response.status_code == 500
+        assert 'detalle-secreto' not in response.text
+        assert "frame-ancestors 'none'" in response.headers['content-security-policy']
+        assert response.headers['x-frame-options'] == 'DENY'

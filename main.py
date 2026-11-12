@@ -110,9 +110,10 @@ async def server_error(request: Request, exc: Exception):
     """500 sin el mensaje interno (queda en el log)."""
     logging.exception(f"500 en {request.url.path}: {exc}")
     if request.url.path.startswith("/api/"):
-        return JSONResponse({"error": "Error interno"}, status_code=500)
-    return fastapi_web.templates.TemplateResponse(request=request, name="error.html", status_code=500,
-                                                  context={"code": 500, "message": "Error interno del servidor"})
+        return security_headers.apply(request, JSONResponse({"error": "Error interno"}, status_code=500))
+    return security_headers.apply(request, fastapi_web.templates.TemplateResponse(
+        request=request, name="error.html", status_code=500,
+        context={"code": 500, "message": "Error interno del servidor"}))
 
 
 def create_app(web_app=None) -> FastAPI:

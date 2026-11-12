@@ -49,8 +49,13 @@ def is_https(request: Request) -> bool:
 
 async def add_security_headers(request: Request, call_next):
     """Agrega las cabeceras sin pisar las que ya puso una ruta. CSP_REPORT_ONLY=1 solo informa."""
+    nonce(request)
+    return apply(request, await call_next(request))
+
+
+def apply(request: Request, response):
+    """Cabeceras de seguridad en `response`; también la usa el 500, que se arma fuera de los middlewares."""
     script_nonce = nonce(request)
-    response = await call_next(request)
     csp_header = ("Content-Security-Policy-Report-Only" if os.getenv("CSP_REPORT_ONLY", "0") == "1"
                   else "Content-Security-Policy")
     headers = {
