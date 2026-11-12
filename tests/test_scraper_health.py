@@ -43,3 +43,20 @@ def test_main_exit_code(capsys):
     with mock.patch.object(scraper_health, 'PORTALS', {'a': lambda: _scraper([{}])}):
         assert scraper_health.main(['--query', 'qa']) == 0
     assert '"ok": true' in capsys.readouterr().out
+
+
+def test_blocked_portal_is_reported_but_does_not_fail():
+    from scrapers.common import PortalBlocked
+    ok, results = scraper_health.run(portals={'a': lambda: _scraper([{}]),
+                                              'b': lambda: _scraper(error=PortalBlocked('captcha'))})
+    assert ok and results[1] == {'portal': 'b', 'jobs': 0, 'error': 'captcha', 'blocked': True}
+
+
+def test_indeed_adapter_counts_listing_cards(monkeypatch):
+    from scrapers import indeed_scraper
+    calls = []
+    monkeypatch.setattr(indeed_scraper.indeedScraper, 'listing',
+                        lambda self, query, location, max_jobs: calls.append((query, location, max_jobs)) or [{}])
+    monkeypatch.setenv('SCRAPER_HEALTH_INDEED_LOCATION', 'Austin')
+    ok, results = scraper_health.run(portals={'indeed': scraper_health.PORTALS['indeed']}, max_jobs=3)
+    assert ok and results[0]['jobs'] == 1 and calls == [('python', 'Austin', 3)]

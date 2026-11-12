@@ -10,6 +10,7 @@ class Node:
 
     def __init__(self, text='', attrs=None, children=None):
         self.text, self.attrs, self.children = text, attrs or {}, children or {}
+        self.url = ''
 
     def inner_text(self):
         return self.text
@@ -31,7 +32,7 @@ class Node:
 
 def _card(job_id, title, easy=False):
     return Node(text=title + (' Easily apply' if easy else ''), children={
-        'h2.jobTitle a': Node(attrs={'data-jk': job_id}), 'h2.jobTitle span': Node(title),
+        indeed_scraper.TITLE_LINK: Node(attrs={'data-jk': job_id}), indeed_scraper.TITLE: Node(title),
         "[data-testid='company-name']": Node('Acme'), "[data-testid='text-location']": Node('Remote')})
 
 
@@ -48,7 +49,7 @@ def test_search_url_maps_filters():
 def test_parse_card_skips_easy_apply_and_missing_id():
     assert indeed_scraper.parse_card(_card('a1', 'Data Engineer'))['id'] == 'a1'
     assert indeed_scraper.parse_card(_card('a2', 'QA', easy=True)) is None
-    assert indeed_scraper.parse_card(Node(children={'h2.jobTitle span': Node('Sin id')})) is None
+    assert indeed_scraper.parse_card(Node(children={indeed_scraper.TITLE: Node('Sin id')})) is None
 
 
 def test_extract_jobs_filters_and_saves(monkeypatch, tmp_path):
@@ -68,6 +69,56 @@ def test_extract_jobs_filters_and_saves(monkeypatch, tmp_path):
     assert len(list(tmp_path.iterdir())) == 1
     assert scraper.login_with_google() is True
     scraper.close()
+
+
+def test_listing_returns_cards_or_raises_when_blocked(monkeypatch):
+    from scrapers.common import PortalBlocked
+    page = Node(children={indeed_scraper.CARD: [_card('a1', 'Data Engineer'), _card('a2', 'QA', easy=True)]})
+    page.content = lambda: '<html>ok</html>'
+    urls = []
+    monkeypatch.setattr(indeed_scraper, 'get_with_retries', lambda p, url: urls.append(url))
+    scraper = indeed_scraper.indeedScraper(browser_factory=lambda: mock.Mock(page=page))
+    assert [c['id'] for c in scraper.listing('python', 'Remote')] == ['a1'] and 'q=python' in urls[0]
+    page.content = lambda: 'Verify you are human'
+    try:
+        scraper.listing('python')
+        raise AssertionError('debía lanzar PortalBlocked')
+    except PortalBlocked:
+        pass
+
+
+def test_login_wall_on_description_stops_with_partial_results(monkeypatch):
+    from scrapers.common import PortalBlocked
+    page = Node(children={indeed_scraper.CARD: [_card('a1', 'Data Engineer'), _card('a2', 'QA'), _card('a3', 'Ops')]})
+    page.content = lambda: '<html>ok</html>'
+    monkeypatch.setattr(indeed_scraper, 'get_with_retries', lambda p, url: None)
+    monkeypatch.setattr(indeed_scraper.time, 'sleep', lambda s: None)
+    scraper = indeed_scraper.indeedScraper(browser_factory=lambda: mock.Mock(page=page))
+    calls = []
+
+    def description(job_id):
+        calls.append(job_id)
+        if job_id == 'a2':
+            raise PortalBlocked('login')
+        return 'Requirements: 2 years of experience with Python.'
+    monkeypatch.setattr(scraper, '_description', description)
+    assert [j['Title'] for j in scraper.extract_jobs('x', 'y')] == ['Data Engineer'] and calls == ['a1', 'a2']
+
+
+def test_description_redirected_to_login_raises(monkeypatch):
+    from scrapers.common import PortalBlocked
+    tab = mock.Mock(url='https://secure.indeed.com/auth?continue=x&from=bot-detection-anonymous')
+    tab.content.return_value = '<html>login</html>'
+    page = mock.Mock()
+    page.context.new_page.return_value = tab
+    monkeypatch.setattr(indeed_scraper, 'get_with_retries', lambda p, url: None)
+    scraper = indeed_scraper.indeedScraper(browser_factory=lambda: mock.Mock(page=page))
+    try:
+        scraper._description('a1')
+        raise AssertionError('debía lanzar PortalBlocked')
+    except PortalBlocked:
+        pass
+    tab.close.assert_called_once()
 
 
 def test_blocked_page_stops_search(monkeypatch):

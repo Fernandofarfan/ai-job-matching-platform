@@ -6,6 +6,14 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar] - Indeed en el monitor de scrapers
+
+- `scripts/scraper_health.py` revisa también Indeed: cuenta las tarjetas de la primera página del listado público (`indeedScraper.listing`), sin abrir descripciones ni guardar CSV. Ubicación con `SCRAPER_HEALTH_INDEED_LOCATION` (por defecto `Remote`).
+- Si un portal muestra un captcha, el resultado sale con `"blocked": true` y no abre el issue: un bloqueo no indica que el HTML haya cambiado. Nueva excepción `scrapers.common.PortalBlocked`.
+- El workflow del monitor instala `requirements.txt` con hashes.
+- Indeed cambió el título de las tarjetas de `<h2>` a `<h3>` y el scraper no encontraba ninguna oferta; ahora se busca por la clase `.jobTitle`.
+- Si Indeed manda al login en vez de mostrar una oferta (`from=bot-detection`), la búsqueda se corta con lo encontrado en vez de esperar 10 s por cada oferta.
+
 ## [Sin publicar] - Comparación de embeddings con TF-IDF por idioma
 
 - `python scripts/eval_matching.py --compare` muestra NDCG@5, P@3 y MRR en total y por idioma del CV (`en`, `es`, `pt`), y la fila `delta` (embeddings − TF-IDF) cuando se midieron los dos backends. `matching_eval.evaluate()` devuelve también `by_language`.
