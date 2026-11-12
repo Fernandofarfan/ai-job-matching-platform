@@ -480,30 +480,48 @@ La extensión **EmpleoIA Saver** permite guardar ofertas de trabajo con 1 click.
 
 ## ☁️ Despliegue en la Nube
 
-EmpleoIA incluye infraestructura como código con Terraform para desplegar en **Google Cloud Platform**.
+`terraform/` despliega EmpleoIA en **Google Cloud Platform**, con un estado por ambiente (`staging` y `prod`).
+
+| Recurso | Detalle |
+|---|---|
+| Cloud Run `empleoia-web-<env>` | Web (uvicorn), cuenta de servicio propia, solo tráfico a IPs privadas por la VPC |
+| Cloud Run worker pool `empleoia-worker-<env>` | Celery worker + beat (scraping, alertas, retención de CVs); 1 instancia |
+| Cloud Run job `empleoia-migrate-<env>` | `alembic upgrade head`, se corre en cada deploy antes de actualizar la web |
+| Cloud SQL MySQL 8.0 | Solo IP privada, backups diarios (`backup_retention_count`) y point-in-time recovery de 7 días; en prod regional y con protección contra borrado |
+| Memorystore Redis 7 | Rate limit, caché de IA y broker de Celery (HA en prod) |
+| Bucket `<proyecto>-empleoia-uploads-<env>` | CVs montados en `/app/uploads`; privado, sin versionado y con borrado por antigüedad si `cv_retention_days > 0` |
+| Secret Manager | `DB_PASSWORD`, `SECRET_KEY`, `APP_PASSWORD`, `GEMINI_API_KEY`, `CV_ENCRYPTION_KEY` y `extra_secrets` |
+
+Los valores no secretos de cada ambiente están en `terraform/envs/<env>.tfvars`. Los secretos se pasan como `TF_VAR_*` y nunca van al repo (quedan en el estado de Terraform, así que el bucket del estado debe ser privado).
+
+### Deploy automático (GitHub Actions)
+
+- **`Terraform`**: en cada PR que toca `terraform/` corre `fmt`, `validate` y `terraform test` (con un provider simulado, sin credenciales).
+- **`Deploy a GCP`**: cada push a `main` despliega en staging: build de la imagen con el SHA del commit, migraciones, `terraform apply` y smoke test de `/api/health`. Producción se despliega con "Run workflow" eligiendo `prod`. En los PRs publica el `terraform plan` de staging en el resumen del job.
+
+El deploy se saltea mientras no configures, en cada GitHub Environment (`staging`, `prod`):
+- **Variables:** `GCP_PROJECT_ID`, `GCP_WORKLOAD_IDENTITY_PROVIDER`, `GCP_DEPLOY_SA`, `TF_STATE_BUCKET` y, opcionalmente, `GCP_REGION`.
+- **Secretos:** `DB_PASSWORD`, `GEMINI_API_KEY`, `APP_PASSWORD`, `SECRET_KEY`, `CV_ENCRYPTION_KEY` y, opcionalmente, `EXTRA_SECRETS_JSON` (p. ej. `{"TELEGRAM_BOT_TOKEN":"..."}`).
+
+Conviene exigir aprobación manual en el environment `prod`. La autenticación es por Workload Identity Federation: no hay claves JSON de cuentas de servicio.
+
+### Deploy manual
 
 ```bash
 cd terraform
+gcloud storage buckets create gs://<bucket-del-estado> --location=southamerica-east1 --uniform-bucket-level-access
+terraform init -backend-config="bucket=<bucket-del-estado>" -backend-config="prefix=empleoia/staging"
 
-# Inicializar
-terraform init
+export TF_VAR_project_id=<proyecto> TF_VAR_db_password=... TF_VAR_gemini_api_key=... \
+       TF_VAR_app_password=... TF_VAR_secret_key=... TF_VAR_cv_encryption_key=...
+export TF_VAR_image=southamerica-east1-docker.pkg.dev/<proyecto>/empleoia-staging/web:<tag>
 
-# Planificar
-terraform plan \
-  -var="project_id=tu-proyecto-gcp" \
-  -var="db_password=tu-password-segura" \
-  -var="gemini_api_key=tu-api-key"
-
-# Aplicar
-terraform apply
+terraform apply -var-file=envs/staging.tfvars -target=google_artifact_registry_repository.empleoia
+docker build -t "$TF_VAR_image" .. && docker push "$TF_VAR_image"
+terraform apply -var-file=envs/staging.tfvars -target=google_cloud_run_v2_job.migrate
+gcloud run jobs execute "$(terraform output -raw migrate_job)" --region southamerica-east1 --wait
+terraform apply -var-file=envs/staging.tfvars
 ```
-
-Recursos que se crean:
-- **Cloud Run**: Flask app con auto-scaling
-- **Cloud SQL**: MySQL 8.0 en VPC privada
-- **Memorystore**: Redis para Celery
-- **Artifact Registry**: Para imágenes Docker
-- **Secret Manager**: Para secretos sensibles
 
 ---
 
