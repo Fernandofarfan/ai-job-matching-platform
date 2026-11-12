@@ -1,0 +1,45 @@
+name: Verificar restauración de backups (Cloud SQL)
+
+# Mensual y a mano: clona la instancia (PITR), restaura el último backup en una instancia temporal,
+# comprueba las tablas y la borra. Usa las mismas variables del Environment que deploy.yml más
+# BACKUP_CHECK_BUCKET (bucket donde exportar la copia). Corre solo con GCP_DEPLOY_ENABLED=true.
+# Runbook: docs/backup-restore.md
+
+on:
+  schedule:
+    - cron: "23 6 1 * *"
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Ambiente
+        type: choice
+        options: [staging, prod]
+        default: staging
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  restore-check:
+    name: Restore check (${{ inputs.environment || 'staging' }})
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment || 'staging' }}
+    if: vars.GCP_DEPLOY_ENABLED == 'true'
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SA }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Restaurar y verificar
+        env:
+          PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+          INSTANCE: empleoia-mysql-${{ inputs.environment || 'staging' }}
+          BUCKET: ${{ vars.BACKUP_CHECK_BUCKET }}
+        run: scripts/verify_backup_restore.sh

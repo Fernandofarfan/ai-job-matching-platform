@@ -340,12 +340,12 @@
                 </ul>
                 {% if auth_enabled %}
                 <form method="POST" action="{{ url_for('logout') }}" class="d-flex">
-                    <button type="submit" class="btn btn-sm btn-outline-light"><i class="bi bi-box-arrow-right me-1"></i>Salir</button>
+                    <button type="submit" class="btn btn-sm btn-outline-secondary"><i class="bi bi-box-arrow-right me-1" aria-hidden="true"></i>Salir</button>
                 </form>
                 {% endif %}
                 <!-- Indicador de estado de red -->
                 <div class="navbar-text ms-2" id="network-indicator" title="Estado de conexión">
-                    <span class="badge" style="background:#22c55e; font-size:0.7rem;">● Online</span>
+                    <span class="badge" style="background:#15803d; font-size:0.7rem;">● Online</span>
                 </div>
             </div>
         </div>
@@ -601,6 +601,7 @@
     }
     </script>
 
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/a11y.css') }}">
     {% block scripts %}{% endblock %}
 </body>
 

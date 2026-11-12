@@ -3,8 +3,6 @@ import glob
 import os
 import uuid
 
-import pytest
-
 from tests_integration.conftest import ROOT
 
 CV = (
@@ -12,27 +10,6 @@ CV = (
     "Data Engineer con 4 años de experiencia.\n"
     "Habilidades: Python, SQL, Airflow, Spark, Docker, AWS.\n"
 )
-
-
-@pytest.fixture(scope='module')
-def browser():
-    """Chromium headless compartido por los tests del módulo."""
-    sync_api = pytest.importorskip('playwright.sync_api')
-    with sync_api.sync_playwright() as p:
-        b = p.chromium.launch()
-        yield b
-        b.close()
-
-
-@pytest.fixture
-def page(browser, live_server, app_password):
-    """Pestaña nueva apuntando a la app levantada."""
-    context = browser.new_context(base_url=live_server)
-    page = context.new_page()
-    page.set_default_timeout(20000)
-    page.app_password = app_password
-    yield page
-    context.close()
 
 
 def _login(page, password=None):
@@ -90,5 +67,11 @@ def test_pages_load_without_console_errors(page):
     for path in ('/', '/profile', '/tracker', '/alerts'):
         page.goto(path)
         page.wait_for_load_state('networkidle')
-    assert page.evaluate("navigator.serviceWorker.getRegistration().then(r => !!r)")
-    assert errors == []
+    registered = False
+    for _ in range(20):
+        registered = page.evaluate("navigator.serviceWorker.getRegistration().then(r => !!r)")
+        if registered:
+            break
+        page.wait_for_timeout(250)
+    assert registered
+    assert errors == [], errors

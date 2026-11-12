@@ -127,8 +127,8 @@ function updateOnlineStatus() {
 
   if (indicator) {
     indicator.innerHTML = isOnline
-      ? '<span class="badge" style="background:#22c55e; font-size:0.7rem;">● Online</span>'
-      : '<span class="badge" style="background:#ef4444; font-size:0.7rem;">● Offline</span>';
+      ? '<span class="badge" style="background:#15803d; font-size:0.7rem;">● Online</span>'
+      : '<span class="badge" style="background:#b91c1c; font-size:0.7rem;">● Offline</span>';
   }
 
   if (!isOnline) {

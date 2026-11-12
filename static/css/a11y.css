@@ -1,0 +1,42 @@
+/* Contraste WCAG AA (4.5:1) y movimiento reducido. Se carga al final del <body> para ganarle a los CSS de cada página. */
+:root {
+    --bs-primary: #0a58ca;
+    --bs-primary-rgb: 10, 88, 202;
+    --bs-link-color: #0a58ca;
+    --bs-link-color-rgb: 10, 88, 202;
+    --bs-secondary-color: #565e64;
+}
+
+.text-muted { color: #5c636a !important; }
+.text-light .text-muted, .bg-dark .text-muted, .navbar-dark .text-muted { color: #adb5bd !important; }
+.text-primary { color: #0a58ca !important; }
+.text-success { color: #146c43 !important; }
+.text-danger { color: #b02a37 !important; }
+
+.btn-primary {
+    --bs-btn-bg: #0a58ca; --bs-btn-border-color: #0a58ca;
+    --bs-btn-hover-bg: #084298; --bs-btn-hover-border-color: #084298;
+    --bs-btn-active-bg: #084298; --bs-btn-active-border-color: #084298;
+    background-color: #0a58ca; border-color: #0a58ca;
+}
+.btn-outline-primary { --bs-btn-color: #0a58ca; --bs-btn-border-color: #0a58ca; --bs-btn-hover-bg: #0a58ca; color: #0a58ca; border-color: #0a58ca; }
+.btn-outline-success { --bs-btn-color: #146c43; --bs-btn-border-color: #146c43; --bs-btn-hover-bg: #146c43; color: #146c43; border-color: #146c43; }
+.btn-outline-danger { --bs-btn-color: #b02a37; --bs-btn-border-color: #b02a37; --bs-btn-hover-bg: #b02a37; color: #b02a37; border-color: #b02a37; }
+.btn-outline-secondary { --bs-btn-color: #565e64; --bs-btn-border-color: #565e64; color: #565e64; border-color: #565e64; }
+.btn-outline-primary:hover, .btn-outline-success:hover, .btn-outline-danger:hover, .btn-outline-secondary:hover { color: #fff; }
+
+.fm-label { color: #6b7280; }
+.fm-conv, .btn-funnel-analytics { color: #4338ca; }
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+.text-light .text-primary, .bg-dark .text-primary { color: #6ea8fe !important; }
+.text-light .text-success, .bg-dark .text-success { color: #75b798 !important; }
+.text-light .text-danger, .bg-dark .text-danger { color: #ea868f !important; }
