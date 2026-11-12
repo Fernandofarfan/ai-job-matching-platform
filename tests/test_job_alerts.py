@@ -204,3 +204,14 @@ def test_computrabajo_confidential_fallback_uses_location():
     a = {'Title': 'Vendedor', 'Company': 'Confidential', 'Location': 'Córdoba'}
     b = {'Title': 'Vendedor', 'Company': 'Confidential', 'Location': 'Rosario'}
     assert job_alerts.fingerprint(a) != job_alerts.fingerprint(b)
+
+
+def test_failed_delivery_retries_next_run(db):
+    """Si ningún canal entrega, las ofertas se vuelven a avisar en la próxima corrida."""
+    search = job_alerts.create_search({'position': 'Python', 'portals': ['computrabajo'], 'channels': ['telegram']})
+    make = lambda p: _FakeScraper([_job('Dev Python')])  # noqa: E731
+    notify = mock.Mock(return_value={'telegram': False})
+    assert job_alerts.run_search(search['id'], notify, make, profile={})['new'] == 1
+    notify.return_value = {'telegram': True}
+    assert job_alerts.run_search(search['id'], notify, make, profile={})['new'] == 1
+    assert job_alerts.run_search(search['id'], notify, make, profile={})['new'] == 0
