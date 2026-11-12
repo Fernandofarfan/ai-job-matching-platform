@@ -219,6 +219,10 @@ resource "google_cloud_run_v2_service" "empleoia_web" {
         value = local.redis_url
       }
       env {
+        name  = "RATELIMIT_STORAGE_URI"
+        value = local.redis_url
+      }
+      env {
         name = "GEMINI_API_KEY"
         value_source {
           secret_key_ref {
