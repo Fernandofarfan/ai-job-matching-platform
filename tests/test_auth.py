@@ -215,3 +215,28 @@ def test_delete_account_needs_password(registered, monkeypatch, app):
     response = registered.post('/account/delete', data={'password': PASSWORD})
     assert response.status_code == 302 and accounts.find_user_id('ana@example.com') is None
     assert registered.get('/tracker').status_code == 302
+
+
+def test_reset_link_ignores_foreign_host(registered, outbox):
+    """Sin PUBLIC_BASE_URL, un Host que no es local no recibe el enlace (evita robar el token)."""
+    registered.post('/forgot_password', data={'email': 'ana@example.com'}, headers={'Host': 'evil.example'})
+    assert outbox == []
+
+
+def test_reset_link_is_single_use_under_race(registered):
+    """Dos usos del mismo enlace: el segundo falla porque la contraseña ya cambió."""
+    user = accounts.get_user(accounts.find_user_id('ana@example.com'))
+    accounts.set_password(user['id'], 'primera-clave-1', expected_hash=user['password_hash'])
+    with pytest.raises(accounts.AccountError):
+        accounts.set_password(user['id'], 'segunda-clave-2', expected_hash=user['password_hash'])
+    assert accounts.authenticate('ana@example.com', 'primera-clave-1')
+
+
+def test_admin_account_kept_while_others_exist(registered, monkeypatch, app):
+    """La primera cuenta no se borra si hay otras (Telegram, Gmail y la extensión son suyos)."""
+    monkeypatch.setitem(inspect.unwrap(app.view_functions['delete_account']).__globals__, 'delete_user_profile', lambda: True)
+    monkeypatch.setenv('ALLOW_SIGNUP', 'true')
+    accounts.register('beto@example.com', PASSWORD)
+    _login(registered)
+    registered.post('/account/delete', data={'password': PASSWORD})
+    assert accounts.find_user_id('ana@example.com')
