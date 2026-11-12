@@ -34,7 +34,9 @@ def test_save_get_delete_in_db(db):
 def test_json_fallback():
     profile_store.save_profile('backend', {'skills': ['python']})
     with open(profile_store.JSON_PATH, encoding='utf-8') as f:
-        assert json.load(f) == {'backend': {'skills': ['python']}}
+        stored = json.load(f)
+    assert stored.pop(profile_store.WRITTEN_KEY) > 0
+    assert stored == {'backend': {'skills': ['python']}}
     assert profile_store.delete_profile('backend') == {'skills': ['python']}
     assert profile_store.get_all_profiles() == {}
 
