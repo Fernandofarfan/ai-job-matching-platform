@@ -243,6 +243,9 @@ def _reset_password(request: Request, token: str, form: Optional[TextForm]) -> R
             except accounts.AccountError as e:
                 flash(request, str(e), 'danger')
             else:
+                if not user['email_verified']:
+                    # la cuenta pudo crearla otro con este email: sus passkeys dejan de valer
+                    passkeys.delete_all(user['id'])
                 accounts.mark_verified(user['id'])  # recibió el email: la dirección es suya
                 audit(request, user['id'], 'password_reset')
                 get_session(request).clear()
@@ -435,8 +438,9 @@ def google_callback(request: Request):
         flash(request, 'Tu cuenta está bloqueada: hablá con el administrador', 'danger')
         return redirect(request, url_for(request, 'login'))
     if not user['email_verified']:
-        # la cuenta pudo crearla otro con este email: su contraseña y sus sesiones dejan de valer
+        # la cuenta pudo crearla otro con este email: su contraseña, sus sesiones y sus passkeys dejan de valer
         accounts.set_password(user_id, secrets.token_urlsafe(32))
+        passkeys.delete_all(user_id)
     # Google ya comprobó que el email es suyo
     accounts.mark_verified(user_id)
     user = accounts.get_user(user_id) or user

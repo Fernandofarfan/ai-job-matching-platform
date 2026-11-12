@@ -178,3 +178,35 @@ def test_challenge_expires(monkeypatch):
     assert passkeys.take_challenge(session, 'login') is None
     passkeys.new_challenge(session, 'register', 1)
     assert passkeys.take_challenge(session, 'register', 2) is None
+
+
+def test_restored_cookie_cannot_replay_a_used_challenge(client, ana):
+    authenticator = SoftAuthenticator()
+    _add_passkey(client, authenticator)
+    client.post('/logout')
+    options = client.post('/login/passkey/options', json={}).get_json()
+    cookie = client._c.cookies.get('session')
+    credential = authenticator.get(options)
+    assert client.post('/login/passkey', json={'credential': credential}).status_code == 200
+    client.post('/logout')
+    client.set_cookie('session', cookie)
+    assert client.post('/login/passkey', json={'credential': credential}).status_code == 400
+    assert client.get('/tracker').status_code == 302
+
+
+def test_long_credential_ids_are_stored(client, ana):
+    authenticator = SoftAuthenticator()
+    authenticator.credential_id = os.urandom(600)
+    assert _add_passkey(client, authenticator).status_code == 200
+    client.post('/logout')
+    assert _passkey_login(client, authenticator).status_code == 200
+    # la misma credencial otra vez es un duplicado
+    options = client.post('/account/passkeys/options', json={'password': PASSWORD}).get_json()
+    again = client.post('/account/passkeys', json={'credential': authenticator.create(options)})
+    assert again.status_code == 400 and 'ya está registrada' in again.get_json()['error']
+
+
+def test_reclaimed_account_loses_passkeys(client, ana):
+    _add_passkey(client, SoftAuthenticator())
+    _add_passkey(client, SoftAuthenticator(), name='Otra')
+    assert passkeys.delete_all(ana) == 2 and passkeys.list_for(ana) == []

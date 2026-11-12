@@ -434,9 +434,16 @@ def test_google_login_drops_password_of_unverified_account(registered, google, m
     """Una cuenta sin verificar creada por otro con el email: al entrar con Google su contraseña deja de valer."""
     monkeypatch.setenv('ALLOW_SIGNUP', 'true')
     accounts.register('beto@example.com', PASSWORD)
+    import passkeys
+    with accounts._sessions()() as session:
+        session.add(passkeys.Passkey(user_id=accounts.find_user_id('beto@example.com'), credential_id='x',
+                                     credential_hash='x', public_key='k', sign_count=0, name='del otro'))
+        session.commit()
     google.email = 'beto@example.com'
     params = _google_start(registered)
     registered.get(f"/login/google/callback?state={params['state']}&code=c")
     beto = accounts.find_user_id('beto@example.com')
     assert accounts.get_user(beto)['email_verified']
     assert accounts.authenticate('beto@example.com', PASSWORD) is None
+    # la passkey que dejó quien creó la cuenta tampoco sirve más
+    assert passkeys.list_for(beto) == []

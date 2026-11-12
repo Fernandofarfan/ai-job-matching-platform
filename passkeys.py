@@ -196,6 +196,14 @@ def list_for(user_id: Optional[int]) -> list:
                 for r in rows]
 
 
+def delete_all(user_id: int) -> int:
+    """Borra todas las passkeys de la cuenta (la recupera quien sí es dueño del email); devuelve cuántas."""
+    with accounts._sessions()() as session:
+        result = session.execute(sql_delete(Passkey).where(Passkey.user_id == user_id))
+        session.commit()
+        return int(getattr(result, 'rowcount', 0) or 0)
+
+
 def delete(user_id: int, passkey_id: int) -> bool:
     """Borra una passkey de la cuenta; False si no es suya o no existe."""
     with accounts._sessions()() as session:
