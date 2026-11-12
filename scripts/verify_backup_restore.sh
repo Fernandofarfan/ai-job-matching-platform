@@ -47,7 +47,9 @@ echo "2/4 Restaurando el backup ${BACKUP_ID} sobre ${TEMP_INSTANCE}"
 echo "3/4 Exportando ${DATABASE} a ${EXPORT_URI}"
 SA="$("${GCLOUD[@]}" sql instances describe "$TEMP_INSTANCE" --format='value(serviceAccountEmailAddress)')"
 # El permiso se quita al terminar, salvo que ya existiera antes de la verificación
-if ! gcloud storage buckets get-iam-policy "gs://${BUCKET}" --format=json | grep -q "serviceAccount:${SA}"; then
+if [[ -z "$(gcloud storage buckets get-iam-policy "gs://${BUCKET}" --flatten=bindings \
+  --filter="bindings.role=roles/storage.objectAdmin AND bindings.members:serviceAccount:${SA}" \
+  --format='value(bindings.role)')" ]]; then
   gcloud storage buckets add-iam-policy-binding "gs://${BUCKET}" --member="serviceAccount:${SA}" \
     --role=roles/storage.objectAdmin >/dev/null
   GRANTED_SA="$SA"
