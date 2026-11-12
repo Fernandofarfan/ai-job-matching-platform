@@ -59,8 +59,7 @@ def read_bytes(filename: str) -> bytes:
     try:
         return fernet.decrypt(data)
     except InvalidToken:
-        # Un .txt que casualmente empiece con el prefijo de Fernet
-        return data
+        raise RuntimeError('No se pudo descifrar el CV: CV_ENCRYPTION_KEY no es la clave con que se cifró') from None
 
 
 def exists(filename: str) -> bool:

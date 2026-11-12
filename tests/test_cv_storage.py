@@ -93,3 +93,11 @@ def test_retention_task_deletes_old_cv_and_profile(workdir, monkeypatch):
     assert result['deleted_cvs'] == 1 and result['deleted_profiles'] == 1
     assert list(profiles) == ['dev']
     assert sorted(os.listdir('uploads')) == ['new.pdf']
+
+
+def test_wrong_key_fails_instead_of_returning_ciphertext(workdir, monkeypatch):
+    """Con otra clave no se le pasa el texto cifrado al parser como si fuera el CV."""
+    cv_storage.save(b'x', 'cv.txt')
+    monkeypatch.setenv('CV_ENCRYPTION_KEY', Fernet.generate_key().decode())
+    with pytest.raises(RuntimeError):
+        cv_storage.read_bytes('cv.txt')
