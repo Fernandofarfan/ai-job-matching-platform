@@ -6,6 +6,14 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar] - Cuentas e integraciones por cuenta
+
+- Resultados del scraping (CSV), documentos generados y progreso de búsquedas separados por cuenta (`results/u<id>`, `GENERATED_DIR/u<id>`); los archivos previos pasan a la primera cuenta.
+- `AI_USER_MONTHLY_TOKEN_LIMIT`: tope mensual de tokens de IA por cuenta, además del tope total `AI_MONTHLY_TOKEN_LIMIT`.
+- Historial de estados del tracker (`application_status_history`, migración `0006_status_history`); el embudo y los días hasta postular lo usan.
+- "Mi cuenta": cambiar la contraseña (cierra las otras sesiones), recuperar la contraseña por email (enlace de 1 hora y un solo uso), verificar el email (`REQUIRE_EMAIL_VERIFICATION`, migración `0007_email_verification`) y borrar la cuenta. Los enlaces usan `PUBLIC_BASE_URL`.
+- Integraciones por cuenta (`user_integrations`, migración `0008_user_integrations`): chat de Telegram, token de la extensión de Chrome (solo se guarda el hash, revocable) y Gmail conectado por OAuth web (token cifrado con `CV_ENCRYPTION_KEY`). `TELEGRAM_CHAT_ID`, `EXTENSION_TOKEN` y `token.json` quedan como los de la primera cuenta hasta que los cambie o desconecte.
+
 ## [Sin publicar] - Multiusuario
 
 - Cuentas con email y contraseña (hash de Werkzeug) en la tabla `users` (migración `0005_users`); reemplazan a `APP_PASSWORD`.
