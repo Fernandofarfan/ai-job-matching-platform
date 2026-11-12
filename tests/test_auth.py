@@ -324,3 +324,71 @@ def test_gmail_callback_rejects_bad_state(registered):
     assert response.status_code == 302
     import integrations
     assert integrations.gmail_user_ids() == []
+
+
+@pytest.fixture
+def google(monkeypatch, app):
+    """Cliente OAuth de Google simulado: `google.email` es lo que devuelve Google (None = sin verificar)."""
+    import inspect
+    from types import SimpleNamespace
+    monkeypatch.setenv('GOOGLE_OAUTH_CLIENT_ID', 'cid')
+    monkeypatch.setenv('GOOGLE_OAUTH_CLIENT_SECRET', 'secret')
+    fake = SimpleNamespace(email='ana@example.com', calls=[])
+
+    def exchange(code, verifier, redirect_uri):
+        fake.calls.append((code, verifier, redirect_uri))
+        return fake.email
+    monkeypatch.setitem(inspect.unwrap(app.view_functions['google_callback']).__globals__, '_google_email', exchange)
+    return fake
+
+
+def _google_start(client):
+    """Arranca el login con Google y devuelve los parámetros de la redirección."""
+    from urllib.parse import parse_qs, urlsplit
+    response = client.get('/login/google')
+    assert response.status_code == 302
+    return {k: v[0] for k, v in parse_qs(urlsplit(response.headers['Location']).query).items()}
+
+
+def test_google_login_existing_account(registered, google):
+    """Google con un email ya registrado entra a esa cuenta, con PKCE y state."""
+    params = _google_start(registered)
+    assert params['code_challenge_method'] == 'S256' and params['scope'] == 'openid email'
+    assert registered.get(f"/login/google/callback?state={params['state']}&code=c").status_code == 302
+    assert google.calls[0][0] == 'c' and google.calls[0][2].endswith('/login/google/callback')
+    assert registered.get('/account').status_code == 200
+
+
+def test_google_login_rejects_bad_state(registered, google):
+    """Sin el state de la sesión no se entra."""
+    _google_start(registered)
+    registered.get('/login/google/callback?state=otro&code=c')
+    assert not google.calls
+    assert registered.get('/account').status_code == 302
+
+
+def test_google_login_needs_verified_email(registered, google):
+    """Un email que Google no verificó no entra."""
+    google.email = None
+    params = _google_start(registered)
+    registered.get(f"/login/google/callback?state={params['state']}&code=c")
+    assert registered.get('/account').status_code == 302
+
+
+def test_google_login_respects_closed_signup(registered, google, monkeypatch):
+    """Un email nuevo no crea cuenta si el registro está cerrado; con ALLOW_SIGNUP sí, ya verificada."""
+    google.email = 'beto@example.com'
+    params = _google_start(registered)
+    registered.get(f"/login/google/callback?state={params['state']}&code=c")
+    assert accounts.find_user_id('beto@example.com') is None
+    monkeypatch.setenv('ALLOW_SIGNUP', 'true')
+    params = _google_start(registered)
+    registered.get(f"/login/google/callback?state={params['state']}&code=c")
+    beto = accounts.find_user_id('beto@example.com')
+    assert beto is not None and accounts.get_user(beto)['email_verified']
+
+
+def test_google_button_hidden_without_client(registered):
+    """Sin cliente OAuth no aparece el botón ni funciona la ruta."""
+    assert 'Entrar con Google' not in registered.get('/login').get_data(as_text=True)
+    assert registered.get('/login/google').headers['Location'].endswith('/login')
