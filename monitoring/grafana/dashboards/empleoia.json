@@ -492,7 +492,7 @@
     },
     {
       "id": 13,
-      "title": "Llamadas a Gemini por minuto",
+      "title": "Llamadas a Gemini por hora",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -511,7 +511,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(empleoia_ai_calls_total[5m])) * 60",
+          "expr": "increase((max(empleoia_ai_month_calls))[1h:1m])",
           "legendFormat": "llamadas"
         }
       ],
@@ -522,7 +522,7 @@
         "overrides": []
       },
       "options": {},
-      "description": "Las respuestas servidas desde la caché no cuentan."
+      "description": "Web y worker: sale del total del mes compartido en Redis (se toma el máximo entre instancias antes del increase). Las respuestas servidas desde la caché no cuentan."
     },
     {
       "id": 14,
@@ -558,7 +558,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (portal, outcome) (max by (portal, outcome) (increase(empleoia_scraper_runs_total[24h])))",
+          "expr": "increase((max by (portal, outcome) (empleoia_scraper_runs_total))[24h:5m])",
           "legendFormat": "{{portal}} {{outcome}}"
         }
       ],
@@ -572,7 +572,7 @@
         "orientation": "horizontal",
         "displayMode": "gradient"
       },
-      "description": "ok = trajo ofertas; empty/error sin ofertas. EmpleoIAPortalSinOfertas salta con 3 o más sin ninguna ok."
+      "description": "ok = trajo ofertas; empty/error sin ofertas. EmpleoIAPortalSinOfertas salta con 3 o más sin ninguna ok. El total es compartido en Redis: se toma el máximo entre instancias antes del increase."
     },
     {
       "id": 16,
