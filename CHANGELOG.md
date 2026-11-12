@@ -6,6 +6,13 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar] - Páginas de Flask a FastAPI (4/5): resultados, documentos, perfiles y alertas
+
+- FastAPI sirve ver/descargar/borrar resultados, empresas y conexiones, `/api/save_applications`, cartas y CV optimizado, puntaje ATS, perfiles de CV (subida hasta `MAX_UPLOAD_MB`) y alertas (`routers/content_pages.py`).
+- Borrar un CSV ahora es un POST con CSRF (antes un GET) y solo borra `.csv` de la carpeta de la cuenta.
+- Los avisos de error ya no muestran el error interno.
+- `tracker_stats.py` reemplaza a `web/analytics.py` (se quita la vista vieja de `/analytics`, que ya servía FastAPI).
+
 ## [Sin publicar] - Páginas de Flask a FastAPI (3/5): Mi cuenta, Administración y exportación
 
 - FastAPI sirve Mi cuenta (integraciones, contraseña, sesiones, segundo factor, exportar y borrar), `/admin` y `/export/*` (`routers/account_pages.py`), con los mismos límites por cuenta, CSRF y `Cache-Control: no-store`.

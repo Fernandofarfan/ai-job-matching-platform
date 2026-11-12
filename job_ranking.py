@@ -59,7 +59,7 @@ def _get(job, *keys):
 
 def features(job):
     """Rasgos de una oferta (dict del tracker o fila de un CSV de scraping)."""
-    from web.analytics import portal_of
+    from tracker_stats import portal_of
 
     feats = {f'w:{w}' for w in re.findall(r'[a-z0-9+#.]{3,}', _norm(_get(job, 'title', 'Title')))
              if w not in _STOPWORDS}

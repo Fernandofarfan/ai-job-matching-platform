@@ -149,3 +149,28 @@ def test_account_forms_require_csrf(client, app, monkeypatch):
     monkeypatch.setitem(app.config, 'WTF_CSRF_ENABLED', True)
     assert client.post('/account/delete', data={'password': 'x'}).status_code == 400
     assert client.post('/admin/users/1/block').status_code == 400
+
+
+def test_content_pages_are_served_by_fastapi(client, app):
+    """Resultados, documentos, perfiles y alertas ya no son vistas de Flask."""
+    moved = set(app.extensions['empleoia_app_globals']['CONTENT_PAGES'])
+    assert not moved & set(app.view_functions)
+    assert client.app.url_path_for('delete_csv', filename='a.csv') == '/delete_csv/a.csv'
+
+
+def test_delete_csv_needs_post_with_csrf_and_stays_in_results(client, app, monkeypatch, tmp_path):
+    """Borrar un CSV ya no se dispara con un GET y solo toca .csv de la carpeta de la cuenta."""
+    import accounts
+    monkeypatch.setattr(accounts, 'results_dir', lambda: str(tmp_path))
+    (tmp_path / 'a.csv').write_text('x')
+    (tmp_path / 'notes.txt').write_text('x')
+    assert client.get('/delete_csv/a.csv').status_code in (404, 405)
+    monkeypatch.setitem(app.config, 'WTF_CSRF_ENABLED', True)
+    assert client.post('/delete_csv/a.csv').status_code == 400
+    monkeypatch.setitem(app.config, 'WTF_CSRF_ENABLED', False)
+    assert client.post('/delete_csv/notes.txt').status_code == 302
+    assert client.post('/delete_csv/a.csv').status_code == 302
+    assert not (tmp_path / 'a.csv').exists() and (tmp_path / 'notes.txt').exists()
+    (tmp_path / '.env').write_text('x')
+    assert client.get('/results/.env').status_code == 404
+    assert client.get('/results/notes.txt').status_code == 200

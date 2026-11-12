@@ -52,9 +52,8 @@ def test_legacy_json_is_imported_once(db, tmp_path):
 def test_upload_creates_profile_and_view_profile_reads_it(app, client):
     """El alta y la lectura de la app usan el mismo store."""
     from types import SimpleNamespace
-    # Las rutas viven en web/; los helpers de perfiles siguen en el módulo app
-    helper = app.view_functions['view_profile'].__globals__['save_user_profile_for_role']
-    app_module = SimpleNamespace(**helper.__globals__)
+    # Las rutas viven en routers/content_pages.py; los helpers de perfiles siguen en el módulo app
+    app_module = SimpleNamespace(**app.extensions['empleoia_app_globals'])
     assert app_module.profile_store is profile_store
     assert app_module.save_user_profile_for_role({'skills': ['python']}, 'cv.pdf', 'backend')
     assert app_module.get_user_profile_by_role('backend')['resume_filename'] == 'cv.pdf'

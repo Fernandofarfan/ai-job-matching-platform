@@ -88,7 +88,7 @@ class TestAnalyticsAdvanced:
 
 def test_portal_of_detects_known_portals():
     """El portal sale del dominio del enlace."""
-    from web.analytics import portal_of
+    from tracker_stats import portal_of
     assert portal_of('https://ar.computrabajo.com/ofertas/1') == 'Computrabajo'
     assert portal_of('https://www.getonbrd.com/jobs/x') == 'GetOnBoard'
     assert portal_of('https://www.zonajobs.com.ar/x') == 'ZonaJobs'
@@ -100,7 +100,7 @@ def test_portal_stats_and_days_to_apply():
     """Tasa de respuesta por portal = respuestas / postulaciones; días promedio de guardado a postulación."""
     from datetime import date, datetime
 
-    from web.analytics import avg_days_to_apply, portal_stats
+    from tracker_stats import avg_days_to_apply, portal_stats
     jobs = [
         {'job_link': 'https://www.bumeran.com.ar/a', 'status': 'applied',
          'created_at': datetime(2026, 11, 1, 10), 'applied_date': date(2026, 11, 3)},
@@ -134,7 +134,7 @@ def test_advanced_analytics_hides_internal_errors(tracker_db, api, monkeypatch):
 
 def test_avg_days_to_apply_ignores_rejected():
     """Una oferta guardada y descartada no cuenta como postulación."""
-    from web.analytics import avg_days_to_apply
+    from tracker_stats import avg_days_to_apply
     jobs = [{'status': 'rejected', 'created_at': '2026-01-01', 'applied_date': '2026-01-01'}]
     assert avg_days_to_apply(jobs) is None
 
@@ -142,7 +142,7 @@ def test_avg_days_to_apply_ignores_rejected():
 def test_history_makes_rejected_and_days_exact():
     """Con historial, una rechazada cuenta como postulada solo si pasó por 'applied'."""
     from datetime import datetime
-    from web.analytics import avg_days_to_apply, portal_stats
+    from tracker_stats import avg_days_to_apply, portal_stats
     jobs = [
         {'id': 1, 'status': 'rejected', 'job_link': 'https://www.bumeran.com.ar/x', 'created_at': '2026-01-01'},
         {'id': 2, 'status': 'rejected', 'job_link': 'https://www.bumeran.com.ar/y', 'created_at': '2026-01-01'},
@@ -160,7 +160,7 @@ def test_history_makes_rejected_and_days_exact():
 
 def test_days_to_apply_uses_creation_when_created_as_applied():
     """Una postulación cargada ya postulada usa su fecha de alta aunque después pase a entrevista."""
-    from web.analytics import avg_days_to_apply
+    from tracker_stats import avg_days_to_apply
     jobs = [{'id': 1, 'status': 'interviewing', 'created_at': '2026-01-01', 'applied_date': '2026-01-01'}]
     history = [
         {'application_id': 1, 'old_status': None, 'new_status': 'applied', 'changed_at': '2026-01-01'},
