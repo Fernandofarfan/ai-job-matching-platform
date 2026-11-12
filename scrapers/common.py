@@ -10,11 +10,18 @@ MAX_ATTEMPTS = int(os.getenv('SCRAPER_MAX_ATTEMPTS', '3'))
 
 
 def configure_driver(driver):
-    """Evita que una página colgada bloquee el scraper; si el driver no lo soporta, sigue sin timeout."""
+    """Evita que una página colgada bloquee el scraper.
+
+    Si falla (p. ej. sesión remota inválida), cierra el navegador ya abierto y relanza el error.
+    """
     try:
         driver.set_page_load_timeout(PAGE_LOAD_TIMEOUT)
-    except Exception as e:
-        logger.warning(f"No se pudo fijar el timeout de página ({e})")
+    except Exception:
+        try:
+            driver.quit()
+        except Exception:
+            pass
+        raise
 
 
 def get_with_retries(driver, url, attempts=None, backoff=2.0, sleep=time.sleep):

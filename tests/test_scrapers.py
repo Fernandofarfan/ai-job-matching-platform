@@ -57,9 +57,10 @@ def test_get_with_retries_raises_after_last_attempt():
     assert driver.get.call_count == 2
 
 
-def test_configure_driver_failure_does_not_abort():
+def test_configure_driver_failure_closes_browser_and_raises():
     from scrapers.common import configure_driver
     driver = mock.Mock()
-    driver.set_page_load_timeout.side_effect = RuntimeError('no soportado')
-    configure_driver(driver)
-    driver.quit.assert_not_called()
+    driver.set_page_load_timeout.side_effect = RuntimeError('sesión inválida')
+    with pytest.raises(RuntimeError):
+        configure_driver(driver)
+    driver.quit.assert_called_once()
