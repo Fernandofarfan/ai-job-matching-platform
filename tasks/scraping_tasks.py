@@ -16,16 +16,10 @@ logger = logging.getLogger(__name__)
 
 
 def _get_user_profile_from_disk():
-    """Carga el perfil de usuario desde disco (independiente de Flask context)."""
-    import json
-    profiles_file = os.path.join("profiles", "user_profiles.json")
-    if not os.path.exists(profiles_file):
-        return None
+    """Primer perfil de usuario (MySQL o JSON, independiente del contexto de Flask)."""
     try:
-        with open(profiles_file, "r", encoding="utf-8") as f:
-            all_profiles = json.load(f)
-        valid_keys = [k for k, v in all_profiles.items() if isinstance(v, dict)]
-        return all_profiles[valid_keys[0]] if valid_keys else None
+        import profile_store
+        return profile_store.get_first_profile()
     except Exception as e:
         logger.error(f"Error loading profile: {e}")
         return None

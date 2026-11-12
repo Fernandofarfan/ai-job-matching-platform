@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, flash, jso
 import io
 from flask_limiter import Limiter
 import rate_limit
+import profile_store
 from flask_wtf.csrf import CSRFProtect
 import auth
 from flask_limiter.util import get_remote_address
@@ -187,13 +188,9 @@ def get_recent_job_files():
     return [os.path.basename(f[0]) for f in files_with_time[:10]]
 
 def get_user_profile():
-    """Load user profile from profiles/user_profiles.json"""
+    """Todos los perfiles por rol ({role_type: perfil}) o None si no hay."""
     try:
-        profile_path = os.path.join('profiles', 'user_profiles.json')
-        if os.path.exists(profile_path):
-            with open(profile_path, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        return None
+        return profile_store.get_all_profiles() or None
     except Exception as e:
         logger.error(f"Error loading user profile: {e}")
         return None
@@ -213,27 +210,12 @@ def save_user_profile(profile, filename):
         return False
 
 def save_user_profile_for_role(profile, filename, role_type):
-    profiles_dir = 'profiles'
-    os.makedirs(profiles_dir, exist_ok=True)
-    
-    profiles_file = os.path.join(profiles_dir, 'user_profiles.json')
-    
-    if os.path.exists(profiles_file):
-        with open(profiles_file, 'r') as f:
-            all_profiles = json.load(f)
-    else:
-        all_profiles = {}
-    
     profile_data = profile.copy()
     profile_data['resume_filename'] = filename
     profile_data['role_type'] = role_type
     profile_data['upload_date'] = datetime.now().isoformat()
-    
-    all_profiles[role_type] = profile_data
-    
     try:
-        with open(profiles_file, 'w') as f:
-            json.dump(all_profiles, f, indent=2)
+        profile_store.save_profile(role_type, profile_data)
         logger.info(f"Saved profile for role: {role_type}")
         return True
     except Exception as e:
@@ -241,52 +223,34 @@ def save_user_profile_for_role(profile, filename, role_type):
         return False
 
 def get_all_user_profiles():
-    profiles_file = os.path.join('profiles', 'user_profiles.json')
-    if os.path.exists(profiles_file):
-        try:
-            with open(profiles_file, 'r') as f:
-                return json.load(f)
-        except Exception as e:
-            logger.error(f"Error loading profiles: {e}")
-    return {}
+    try:
+        return profile_store.get_all_profiles()
+    except Exception as e:
+        logger.error(f"Error loading profiles: {e}")
+        return {}
 
 def get_user_profile_by_role(role_type):
     all_profiles = get_all_user_profiles()
     return all_profiles.get(role_type)
 
 def delete_user_profile_by_role(role_type):
-    profiles_file = os.path.join('profiles', 'user_profiles.json')
-    
-    if not os.path.exists(profiles_file):
-        return False
-    
     try:
-        with open(profiles_file, 'r') as f:
-            all_profiles = json.load(f)
-        
-        if role_type not in all_profiles:
-            return False
-        
-        resume_filename = all_profiles[role_type].get('resume_filename')
-        if resume_filename:
-            resume_path = os.path.join('uploads', resume_filename)
-            if os.path.exists(resume_path):
-                try:
-                    os.remove(resume_path)
-                except OSError as e:
-                    logger.warning(f"Could not delete resume file {resume_path}: {e}")
-        
-        del all_profiles[role_type]
-        
-        with open(profiles_file, 'w') as f:
-            json.dump(all_profiles, f, indent=2)
-        
-        logger.info(f"Deleted profile for role: {role_type}")
-        return True
-        
+        removed = profile_store.delete_profile(role_type)
     except Exception as e:
         logger.error(f"Error deleting profile: {e}")
         return False
+    if removed is None:
+        return False
+    resume_filename = removed.get('resume_filename')
+    if resume_filename:
+        resume_path = os.path.join('uploads', resume_filename)
+        if os.path.exists(resume_path):
+            try:
+                os.remove(resume_path)
+            except OSError as e:
+                logger.warning(f"Could not delete resume file {resume_path}: {e}")
+    logger.info(f"Deleted profile for role: {role_type}")
+    return True
 
 def delete_user_profile():
     profile_path = os.path.join('profiles', 'user_profile.json')
@@ -304,47 +268,17 @@ def delete_user_profile():
         return False
 
 
-def get_user_profile():
-    """Load user profile from profiles/user_profiles.json"""
-    try:
-        profile_path = os.path.join('profiles', 'user_profiles.json')
-        if os.path.exists(profile_path):
-            with open(profile_path, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        return None
-    except Exception as e:
-        logger.error(f"Error loading user profile: {e}")
-        return None
-
 def get_resume_text_from_profile():
-    """Get resume text from any available profile (multi-resume system)"""
+    """Texto del CV del primer perfil disponible (cualquier rol)."""
     try:
-        # Intentar cargar todos los perfiles
-        profile_path = os.path.join('profiles', 'user_profiles.json')
-        if not os.path.exists(profile_path):
-            return None
-        
-        with open(profile_path, 'r', encoding='utf-8') as f:
-            all_profiles = json.load(f)
-        
-        # Si no hay perfiles, retornar None
-        if not all_profiles:
-            return None
-        
-        # Tomar el primer perfil disponible (cualquier rol)
-        first_role = list(all_profiles.keys())[0]
-        user_profile = all_profiles[first_role]
-        
-        resume_filename = user_profile.get('resume_filename')
+        user_profile = profile_store.get_first_profile()
+        resume_filename = user_profile.get('resume_filename') if user_profile else None
         if not resume_filename:
             return None
-        
         resume_path = os.path.join('uploads', resume_filename)
         if not os.path.exists(resume_path):
             return None
-        
         return resume_parser.extract_text_from_file(resume_path)
-        
     except Exception as e:
         logger.error(f"Error reading resume from profile: {e}")
         return None
