@@ -193,9 +193,10 @@ def cache_get(model, prompt, temperature):
         return entry[1]
     try:
         client = _redis()
-        shared, remaining = (
-            client.pipeline().get(f'ai_cache:{key}').ttl(f'ai_cache:{key}').execute() if client else (None, 0)
-        )
+        shared, remaining = None, 0
+        if client:
+            name = f'ai_cache:{key}'
+            shared, remaining = client.pipeline().get(name).ttl(name).execute()
     except Exception as e:
         logger.warning(f"Caché de IA en Redis no disponible ({e})")
         shared, remaining = None, 0

@@ -72,7 +72,8 @@ def test_cache_is_shared_through_redis(monkeypatch):
     assert client.models.generate_content.call_count == 1
     assert ai_usage.summary()['cache_hits'] == 1
     expires, _ = next(iter(ai_usage._cache.values()))
-    assert expires - time.monotonic() <= 5  # la copia local vence con la de Redis, no con un TTL nuevo
+    # la copia local vence con la de Redis, no con un TTL nuevo
+    assert expires - time.monotonic() <= 5
 
 
 def test_redis_errors_do_not_break_calls(monkeypatch):
