@@ -7,7 +7,7 @@ con la misma clave por cuenta.
 import logging
 import os
 from datetime import date, datetime
-from typing import Optional
+from typing import Optional, cast
 from urllib.parse import quote
 
 from fastapi import APIRouter, Request
@@ -31,6 +31,12 @@ from routers.auth_pages import audit, send_verification
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["account"], include_in_schema=False)
+
+
+def _user_id() -> int:
+    """Cuenta del pedido. Solo es None sin login (LOGIN_REQUIRED=false), donde las acciones de cuenta no
+    encuentran a nadie y no hacen nada, igual que antes de tipar."""
+    return cast(int, accounts.current_user_id())
 
 
 async def _form(request: Request, spec: Optional[str] = None, namespace: str = '') -> tuple[TextForm, Optional[Response]]:
@@ -79,7 +85,7 @@ def _gmail_client_file() -> str:
 
 def render_account(request: Request, new_token=None, **once) -> Response:
     """Página de cuenta. `new_token`, el QR y los códigos de recuperación se muestran una sola vez (no-store)."""
-    user_id = accounts.require_user_id()
+    user_id = _user_id()
     response = render(
         request, 'account.html', user=accounts.get_user(user_id), min_password=accounts.MIN_PASSWORD,
         integ=integrations.status(user_id), telegram_bot=bool(os.getenv('TELEGRAM_BOT_TOKEN')),
@@ -111,11 +117,11 @@ async def save_telegram(request: Request):
 def _save_telegram(request: Request, form: TextForm) -> Response:
     """Guarda el chat y registra el cambio."""
     try:
-        integrations.set_telegram_chat(accounts.require_user_id(), form.get('chat_id', ''))
+        integrations.set_telegram_chat(_user_id(), form.get('chat_id', ''))
     except integrations.IntegrationError as e:
         flash(request, str(e), 'danger')
     else:
-        audit(request, accounts.require_user_id(), 'telegram_changed')
+        audit(request, _user_id(), 'telegram_changed')
         flash(request, 'Chat de Telegram guardado', 'success')
     return _to_account(request)
 
@@ -146,8 +152,8 @@ async def new_extension_token(request: Request):
 
 def _new_extension_token(request: Request) -> Response:
     """Token nuevo, mostrado una sola vez."""
-    token = integrations.new_extension_token(accounts.require_user_id())
-    audit(request, accounts.require_user_id(), 'extension_token_created')
+    token = integrations.new_extension_token(_user_id())
+    audit(request, _user_id(), 'extension_token_created')
     return render_account(request, new_token=token)
 
 
@@ -160,8 +166,8 @@ async def revoke_extension_token(request: Request):
 
 def _revoke_extension_token(request: Request) -> Response:
     """Borra el token y registra el evento."""
-    integrations.revoke_extension_token(accounts.require_user_id())
-    audit(request, accounts.require_user_id(), 'extension_token_revoked')
+    integrations.revoke_extension_token(_user_id())
+    audit(request, _user_id(), 'extension_token_revoked')
     flash(request, 'Token de la extensión revocado', 'success')
     return _to_account(request)
 
@@ -210,8 +216,8 @@ def gmail_callback(request: Request):
         logger.error(f'Google rechazó el código de Gmail: {type(e).__name__}')
         flash(request, 'No se pudo conectar Gmail: volvé a intentarlo', 'danger')
         return _to_account(request)
-    integrations.save_gmail_token(accounts.require_user_id(), flow.credentials.to_json())
-    audit(request, accounts.require_user_id(), 'gmail_connected')
+    integrations.save_gmail_token(_user_id(), flow.credentials.to_json())
+    audit(request, _user_id(), 'gmail_connected')
     flash(request, 'Gmail conectado: las invitaciones a entrevistas van a actualizar tu tracker', 'success')
     return _to_account(request)
 
@@ -225,8 +231,8 @@ async def gmail_disconnect(request: Request):
 
 def _gmail_disconnect(request: Request) -> Response:
     """Borra el token de Gmail y registra el evento."""
-    integrations.clear_gmail(accounts.require_user_id())
-    audit(request, accounts.require_user_id(), 'gmail_disconnected')
+    integrations.clear_gmail(_user_id())
+    audit(request, _user_id(), 'gmail_disconnected')
     flash(request, 'Gmail desconectado', 'success')
     return _to_account(request)
 
@@ -240,7 +246,7 @@ async def resend_verification(request: Request):
 
 def _resend_verification(request: Request) -> Response:
     """Manda el enlace si el email todavía no está confirmado."""
-    user = accounts.get_user(accounts.require_user_id())
+    user = accounts.get_user(_user_id())
     if user and not user['email_verified']:
         if send_verification(request, user):
             flash(request, 'Te mandamos el enlace de nuevo', 'info')
@@ -274,7 +280,7 @@ async def ai_consent(request: Request):
     form, error = await _form(request, '20 per hour', 'ai_consent')
     if error:
         return error
-    user_id = accounts.require_user_id()
+    user_id = _user_id()
     granted = form.get('granted') == '1'
     try:
         await run_in_threadpool(accounts.set_ai_consent, user_id, granted)
@@ -297,7 +303,7 @@ async def change_password(request: Request):
 
 def _change_password(request: Request, form: TextForm) -> Response:
     """Comprueba la actual, guarda la nueva y renueva la sesión."""
-    user_id = accounts.require_user_id()
+    user_id = _user_id()
     new = form.get('password', '')
     if new != form.get('confirm', ''):
         flash(request, 'Las contraseñas nuevas no coinciden', 'danger')
@@ -322,7 +328,7 @@ async def revoke_session(request: Request, session_id: int):
 
 def _revoke_session(request: Request, session_id: int) -> Response:
     """Revoca la sesión `session_id` si es de esta cuenta."""
-    user_id = accounts.require_user_id()
+    user_id = _user_id()
     session = get_session(request)
     current = next((s for s in user_sessions.active(user_id, session.get('sid')) if s['current']), None)
     if not user_sessions.revoke(user_id, session_id):
@@ -345,7 +351,7 @@ async def revoke_other_sessions(request: Request):
 
 def _revoke_other_sessions(request: Request) -> Response:
     """Revoca las demás sesiones y avisa cuántas eran."""
-    user_id = accounts.require_user_id()
+    user_id = _user_id()
     closed = user_sessions.revoke_all(user_id, except_sid=get_session(request).get('sid'))
     audit(request, user_id, 'sessions_revoked')
     flash(request, f'Se cerraron {closed} sesiones' if closed != 1 else 'Se cerró 1 sesión', 'success')
@@ -361,7 +367,7 @@ async def export_data(request: Request):
 
 def _export_data(request: Request, form: TextForm) -> Response:
     """Arma el ZIP de la cuenta (no-store)."""
-    user_id = accounts.require_user_id()
+    user_id = _user_id()
     if not accounts.check_password(user_id, form.get('password', '')):
         flash(request, 'La contraseña no es correcta', 'danger')
         return _to_account(request)
@@ -384,7 +390,7 @@ async def delete_account(request: Request):
 
 def _delete_account(request: Request, form: TextForm) -> Response:
     """Pide la contraseña, borra los CVs y después la cuenta; cierra la sesión."""
-    user_id = accounts.require_user_id()
+    user_id = _user_id()
     if not accounts.check_password(user_id, form.get('password', '')):
         flash(request, 'La contraseña no es correcta: la cuenta no se borró', 'danger')
         return _to_account(request)
@@ -428,7 +434,7 @@ async def two_factor_setup(request: Request):
 
 def _two_factor_setup(request: Request, form: TextForm) -> Response:
     """Pide la contraseña antes de empezar la configuración."""
-    user_id = accounts.require_user_id()
+    user_id = _user_id()
     if not accounts.check_password(user_id, form.get('password', '')):
         flash(request, 'La contraseña no es correcta', 'danger')
         return _to_account(request)
@@ -449,7 +455,7 @@ async def two_factor_enable(request: Request):
 
 def _two_factor_enable(request: Request, form: TextForm) -> Response:
     """Comprueba el primer código y activa el segundo factor."""
-    user_id = accounts.require_user_id()
+    user_id = _user_id()
     codes = two_factor.enable(user_id, form.get('code', '').strip())
     if not codes:
         flash(request, 'El código no es correcto: revisá la hora del teléfono y probá con el siguiente', 'danger')
@@ -480,7 +486,7 @@ async def two_factor_disable(request: Request):
 
 def _two_factor_disable(request: Request, form: TextForm) -> Response:
     """Con contraseña y código, quita el segundo factor."""
-    user_id = accounts.require_user_id()
+    user_id = _user_id()
     if _confirm_identity(request, user_id, form):
         two_factor.disable(user_id)
         audit(request, user_id, 'two_factor_disabled')
@@ -497,7 +503,7 @@ async def two_factor_recovery(request: Request):
 
 def _two_factor_recovery(request: Request, form: TextForm) -> Response:
     """Con contraseña y código, muestra códigos nuevos una sola vez."""
-    user_id = accounts.require_user_id()
+    user_id = _user_id()
     if not _confirm_identity(request, user_id, form):
         return _to_account(request)
     codes = two_factor.regenerate_recovery_codes(user_id)
@@ -509,7 +515,7 @@ def _two_factor_recovery(request: Request, form: TextForm) -> Response:
 
 def _admin_id() -> Optional[int]:
     """Id del administrador, o None para cualquier otra cuenta (que recibe 404)."""
-    user_id = accounts.require_user_id()
+    user_id = accounts.current_user_id()
     return user_id if auth.auth_enabled() and user_id is not None and accounts.is_admin(user_id) else None
 
 
