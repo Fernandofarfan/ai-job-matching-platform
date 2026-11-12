@@ -5,6 +5,7 @@ algo que se tiene más algo que se es o se sabe: el login con passkey no pide ad
 El origen esperado sale de `WEBAUTHN_ORIGIN` o `APP_BASE_URL` (detrás de un proxy) y, si no hay, del pedido;
 el RP ID, de `WEBAUTHN_RP_ID` o del host de ese origen.
 """
+import hashlib
 import json
 import logging
 import os
@@ -13,7 +14,8 @@ from datetime import datetime
 from typing import Optional
 from urllib.parse import urlparse
 
-from sqlalchemy import DateTime, Integer, String, Text, func, select
+from sqlalchemy import DateTime, Integer, String, Text, delete as sql_delete, func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Mapped, mapped_column
 
 import accounts
@@ -32,7 +34,9 @@ class Passkey(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
-    credential_id: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
+    # hasta 1023 bytes (WebAuthn): el ID va en texto y la unicidad, en su SHA-256
+    credential_id: Mapped[str] = mapped_column(Text, nullable=False)
+    credential_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
     public_key: Mapped[str] = mapped_column(Text, nullable=False)
     sign_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
@@ -52,6 +56,10 @@ def origin(request_origin: str) -> str:
 def rp_id(site: str) -> str:
     """Dominio al que quedan atadas las passkeys."""
     return os.getenv('WEBAUTHN_RP_ID') or urlparse(site).hostname or 'localhost'
+
+
+def _sha(value: str) -> str:
+    return hashlib.sha256(value.encode()).hexdigest()
 
 
 def _b64(data: bytes) -> str:
@@ -86,7 +94,7 @@ def registration_options(user_id: int, email: str, site: str, challenge: bytes) 
     from webauthn.helpers.structs import (AuthenticatorSelectionCriteria, PublicKeyCredentialDescriptor,
                                           ResidentKeyRequirement, UserVerificationRequirement)
     with accounts._sessions()() as session:
-        existing = session.scalars(select(Passkey.credential_id).where(Passkey.user_id == user_id)).all()
+        existing = session.scalars(select(Passkey.credential_id).where(Passkey.user_id == user_id)).all()  # noqa: E501
     options = webauthn.generate_registration_options(
         rp_id=rp_id(site), rp_name=RP_NAME, user_name=email, user_display_name=email,
         user_id=str(user_id).encode(), challenge=challenge,
@@ -110,13 +118,14 @@ def register(user_id: int, credential: dict, challenge: bytes, site: str, name: 
     except Exception as e:
         logger.warning(f'Passkey rechazada al registrarla: {type(e).__name__}: {e}')
         raise PasskeyError('El navegador no pudo crear la passkey') from e
+    credential_id = _b64(verified.credential_id)
     with accounts._sessions()() as session:
-        row = Passkey(user_id=user_id, credential_id=_b64(verified.credential_id),
+        row = Passkey(user_id=user_id, credential_id=credential_id, credential_hash=_sha(credential_id),
                       public_key=_b64(verified.credential_public_key), sign_count=verified.sign_count, name=name)
         session.add(row)
         try:
             session.commit()
-        except Exception as e:
+        except IntegrityError as e:
             raise PasskeyError('Esa passkey ya está registrada') from e
         return {'id': row.id, 'name': row.name}
 
@@ -136,7 +145,7 @@ def authenticate(credential: dict, challenge: bytes, site: str) -> int:
     if not isinstance(credential_id, str):
         raise PasskeyError('Passkey inválida')
     with accounts._sessions()() as session:
-        row = session.scalars(select(Passkey).where(Passkey.credential_id == credential_id)).first()
+        row = session.scalars(select(Passkey).where(Passkey.credential_hash == _sha(credential_id))).first()
         if row is None:
             raise PasskeyError('Esa passkey no está registrada en ninguna cuenta')
         try:

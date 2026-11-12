@@ -19,13 +19,14 @@ def upgrade():
         'passkeys',
         sa.Column('id', sa.Integer, primary_key=True, autoincrement=True),
         sa.Column('user_id', sa.Integer, nullable=False),
-        sa.Column('credential_id', sa.String(255), nullable=False),
+        sa.Column('credential_id', sa.Text, nullable=False),
+        sa.Column('credential_hash', sa.String(64), nullable=False),
         sa.Column('public_key', sa.Text, nullable=False),
         sa.Column('sign_count', sa.Integer, nullable=False),
         sa.Column('name', sa.String(100), nullable=False),
         sa.Column('created_at', sa.DateTime),
         sa.Column('last_used_at', sa.DateTime),
-        sa.UniqueConstraint('credential_id'),
+        sa.UniqueConstraint('credential_hash'),
     )
     op.create_index('ix_passkeys_user_id', 'passkeys', ['user_id'])
 
