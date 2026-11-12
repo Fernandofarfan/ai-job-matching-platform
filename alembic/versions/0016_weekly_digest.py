@@ -14,10 +14,12 @@ depends_on = None
 
 
 def upgrade():
-    """Agrega `users.weekly_digest_off_at` (None = recibe el resumen)."""
+    """Agrega `users.weekly_digest_off_at` (None = recibe el resumen) y `weekly_digest_sent_at` (último resumen)."""
     op.add_column('users', sa.Column('weekly_digest_off_at', sa.DateTime, nullable=True))
+    op.add_column('users', sa.Column('weekly_digest_sent_at', sa.DateTime, nullable=True))
 
 
 def downgrade():
-    """Quita la columna."""
+    """Quita las columnas."""
+    op.drop_column('users', 'weekly_digest_sent_at')
     op.drop_column('users', 'weekly_digest_off_at')

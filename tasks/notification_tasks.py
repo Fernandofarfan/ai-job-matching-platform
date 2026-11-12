@@ -250,7 +250,8 @@ def weekly_digest_html(data: dict) -> str:
 
 @celery.task(name="tasks.notification_tasks.send_weekly_digests")
 def send_weekly_digests():
-    """Periódica (semanal): un email por cuenta activa que no apagó el resumen y tiene algo para contar."""
+    """Periódica (cada hora): un email por cuenta activa que no apagó el resumen, cuyo último resumen tiene
+    7 días y que tiene algo para contar."""
     if not email_configured():
         return {"sent": 0, "reason": "SMTP no configurado"}
     per_user = _for_each_user(_send_weekly_digest)
@@ -262,22 +263,30 @@ def _send_weekly_digest():
     import accounts
     import job_alerts
     uid = accounts.current_user_id()
-    user = accounts.get_user(uid) if uid is not None else None
-    if uid is not None and (user is None or not user["weekly_digest"]):
+    if uid is None:
+        # sin login no hay cuenta donde anotar el último envío: se mandaría cada hora
+        return {"sent": 0, "reason": "sin cuenta"}
+    user = accounts.get_user(uid)
+    if user is None or not user["weekly_digest"]:
         return {"sent": 0, "reason": "apagado"}
-    today = date.today()
+    now = datetime.now()
+    since = user["weekly_digest_since"] or now - timedelta(days=WEEKLY_DAYS)
+    if now - since < timedelta(days=WEEKLY_DAYS):
+        return {"sent": 0, "reason": "todavía no"}
     try:
         from db_config import db_manager
         jobs = db_manager.get_all_tracked_jobs()
-        new_total, new_offers = job_alerts.seen_since(datetime.combine(today - timedelta(days=WEEKLY_DAYS),
-                                                                       datetime.min.time()))
+        new_total, new_offers = job_alerts.seen_since(since)
     except Exception as e:
         logger.error(f"No se pudo armar el resumen semanal: {type(e).__name__}: {e}")
         return {"sent": 0, "error": type(e).__name__}
-    data = weekly_digest_data(jobs, new_total, new_offers, today)
+    data = weekly_digest_data(jobs, new_total, new_offers, now.date())
     if weekly_digest_empty(data):
+        accounts.mark_weekly_digest(uid, now)
         return {"sent": 0, "reason": "sin novedades"}
     sent = _send_email(_recipient(), "📈 EmpleoIA: tu resumen de la semana", weekly_digest_html(data))
+    if sent:
+        accounts.mark_weekly_digest(uid, now)
     return {"sent": int(bool(sent))}
 
 

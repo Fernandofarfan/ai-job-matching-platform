@@ -44,6 +44,7 @@ class User(Base):
     ai_consent_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     # cuándo apagó el resumen semanal por email (None = lo recibe)
     weekly_digest_off_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    weekly_digest_sent_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
 class AccountError(ValueError):
@@ -159,7 +160,8 @@ def get_user(user_id) -> Optional[dict]:
         return {'id': user.id, 'email': user.email, 'password_hash': user.password_hash,
                 'email_verified': user.email_verified_at is not None, 'disabled': user.disabled_at is not None,
                 'terms_accepted': user.terms_accepted_at is not None, 'ai_consent': user.ai_consent_at is not None,
-                'weekly_digest': user.weekly_digest_off_at is None}
+                'weekly_digest': user.weekly_digest_off_at is None,
+                'weekly_digest_since': user.weekly_digest_sent_at or user.created_at}
 
 
 def is_admin(user_id) -> bool:
@@ -391,6 +393,15 @@ def set_weekly_digest(user_id: int, enabled: bool):
         user = session.get(User, user_id)
         if user is not None:
             user.weekly_digest_off_at = None if enabled else datetime.now()
+            session.commit()
+
+
+def mark_weekly_digest(user_id: int, when: datetime):
+    """Anota hasta cuándo cubrió el último resumen semanal de la cuenta (el próximo arranca ahí)."""
+    with _sessions()() as session:
+        user = session.get(User, user_id)
+        if user is not None:
+            user.weekly_digest_sent_at = when
             session.commit()
 
 

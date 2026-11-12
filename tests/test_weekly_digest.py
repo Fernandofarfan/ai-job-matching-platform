@@ -82,14 +82,39 @@ def test_task_sends_only_to_accounts_with_news_and_digest_on(monkeypatch, _accou
     db = mock.Mock()
     db.get_all_tracked_jobs.return_value = [_job(applied_date=datetime.now() - timedelta(days=30))]
     monkeypatch.setattr('db_config.db_manager', db, raising=False)
-    monkeypatch.setattr(job_alerts, 'seen_since', lambda since: (0, []))
+    seen_since = mock.Mock(return_value=(0, []))
+    monkeypatch.setattr(job_alerts, 'seen_since', seen_since)
     monkeypatch.setattr(nt, 'email_configured', lambda: True)
     send = mock.Mock(return_value=True)
     monkeypatch.setattr(nt, '_send_email', send)
+    # recién creadas: el primer resumen llega a los 7 días
+    assert nt.send_weekly_digests() == {'sent': 0, 'users': 2}
+    last = datetime.now() - timedelta(days=7, minutes=5)
+    for uid in (on, off):
+        accounts.mark_weekly_digest(uid, last)
     assert nt.send_weekly_digests() == {'sent': 1, 'users': 2}
     assert send.call_args[0][0] == 'on@example.com'
-    db.get_all_tracked_jobs.return_value = []
+    assert seen_since.call_args[0][0] == last
+    # la tarea corre cada hora: hasta dentro de 7 días no vuelve a mandar
+    assert nt.send_weekly_digests()['sent'] == 0 and send.call_count == 1
+
+
+def test_task_retries_failed_send_and_skips_without_account(monkeypatch, _accounts_sqlite):
+    monkeypatch.setenv('ALLOW_SIGNUP', 'true')
+    monkeypatch.setenv('LOGIN_REQUIRED', 'true')
+    on, _ = _users(_accounts_sqlite)
+    accounts.mark_weekly_digest(on, datetime.now() - timedelta(days=8))
+    db = mock.Mock()
+    db.get_all_tracked_jobs.return_value = [_job(applied_date=datetime.now() - timedelta(days=30))]
+    monkeypatch.setattr('db_config.db_manager', db, raising=False)
+    monkeypatch.setattr(job_alerts, 'seen_since', lambda since: (0, []))
+    monkeypatch.setattr(nt, 'email_configured', lambda: True)
+    monkeypatch.setattr(nt, '_send_email', mock.Mock(return_value=False))
     assert nt.send_weekly_digests()['sent'] == 0
+    monkeypatch.setattr(nt, '_send_email', mock.Mock(return_value=True))
+    assert nt.send_weekly_digests()['sent'] == 1
+    with accounts.as_user(None):
+        assert nt._send_weekly_digest()['reason'] == 'sin cuenta'
 
 
 def test_task_without_smtp(monkeypatch):
