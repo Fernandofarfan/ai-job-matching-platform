@@ -6,6 +6,7 @@ procesados, y manda la invitación sin nota, como la versión anterior de Seleni
 import json
 import logging
 import random
+import re
 import time
 from typing import Optional, Tuple
 from urllib.parse import urlencode
@@ -126,13 +127,14 @@ class linkedinConnections:
         tab = self.page.context.new_page()
         try:
             get_with_retries(tab, profile_url)
-            for text in CONNECT_TEXTS:
-                button = tab.get_by_role('button', name=text, exact=True)
-                if button.count():
-                    button.first.click()
-                    tab.locator(SEND_WITHOUT_NOTE).first.click(timeout=5_000)
-                    return True
-            return False
+            # por el texto visible: el aria-label suele ser "Invitar a ... a conectar"
+            pattern = re.compile(r'^\s*(' + '|'.join(CONNECT_TEXTS) + r')\s*$')
+            button = tab.locator('button').filter(has_text=pattern)
+            if not button.count():
+                return False
+            button.first.click()
+            tab.locator(SEND_WITHOUT_NOTE).first.click(timeout=5_000)
+            return True
         except Exception:
             return False
         finally:
