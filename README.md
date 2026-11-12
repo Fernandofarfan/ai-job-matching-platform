@@ -83,7 +83,7 @@
 - **Flower Dashboard**: Monitor de tareas en `localhost:5555` para ver el progreso
 - **🚀 Scraper Universal**: Ejecuta múltiples plataformas simultáneamente en paralelo
 - Filtrado inteligente por habilidades, ubicación y nivel de experiencia
-- Sistema anti-detección con `undetected-chromedriver`
+- Chromium sin ventana con Playwright en todos los portales
 
 ### 🎨 **Experiencia de Usuario**
 - **🌙 Dark Mode**: Tema oscuro nativo para reducir fatiga visual
@@ -163,8 +163,8 @@
 <br><sub>Web Framework</sub>
 </td>
 <td align="center" width="20%">
-<img src="https://www.selenium.dev/images/selenium_logo_square_green.png" width="60px" height="60px" alt="Selenium" />
-<br><strong>Selenium</strong>
+<img src="https://playwright.dev/img/playwright-logo.svg" width="60px" height="60px" alt="Playwright" />
+<br><strong>Playwright</strong>
 <br><sub>Web Scraping</sub>
 </td>
 <td align="center" width="20%">
@@ -359,7 +359,7 @@ EmpleoIA/
 │   ├── linkedin_pw.py         # LinkedIn (Playwright)
 │   ├── bumeran_scraper.py     # Bumeran y ZonaJobs (Playwright)
 │   ├── computrabajo_scraper.py # Computrabajo (Playwright)
-│   ├── indeed_scraper.py      # Indeed (Selenium + undetected-chromedriver)
+│   ├── indeed_scraper.py      # Indeed (Playwright)
 │   └── linkedin_connection.py # Solicitudes de conexión (Selenium)
 │
 ├── 📂 tasks/                 # 🆕 Tareas asíncronas Celery
@@ -680,7 +680,7 @@ Proyecto desarrollado desde cero para automatizar la búsqueda de empleo con tec
 
 ### Tecnologías
 
-- **Web Scraping**: [Playwright](https://playwright.dev/python/) (Computrabajo, Bumeran, ZonaJobs, LinkedIn) y [Selenium](https://www.selenium.dev/) + [undetected-chromedriver](https://github.com/ultrafunkamsterdam/undetected-chromedriver) (Indeed, conexiones de LinkedIn)
+- **Web Scraping**: [Playwright](https://playwright.dev/python/) en todos los portales (Indeed, LinkedIn, Computrabajo, Bumeran y ZonaJobs)
 - **Framework**: [FastAPI](https://fastapi.tiangolo.com/)
 - **Task Queue**: [Celery](https://docs.celeryq.dev/) + [Redis](https://redis.io/)
 - **NLP**: [spaCy](https://spacy.io/)
