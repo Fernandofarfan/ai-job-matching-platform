@@ -6,6 +6,7 @@ solo como hash. `last_step` impide reusar un código ya aceptado.
 import hashlib
 import hmac
 import json
+import logging
 import secrets
 import time
 from datetime import datetime
@@ -17,6 +18,7 @@ from sqlalchemy import Column, DateTime, Integer, String, Text, delete, or_, sel
 
 import accounts
 
+logger = logging.getLogger(__name__)
 ISSUER = 'EmpleoIA'
 RECOVERY_CODES = 10
 VALID_WINDOW = 1  # acepta el código anterior y el siguiente (30 s de desfase de reloj)
@@ -154,7 +156,13 @@ def verify(user_id: int, code: str) -> Optional[str]:
     row = _row(user_id)
     if not row or not row.enabled_at:
         return None
-    step = _matching_step(_decrypt(str(row.secret)), code)
+    try:
+        secret: Optional[str] = _decrypt(str(row.secret))
+    except Exception as e:
+        # sin la clave (o con otra) la app autenticadora no se puede comprobar; los códigos de recuperación sí
+        logger.error(f'No se pudo descifrar el segundo factor de la cuenta {user_id}: {e}')
+        secret = None
+    step = _matching_step(secret, code) if secret else None
     if step is not None:
         return 'totp' if _consume_step(user_id, step) else None
     hashes = json.loads(str(row.recovery_hashes or "[]"))

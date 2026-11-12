@@ -164,3 +164,13 @@ def test_password_change_invalidates_pending_login(client, ana):
     response = client.post('/login/2fa', data={'code': _code(secret, 1)})
     assert response.headers['Location'].endswith('/login')
     assert client.get('/account').status_code == 302
+
+
+def test_recovery_code_works_without_encryption_key(client, ana, monkeypatch):
+    """Si se pierde CV_ENCRYPTION_KEY, los códigos de recuperación siguen sirviendo para entrar."""
+    monkeypatch.setenv('CV_ENCRYPTION_KEY', Fernet.generate_key().decode())
+    _, codes = _enable(client)
+    monkeypatch.delenv('CV_ENCRYPTION_KEY')
+    _login(client)
+    assert client.post('/login/2fa', data={'code': codes[0]}).status_code == 302
+    assert client.get('/account').status_code == 200
