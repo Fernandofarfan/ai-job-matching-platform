@@ -23,13 +23,32 @@ def test_upload_too_large_redirects(client, app):
 
 def test_ai_endpoints_are_rate_limited(client, app):
     """Las rutas /api/ai/* devuelven 429 al superar el límite; el resto no."""
-    limiter = app.extensions['limiter']
-    limiter_obj = next(iter(limiter)) if isinstance(limiter, set) else limiter
-    limiter_obj.reset()
+    import rate_limit
+    rate_limit.reset()
     codes = [client.post('/api/ai/copilot', json={'message': 'hola'}).status_code for _ in range(35)]
     assert 429 in codes
     assert all(client.get('/api/health').status_code == 200 for _ in range(35))
-    limiter_obj.reset()
+    rate_limit.reset()
+
+
+def test_ai_limit_is_shared_across_ai_routes(client):
+    """El límite es por IP para todas las rutas de IA, no por endpoint."""
+    import rate_limit
+    rate_limit.reset()
+    for _ in range(30):
+        client.post('/api/ai/copilot', json={'message': 'hola'})
+    assert client.post('/api/ai/rewrite-bullet', json={'bullet': 'x'}).status_code == 429
+    rate_limit.reset()
+
+
+def test_ai_limit_fails_open_when_storage_down(monkeypatch):
+    """Si Redis no responde, la llamada de IA se permite en vez de dar error."""
+    import rate_limit
+
+    def broken_hit(*args):
+        raise ConnectionError('redis caído')
+    monkeypatch.setattr(rate_limit._limiter, 'hit', broken_hit)
+    assert rate_limit.hit_ai_limit('1.2.3.4') is True
 
 
 def test_api_upload_too_large_returns_json_413(client, app):

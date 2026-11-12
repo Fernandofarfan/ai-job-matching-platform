@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session, send_from_directory, send_file
 import io
 from flask_limiter import Limiter
+import rate_limit
 from flask_limiter.util import get_remote_address
 from flask_socketio import SocketIO, emit
 from werkzeug.utils import secure_filename
@@ -61,14 +62,19 @@ if os.getenv('SENTRY_DSN'):
     import sentry_sdk
     sentry_sdk.init(dsn=os.getenv('SENTRY_DSN'), traces_sample_rate=float(os.getenv('SENTRY_TRACES_SAMPLE_RATE', '0')))
 
-# Rate limit solo para endpoints de IA (cada llamada consume cuota de Gemini)
 limiter = Limiter(
     get_remote_address,
     app=app,
-    default_limits=[os.getenv('AI_RATE_LIMIT', '30 per minute')],
-    default_limits_exempt_when=lambda: not request.path.startswith('/api/ai/'),
     storage_uri=os.getenv('RATELIMIT_STORAGE_URI', 'memory://'),
+    swallow_errors=True,
 )
+
+
+@app.before_request
+def limit_ai_requests():
+    """Cada llamada a /api/ai/* consume cuota de Gemini: un solo contador por IP (compartido con FastAPI)."""
+    if request.path.startswith('/api/ai/') and not rate_limit.hit_ai_limit(request.remote_addr):
+        return rate_limited(None)
 
 for folder in ['uploads', 'results', 'logs', 'profiles']:
     os.makedirs(folder, exist_ok=True)
@@ -3031,8 +3037,8 @@ def file_too_large(e):
 
 @app.errorhandler(429)
 def rate_limited(e):
-    """Responde 429 cuando se supera AI_RATE_LIMIT."""
-    return jsonify({'error': 'Demasiadas solicitudes de IA, probá de nuevo en un minuto'}), 429
+    """Responde 429 cuando se supera un rate limit."""
+    return jsonify({'error': 'Demasiadas solicitudes, probá de nuevo en un minuto'}), 429
 
 
 @app.errorhandler(404)
