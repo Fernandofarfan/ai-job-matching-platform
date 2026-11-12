@@ -11,6 +11,8 @@ logger = logging.getLogger(__name__)
 # Scope for read-only access to Gmail
 SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
 TOKEN_FILE = 'token.json'
+# Una invitación no pisa postulaciones ya cerradas (aceptadas o rechazadas) ni las que ya están en entrevista
+OPEN_STATUSES = ('bookmarked', 'applying', 'applied')
 
 def get_gmail_service():
     """Confirgura y retorna la conexion (servicio) a Gmail API usando OAuth."""
@@ -73,7 +75,7 @@ def check_interview_emails():
             matched_company = (_call_gemini(prompt) or '').strip()
             
             for job in tracked_jobs if matched_company else ():
-                if matched_company.lower() in job['company'].lower():
+                if job.get('status') in OPEN_STATUSES and matched_company.lower() in job['company'].lower():
                     logger.info(f"¡Match! Actualizando estado de {job['company']} a ENTRENVISTA.")
                     db_manager.update_job_status(job['id'], 'interviewing')
                     updates_made += 1
