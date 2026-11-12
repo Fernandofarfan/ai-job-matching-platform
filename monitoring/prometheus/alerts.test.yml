@@ -113,3 +113,18 @@ tests:
             exp_annotations:
               summary: "zonajobs no devuelve ofertas"
               description: "3 búsquedas en 24 h sin ofertas: revisar el parser con scripts/scraper_health.py."
+  - interval: 1h
+    input_series:
+      # Redis se vació a las 10 h: el total baja de 50 a 0 y después suma 6 búsquedas vacías
+      - series: 'empleoia_scraper_runs_total{portal="getonboard",outcome="empty",instance="a"}'
+        values: '50x9 0+1x6 6x10'
+      - series: 'empleoia_scraper_runs_total{portal="getonboard",outcome="ok",instance="a"}'
+        values: '20x9 0x16'
+    alert_rule_test:
+      - eval_time: 25h
+        alertname: EmpleoIAPortalSinOfertas
+        exp_alerts:
+          - exp_labels: {severity: warning, portal: getonboard}
+            exp_annotations:
+              summary: "getonboard no devuelve ofertas"
+              description: "6 búsquedas en 24 h sin ofertas: revisar el parser con scripts/scraper_health.py."
