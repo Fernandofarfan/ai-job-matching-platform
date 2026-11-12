@@ -72,3 +72,11 @@ def test_rotating_password_invalidates_sessions(client, monkeypatch):
     assert client.get('/tracker').status_code == 200
     monkeypatch.setenv('APP_PASSWORD', 'nueva')
     assert client.get('/tracker').status_code == 302
+
+
+def test_login_and_logout_clear_offline_data(client, monkeypatch):
+    """Sin sesión, el navegador borra el caché del service worker e IndexedDB."""
+    monkeypatch.setenv('APP_PASSWORD', 'secreta')
+    assert client.get('/login').headers['Clear-Site-Data'] == '"cache", "storage"'
+    _login(client, 'secreta')
+    assert client.post('/logout').headers['Clear-Site-Data'] == '"cache", "storage"'
