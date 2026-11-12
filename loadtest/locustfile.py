@@ -25,13 +25,13 @@ class EmpleoIAUser(HttpUser):
         if not (email and password):
             return
         # /login tiene rate limit por IP: si responde 429, espera y reintenta en vez de contar el usuario como caído
-        for _ in range(10):
+        for attempt in range(10):
             page = self.client.get('/login', name='/login')
             token = CSRF.search(page.text)
             with self.client.post('/login', data={'email': email, 'password': password,
                                                   'csrf_token': token.group(1) if token else ''},
                                   name='/login [POST]', allow_redirects=False, catch_response=True) as r:
-                if r.status_code == 429:
+                if r.status_code == 429 and attempt < 9:
                     r.success()
                     time.sleep(float(r.headers.get('Retry-After') or 15))
                     continue
