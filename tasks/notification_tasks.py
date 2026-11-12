@@ -187,6 +187,98 @@ def send_weekly_summary(stats: dict, user_email: str):
 
 
 FOLLOWUP_DAYS = int(os.getenv("FOLLOWUP_DAYS", "7"))
+WEEKLY_DAYS = 7
+
+
+def weekly_digest_data(jobs: list, new_total: int, new_offers: list, today: date) -> dict:
+    """Qué entra en el resumen semanal: ofertas nuevas, postulaciones sin respuesta y próximos pasos."""
+    waiting, upcoming = [], []
+    horizon = today + timedelta(days=WEEKLY_DAYS)
+    for job in jobs:
+        applied = _as_date(job.get("applied_date"))
+        if job.get("status") == "applied" and applied and applied <= today - timedelta(days=FOLLOWUP_DAYS):
+            waiting.append({**job, "days": (today - applied).days})
+        for kind in ("follow_up", "deadline"):
+            when = _as_date(job.get(kind))
+            if when and today <= when <= horizon:
+                upcoming.append({**job, "kind": kind, "when": when})
+    waiting.sort(key=lambda j: -j["days"])
+    upcoming.sort(key=lambda j: j["when"])
+    return {"new_total": new_total, "new_offers": new_offers, "waiting": waiting, "upcoming": upcoming,
+            "interviewing": sum(1 for j in jobs if j.get("status") == "interviewing")}
+
+
+def weekly_digest_empty(data: dict) -> bool:
+    """Sin nada para contar no se manda el email."""
+    return not (data["new_total"] or data["waiting"] or data["upcoming"] or data["interviewing"])
+
+
+def weekly_digest_html(data: dict) -> str:
+    """Email del resumen semanal (texto escapado; los enlaces solo si son http/https)."""
+    from html import escape
+
+    def card(job, detail):
+        title = escape(str(job.get("title") or ""))
+        url = str(job.get("url") or job.get("job_link") or "")
+        head = f'<a href="{escape(url)}" style="color:#e2e8f0;">{title}</a>' if url.startswith(("http://", "https://")) else title
+        return ('<div style="background:#232336;padding:12px;border-radius:10px;margin:8px 0;">'
+                f'<strong>{head}</strong> · <span style="color:#a78bfa;">{escape(str(job.get("company") or ""))}</span>'
+                f'<br><span style="color:#94a3b8;">{detail}</span></div>')
+
+    stats = [(data["new_total"], "ofertas nuevas", "#a78bfa"), (len(data["waiting"]), "sin respuesta", "#f59e0b"),
+             (data["interviewing"], "en entrevistas", "#22c55e")]
+    body = ('<div style="display:flex;gap:12px;margin:16px 0;">' + "".join(
+        '<div style="flex:1;background:#232336;padding:16px;border-radius:10px;text-align:center;">'
+        f'<div style="font-size:28px;font-weight:800;color:{color};">{value}</div>'
+        f'<div style="color:#94a3b8;font-size:13px;">{label}</div></div>' for value, label, color in stats) + "</div>")
+    if data["upcoming"]:
+        labels = {"follow_up": "Seguimiento", "deadline": "Cierra"}
+        body += "<h3>Próximos pasos</h3>" + "".join(
+            card(j, f'{labels[j["kind"]]} el {j["when"].isoformat()}') for j in data["upcoming"][:10])
+    if data["waiting"]:
+        body += "<h3>Postulaciones sin respuesta</h3>" + "".join(
+            card(j, f'Postulaste hace {j["days"]} días: buen momento para escribir al reclutador')
+            for j in data["waiting"][:10])
+    if data["new_offers"]:
+        body += "<h3>Ofertas nuevas de tus alertas</h3>" + "".join(
+            card(j, escape(str(j.get("source") or ""))) for j in data["new_offers"])
+    base_url = os.getenv("APP_BASE_URL", "http://localhost:5000").rstrip("/")
+    body += (f'<p style="color:#94a3b8;font-size:12px;">Para dejar de recibir este resumen, apagalo en '
+             f'<a href="{base_url}/account" style="color:#94a3b8;">Mi cuenta</a>.</p>')
+    return _get_email_template("📈 Tu semana en EmpleoIA", body, f"{base_url}/tracker", "Abrir el tracker")
+
+
+@celery.task(name="tasks.notification_tasks.send_weekly_digests")
+def send_weekly_digests():
+    """Periódica (semanal): un email por cuenta activa que no apagó el resumen y tiene algo para contar."""
+    if not email_configured():
+        return {"sent": 0, "reason": "SMTP no configurado"}
+    per_user = _for_each_user(_send_weekly_digest)
+    return {"sent": sum(r.get("sent", 0) for r in per_user.values()), "users": len(per_user)}
+
+
+def _send_weekly_digest():
+    """Resumen semanal de la cuenta actual."""
+    import accounts
+    import job_alerts
+    uid = accounts.current_user_id()
+    user = accounts.get_user(uid) if uid is not None else None
+    if uid is not None and (user is None or not user["weekly_digest"]):
+        return {"sent": 0, "reason": "apagado"}
+    today = date.today()
+    try:
+        from db_config import db_manager
+        jobs = db_manager.get_all_tracked_jobs()
+        new_total, new_offers = job_alerts.seen_since(datetime.combine(today - timedelta(days=WEEKLY_DAYS),
+                                                                       datetime.min.time()))
+    except Exception as e:
+        logger.error(f"No se pudo armar el resumen semanal: {type(e).__name__}: {e}")
+        return {"sent": 0, "error": type(e).__name__}
+    data = weekly_digest_data(jobs, new_total, new_offers, today)
+    if weekly_digest_empty(data):
+        return {"sent": 0, "reason": "sin novedades"}
+    sent = _send_email(_recipient(), "📈 EmpleoIA: tu resumen de la semana", weekly_digest_html(data))
+    return {"sent": int(bool(sent))}
 
 
 def _as_date(value):

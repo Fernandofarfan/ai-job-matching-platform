@@ -42,6 +42,8 @@ class User(Base):
     terms_accepted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     # permiso para mandar el CV y las ofertas a Gemini; sin él las funciones de IA no se llaman
     ai_consent_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # cuándo apagó el resumen semanal por email (None = lo recibe)
+    weekly_digest_off_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
 class AccountError(ValueError):
@@ -164,7 +166,8 @@ def get_user(user_id) -> Optional[dict]:
             return None
         return {'id': user.id, 'email': user.email, 'password_hash': user.password_hash,
                 'email_verified': user.email_verified_at is not None, 'disabled': user.disabled_at is not None,
-                'terms_accepted': user.terms_accepted_at is not None, 'ai_consent': user.ai_consent_at is not None}
+                'terms_accepted': user.terms_accepted_at is not None, 'ai_consent': user.ai_consent_at is not None,
+                'weekly_digest': user.weekly_digest_off_at is None}
 
 
 def is_admin(user_id) -> bool:
@@ -387,6 +390,15 @@ def set_ai_consent(user_id: int, granted: bool):
         user = session.get(User, user_id)
         if user is not None:
             user.ai_consent_at = datetime.now() if granted else None
+            session.commit()
+
+
+def set_weekly_digest(user_id: int, enabled: bool):
+    """Prende o apaga el resumen semanal por email de la cuenta."""
+    with _sessions()() as session:
+        user = session.get(User, user_id)
+        if user is not None:
+            user.weekly_digest_off_at = None if enabled else datetime.now()
             session.commit()
 
 

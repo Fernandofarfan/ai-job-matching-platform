@@ -112,7 +112,7 @@
 ### 📧 **Notificaciones por Email (NEW)**
 - Recordatorios de seguimiento (email o Telegram) para postulaciones con fecha vencida
 - Digest de nuevas ofertas encontradas
-- Resumen semanal de actividad (postulaciones, entrevistas, tasa de respuesta)
+- Resumen semanal por email (worker con Celery beat y SMTP): ofertas nuevas de las alertas, postulaciones sin respuesta hace `FOLLOWUP_DAYS` días o más, y seguimientos o cierres de los próximos 7 días. No se manda si no hay novedades; cada cuenta lo apaga en Mi cuenta
 - Template HTML premium en dark mode
 - **Portales:** Computrabajo, Bumeran, ZonaJobs (misma plataforma que Bumeran) y GetOnBoard (API pública, sin navegador) en la búsqueda universal, las alertas y el monitor diario.
 - **Puntaje ATS** (`/optimize_resume` → "Calcular puntaje ATS", o `POST /api/ats_score`): puntaje de 0 a 100 sin IA con contacto, secciones, extensión, logros medibles, fechas y palabras clave de la oferta que faltan en el CV.

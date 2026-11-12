@@ -6,6 +6,11 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar] - Resumen semanal por email
+
+- Tarea semanal `send_weekly_digests` en Celery beat: un email por cuenta activa con las ofertas nuevas de sus alertas, las postulaciones sin respuesta y los próximos pasos del tracker. Si no hay novedades, no se manda.
+- Mi cuenta: prender o apagar el resumen (`users.weekly_digest_off_at`, migración `0016_weekly_digest`).
+
 ## [Sin publicar] - mypy en todo el proyecto
 
 - mypy revisa todo el código y los tests (antes 36 archivos elegidos a mano); solo quedan afuera las migraciones de Alembic.

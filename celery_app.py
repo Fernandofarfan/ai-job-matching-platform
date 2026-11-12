@@ -99,6 +99,11 @@ celery.conf.beat_schedule = {
         "task": "tasks.notification_tasks.run_job_alerts",
         "schedule": float(os.getenv("ALERTS_INTERVAL_HOURS", "6")) * 3600,
     },
+    # Resumen semanal por email: ofertas nuevas, postulaciones sin respuesta y próximos pasos
+    "send-weekly-digests": {
+        "task": "tasks.notification_tasks.send_weekly_digests",
+        "schedule": 604800,
+    },
     # Cifra CVs viejos y aplica CV_RETENTION_DAYS
     "enforce-cv-retention": {
         "task": "tasks.privacy_tasks.enforce_cv_retention",
