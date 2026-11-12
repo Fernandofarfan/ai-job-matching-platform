@@ -26,7 +26,7 @@
           </div>
           <div class="mb-3">
             <label for="job_description" class="form-label fw-bold">Descripción de la oferta</label>
-            <textarea class="form-control" id="job_description" name="job_description" rows="8" required></textarea>
+            <textarea class="form-control" id="job_description" name="job_description" rows="8" required>{{ job_description or '' }}</textarea>
           </div>
           <div class="mb-3">
             <label for="resume_text" class="form-label fw-bold">Texto del CV <span class="fw-normal text-muted">(opcional)</span></label>
@@ -36,6 +36,9 @@
           <button type="submit" class="btn btn-primary w-100">
             <i class="bi bi-magic me-2"></i> Optimizar CV
           </button>
+          <button type="submit" class="btn btn-outline-secondary w-100 mt-2" formaction="{{ url_for('ats_score_page') }}" formnovalidate>
+            <i class="bi bi-clipboard-check me-2"></i> Calcular puntaje ATS (sin IA)
+          </button>
         </form>
       </div>
     </div>
@@ -44,7 +47,22 @@
   <div class="col-lg-7">
     <div class="card border-0 shadow-sm h-100">
       <div class="card-body p-4">
-        {% if optimized_resume %}
+        {% if ats_result.score is number %}
+        <h2 class="h5 fw-bold mb-3">Puntaje ATS: <span class="badge {{ 'bg-success' if ats_result.score >= 75 else 'bg-warning text-dark' if ats_result.score >= 50 else 'bg-danger' }}">{{ ats_result.score }}/100</span></h2>
+        <ul class="list-group mb-3">
+          {% for c in ats_result.checks %}
+          <li class="list-group-item">
+            <i class="bi {{ 'bi-check-circle-fill text-success' if c.passed else 'bi-exclamation-circle-fill text-warning' }} me-2" aria-hidden="true"></i>
+            <strong>{{ c.label }}</strong> <span class="text-muted">({{ (c.ratio * 100)|round|int }}%)</span>
+            {% if not c.passed %}<div class="small text-muted">{{ c.tip }}</div>{% endif %}
+          </li>
+          {% endfor %}
+        </ul>
+        {% if ats_result.missing_keywords %}
+        <p class="mb-1 fw-bold">Palabras clave de la oferta que no aparecen en tu CV:</p>
+        <p>{% for k in ats_result.missing_keywords %}<span class="badge bg-light text-dark border me-1">{{ k }}</span>{% endfor %}</p>
+        {% endif %}
+        {% elif optimized_resume %}
         <div class="d-flex justify-content-between align-items-center mb-3">
           <h2 class="h5 fw-bold mb-0">CV optimizado</h2>
           <a href="{{ url_for('download_resume', filename=filename) }}" class="btn btn-success btn-sm">

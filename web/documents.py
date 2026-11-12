@@ -2,6 +2,7 @@
 import os
 import pandas as pd
 import time
+import ats_score
 from document_generators import CoverLetterGenerator, ResumeOptimizer
 from flask import flash, jsonify, redirect, render_template, request, url_for
 
@@ -144,6 +145,28 @@ def optimize_resume():
         logger.error(f"Error optimizing resume: {e}")
         flash(f'No se pudo optimizar el CV: {e}', 'danger')
         return redirect(url_for('optimize_resume_page'))
+
+@app.route('/ats_score', methods=['POST'])
+def ats_score_page():
+    """Puntaje ATS del CV (pegado o del perfil) contra la oferta, sin gastar IA."""
+    job_description = request.form.get('job_description', '')
+    resume_text = request.form.get('resume_text', '') or get_resume_text_from_profile()
+    if not resume_text:
+        flash('Pegá el texto de tu CV o subilo primero en Perfil', 'warning')
+        return redirect(url_for('optimize_resume_page'))
+    return render_template('optimize_resume.html', ats_result=ats_score.score_resume(resume_text, job_description),
+                           job_title=request.form.get('job_title', ''), company=request.form.get('company', ''),
+                           job_description=job_description)
+
+
+@app.route('/api/ats_score', methods=['POST'])
+def api_ats_score():
+    data = request.get_json(silent=True) or {}
+    resume_text = data.get('resume_text') or get_resume_text_from_profile()
+    if not resume_text:
+        return jsonify({'success': False, 'error': 'Subí tu CV en Perfil o enviá resume_text'}), 400
+    return jsonify({'success': True, **ats_score.score_resume(resume_text, data.get('job_description', ''))})
+
 
 @app.route('/api/optimize_resume', methods=['POST'])
 def api_optimize_resume():
