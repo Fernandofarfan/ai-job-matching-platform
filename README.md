@@ -434,6 +434,8 @@ SCRAPER_MAX_ATTEMPTS=3   # intentos por página (espera 2 s, 4 s… entre intent
 # === Observabilidad (opcional) ===
 LOG_LEVEL=INFO
 SENTRY_DSN=
+METRICS_TOKEN=                  # /metrics (Prometheus) con 'Authorization: Bearer <token>'; vacío = 404
+OTEL_EXPORTER_OTLP_ENDPOINT=    # trazas OpenTelemetry (web + worker); ver docs/observability.md
 
 # === Base de Datos ===
 DB_HOST=127.0.0.1

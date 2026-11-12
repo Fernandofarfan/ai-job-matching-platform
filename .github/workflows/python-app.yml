@@ -78,6 +78,7 @@ jobs:
             pydantic \
             pypdf \
             cryptography==50.0.2 \
+            prometheus-client==0.26.0 \
             python-docx \
             scikit-learn \
             spacy \
