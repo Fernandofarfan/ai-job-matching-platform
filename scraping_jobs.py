@@ -19,6 +19,15 @@ from services.state import job_status
 logger = logging.getLogger(__name__)
 
 
+def _mark_searched():
+    """El primer uso cuenta la búsqueda aunque no haya dejado CSV."""
+    try:
+        import onboarding
+        onboarding.mark_searched()
+    except Exception as e:
+        logger.warning(f"No se pudo anotar la búsqueda para el primer uso: {e}")
+
+
 def run_computrabajo_job(searches, email, password):
     try:
         scraper = ComputrabajoScraper()
@@ -56,6 +65,7 @@ def run_computrabajo_job(searches, email, password):
             job_status['computrabajo_scraping']['status'] = 'completed'
             job_status['computrabajo_scraping']['progress'] = 100
             job_status['computrabajo_scraping']['message'] = _m('No se encontraron ofertas')
+            _mark_searched()
 
         scraper.close()
 
@@ -108,6 +118,7 @@ def run_bumeran_job(searches):
             job_status['bumeran_scraping']['status'] = 'completed'
             job_status['bumeran_scraping']['progress'] = 100
             job_status['bumeran_scraping']['message'] = _m('No se encontraron ofertas')
+            _mark_searched()
 
         scraper.close()
 
@@ -282,6 +293,7 @@ def run_universal_job(position, location):
             job_status['universal_scraping']['status'] = 'completed'
             job_status['universal_scraping']['progress'] = 100
             job_status['universal_scraping']['message'] = _m('No se encontraron ofertas')
+            _mark_searched()
 
     except Exception as e:
         logger.error(f"Error in Universal scraper: {e}")
