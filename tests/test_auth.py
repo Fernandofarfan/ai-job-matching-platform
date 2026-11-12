@@ -61,3 +61,12 @@ def test_csrf_blocks_post_without_token(client, app, monkeypatch):
         assert response.status_code == 400
     finally:
         app.config['WTF_CSRF_ENABLED'] = False
+
+
+def test_rotating_password_invalidates_sessions(client, monkeypatch):
+    """Al cambiar APP_PASSWORD, la sesión abierta con la anterior deja de valer."""
+    monkeypatch.setenv('APP_PASSWORD', 'secreta')
+    _login(client, 'secreta')
+    assert client.get('/tracker').status_code == 200
+    monkeypatch.setenv('APP_PASSWORD', 'nueva')
+    assert client.get('/tracker').status_code == 302

@@ -82,7 +82,7 @@ PUBLIC_ENDPOINTS = {'login', 'static', 'health', 'api_save_from_extension'}
 
 @app.before_request
 def require_login():
-    if not auth.auth_enabled() or session.get('authenticated') or request.endpoint in PUBLIC_ENDPOINTS:
+    if not auth.auth_enabled() or auth.is_session_valid(session, app.secret_key) or request.endpoint in PUBLIC_ENDPOINTS:
         return None
     if request.path.startswith('/api/'):
         return jsonify({'error': 'No autenticado'}), 401
@@ -103,6 +103,7 @@ def login():
         if auth.check_password(request.form.get('password', '')):
             session.clear()
             session['authenticated'] = True
+            session['auth_fp'] = auth.session_fingerprint(app.secret_key)
             session.permanent = True
             return redirect(_safe_next(next_url))
         flash('Contraseña incorrecta', 'danger')
@@ -1022,7 +1023,7 @@ def api_save_from_extension():
     Endpoint para la extensión de Chrome.
     Recibe datos de una oferta laboral y la guarda en el Job Tracker.
     """
-    if auth.auth_enabled() and not session.get('authenticated') \
+    if auth.auth_enabled() and not auth.is_session_valid(session, app.secret_key) \
             and not auth.check_extension_token(request.headers.get('X-Extension-Token', '')):
         return jsonify({'success': False, 'error': 'Token de extensión inválido'}), 401
     data = request.get_json(force=True)
