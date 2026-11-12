@@ -148,6 +148,17 @@ resource "google_secret_manager_secret_version" "gemini_api_key_v1" {
   secret_data = var.gemini_api_key
 }
 
+resource "google_secret_manager_secret" "secret_key" {
+  secret_id = "empleoia-secret-key"
+  replication { automatic {} }
+  depends_on = [google_project_service.apis]
+}
+
+resource "google_secret_manager_secret_version" "secret_key_v1" {
+  secret      = google_secret_manager_secret.secret_key.id
+  secret_data = var.secret_key
+}
+
 resource "google_secret_manager_secret" "app_password" {
   secret_id = "empleoia-app-password"
   replication { automatic {} }
@@ -232,6 +243,15 @@ resource "google_cloud_run_v2_service" "empleoia_web" {
       env {
         name  = "RATELIMIT_STORAGE_URI"
         value = var.enable_redis ? local.redis_url : "memory://"
+      }
+      env {
+        name = "SECRET_KEY"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.secret_key.secret_id
+            version = "latest"
+          }
+        }
       }
       env {
         name = "APP_PASSWORD"
