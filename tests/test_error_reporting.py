@@ -79,3 +79,24 @@ def test_server_error_is_reported(monkeypatch):
     assert resp.status_code == 500
     assert resp.json() == {'error': 'Error interno'}
     assert [str(e) for e in captured] == ['falló']
+
+
+def test_api_route_errors_are_reported(monkeypatch):
+    """Las rutas de /api con TrackerRoute contestan el 500 ellas mismas: igual tienen que llegar a Sentry."""
+    from fastapi import APIRouter, FastAPI
+
+    from routers.tracker import TrackerRoute
+    router = APIRouter(route_class=TrackerRoute)
+
+    @router.get('/api/boom')
+    def boom():
+        raise RuntimeError('falló en la API')
+
+    app = FastAPI()
+    app.include_router(router)
+    captured = []
+    monkeypatch.setattr(error_reporting, 'capture', captured.append)
+    resp = TestClient(app).get('/api/boom')
+    assert resp.status_code == 500
+    assert resp.json() == {'success': False, 'error': 'Error interno del servidor'}
+    assert [str(e) for e in captured] == ['falló en la API']
