@@ -76,9 +76,10 @@ def matches_location(job, location, cities=()):
     city_names = {_norm(c) for c in cities}
     if len(parts) == 1:
         return any(parts[0] in place for place in places)
+    country_ok = any(part in place for part in parts[1:] for place in places if place not in city_names)
     if city_names:
-        return any(parts[0] in city for city in city_names)
-    return any(part in place for part in parts[1:] for place in places)
+        return country_ok and any(parts[0] in city for city in city_names)
+    return country_ok
 
 
 def parse_payload(payload, location=''):

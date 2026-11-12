@@ -129,3 +129,4 @@ def test_getonboard_city_searches_keep_local_jobs():
     assert 'Data Engineer' in titles('Lima')
     assert 'Data Engineer' in titles('Lima, Peru')
     assert titles('Arequipa, Perú') == ['Backend Python Developer']
+    assert titles('Lima, Chile') == ['Backend Python Developer']
