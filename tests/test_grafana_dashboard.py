@@ -3,8 +3,6 @@ import json
 import os
 import re
 
-import yaml
-
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 GRAFANA = os.path.join(ROOT, 'monitoring', 'grafana')
 
@@ -40,7 +38,8 @@ def test_queries_use_existing_metrics():
 
 def test_alert_thresholds_match_rules():
     with open(os.path.join(ROOT, 'monitoring', 'prometheus', 'alerts.yml'), encoding='utf-8') as f:
-        names = {r['alert'] for g in yaml.safe_load(f)['groups'] for r in g['rules']}
+        names = set(re.findall(r'^\s*- alert:\s*(\S+)', f.read(), re.M))
+    assert names
     for panel, target in _targets(_dashboard()):
         for alert in re.findall(r'alertname="(EmpleoIA\w+)"', target['expr']):
             assert alert in names, panel['title']
@@ -48,7 +47,8 @@ def test_alert_thresholds_match_rules():
 
 def test_datasource_and_layout():
     with open(os.path.join(GRAFANA, 'provisioning', 'datasources', 'prometheus.yml'), encoding='utf-8') as f:
-        uids = {d['uid'] for d in yaml.safe_load(f)['datasources']}
+        uids = set(re.findall(r'^\s*uid:\s*(\S+)', f.read(), re.M))
+    assert uids == {'prometheus'}
     dashboard = _dashboard()
     ids = [p['id'] for p in dashboard['panels']]
     assert len(ids) == len(set(ids))
