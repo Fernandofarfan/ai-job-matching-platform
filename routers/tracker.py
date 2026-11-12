@@ -29,6 +29,7 @@ class ApiError(Exception):
 
 
 def _validation_message(exc: RequestValidationError) -> str:
+    """Primer error de Pydantic en un mensaje corto en español para el frontend."""
     for err in exc.errors():
         if err['type'].startswith('date'):
             return 'Fecha inválida: usá AAAA-MM-DD'
@@ -58,16 +59,19 @@ class TrackerRoute(APIRoute):
 
 
 def get_flask_app():
+    """App Flask montada en main.py (dueña de la sesión y la config CSRF); se sobrescribe en tests."""
     from app import app as flask_app
     return flask_app
 
 
 def get_db():
+    """DatabaseManager de MySQL; se sobrescribe en tests."""
     from db_config import db_manager
     return db_manager
 
 
 def flask_session(request: Request, flask_app=Depends(get_flask_app)) -> dict:
+    """Datos de la cookie de sesión de Flask ({} si falta o la firma no vale)."""
     cookie = request.cookies.get(flask_app.config.get('SESSION_COOKIE_NAME', 'session'))
     return auth.load_session_cookie(flask_app, cookie)
 
@@ -95,6 +99,8 @@ def require_browser_session(request: Request, session: dict = Depends(flask_sess
 
 
 class TrackerDates(BaseModel):
+    """Recordatorio del tracker: fechas AAAA-MM-DD; vacío ('') equivale a sin dato."""
+
     follow_up: Optional[date] = None
     deadline: Optional[date] = None
     notes: Optional[str] = None
@@ -106,12 +112,16 @@ class TrackerDates(BaseModel):
 
 
 class NewJob(TrackerDates):
+    """Postulación nueva: título y empresa obligatorios; el resto de los campos pasa tal cual a la base."""
+
     model_config = ConfigDict(extra='allow')
     title: str = Field(min_length=1)
     company: str = Field(min_length=1)
 
 
 class StatusUpdate(BaseModel):
+    """Nuevo estado de una postulación (applied, interviewing, ...)."""
+
     status: str = Field(min_length=1)
 
 
@@ -125,6 +135,7 @@ def with_iso_dates(job: dict) -> dict:
 
 
 def _save_dates(db, job_id: int, dates: TrackerDates) -> Optional[str]:
+    """Guarda follow_up/deadline/notes; devuelve un mensaje de error o None."""
     if not db.update_tracker_dates(job_id, dates.follow_up, dates.deadline, dates.notes):
         return 'No se pudieron guardar las fechas'
     return None
@@ -136,12 +147,14 @@ browser = [Depends(require_browser_session)]
 
 @router.get('/jobs', dependencies=browser)
 def list_jobs(db=Depends(get_db)):
+    """Todas las postulaciones del tracker, con fechas en ISO."""
     jobs = [with_iso_dates(job) for job in db.get_all_tracked_jobs()]
     return {'success': True, 'jobs': jobs, 'count': len(jobs)}
 
 
 @router.post('/job', dependencies=browser)
 def add_job(job: NewJob, db=Depends(get_db)):
+    """Crea la postulación (409 si ya existe) y guarda sus fechas; si fallan, avisa con `warning`."""
     result = db.add_job_to_tracker(job.model_dump())
     if isinstance(result, dict) and result.get('exists'):
         return JSONResponse({'success': False, 'exists': True, 'job_id': result['job_id'],
@@ -159,6 +172,7 @@ def add_job(job: NewJob, db=Depends(get_db)):
 
 @router.get('/job/{job_id}', dependencies=browser)
 def get_job(job_id: int, db=Depends(get_db)):
+    """Detalle de una postulación (404 si no existe)."""
     job = db.get_tracked_job_by_id(job_id)
     if not job:
         raise ApiError(404, 'Job not found')
@@ -167,6 +181,7 @@ def get_job(job_id: int, db=Depends(get_db)):
 
 @router.put('/job/{job_id}/status', dependencies=browser)
 def update_status(job_id: int, body: StatusUpdate, db=Depends(get_db)):
+    """Cambia el estado (columna del Kanban)."""
     if not db.update_job_status(job_id, body.status):
         raise ApiError(500, 'Failed to update status')
     return {'success': True, 'message': f'Job status updated to {body.status}'}
@@ -183,6 +198,7 @@ def update_reminder(job_id: int, dates: TrackerDates, db=Depends(get_db)):
 
 @router.delete('/job/{job_id}', dependencies=browser)
 def delete_job(job_id: int, db=Depends(get_db)):
+    """Borra la postulación."""
     if not db.delete_tracked_job(job_id):
         raise ApiError(500, 'Failed to delete job')
     return {'success': True, 'message': 'Job deleted successfully'}
