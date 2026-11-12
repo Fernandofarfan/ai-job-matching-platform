@@ -261,7 +261,7 @@ async def weekly_digest(request: Request):
     form, error = await _form(request, '20 per hour', 'weekly_digest')
     if error:
         return error
-    user_id = accounts.require_user_id()
+    user_id = _user_id()
     enabled = form.get('enabled') == '1'
     try:
         await run_in_threadpool(accounts.set_weekly_digest, user_id, enabled)
