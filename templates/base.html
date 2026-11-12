@@ -290,12 +290,13 @@
 </head>
 
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <a class="visually-hidden-focusable position-absolute top-0 start-0 m-2 p-2 bg-light text-dark rounded" style="z-index:2000" href="#contenido">Saltar al contenido</a>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark" aria-label="Navegación principal">
         <div class="container">
             <a class="navbar-brand" href="/">
                 <i class="bi bi-robot"></i> EmpleoIA
             </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Abrir menú">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
@@ -345,20 +346,20 @@
         </div>
     </nav>
 
-    <div class="container mt-4">
+    <main id="contenido" class="container mt-4" tabindex="-1">
         {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
         {% for category, message in messages %}
         <div class="alert alert-{{ category }} alert-dismissible fade show">
             {{ message }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
         </div>
         {% endfor %}
         {% endif %}
         {% endwith %}
 
         {% block content %}{% endblock %}
-    </div>
+    </main>
 
     <!-- ═══════════════════════════════════════════════════════════════════ -->
     <!-- AI COPILOT SIDEBAR                                                  -->
@@ -368,12 +369,12 @@
     <div id="copilot-overlay" onclick="closeCopilot()"></div>
 
     <!-- Sidebar -->
-    <div id="copilot-sidebar" role="complementary" aria-label="AI Copilot">
+    <div id="copilot-sidebar" role="complementary" aria-label="Asistente Copilot">
         <!-- Header -->
         <div class="copilot-header">
             <div class="copilot-header-logo">🤖</div>
             <div class="copilot-header-text">
-                <h6>AI Copilot</h6>
+                <h6>Asistente Copilot</h6>
                 <small id="copilot-ai-status">Impulsado por Gemini</small>
             </div>
             <button class="copilot-close-btn" onclick="closeCopilot()" title="Cerrar">✕</button>
@@ -404,7 +405,7 @@
         <!-- Input -->
         <div class="copilot-input-area">
             <div class="copilot-input-row">
-                <textarea
+                <textarea aria-label="Preguntale algo al Copilot..."
                     id="copilot-input"
                     class="copilot-textarea"
                     placeholder="Preguntale algo al Copilot..."
