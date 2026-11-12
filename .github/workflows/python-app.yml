@@ -65,6 +65,7 @@ jobs:
             openpyxl \
             reportlab \
             SQLAlchemy==2.0.57 \
+            "celery[redis]>=5.3.0" \
             beautifulsoup4==4.12.2 \
             lxml \
             pytest-cov \
