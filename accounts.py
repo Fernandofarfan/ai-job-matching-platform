@@ -67,14 +67,6 @@ def current_user_id() -> Optional[int]:
     return _current.get()
 
 
-def require_user_id() -> int:
-    """Id de la cuenta del pedido, en rutas que ya exigen login."""
-    user_id = _current.get()
-    if user_id is None:
-        raise RuntimeError('No hay una cuenta en el pedido')
-    return user_id
-
-
 def set_current_user(user_id: Optional[int]):
     """Fija el usuario del pedido actual; devuelve el token para `reset_current_user`."""
     return _current.set(user_id)
