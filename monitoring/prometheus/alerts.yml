@@ -44,7 +44,8 @@ groups:
           description: "{{ $value }} tareas esperando: el worker está caído o saturado."
 
       - alert: EmpleoIACuotaIA80
-        expr: sum(empleoia_ai_month_tokens) / max(empleoia_ai_month_token_limit) > 0.8
+        # Cada instancia expone el mismo total de Redis: max por kind para no sumarlo una vez por instancia.
+        expr: sum(max by (kind) (empleoia_ai_month_tokens)) / max(empleoia_ai_month_token_limit) > 0.8
         labels:
           severity: warning
         annotations:
@@ -52,7 +53,7 @@ groups:
           description: "{{ $value | humanizePercentage }} del tope AI_MONTHLY_TOKEN_LIMIT."
 
       - alert: EmpleoIACuotaIAAgotada
-        expr: sum(empleoia_ai_month_tokens) >= max(empleoia_ai_month_token_limit)
+        expr: sum(max by (kind) (empleoia_ai_month_tokens)) >= max(empleoia_ai_month_token_limit)
         labels:
           severity: page
         annotations:
