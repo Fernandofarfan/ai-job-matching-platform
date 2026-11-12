@@ -220,7 +220,7 @@ resource "google_cloud_run_v2_service" "empleoia_web" {
       }
       env {
         name  = "RATELIMIT_STORAGE_URI"
-        value = local.redis_url
+        value = var.enable_redis ? local.redis_url : "memory://"
       }
       env {
         name = "GEMINI_API_KEY"
