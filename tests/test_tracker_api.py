@@ -161,3 +161,13 @@ def test_entry_points_serve_fastapi_app():
     assert "'main:app'" in (root / 'app.py').read_text(encoding='utf-8')
     launcher = (root / 'scripts' / 'start_server.ps1').read_text(encoding='utf-8')
     assert 'uvicorn main:app' in launcher and 'waitress' not in launcher
+
+
+def test_flask_serves_ai_routes_that_need_profile_context():
+    """Copilot y analyze-job los atiende Flask (usa el CV/perfil guardado); FastAPI no los debe tapar."""
+    from starlette.routing import Match
+    import main
+    for path in ('/api/ai/copilot', '/api/ai/analyze-job'):
+        scope = {'type': 'http', 'path': path, 'method': 'POST', 'root_path': ''}
+        assert not any(r.matches(scope)[0] == Match.FULL for r in main.app.router.routes
+                       if getattr(r, 'path', '').startswith('/api/'))
