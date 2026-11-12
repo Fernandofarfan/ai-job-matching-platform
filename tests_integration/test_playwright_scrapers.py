@@ -1,4 +1,5 @@
 """Scrapers de Playwright contra un servidor local con el HTML guardado de cada portal."""
+import concurrent.futures
 import http.server
 import threading
 from pathlib import Path
@@ -34,25 +35,30 @@ def portal_server():
     server.shutdown()
 
 
-def test_computrabajo_with_playwright(portal_server):
-    from scrapers.computrabajo_scraper import ComputrabajoScraper
-    scraper = ComputrabajoScraper()
-    scraper.base_url = portal_server
+def _in_thread(fn):
+    """Como en la app: el scraper corre en un thread propio (la API sync de Playwright no anda dentro de un loop asyncio)."""
+    with concurrent.futures.ThreadPoolExecutor(1) as pool:
+        return pool.submit(fn).result(timeout=120)
+
+
+def _search(scraper_cls, base_url):
+    scraper = scraper_cls()
+    scraper.base_url = base_url
     try:
-        jobs = scraper.search_jobs('python', max_jobs=10)
+        return scraper.search_jobs('python', max_jobs=10)
     finally:
         scraper.close()
+
+
+def test_computrabajo_with_playwright(portal_server):
+    from scrapers.computrabajo_scraper import ComputrabajoScraper
+    jobs = _in_thread(lambda: _search(ComputrabajoScraper, portal_server))
     assert jobs and jobs[0]['Title'] == 'Desarrollador Python Sr'
     assert jobs[0]['Apply_URL'] == jobs[0]['URL']
 
 
 def test_bumeran_with_playwright(portal_server):
     from scrapers.bumeran_scraper import BumeranScraper
-    scraper = BumeranScraper()
-    scraper.base_url = portal_server
-    try:
-        jobs = scraper.search_jobs('python', max_jobs=10)
-    finally:
-        scraper.close()
+    jobs = _in_thread(lambda: _search(BumeranScraper, portal_server))
     assert [job['Company'] for job in jobs] == ['TechCo', 'Confidencial']
     assert all(job['URL'].startswith(portal_server) for job in jobs)
