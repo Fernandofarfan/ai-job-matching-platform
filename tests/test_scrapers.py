@@ -55,3 +55,11 @@ def test_get_with_retries_raises_after_last_attempt():
     with pytest.raises(TimeoutError):
         get_with_retries(driver, 'https://x', attempts=2, sleep=lambda s: None)
     assert driver.get.call_count == 2
+
+
+def test_configure_driver_failure_does_not_abort():
+    from scrapers.common import configure_driver
+    driver = mock.Mock()
+    driver.set_page_load_timeout.side_effect = RuntimeError('no soportado')
+    configure_driver(driver)
+    driver.quit.assert_not_called()
