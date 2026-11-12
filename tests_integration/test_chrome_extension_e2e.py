@@ -11,7 +11,7 @@ JOB_HTML = """<!doctype html><html><head><title>Oferta</title>
 <script type="application/ld+json">{"@context": "https://schema.org", "@type": "JobPosting",
  "title": "Backend Python <img src=x onerror=alert(1)>", "hiringOrganization": {"name": "ACME"},
  "jobLocation": {"address": {"addressLocality": "Buenos Aires", "addressCountry": "AR"}},
- "description": "<p>Django y <b>FastAPI</b></p>"}</script></head>
+ "description": "<p>Django y <b>FastAPI</b></p><p>Python</p>"}</script></head>
 <body><h1>Backend Python &lt;img src=x onerror=alert(1)&gt;</h1></body></html>"""
 
 
@@ -46,7 +46,7 @@ def test_extracts_job_posting_and_shows_safe_toast(extension_context):
     data = result['data']
     assert result['success'] and data['platform'] == 'getonbrd'
     assert data['company'] == 'ACME' and data['location'] == 'Buenos Aires, AR'
-    assert data['description'] == 'Django y FastAPI'
+    assert data['description'] == 'Django y FastAPI\nPython'
 
     toast = page.locator('#empleoia-saved-toast small')
     toast.wait_for()
