@@ -22,6 +22,8 @@ def custom_url_for(context, name: str, **kwargs):
     return request.url_for(name, **kwargs) if request else ""
 
 templates.env.globals['url_for'] = custom_url_for
+# base.html usa helpers de Flask que no existen en el Jinja de FastAPI
+templates.env.globals['get_flashed_messages'] = lambda **kwargs: []
 
 @router.get("/analytics", response_class=HTMLResponse)
 async def dashboard_view(request: Request):
