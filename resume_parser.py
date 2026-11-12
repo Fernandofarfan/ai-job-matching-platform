@@ -487,6 +487,9 @@ class resumeParser:
 
 
 
+MAX_REQUIRED_YEARS = 20  # más años que esto en una oferta no es un requisito para la persona
+
+
 class jobMatcher:
     def __init__(self):
         self.vectorizer = TfidfVectorizer(
@@ -533,9 +536,12 @@ class jobMatcher:
             matches = re.findall(pattern, text_lower)
             for match in matches:
                 try:
-                    years.append(int(match))
+                    n = int(match)
                 except ValueError:
                     continue
+                # "empresa con 30 años de experiencia" habla de la empresa, no del puesto
+                if n <= MAX_REQUIRED_YEARS:
+                    years.append(n)
         
         
         return min(years) if years else 0
