@@ -63,6 +63,8 @@ jobs:
             Werkzeug==3.1.9 \
             Flask-Limiter==4.1.1 \
             flask-wtf==1.2.2 \
+            pyotp==2.9.0 \
+            segno==1.6.6 \
             pandas \
             numpy \
             python-dotenv==1.2.4 \
