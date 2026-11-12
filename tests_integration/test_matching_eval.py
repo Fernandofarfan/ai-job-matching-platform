@@ -46,7 +46,7 @@ def test_compare_honors_json_and_threshold(monkeypatch, capsys):
 def test_compare_does_not_report_tfidf_as_embeddings(monkeypatch, capsys):
     """Si embeddings cae a TF-IDF, --compare no lo informa como embeddings."""
     import embeddings
-    monkeypatch.setattr(embeddings, 'enabled', lambda: True)
+    monkeypatch.setattr(embeddings, 'enabled', lambda language=None: True)
     monkeypatch.setattr(embeddings, 'embed', lambda texts: None)
     from scripts import eval_matching
     assert eval_matching.main(['--compare', '--json']) == 0
@@ -101,3 +101,24 @@ def test_language_of_ids():
     """El idioma sale del prefijo o sufijo del id."""
     ids = ('qa_es', 'es_qa', 'frontend_pt', 'pt_fe', 'ux')
     assert [matching_eval.language(n) for n in ids] == ['es', 'es', 'pt', 'pt', 'en']
+
+
+def test_compare_ignores_backend_by_language(monkeypatch, capsys):
+    """--compare mide cada backend puro aunque haya MATCHING_BACKEND_BY_LANGUAGE, y después lo restaura."""
+    import os
+
+    import embeddings
+    fake = _FakeGemini()
+    embeddings.configure(fake)
+    monkeypatch.setenv('GEMINI_API_KEY', 'prueba')
+    monkeypatch.setenv('MATCHING_BACKEND_BY_LANGUAGE', 'es=embeddings,pt=embeddings')
+    try:
+        from scripts import eval_matching
+        assert eval_matching.main(['--compare', '--json']) == 0
+        out = json.loads(capsys.readouterr().out)
+        monkeypatch.setenv('MATCHING_BACKEND', 'tfidf')
+        monkeypatch.delenv('MATCHING_BACKEND_BY_LANGUAGE')
+        assert out['tfidf']['mean'] == json.loads(json.dumps(matching_eval.evaluate()['mean']))
+    finally:
+        embeddings.configure(None)
+    assert os.environ.get('MATCHING_BACKEND_BY_LANGUAGE') is None
