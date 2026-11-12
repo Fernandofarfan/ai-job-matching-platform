@@ -13,12 +13,14 @@ PLACEHOLDER = re.compile(r'%\((\w+)\)s')
 
 
 def _ui_texts() -> set:
-    """Textos marcados en las plantillas, mensajes flash literales y etiquetas de eventos de seguridad."""
+    """Textos marcados en las plantillas, mensajes flash literales, progreso de búsquedas y eventos de seguridad."""
     texts = set(security_events.LABELS.values())
     for path in glob.glob('templates/*.html'):
         texts |= set(re.findall(r"_\('((?:[^'\\]|\\.)*)'", open(path, encoding='utf-8').read()))
     for path in ['app.py', *glob.glob('web/*.py')]:
         texts |= set(re.findall(r"flash\('((?:[^'\\]|\\.)*)'", open(path, encoding='utf-8').read()))
+    for path in ['scraping_jobs.py', 'job_dispatch.py', *glob.glob('services/*.py'), *glob.glob('routers/*.py')]:
+        texts |= set(re.findall(r"(?:_m|i18n\.lazy)\('((?:[^'\\]|\\.)*)'", open(path, encoding='utf-8').read()))
     return texts
 
 
@@ -111,3 +113,32 @@ def test_app_pages_are_translated(client, one_account, path, english):
     assert english in page
     client.set_cookie('lang', 'es')
     assert english not in client.get(path).get_data(as_text=True)
+
+
+def test_progress_messages_are_translated_when_read(client, one_account, monkeypatch):
+    """El progreso se guarda en español con sus valores y /status lo devuelve en el idioma de la cuenta."""
+    import job_dispatch
+    state = {
+        'bumeran_scraping': {'status': 'running', 'progress': 40,
+                             'message': i18n.lazy('%(count)s ofertas para %(position)s', count=3, position='Python')},
+        'universal_scraping': {'status': 'running', 'message': 'texto viejo',
+                               'scrapers': {'indeed': {'message': i18n.lazy('Usá la búsqueda individual de este portal')}}},
+    }
+    monkeypatch.setattr(job_dispatch, 'refresh', lambda job_status: state)
+    client.post('/login', data={'email': 'ana@example.com', 'password': 'clave-larga-1'})
+    expected = {'en': ('3 jobs for Python', "Use this site's own search"),
+                'pt': ('3 vagas para Python', 'Use a busca individual deste portal'),
+                'es': ('3 ofertas para Python', 'Usá la búsqueda individual de este portal')}
+    for lang, (count, skipped) in expected.items():
+        client.set_cookie('lang', lang)
+        data = client.get('/status').get_json()
+        assert data['bumeran_scraping']['message'] == count
+        assert data['universal_scraping']['scrapers']['indeed']['message'] == skipped
+        assert data['universal_scraping']['message'] == 'texto viejo'
+
+
+def test_render_message():
+    """Los mensajes viejos (texto suelto) y los valores con % se muestran sin fallar."""
+    assert i18n.render_message('texto suelto') == 'texto suelto'
+    assert i18n.render_message(i18n.lazy('Error: %(error)s', error='100% roto')) == 'Error: 100% roto'
+    assert i18n.render_message(None) is None

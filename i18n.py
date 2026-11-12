@@ -62,6 +62,18 @@ def gettext(text: str, **values) -> str:
     return translated % values if values else translated
 
 
+def lazy(text: str, **values) -> dict:
+    """Mensaje para traducir al mostrarlo (progreso de búsquedas que arman threads y el worker)."""
+    return {'text': text, 'values': values}
+
+
+def render_message(message) -> str:
+    """Texto de un mensaje de `lazy()` (o un texto suelto) en el idioma actual."""
+    if isinstance(message, dict) and isinstance(message.get('text'), str):
+        return gettext(message['text'], **(message.get('values') or {}))
+    return gettext(message) if isinstance(message, str) else message
+
+
 def jinja_gettext(text, **values) -> Markup:
     """`_()` de las plantillas: el texto se escapa y los valores también, salvo los marcados como seguros."""
     if not isinstance(text, str):

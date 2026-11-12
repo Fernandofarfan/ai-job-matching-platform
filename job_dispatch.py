@@ -10,6 +10,7 @@ import os
 from collections.abc import MutableMapping
 
 import accounts
+import i18n
 
 logger = logging.getLogger(__name__)
 
@@ -98,7 +99,7 @@ def launch(job_status, key, name, *args):
         _remember(celery, key, result.id)
         job_status[key] = {
             **job_status.get(key, {}),
-            'status': 'queued', 'progress': 0, 'message': 'En cola...', 'task_id': result.id,
+            'status': 'queued', 'progress': 0, 'message': i18n.lazy('En cola...'), 'task_id': result.id,
         }
         return result.id
     accounts.thread(target=func, args=args, daemon=True).start()
@@ -136,7 +137,7 @@ def refresh(job_status):
             if state == 'SUCCESS' and job_status[key].get('status') in ACTIVE:
                 job_status[key]['status'] = 'completed'
         elif state == 'FAILURE':
-            job_status[key].update(status='failed', message=f'Error: {str(info)[:100]}')
+            job_status[key].update(status='failed', message=i18n.lazy('Error: %(error)s', error=str(info)[:100]))
         elif state == 'STARTED':
             job_status[key]['status'] = 'running'
     return job_status
