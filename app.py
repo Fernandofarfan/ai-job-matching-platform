@@ -797,6 +797,8 @@ def handle_check_status(data):
 def emit_scraper_progress(scraper_key: str):
     """Emite el progreso del scraper via SocketIO (llamar desde los threads de scraping)."""
     try:
+        import job_dispatch
+        job_dispatch.refresh(job_status)
         socketio.emit('scraper_status', {
             'scraper': scraper_key,
             **job_status.get(scraper_key, {})

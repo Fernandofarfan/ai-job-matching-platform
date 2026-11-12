@@ -4,6 +4,7 @@ import pandas as pd
 from db_config import db_manager
 from flask import flash, jsonify, redirect, render_template, request, send_file, send_from_directory, session, url_for
 
+import job_dispatch
 from app import (  # noqa: F401
     app,
     get_recent_job_files,
@@ -186,7 +187,7 @@ def debug_directories():
 
 @app.route('/status')
 def status():
-    return jsonify(job_status)
+    return jsonify(job_dispatch.refresh(job_status))
 
 @app.route('/results/<filename>')
 def download_file(filename):
