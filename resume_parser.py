@@ -521,6 +521,9 @@ class jobMatcher:
             r'(\d+)\+?\s*years?\s*in',
             r'minimum\s*(?:of\s*)?(\d+)\+?\s*years?',
             r'at least\s*(\d+)\+?\s*years?',
+            # español y portugués: "3 años de experiencia", "2 anos de experiência", "1 ano de experiência"
+            r'(\d+)\+?\s*(?:años|anos?)\s*(?:de\s*)?experi[eê]ncia',
+            r'(?:mínimo|minimo|al menos|pelo menos)\s*(?:de\s*)?(\d+)\+?\s*(?:años|anos?)',
         ]
         
         years = []
