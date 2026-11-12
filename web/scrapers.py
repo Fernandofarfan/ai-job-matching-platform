@@ -10,6 +10,8 @@ import job_dispatch
 from flask import flash, jsonify, redirect, request, url_for
 from scrapers.bumeran_scraper import BumeranScraper
 from scrapers.computrabajo_scraper import ComputrabajoScraper
+from scrapers.getonboard_scraper import GetOnBoardScraper
+from scrapers.zonajobs_scraper import ZonaJobsScraper
 from scrapers.indeed_scraper import indeedScraper
 from scrapers.linkedin_pw import linkedinClass
 
@@ -393,12 +395,14 @@ def start_universal_scraper():
     job_status['universal_scraping'] = {
         'status': 'running',
         'progress': 0,
-        'message': 'Iniciando búsqueda en Computrabajo y Bumeran...',
+        'message': 'Iniciando búsqueda en Computrabajo, Bumeran, ZonaJobs y GetOnBoard...',
         'scrapers': {
             'indeed': {'status': 'idle', 'progress': 0},
             'linkedin': {'status': 'idle', 'progress': 0},
             'computrabajo': {'status': 'idle', 'progress': 0},
-            'bumeran': {'status': 'idle', 'progress': 0}
+            'bumeran': {'status': 'idle', 'progress': 0},
+            'zonajobs': {'status': 'idle', 'progress': 0},
+            'getonboard': {'status': 'idle', 'progress': 0}
         }
     }
     
@@ -514,7 +518,9 @@ def run_universal_job(position, location):
             'indeed': [],
             'linkedin': [],
             'computrabajo': [],
-            'bumeran': []
+            'bumeran': [],
+            'zonajobs': [],
+            'getonboard': []
         }
 
         # Get credentials from environment
@@ -581,6 +587,32 @@ def run_universal_job(position, location):
                 logger.error(f"Error in Bumeran scraper: {e}")
                 job_status['universal_scraping']['scrapers']['bumeran']['status'] = 'failed'
 
+        def run_without_login(name, label, make_scraper):
+            state = job_status['universal_scraping']['scrapers'][name]
+            try:
+                state['status'] = 'running'
+                job_status['universal_scraping']['message'] = f'Buscando en {label}...'
+                scraper = make_scraper()
+                try:
+                    jobs = scraper.search_jobs(position, location, max_jobs=50) or []
+                finally:
+                    scraper.close()
+                for job in jobs:
+                    job['Fuente'] = label
+                scraper_results[name] = jobs
+                state['status'] = 'completed'
+                state['progress'] = 100
+            except Exception as e:
+                logger.error(f"Error in {label} scraper: {e}")
+                state['status'] = 'failed'
+
+        extra_threads = [
+            threading.Thread(target=run_without_login, args=('zonajobs', 'ZonaJobs', ZonaJobsScraper)),
+            threading.Thread(target=run_without_login, args=('getonboard', 'GetOnBoard', GetOnBoardScraper)),
+        ]
+        for thread in extra_threads:
+            thread.start()
+
         # Start all scrapers in parallel
         indeed_thread = threading.Thread(target=run_indeed)
         linkedin_thread = threading.Thread(target=run_linkedin)
@@ -597,6 +629,8 @@ def run_universal_job(position, location):
         linkedin_thread.join()
         computrabajo_thread.join()
         bumeran_thread.join()
+        for thread in extra_threads:
+            thread.join()
 
         # Consolidate results
         job_status['universal_scraping']['message'] = 'Consolidando resultados...'

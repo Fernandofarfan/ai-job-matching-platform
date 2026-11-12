@@ -64,3 +64,55 @@ def test_configure_driver_failure_closes_browser_and_raises():
     with pytest.raises(RuntimeError):
         configure_driver(driver)
     driver.quit.assert_called_once()
+
+
+def test_bumeran_skips_badges_as_company():
+    html = ('<a href="/empleos/dev-1.html"><h2>Dev</h2><h3>Apto discapacidad</h3>'
+            '<h3>Acme</h3></a>')
+    assert bumeran_scraper.parse_listing(html)[0]['Company'] == 'Acme'
+
+
+def test_zonajobs_reuses_navent_parser_with_its_domain():
+    from scrapers import zonajobs_scraper
+    jobs = zonajobs_scraper.parse_listing((FIXTURES / 'bumeran_listing.html').read_text(encoding='utf-8'))
+    assert jobs[0]['URL'].startswith('https://www.zonajobs.com.ar/empleos/')
+    assert {j['Source'] for j in jobs} == {'ZonaJobs'}
+    assert zonajobs_scraper.ZonaJobsScraper.base_url == zonajobs_scraper.BASE_URL
+
+
+def _getonboard_payload():
+    import json
+    return json.loads((FIXTURES / 'getonboard_search.json').read_text(encoding='utf-8'))
+
+
+def test_getonboard_parses_api_payload():
+    from scrapers import getonboard_scraper
+    jobs = getonboard_scraper.parse_payload(_getonboard_payload())
+    assert [j['Title'] for j in jobs] == ['Backend Python Developer', 'Data Engineer']
+    first = jobs[0]
+    assert (first['Company'], first['Location'], first['Salary'], first['Job_Type']) == (
+        'Acme', 'Argentina, Chile', 'USD 2500 - 3500', 'Remoto')
+    assert first['Description'] == 'API de pagos Django & SQL'
+    assert first['URL'] == 'https://www.getonbrd.com/jobs/backend-python-acme'
+    assert jobs[1]['Company'] == 'Confidencial'
+    assert jobs[1]['URL'] == 'https://www.getonbrd.com/jobs/data-engineer-lima'
+
+
+def test_getonboard_location_keeps_local_and_remote():
+    from scrapers import getonboard_scraper
+    titles = [j['Title'] for j in getonboard_scraper.parse_payload(_getonboard_payload(), 'peru')]
+    assert titles == ['Backend Python Developer', 'Data Engineer']
+    titles = [j['Title'] for j in getonboard_scraper.parse_payload(_getonboard_payload(), 'Uruguay')]
+    assert titles == ['Backend Python Developer']
+
+
+def test_getonboard_search_paginates_and_limits():
+    from scrapers import getonboard_scraper
+    payload = _getonboard_payload()
+    payload['meta']['total_pages'] = 3
+    session = mock.Mock()
+    session.get.return_value.json.return_value = payload
+    jobs = getonboard_scraper.GetOnBoardScraper(session).search_jobs('python', max_jobs=3)
+    assert len(jobs) == 3
+    assert session.get.call_count == 2
+    assert session.get.call_args.kwargs['params']['page'] == 2

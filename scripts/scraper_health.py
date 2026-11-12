@@ -23,7 +23,17 @@ def _bumeran():
     return BumeranScraper()
 
 
-PORTALS = {'computrabajo': _computrabajo, 'bumeran': _bumeran}
+def _zonajobs():
+    from scrapers.zonajobs_scraper import ZonaJobsScraper
+    return ZonaJobsScraper()
+
+
+def _getonboard():
+    from scrapers.getonboard_scraper import GetOnBoardScraper
+    return GetOnBoardScraper()
+
+
+PORTALS = {'computrabajo': _computrabajo, 'bumeran': _bumeran, 'zonajobs': _zonajobs, 'getonboard': _getonboard}
 
 
 def check_portal(name, factory, query, max_jobs):

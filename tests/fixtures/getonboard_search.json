@@ -1,0 +1,14 @@
+{"data": [
+  {"id": "backend-python-acme", "type": "job",
+   "attributes": {"title": "Backend Python Developer", "projects": "<p>API de <strong>pagos</strong></p>",
+     "functions": "<ul><li>Django &amp; SQL</li></ul>", "description": "", "remote": true,
+     "countries": ["Argentina", "Chile"], "min_salary": 2500, "max_salary": 3500,
+     "company": {"data": {"id": "acme", "type": "company", "attributes": {"name": "Acme"}}}},
+   "links": {"public_url": "https://www.getonbrd.com/jobs/backend-python-acme"}},
+  {"id": "data-engineer-lima", "type": "job",
+   "attributes": {"title": "Data Engineer", "description": "<p>Spark</p>", "remote": false,
+     "countries": ["Perú"], "min_salary": null, "max_salary": null, "company": {"data": {}}},
+   "links": {}},
+  {"id": "sin-titulo", "type": "job", "attributes": {"title": ""}, "links": {}}
+],
+"meta": {"page": 1, "per_page": 50, "total_pages": 1}}
