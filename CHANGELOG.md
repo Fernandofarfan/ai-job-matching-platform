@@ -8,6 +8,7 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Agregado
+- Matching semántico opcional (`MATCHING_BACKEND=embeddings`): la similitud de texto CV-oferta usa embeddings de Gemini (`gemini-embedding-001`) con caché en memoria y cuenta en el tope mensual de tokens. Si la IA falla o no está configurada, sigue con TF-IDF.
 - Alertas de empleo (`/alerts`): búsquedas guardadas en Computrabajo y Bumeran que Celery Beat revisa cada `ALERTS_INTERVAL_HOURS` y avisan por email o Telegram solo con ofertas nuevas. La misma oferta en dos portales se avisa una vez (huella de título + empresa en `seen_jobs`) y se puede exigir un match mínimo con el CV. Migración Alembic `0002_job_alerts`.
 - `SCRAPER_BACKEND=celery`: las búsquedas de la web (Indeed, LinkedIn, Computrabajo, Bumeran y universal) corren en el worker de Celery con el mismo código y el progreso se ve igual en `/status`. Por defecto siguen en un thread. Docker Compose ya usa Celery.
 - Lint con Ruff (pyflakes + bugbear) y mypy sobre los módulos nuevos (`pyproject.toml`), en CI y en `.pre-commit-config.yaml` (con gitleaks). Se limpiaron 111 avisos: imports y variables sin uso, f-strings vacíos y redefiniciones.
