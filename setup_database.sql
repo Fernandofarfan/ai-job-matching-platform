@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS applications (
     job_type VARCHAR(100),
     suggested_address VARCHAR(255),
     applied_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    status ENUM('applied', 'interviewing', 'rejected', 'accepted') DEFAULT 'applied',
+    status ENUM('bookmarked', 'applying', 'applied', 'interviewing', 'negotiating', 'accepted', 'rejected') DEFAULT 'applied',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_company (company),
     INDEX idx_status (status),
