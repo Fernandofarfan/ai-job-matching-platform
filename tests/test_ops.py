@@ -71,3 +71,31 @@ def test_api_upload_too_large_returns_json_413(client, app):
         assert 'error' in response.get_json()
     finally:
         app.config['MAX_CONTENT_LENGTH'] = previous
+
+
+def test_invalid_ai_rate_limit_falls_back_to_default(monkeypatch):
+    """Un AI_RATE_LIMIT mal escrito aplica el límite por defecto en vez de dejar pasar todo."""
+    import rate_limit
+    monkeypatch.setenv('AI_RATE_LIMIT', 'muchas por minuto')
+    rate_limit.reset()
+    results = [rate_limit.hit_ai_limit('8.8.8.8') for _ in range(31)]
+    assert results[:30] == [True] * 30 and results[30] is False
+    monkeypatch.delenv('AI_RATE_LIMIT')
+    rate_limit.reset()
+
+
+def test_concurrent_first_hits_share_one_counter(monkeypatch):
+    """Las primeras llamadas simultáneas usan un solo contador."""
+    import threading
+    import rate_limit
+    monkeypatch.setenv('AI_RATE_LIMIT', '5 per minute')
+    rate_limit.reset()
+    results = []
+    threads = [threading.Thread(target=lambda: results.append(rate_limit.hit_ai_limit('7.7.7.7'))) for _ in range(20)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert results.count(True) == 5
+    monkeypatch.delenv('AI_RATE_LIMIT')
+    rate_limit.reset()
