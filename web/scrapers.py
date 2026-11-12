@@ -26,7 +26,7 @@ from app import (  # noqa: F401
 )
 
 
-_PORTAL_PREFIXES = ('INDEED_', 'LINKEDIN_', 'COMPUTRABAJO_', 'BUMERAN_')
+_PORTAL_PREFIXES = ('INDEED_', 'LINKEDIN_', 'LI_AT', 'COMPUTRABAJO_', 'BUMERAN_')
 
 
 def _reload_portal_credentials(path=None):

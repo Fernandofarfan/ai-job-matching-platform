@@ -18,7 +18,9 @@ Base = declarative_base()
 PORTALS = ('computrabajo', 'bumeran')
 CHANNELS = ('email', 'telegram')
 MAX_JOBS_PER_PORTAL = 30
-_ANONYMOUS = {'', 'confidencial', 'empresa confidencial', 'importante empresa'}
+# Las que no entran en un aviso quedan sin marcar y salen en el siguiente
+MAX_JOBS_PER_ALERT = 15
+_ANONYMOUS = {'', 'confidential', 'confidencial', 'empresa confidencial', 'importante empresa'}
 
 _session_factory = None
 
@@ -175,8 +177,8 @@ def set_active(search_id, active):
         return True
 
 
-def filter_new(jobs, search_id=None):
-    """Ofertas que nunca se avisaron (ni repetidas en este lote); las marca como vistas."""
+def find_new(jobs):
+    """Ofertas que nunca se avisaron, sin repetidas en este lote. No las marca como vistas."""
     batch = {}
     for job in jobs:
         batch.setdefault(fingerprint(job), job)
@@ -186,16 +188,29 @@ def filter_new(jobs, search_id=None):
         seen = set(session.scalars(
             select(SeenJob.fingerprint).where(SeenJob.fingerprint.in_(list(batch)))
         ))
-        fresh = [(fp, job) for fp, job in batch.items() if fp not in seen]
-        for fp, job in fresh:
+    return [job for fp, job in batch.items() if fp not in seen]
+
+
+def mark_seen(jobs, search_id=None):
+    """Registra las ofertas como avisadas para no repetirlas."""
+    if not jobs:
+        return
+    with _sessions()() as session:
+        for job in jobs:
             session.add(SeenJob(
-                fingerprint=fp, search_id=search_id,
+                fingerprint=fingerprint(job), search_id=search_id,
                 title=str(_field(job, 'title'))[:300], company=str(_field(job, 'company'))[:200],
                 url=str(_field(job, 'url') or job.get('URL') or '')[:1000],
                 source=str(_field(job, 'source'))[:50],
             ))
         session.commit()
-    return [job for _, job in fresh]
+
+
+def filter_new(jobs, search_id=None):
+    """Ofertas nuevas, ya marcadas como vistas."""
+    new = find_new(jobs)
+    mark_seen(new, search_id)
+    return new
 
 
 def _make_scraper(portal):
@@ -262,10 +277,18 @@ def run_search(search_id, notify, make_scraper=None, profile=None):
     jobs = score(scrape(search, make_scraper), profile)
     if profile and search['min_score']:
         jobs = [j for j in jobs if j.get('match_percent', 0) >= search['min_score']]
-    new = filter_new(jobs, search_id)
+    new = find_new(jobs)
     new.sort(key=lambda j: j.get('match_percent', 0), reverse=True)
+    pending = len(new)
+    new = new[:MAX_JOBS_PER_ALERT]
     sent = notify(search, new) if new and search['channels'] else {}
-    result = f"{len(new)} nuevas de {len(jobs)}"
+    if any(sent.values()):
+        mark_seen(new, search_id)
+    result = f"{pending} nuevas de {len(jobs)}"
+    if pending > len(new):
+        result += f"; {pending - len(new)} quedan para el próximo aviso"
+    if new and not any(sent.values()):
+        result += " (sin avisar: se reintenta en la próxima corrida)"
     with _sessions()() as session:
         row = session.get(SavedSearch, search_id)
         if row is not None:
@@ -273,7 +296,7 @@ def run_search(search_id, notify, make_scraper=None, profile=None):
             row.last_result = result
             session.commit()
     logger.info(f"Alerta '{search['name']}': {result}; avisos: {sent}")
-    return {'search_id': search_id, 'found': len(jobs), 'new': len(new), 'sent': sent}
+    return {'search_id': search_id, 'found': len(jobs), 'new': pending, 'sent': sent}
 
 
 def run_all(notify, make_scraper=None):

@@ -261,12 +261,12 @@ def send_telegram(text: str) -> bool:
 def _job_line(job: dict) -> tuple:
     """(título, empresa, ubicación, url, match) escapados para HTML."""
     from html import escape
-    get = lambda k: escape(str(job.get(k.capitalize()) or job.get(k) or ""))  # noqa: E731
+    get = lambda k: escape(str(job.get(k.capitalize()) or job.get(k.upper()) or job.get(k) or ""))  # noqa: E731
     match = job.get("match_percent")
     return get("title"), get("company"), get("location"), get("url"), match
 
 
-def alert_telegram_text(search: dict, jobs: list, limit: int = 10) -> str:
+def alert_telegram_text(search: dict, jobs: list, limit: int = 15) -> str:
     """Mensaje de Telegram con las ofertas nuevas de una búsqueda (máx. `limit`)."""
     from html import escape
     lines = [f"🔔 <b>{len(jobs)} ofertas nuevas</b> · {escape(search['name'])}"]
@@ -275,8 +275,6 @@ def alert_telegram_text(search: dict, jobs: list, limit: int = 10) -> str:
         head = f'<a href="{url}">{title}</a>' if url else title
         details = [company, location] + ([f"{match:.0f}%"] if match is not None else [])
         lines.append(f"• {head}\n  " + " · ".join(d for d in details if d))
-    if len(jobs) > limit:
-        lines.append(f"…y {len(jobs) - limit} más en la plataforma")
     return "\n".join(lines)
 
 
@@ -294,8 +292,6 @@ def alert_email_html(search: dict, jobs: list, limit: int = 15) -> str:
             '<div style="background:#232336;padding:12px;border-radius:10px;margin:8px 0;">'
             f'<strong>{link}</strong><br>{" · ".join(d for d in details if d)}</div>'
         )
-    if len(jobs) > limit:
-        items += f"<p style='color:#666;'>…y {len(jobs) - limit} más</p>"
     base_url = os.getenv("APP_BASE_URL", "http://localhost:5000").rstrip("/")
     return _get_email_template(
         f"🔔 {len(jobs)} ofertas nuevas: {escape(search['name'])}", items,
