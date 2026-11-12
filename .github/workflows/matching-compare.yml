@@ -1,0 +1,43 @@
+name: Comparar matching
+
+# TF-IDF contra embeddings de Gemini sobre eval/matching_dataset.json, en total y por idioma del CV.
+# Necesita el secreto GEMINI_API_KEY; sin él solo mide TF-IDF. El resultado queda como artefacto.
+on:
+  schedule:
+    - cron: "0 12 * * 1"  # los lunes, 9:00 en Argentina
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compare:
+    name: TF-IDF vs embeddings
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: 'pip'
+
+      - name: Instalar dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install --require-hashes -r requirements.txt
+          python -m spacy download en_core_web_sm || true
+
+      - name: Comparar
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          python scripts/eval_matching.py --compare --json > matching-compare.json
+          cat matching-compare.json
+          python scripts/eval_matching.py --compare >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: matching-compare
+          path: matching-compare.json
