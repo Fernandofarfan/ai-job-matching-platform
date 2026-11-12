@@ -9,7 +9,9 @@ import re
 import unicodedata
 from datetime import datetime
 
-from sqlalchemy import JSON, Boolean, Column, DateTime, Float, Integer, String, select
+from sqlalchemy import JSON, Boolean, Column, DateTime, Float, Integer, String, UniqueConstraint, select
+
+import accounts
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.exc import IntegrityError
 
@@ -31,6 +33,7 @@ class SavedSearch(Base):  # type: ignore[misc,valid-type]
     __tablename__ = 'saved_searches'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, index=True)
     name = Column(String(120), nullable=False)
     position = Column(String(200), nullable=False)
     location = Column(String(200), nullable=False, default='')
@@ -57,8 +60,11 @@ class SeenJob(Base):  # type: ignore[misc,valid-type]
     """Oferta ya avisada; su huella evita repetirla aunque aparezca en otro portal."""
     __tablename__ = 'seen_jobs'
 
+    __table_args__ = (UniqueConstraint('user_id', 'fingerprint', name='uq_seen_jobs_user_fingerprint'),)
+
     id = Column(Integer, primary_key=True, autoincrement=True)
-    fingerprint = Column(String(40), nullable=False, unique=True)
+    user_id = Column(Integer, index=True)
+    fingerprint = Column(String(40), nullable=False)
     title = Column(String(300))
     company = Column(String(200))
     url = Column(String(1000))
@@ -132,17 +138,43 @@ def validate(data):
     }
 
 
+def _mine(model):
+    """Condición: la fila es del usuario actual (o sin dueño si no hay usuario)."""
+    uid = accounts.current_user_id()
+    return model.user_id.is_(None) if uid is None else model.user_id == uid
+
+
+def _own_row(session, search_id):
+    """La búsqueda si es del usuario actual; None si no existe o es de otro."""
+    row = session.get(SavedSearch, search_id)
+    return row if row is not None and row.user_id == accounts.current_user_id() else None
+
+
 def list_searches():
-    """Todas las búsquedas guardadas, la más nueva primero."""
+    """Búsquedas guardadas del usuario, la más nueva primero."""
     with _sessions()() as session:
-        rows = session.scalars(select(SavedSearch).order_by(SavedSearch.id.desc())).all()
+        rows = session.scalars(select(SavedSearch).where(_mine(SavedSearch)).order_by(SavedSearch.id.desc())).all()
         return [r.to_dict() for r in rows]
 
 
-def get_search(search_id):
-    """Una búsqueda como dict, o None."""
+def search_owner(search_id):
+    """Usuario dueño de la búsqueda (para tareas de Celery que corren sin sesión)."""
     with _sessions()() as session:
         row = session.get(SavedSearch, search_id)
+        return row.user_id if row else None
+
+
+def active_search_ids():
+    """(id, user_id) de todas las búsquedas activas de todos los usuarios."""
+    with _sessions()() as session:
+        return [tuple(r) for r in session.execute(
+            select(SavedSearch.id, SavedSearch.user_id).where(SavedSearch.active.is_(True)))]
+
+
+def get_search(search_id):
+    """Una búsqueda del usuario como dict, o None."""
+    with _sessions()() as session:
+        row = _own_row(session, search_id)
         return row.to_dict() if row else None
 
 
@@ -150,7 +182,7 @@ def create_search(data):
     """Valida y guarda una búsqueda; devuelve su dict."""
     clean = validate(data)
     with _sessions()() as session:
-        row = SavedSearch(**clean, active=True)
+        row = SavedSearch(**clean, active=True, user_id=accounts.current_user_id())
         session.add(row)
         session.commit()
         return row.to_dict()
@@ -159,7 +191,7 @@ def create_search(data):
 def delete_search(search_id):
     """Borra una búsqueda; True si existía."""
     with _sessions()() as session:
-        row = session.get(SavedSearch, search_id)
+        row = _own_row(session, search_id)
         if row is None:
             return False
         session.delete(row)
@@ -170,7 +202,7 @@ def delete_search(search_id):
 def set_active(search_id, active):
     """Pausa o reanuda una búsqueda; True si existía."""
     with _sessions()() as session:
-        row = session.get(SavedSearch, search_id)
+        row = _own_row(session, search_id)
         if row is None:
             return False
         row.active = bool(active)
@@ -187,7 +219,7 @@ def find_new(jobs):
         return []
     with _sessions()() as session:
         seen = set(session.scalars(
-            select(SeenJob.fingerprint).where(SeenJob.fingerprint.in_(list(batch)))
+            select(SeenJob.fingerprint).where(_mine(SeenJob), SeenJob.fingerprint.in_(list(batch)))
         ))
     return [job for fp, job in batch.items() if fp not in seen]
 
@@ -201,7 +233,7 @@ def mark_seen(jobs, search_id=None):
             try:
                 with session.begin_nested():
                     session.add(SeenJob(
-                        fingerprint=fingerprint(job), search_id=search_id,
+                        fingerprint=fingerprint(job), search_id=search_id, user_id=accounts.current_user_id(),
                         title=str(_field(job, 'title'))[:300], company=str(_field(job, 'company'))[:200],
                         url=str(_field(job, 'url') or job.get('URL') or '')[:1000],
                         source=str(_field(job, 'source'))[:50],
@@ -312,9 +344,11 @@ def run_search(search_id, notify, make_scraper=None, profile=None):
 
 
 def run_all(notify, make_scraper=None):
-    """Corre todas las búsquedas activas."""
-    profile = _load_profile()
-    return [
-        run_search(s['id'], notify, make_scraper, profile)
-        for s in list_searches() if s['active']
-    ]
+    """Corre las búsquedas activas de todos los usuarios, cada una con el perfil de su dueño."""
+    results, profiles = [], {}
+    for search_id, user_id in active_search_ids():
+        with accounts.as_user(user_id):
+            if user_id not in profiles:
+                profiles[user_id] = _load_profile()
+            results.append(run_search(search_id, notify, make_scraper, profiles[user_id]))
+    return results

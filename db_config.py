@@ -1,11 +1,16 @@
 """Acceso a las tablas del tracker (`applications`, `connection_requests`, `networking_exclusions`,
-`processed_files`) sobre el engine SQLAlchemy de models.py, con el mismo pool que perfiles y alertas."""
+`processed_files`) sobre el engine SQLAlchemy de models.py, con el mismo pool que perfiles y alertas.
+
+Cada consulta se limita a las filas del usuario actual (`accounts.current_user_id()`, parámetro :uid;
+`<=>` también empareja NULL, que es el dueño de las filas cuando no hay usuario)."""
 import logging
 from datetime import datetime
 
 from dotenv import load_dotenv
 from sqlalchemy import bindparam, text
 from sqlalchemy.exc import SQLAlchemyError
+
+import accounts
 
 load_dotenv()
 
@@ -21,9 +26,9 @@ _TRACKER_ORDER = """
 _INSERT_APPLICATION = text("""
     INSERT INTO applications
     (title, company, location, job_link, description, salary,
-     experience_category, job_type, suggested_address, applied_date, status)
+     experience_category, job_type, suggested_address, applied_date, status, user_id)
     VALUES (:title, :company, :location, :job_link, :description, :salary,
-            :experience_category, :job_type, :suggested_address, :applied_date, :status)
+            :experience_category, :job_type, :suggested_address, :applied_date, :status, :uid)
 """)
 
 
@@ -56,16 +61,20 @@ class DatabaseManager:
             self._engine = engine
         return self._engine
 
+    @staticmethod
+    def _params(params):
+        return {'uid': accounts.current_user_id(), **(params or {})}
+
     def _rows(self, query, params=None):
         with self.engine.connect() as conn:
             return [dict(row) for row in conn.execute(text(query) if isinstance(query, str) else query,
-                                                       params or {}).mappings()]
+                                                       self._params(params)).mappings()]
 
     def _write(self, query, params=None, label='applications'):
         """Ejecuta una escritura; devuelve el resultado o None si MySQL falló."""
         try:
             with self.engine.begin() as conn:
-                return conn.execute(text(query) if isinstance(query, str) else query, params or {})
+                return conn.execute(text(query) if isinstance(query, str) else query, self._params(params))
         except SQLAlchemyError as err:
             logger.error(f"Error writing {label}: {err}")
             return None
@@ -73,6 +82,11 @@ class DatabaseManager:
     def _execute(self, query, params=None):
         """Ejecuta un UPDATE y devuelve True si salió bien."""
         return self._write(query, params) is not None
+
+    def _execute_one(self, query, params=None):
+        """UPDATE/DELETE de una fila por id: True solo si existía y es del usuario actual."""
+        result = self._write(query, params)
+        return result is not None and result.rowcount > 0
 
     def save_application(self, job_data):
         """Guarda una postulación enviada y devuelve su id."""
@@ -82,7 +96,7 @@ class DatabaseManager:
 
     def get_applications(self, filters=None):
         """Postulaciones filtradas por estado, empresa y rango de fechas."""
-        query, params = "SELECT * FROM applications WHERE 1=1", {}
+        query, params = "SELECT * FROM applications WHERE user_id <=> :uid", {}
         filters = filters or {}
         if filters.get('status'):
             query += " AND status = :status"
@@ -105,8 +119,8 @@ class DatabaseManager:
     def save_connection_request(self, company, application_ids=None):
         """Registra un pedido de conexión enviado a una empresa."""
         result = self._write(
-            "INSERT INTO connection_requests (company, sent_date, status, application_ids) "
-            "VALUES (:company, :sent_date, 'sent', :ids)",
+            "INSERT INTO connection_requests (company, sent_date, status, application_ids, user_id) "
+            "VALUES (:company, :sent_date, 'sent', :ids, :uid)",
             {'company': company, 'sent_date': datetime.now(),
              'ids': ','.join(map(str, application_ids)) if application_ids else ''},
             label='connection request')
@@ -117,14 +131,17 @@ class DatabaseManager:
         return self._write("""
             CREATE TABLE IF NOT EXISTS networking_exclusions (
                 id INT AUTO_INCREMENT PRIMARY KEY,
-                company_name VARCHAR(255) NOT NULL UNIQUE,
-                excluded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                user_id INT NULL,
+                company_name VARCHAR(255) NOT NULL,
+                excluded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX ix_networking_exclusions_user_id (user_id),
+                UNIQUE KEY uq_networking_exclusions_user_company_name (user_id, company_name)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         """, label='exclusions table') is not None
 
     def exclude_company(self, company_name):
         """Excluye una empresa de las sugerencias de conexión."""
-        return self._write("INSERT IGNORE INTO networking_exclusions (company_name) VALUES (:name)",
+        return self._write("INSERT IGNORE INTO networking_exclusions (company_name, user_id) VALUES (:name, :uid)",
                            {'name': company_name}, label='exclusion') is not None
 
     def get_companies_for_connections(self):
@@ -135,8 +152,8 @@ class DatabaseManager:
                 SELECT DISTINCT a.company, COUNT(*) as application_count
                 FROM applications a
                 LEFT JOIN networking_exclusions ne
-                    ON a.company = ne.company_name COLLATE utf8mb4_unicode_ci
-                WHERE a.status = 'applied' AND ne.company_name IS NULL
+                    ON a.company = ne.company_name COLLATE utf8mb4_unicode_ci AND ne.user_id <=> a.user_id
+                WHERE a.user_id <=> :uid AND a.status = 'applied' AND ne.company_name IS NULL
                 GROUP BY a.company
                 ORDER BY MAX(a.applied_date) DESC
             """)
@@ -147,8 +164,8 @@ class DatabaseManager:
     def save_processed_file(self, filename, total_jobs, jobs_applied):
         """Registra (o actualiza) un CSV procesado."""
         return self._write("""
-            INSERT INTO processed_files (filename, total_jobs, jobs_applied, processed_date)
-            VALUES (:filename, :total, :applied, :date)
+            INSERT INTO processed_files (filename, total_jobs, jobs_applied, processed_date, user_id)
+            VALUES (:filename, :total, :applied, :date, :uid)
             ON DUPLICATE KEY UPDATE
                 total_jobs = VALUES(total_jobs),
                 jobs_applied = VALUES(jobs_applied),
@@ -192,12 +209,14 @@ class DatabaseManager:
                                      status=job_data.get('status', 'applying'))
         try:
             with self.engine.begin() as conn:
-                existing = conn.execute(text("SELECT id FROM applications WHERE title = :title AND company = :company"),
-                                        {'title': values['title'], 'company': values['company']}).first()
+                existing = conn.execute(
+                    text("SELECT id FROM applications "
+                         "WHERE title = :title AND company = :company AND user_id <=> :uid"),
+                    self._params({'title': values['title'], 'company': values['company']})).first()
                 if existing:
                     logger.warning(f"Job already exists in tracker with ID: {existing.id}")
                     return {'exists': True, 'job_id': existing.id, 'message': 'Job already in tracker'}
-                return conn.execute(_INSERT_APPLICATION, values).lastrowid
+                return conn.execute(_INSERT_APPLICATION, self._params(values)).lastrowid
         except SQLAlchemyError as err:
             logger.error(f"MySQL Error adding job to tracker: {err}", exc_info=True)
             return None
@@ -205,7 +224,7 @@ class DatabaseManager:
     def get_all_tracked_jobs(self):
         """Todo el tracker, ordenado por columna del kanban y fecha."""
         try:
-            return self._rows(f"SELECT * FROM applications ORDER BY {_TRACKER_ORDER}")
+            return self._rows(f"SELECT * FROM applications WHERE user_id <=> :uid ORDER BY {_TRACKER_ORDER}")
         except SQLAlchemyError as err:
             logger.error(f"Error getting tracked jobs: {err}")
             return []
@@ -213,7 +232,7 @@ class DatabaseManager:
     def get_tracked_job_by_id(self, job_id):
         """Una postulación por id, o None."""
         try:
-            rows = self._rows("SELECT * FROM applications WHERE id = :id", {'id': job_id})
+            rows = self._rows("SELECT * FROM applications WHERE id = :id AND user_id <=> :uid", {'id': job_id})
         except SQLAlchemyError as err:
             logger.error(f"Error getting tracked job: {err}")
             return None
@@ -222,7 +241,8 @@ class DatabaseManager:
     def update_job_status(self, job_id, new_status):
         """Cambia el estado; al pasar a postulado (o de guardada directo a entrevista/oferta) fecha hoy."""
         if new_status == 'applied':
-            query = "UPDATE applications SET status = :status, applied_date = CURDATE() WHERE id = :id"
+            query = ("UPDATE applications SET status = :status, applied_date = CURDATE() "
+                     "WHERE id = :id AND user_id <=> :uid")
         else:
             query = """
                 UPDATE applications
@@ -230,18 +250,19 @@ class DatabaseManager:
                                       AND :status IN ('interviewing', 'negotiating', 'accepted'),
                                       CURDATE(), applied_date),
                     status = :status
-                WHERE id = :id
+                WHERE id = :id AND user_id <=> :uid
             """
-        return self._execute(query, {'status': new_status, 'id': job_id})
+        return self._execute_one(query, {'status': new_status, 'id': job_id})
 
     def delete_tracked_job(self, job_id):
         """Borra una postulación del tracker."""
-        return self._execute("DELETE FROM applications WHERE id = :id", {'id': job_id})
+        return self._execute_one("DELETE FROM applications WHERE id = :id AND user_id <=> :uid", {'id': job_id})
 
     def update_tracker_dates(self, job_id, follow_up=None, deadline=None, notes=None):
         """Fecha de seguimiento, vencimiento y notas de una postulación (None borra la fecha)."""
-        return self._execute(
-            "UPDATE applications SET follow_up = :follow_up, deadline = :deadline, notes = :notes WHERE id = :id",
+        return self._execute_one(
+            "UPDATE applications SET follow_up = :follow_up, deadline = :deadline, notes = :notes "
+            "WHERE id = :id AND user_id <=> :uid",
             {'follow_up': follow_up, 'deadline': deadline, 'notes': notes, 'id': job_id},
         )
 
@@ -249,15 +270,15 @@ class DatabaseManager:
         """Postulaciones enviadas o en entrevista, que son las que admiten seguimiento."""
         return self._rows(
             "SELECT id, title, company, job_link, status, applied_date, follow_up, deadline, last_reminder_at "
-            "FROM applications WHERE status IN ('applied', 'interviewing')"
+            "FROM applications WHERE user_id <=> :uid AND status IN ('applied', 'interviewing')"
         )
 
     def mark_reminded(self, job_ids):
         """Registra que ya se avisó hoy por estas postulaciones."""
         if not job_ids:
             return True
-        query = text("UPDATE applications SET last_reminder_at = NOW() WHERE id IN :ids").bindparams(
-            bindparam('ids', expanding=True))
+        query = text("UPDATE applications SET last_reminder_at = NOW() "
+                     "WHERE id IN :ids AND user_id <=> :uid").bindparams(bindparam('ids', expanding=True))
         return self._execute(query, {'ids': list(job_ids)})
 
 

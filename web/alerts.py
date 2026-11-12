@@ -1,6 +1,6 @@
 """Alertas de empleo: alta, pausa, borrado y ejecución manual de búsquedas guardadas."""
+import accounts
 import logging
-import threading
 
 from flask import flash, redirect, render_template, request, url_for
 
@@ -72,7 +72,7 @@ def run_alert(search_id):
         celery.send_task('tasks.notification_tasks.run_job_alert', args=[search_id])
     else:
         from tasks.notification_tasks import notify_alert
-        threading.Thread(
+        accounts.thread(
             target=job_alerts.run_search, args=(search_id, notify_alert), daemon=True,
         ).start()
     flash('Buscando ofertas nuevas; recargá en unos minutos para ver el resultado.', 'info')

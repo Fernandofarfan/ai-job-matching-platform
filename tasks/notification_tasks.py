@@ -244,11 +244,43 @@ def followup_email_html(jobs: list) -> str:
                                "Abrir el tracker")
 
 
+def _recipient() -> str:
+    """Email del usuario actual (su cuenta); sin usuario, NOTIFICATION_EMAIL."""
+    import accounts
+    user = accounts.get_user(accounts.current_user_id())
+    return user["email"] if user else NOTIFICATION_EMAIL
+
+
+def _telegram_allowed() -> bool:
+    """El chat de TELEGRAM_CHAT_ID es del dueño de la instancia: solo recibe avisos de la primera cuenta."""
+    import accounts
+    uid = accounts.current_user_id()
+    return uid is None or uid == accounts.first_user_id()
+
+
+def _for_each_user(func):
+    """Corre func() una vez por cuenta (o una sola vez sin usuario si todavía no hay cuentas)."""
+    import accounts
+    results = {}
+    for uid in accounts.user_ids() or [None]:
+        with accounts.as_user(uid):
+            results[uid] = func()
+    return results
+
+
 @celery.task(name="tasks.notification_tasks.check_and_send_followup_reminders")
 def check_and_send_followup_reminders():
-    """Periódica: un solo aviso (email y/o Telegram) con los seguimientos que vencen hoy."""
+    """Periódica: un aviso por usuario (email y/o Telegram) con los seguimientos que vencen hoy."""
     if not (email_configured() or telegram_configured()):
         return {"sent": 0, "reason": "Sin canal configurado (SMTP o Telegram)"}
+    per_user = _for_each_user(_send_followup_reminders)
+    if len(per_user) == 1:
+        return next(iter(per_user.values()))
+    return {"sent": sum(r.get("sent", 0) for r in per_user.values()), "users": per_user}
+
+
+def _send_followup_reminders():
+    """Seguimientos vencidos del usuario actual."""
     try:
         from db_config import db_manager
         due = due_followups(db_manager.get_followup_candidates(), date.today())
@@ -260,9 +292,9 @@ def check_and_send_followup_reminders():
 
     delivered = []
     if email_configured():
-        delivered.append(_send_email(NOTIFICATION_EMAIL, f"⏰ EmpleoIA: {len(due)} seguimientos pendientes",
+        delivered.append(_send_email(_recipient(), f"⏰ EmpleoIA: {len(due)} seguimientos pendientes",
                                      followup_email_html(due)))
-    if telegram_configured():
+    if _telegram_allowed():
         delivered.append(send_telegram(followup_telegram_text(due)))
     if not any(delivered):
         return {"sent": 0, "due": len(due), "error": "Ningún canal entregó el aviso"}
@@ -373,10 +405,10 @@ def notify_alert(search: dict, jobs: list) -> dict:
     sent = {}
     if "email" in search["channels"]:
         sent["email"] = _send_email(
-            NOTIFICATION_EMAIL, f"🔔 EmpleoIA: {len(jobs)} ofertas nuevas ({search['name']})",
+            _recipient(), f"🔔 EmpleoIA: {len(jobs)} ofertas nuevas ({search['name']})",
             alert_email_html(search, jobs),
         )
-    if "telegram" in search["channels"]:
+    if "telegram" in search["channels"] and _telegram_allowed():
         sent["telegram"] = send_telegram(alert_telegram_text(search, jobs))
     return sent
 
@@ -391,5 +423,7 @@ def run_job_alerts():
 @celery.task(name="tasks.notification_tasks.run_job_alert")
 def run_job_alert(search_id: int):
     """Corre una búsqueda guardada ahora (botón "Buscar ahora")."""
+    import accounts
     import job_alerts
-    return job_alerts.run_search(search_id, notify_alert)
+    with accounts.as_user(job_alerts.search_owner(search_id)):
+        return job_alerts.run_search(search_id, notify_alert)

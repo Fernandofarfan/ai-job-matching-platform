@@ -1,8 +1,8 @@
 """Arranque de scrapers (Indeed, LinkedIn, Computrabajo, Bumeran, universal) y conexiones."""
+import accounts
 import os
 import pandas as pd
 import random
-import threading
 import time
 from datetime import datetime
 from dotenv import dotenv_values
@@ -318,7 +318,7 @@ def run_test_scraper():
                     except Exception:
                         pass
 
-            thread = threading.Thread(target=run_linkedin_task, args=(task_id, li_at, position, location, max_jobs))
+            thread = accounts.thread(target=run_linkedin_task, args=(task_id, li_at, position, location, max_jobs))
             thread.daemon = True
             thread.start()
 
@@ -611,17 +611,17 @@ def run_universal_job(position, location):
                 state['status'] = 'failed'
 
         extra_threads = [
-            threading.Thread(target=run_without_login, args=('zonajobs', 'ZonaJobs', ZonaJobsScraper)),
-            threading.Thread(target=run_without_login, args=('getonboard', 'GetOnBoard', GetOnBoardScraper)),
+            accounts.thread(target=run_without_login, args=('zonajobs', 'ZonaJobs', ZonaJobsScraper)),
+            accounts.thread(target=run_without_login, args=('getonboard', 'GetOnBoard', GetOnBoardScraper)),
         ]
         for thread in extra_threads:
             thread.start()
 
         # Start all scrapers in parallel
-        indeed_thread = threading.Thread(target=run_indeed)
-        linkedin_thread = threading.Thread(target=run_linkedin)
-        computrabajo_thread = threading.Thread(target=run_computrabajo)
-        bumeran_thread = threading.Thread(target=run_bumeran)
+        indeed_thread = accounts.thread(target=run_indeed)
+        linkedin_thread = accounts.thread(target=run_linkedin)
+        computrabajo_thread = accounts.thread(target=run_computrabajo)
+        bumeran_thread = accounts.thread(target=run_bumeran)
 
         indeed_thread.start()
         linkedin_thread.start()
@@ -712,7 +712,7 @@ def start_connection_requests():
         'stop_requested': False
     }
     
-    thread = threading.Thread(
+    thread = accounts.thread(
         target=run_connection_requests,
         args=({
             'linkedin_email': linkedin_email,

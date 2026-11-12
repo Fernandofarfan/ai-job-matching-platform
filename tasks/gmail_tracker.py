@@ -60,7 +60,10 @@ def check_interview_emails():
             return "No hay nuevos correos de entrevistas."
 
         updates_made = 0
+        import accounts
         from db_config import db_manager
+        # token.json es la casilla del dueño de la instancia: sus entrevistas van al tracker de la primera cuenta
+        accounts.set_current_user(accounts.first_user_id())
         tracked_jobs = db_manager.get_all_tracked_jobs()
 
         for message in messages:
