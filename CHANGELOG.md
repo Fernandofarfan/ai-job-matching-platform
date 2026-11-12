@@ -6,6 +6,12 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar] - mypy en todo el proyecto
+
+- mypy revisa todo el código y los tests (antes 36 archivos elegidos a mano); solo quedan afuera las migraciones de Alembic.
+- Indeed: `search_jobs` llamaba a `apply_filters`, que no existe, y cortaba cada búsqueda sin filtros; si no encontraba el campo de ubicación, fallaba con un error en vez de reintentar.
+- Las rutas de Mi cuenta usan `accounts.require_user_id()`, que falla claro si no hay cuenta en el pedido en vez de pasar `None`.
+
 ## [Sin publicar] - Cobertura mínima de tests
 
 - La cobertura se mide solo sobre el código de la app (sin tests, scripts ni migraciones; config en `pyproject.toml`) y el CI exige 57%, antes 20% contando los propios tests. Tests nuevos para conexiones de LinkedIn, búsquedas de Indeed y LinkedIn, notificaciones y análisis de salarios.

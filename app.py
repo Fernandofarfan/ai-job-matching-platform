@@ -48,7 +48,7 @@ try:
     AI_AVAILABLE = ai_engine.GEMINI_AVAILABLE
     logger.info(f"AI Engine loaded (Gemini={'✓' if AI_AVAILABLE else '✗'})")
 except ImportError as _ai_err:
-    ai_engine = None
+    ai_engine = None  # type: ignore[assignment]
     AI_AVAILABLE = False
     logger.warning(f"ai_engine not available: {_ai_err}")
 
@@ -56,7 +56,7 @@ except ImportError as _ai_err:
 try:
     from notifier import notifier as notification_manager
 except ImportError:
-    notification_manager = None
+    notification_manager = None  # type: ignore[assignment]
 
 # Lo que usan las páginas de FastAPI (fastapi_web.services_for)
 app.extensions['empleoia_services'] = AppServices(

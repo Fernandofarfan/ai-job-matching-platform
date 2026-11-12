@@ -101,7 +101,7 @@ def _call_gemini(prompt: str, temperature: float = 0.7, model: Optional[str] = N
         output_tokens = (getattr(usage, 'candidates_token_count', 0) or 0) + (getattr(usage, 'thoughts_token_count', 0) or 0)
         ai_usage.record(input_tokens, output_tokens)
         logger.info(f"Gemini: {input_tokens} tokens de entrada, {output_tokens} de salida")
-        text = response.text.strip()
+        text = (response.text or "").strip()
         ai_usage.cache_set(model, prompt, temperature, text)
         return text
     except Exception as e:
@@ -328,8 +328,8 @@ Podés ayudar con: análisis de ofertas, mejora de CVs, preparación para entrev
 Si el usuario te pide algo fuera de tu dominio laboral, redirigilo amablemente hacia temas de búsqueda de empleo."""
 
 
-def copilot_chat(user_message: str, conversation_history: list = None,
-                 user_context: dict = None) -> str:
+def copilot_chat(user_message: str, conversation_history: Optional[list] = None,
+                 user_context: Optional[dict] = None) -> str:
     """
     Chat libre con el AI Copilot.
     conversation_history: lista de {"role": "user"|"assistant", "content": "..."}

@@ -10,6 +10,7 @@ import random
 import copy
 import time
 from datetime import datetime
+from typing import Optional
 
 import pandas as pd
 from celery_app import celery
@@ -41,7 +42,7 @@ def _save_jobs_csv(jobs: list, prefix: str, has_matches: bool) -> str:
 
 
 @celery.task(bind=True, name="tasks.scraping_tasks.run_indeed_scraper", max_retries=2)
-def run_indeed_scraper(self, credentials: dict, searches: list, filters: dict = None):
+def run_indeed_scraper(self, credentials: dict, searches: list, filters: Optional[dict] = None):
     """Tarea Celery para scraping de Indeed de forma asíncrona."""
     from scrapers.indeed_scraper import indeedScraper
     from resume_parser import jobMatcher
@@ -128,7 +129,7 @@ def run_indeed_scraper(self, credentials: dict, searches: list, filters: dict = 
 
 
 @celery.task(bind=True, name="tasks.scraping_tasks.run_linkedin_scraper", max_retries=2)
-def run_linkedin_scraper(self, credentials: dict, searches: list, filters: dict = None):
+def run_linkedin_scraper(self, credentials: dict, searches: list, filters: Optional[dict] = None):
     """Tarea Celery para scraping de LinkedIn de forma asíncrona."""
     from scrapers.linkedin_pw import linkedinClass
     from resume_parser import jobMatcher
@@ -213,7 +214,7 @@ def run_linkedin_scraper(self, credentials: dict, searches: list, filters: dict 
 
 
 @celery.task(bind=True, name="tasks.scraping_tasks.run_bumeran_scraper")
-def run_bumeran_scraper(self, credentials: dict, searches: list, filters: dict = None):
+def run_bumeran_scraper(self, credentials: dict, searches: list, filters: Optional[dict] = None):
     """Tarea Celery para scraping de Bumeran."""
     from scrapers.bumeran_scraper import BumeranScraper
 
@@ -255,7 +256,7 @@ def run_bumeran_scraper(self, credentials: dict, searches: list, filters: dict =
 
 
 @celery.task(bind=True, name="tasks.scraping_tasks.run_computrabajo_scraper")
-def run_computrabajo_scraper(self, credentials: dict, searches: list, filters: dict = None):
+def run_computrabajo_scraper(self, credentials: dict, searches: list, filters: Optional[dict] = None):
     """Tarea Celery para scraping de Computrabajo."""
     from scrapers.computrabajo_scraper import ComputrabajoScraper
 
@@ -297,8 +298,8 @@ def run_computrabajo_scraper(self, credentials: dict, searches: list, filters: d
 
 
 @celery.task(bind=True, name="tasks.scraping_tasks.run_universal_scraper")
-def run_universal_scraper(self, credentials: dict, searches: list, filters: dict = None,
-                           platforms: list = None):
+def run_universal_scraper(self, credentials: dict, searches: list, filters: Optional[dict] = None,
+                           platforms: Optional[list] = None):
     """Ejecuta múltiples scrapers en paralelo (usando sub-tareas Celery)."""
     from celery import group
 

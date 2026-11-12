@@ -10,7 +10,7 @@ try:
     import spacy
     _SPACY_AVAILABLE = True
 except (ImportError, Exception):
-    spacy = None
+    spacy = None  # type: ignore[assignment]
     _SPACY_AVAILABLE = False
 import json
 from datetime import datetime
@@ -19,7 +19,7 @@ try:
     from google import genai
     _GENAI_AVAILABLE = True
 except (ImportError, Exception) as e:
-    genai = None
+    genai = None  # type: ignore[assignment]
     _GENAI_AVAILABLE = False
     print(f"Warning: google-genai not available: {e}")
 from dotenv import load_dotenv
