@@ -57,3 +57,20 @@ def test_tracing_off_without_endpoint(monkeypatch):
     monkeypatch.delenv('OTEL_EXPORTER_OTLP_ENDPOINT', raising=False)
     monkeypatch.delenv('OTEL_EXPORTER_OTLP_TRACES_ENDPOINT', raising=False)
     assert observability.setup_tracing() is False
+
+
+def test_telegram_requests_not_traced(monkeypatch):
+    """Las llamadas a Telegram no generan spans: el token del bot viaja en la URL."""
+    from opentelemetry.util.http import parse_excluded_urls
+    monkeypatch.setenv('OTEL_PYTHON_REQUESTS_EXCLUDED_URLS', 'example.com/private')
+    excluded = parse_excluded_urls(observability.requests_excluded_urls())
+    assert excluded.url_disabled('https://api.telegram.org/bot123:ABC/sendMessage')
+    assert excluded.url_disabled('https://example.com/private/x')
+    assert not excluded.url_disabled('https://www.bumeran.com.ar/empleos')
+
+
+def test_metrics_endpoint_runs_off_event_loop():
+    """/metrics es sincrónico para que las lecturas de Redis no bloqueen el event loop."""
+    import asyncio
+    import main
+    assert not asyncio.iscoroutinefunction(main.metrics)
