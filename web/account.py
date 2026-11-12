@@ -9,13 +9,15 @@ import auth
 from app import _clear_offline_data, app, delete_user_profile, limiter
 
 logger = logging.getLogger(__name__)
+LOCAL_HOSTS = {'localhost', '127.0.0.1', '[::1]'}
 
 
 def _public_url(endpoint: str, **values):
     """URL absoluta para los emails: PUBLIC_BASE_URL (obligatoria en Cloud Run, evita usar el Host del pedido)."""
     base = os.getenv('PUBLIC_BASE_URL', '').rstrip('/')
     if not base:
-        if os.getenv('K_SERVICE'):
+        # sin PUBLIC_BASE_URL solo se confía en el Host si es local: si no, un Host falso robaría el enlace
+        if request.host.split(':')[0] not in LOCAL_HOSTS:
             logger.error('Definí PUBLIC_BASE_URL para mandar enlaces por email')
             return None
         base = request.url_root.rstrip('/')
