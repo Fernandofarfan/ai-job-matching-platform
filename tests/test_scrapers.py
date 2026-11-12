@@ -176,6 +176,7 @@ def test_linkedin_text_helpers():
     assert linkedin_pw.extract_years_of_experience('2-3 years of experience with SQL') == '2-3 years'
     assert linkedin_pw.extract_years_of_experience('at least 4 years in data') == '4 years'
     assert linkedin_pw.extract_years_of_experience('Great team') == 'Not specified'
+    assert linkedin_pw.extract_years_of_experience('2 years of experience with SQL and 5+ years in Go') == '5+ years'
     assert linkedin_pw.categorize_experience_with_limit('8+ years') == 'SKIP_HIGH_EXPERIENCE'
     assert linkedin_pw.categorize_experience_with_limit('2-3 years') == 'Early Career (2-3 years)'
     assert linkedin_pw.categorize_experience_with_limit('1 years') == 'Entry Level (0-1 years)'
