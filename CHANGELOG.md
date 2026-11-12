@@ -8,6 +8,10 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Cambiado
+- Scrapers de Computrabajo y Bumeran: el parseo de tarjetas pasa a `parse_listing(html)` (BeautifulSoup) con tests sobre HTML guardado en `tests/fixtures/`.
+  La carga de páginas usa `get_with_retries` (3 intentos con espera exponencial) y timeout de página `SCRAPER_PAGE_TIMEOUT` (30 s).
+- El salario de Computrabajo se toma del primer elemento con `$`/`ARS` (antes casi siempre quedaba "Not specified").
+- `JobMatcher.calculate_overall_match` tolera perfiles sin `raw_text`/`experience_years`; `test_resume_parser.py` vuelve a correr en CI, con cobertura mínima de 20%.
 - Los perfiles de CV por rol se guardan en MySQL (tabla `user_profiles`) en vez de `profiles/user_profiles.json`.
   La primera vez que la app conecta a MySQL importa el JSON existente y lo renombra a `.migrated`.
   Sin MySQL (o con `PROFILE_STORAGE=json`) se sigue usando el JSON.

@@ -555,9 +555,11 @@ class jobMatcher:
             }
         
         
-        skill_score = self.calculate_skill_match(profile['skills'], job_description)
-        experience_score = self.calculate_experience_match(profile['experience_years'], job_description)
-        text_similarity_score = self.calculate_text_similarity(profile['raw_text'], job_description)
+        # Perfiles viejos o cargados a mano pueden no tener todos los campos del parser
+        skills = profile.get('skills') or []
+        skill_score = self.calculate_skill_match(skills, job_description)
+        experience_score = self.calculate_experience_match(profile.get('experience_years') or 0, job_description)
+        text_similarity_score = self.calculate_text_similarity(profile.get('raw_text') or '', job_description)
         
        
         overall_score = (
@@ -571,7 +573,7 @@ class jobMatcher:
             'skill_match': round(skill_score, 1),
             'experience_match': round(experience_score, 1),
             'text_similarity': round(text_similarity_score, 1),
-            'matched_skills': self._get_matched_skills(profile['skills'], job_description)
+            'matched_skills': self._get_matched_skills(skills, job_description)
         }
     
     def calculate_skill_match(self, profile_skills, job_description):
