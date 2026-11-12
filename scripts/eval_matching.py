@@ -21,7 +21,7 @@ def main(argv=None):
     args = parser.parse_args(argv)
     import matching_eval
     if args.compare:
-        return compare()
+        return compare(args.min_ndcg, args.json)
     result = matching_eval.evaluate()
     if args.json:
         print(json.dumps(result, indent=2))
@@ -35,27 +35,56 @@ def main(argv=None):
     return 1 if result['mean']['ndcg@5'] < args.min_ndcg else 0
 
 
-def compare():
-    """Promedios con cada backend de similitud de texto; sin GEMINI_API_KEY solo mide TF-IDF."""
+def compare(min_ndcg=0.0, as_json=False):
+    """Promedios con cada backend de similitud de texto; sin GEMINI_API_KEY solo mide TF-IDF.
+    Sale con 1 si algún backend medido queda por debajo de `min_ndcg`."""
     import embeddings
     import matching_eval
     previous = os.environ.get('MATCHING_BACKEND')
-    print(f"{'backend':<12} {'NDCG@5':>7} {'P@3':>5} {'MRR':>5}")
+    results = {}
     try:
         for backend in ('tfidf', 'embeddings'):
             os.environ['MATCHING_BACKEND'] = backend
             if not embeddings.enabled() and backend == 'embeddings':
-                print(f"{backend:<12} sin GEMINI_API_KEY: no se mide")
+                results[backend] = {'skipped': 'sin GEMINI_API_KEY: no se mide'}
                 continue
-            mean = matching_eval.evaluate()['mean']
-            print(f"{backend:<12} {mean['ndcg@5']:>7.3f} {mean['precision@3']:>5.2f} {mean['mrr']:>5.2f}")
+            if backend == 'tfidf':
+                results[backend] = {'mean': matching_eval.evaluate()['mean']}
+                continue
+            # si Gemini falla o se agota el tope, el matcher vuelve a TF-IDF en silencio: se cuentan esos casos
+            fallbacks = 0
+            original = embeddings.similarity
+
+            def counted(profile_text, job_text, _similarity=original):
+                nonlocal fallbacks
+                value = _similarity(profile_text, job_text)
+                fallbacks += value is None
+                return value
+
+            embeddings.similarity = counted
+            try:
+                mean = matching_eval.evaluate()['mean']
+            finally:
+                embeddings.similarity = original
+            results[backend] = ({'skipped': f'{fallbacks} comparaciones cayeron a TF-IDF: no se mide'} if fallbacks
+                                else {'mean': mean})
     finally:
         if previous is None:
             os.environ.pop('MATCHING_BACKEND', None)
         else:
             os.environ['MATCHING_BACKEND'] = previous
-    return 0
-
+    if as_json:
+        print(json.dumps(results, indent=2))
+    else:
+        print(f"{'backend':<12} {'NDCG@5':>7} {'P@3':>5} {'MRR':>5}")
+        for backend, row in results.items():
+            if 'skipped' in row:
+                print(f"{backend:<12} {row['skipped']}")
+                continue
+            mean = row['mean']
+            print(f"{backend:<12} {mean['ndcg@5']:>7.3f} {mean['precision@3']:>5.2f} {mean['mrr']:>5.2f}")
+    measured = [row['mean']['ndcg@5'] for row in results.values() if 'mean' in row]
+    return 1 if any(ndcg < min_ndcg for ndcg in measured) else 0
 
 if __name__ == '__main__':
     sys.exit(main())

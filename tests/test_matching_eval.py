@@ -36,3 +36,10 @@ def test_required_experience_in_spanish_and_portuguese(text, years):
 def test_dataset_covers_three_languages():
     jobs = matching_eval.load()['jobs']
     assert any(j.startswith('es_') for j in jobs) and any(j.startswith('pt_') for j in jobs)
+
+
+def test_company_age_is_not_required_experience():
+    from resume_parser import jobMatcher
+    m = jobMatcher()
+    assert m._extract_required_experience('Empresa con 30 años de experiencia en el mercado. Buscamos dev.') == 0
+    assert m._extract_required_experience('Empresa com 25 anos de experiência. Pelo menos 2 anos em Java.') == 2

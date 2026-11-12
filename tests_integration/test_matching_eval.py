@@ -1,4 +1,5 @@
 """Calidad del matching con TF-IDF real (sin los mocks de sklearn/spaCy de tests/conftest.py)."""
+import json
 import matching_eval
 
 # Línea base con TF-IDF (scripts/eval_matching.py). Si un cambio en el matching la baja, este test falla.
@@ -30,3 +31,21 @@ def test_compare_without_gemini_key(monkeypatch, capsys):
     assert 'tfidf' in out and 'sin GEMINI_API_KEY' in out
     import os
     assert os.environ['MATCHING_BACKEND'] == 'tfidf'
+
+
+def test_compare_honors_json_and_threshold(monkeypatch, capsys):
+    monkeypatch.delenv('GEMINI_API_KEY', raising=False)
+    from scripts import eval_matching
+    assert eval_matching.main(['--compare', '--json', '--min-ndcg', '1.01']) == 1
+    out = json.loads(capsys.readouterr().out)
+    assert 'mean' in out['tfidf'] and 'skipped' in out['embeddings']
+
+
+def test_compare_does_not_report_tfidf_as_embeddings(monkeypatch, capsys):
+    import embeddings
+    monkeypatch.setattr(embeddings, 'enabled', lambda: True)
+    monkeypatch.setattr(embeddings, 'embed', lambda texts: None)
+    from scripts import eval_matching
+    assert eval_matching.main(['--compare', '--json']) == 0
+    out = json.loads(capsys.readouterr().out)
+    assert 'cayeron a TF-IDF' in out['embeddings']['skipped']
