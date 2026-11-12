@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="{{ current_lang|default('es') }}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Ingresar - EmpleoIA</title>
+  <title>{{ _('Ingresar') }} - EmpleoIA</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body class="bg-light">
@@ -13,24 +13,25 @@
         <h1 class="h4 mb-3 text-center">EmpleoIA</h1>
         {% with messages = get_flashed_messages(with_categories=true) %}
           {% for category, message in messages %}
-            <div class="alert alert-{{ category }}" role="alert">{{ message }}</div>
+            <div class="alert alert-{{ category }}" role="alert">{{ _(message) }}</div>
           {% endfor %}
         {% endwith %}
         <form method="POST" action="{{ url_for('login', next=next_url) }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <label for="email" class="form-label">Email</label>
           <input type="email" class="form-control mb-3" id="email" name="email" required autofocus autocomplete="username">
-          <label for="password" class="form-label">Contraseña</label>
+          <label for="password" class="form-label">{{ _('Contraseña') }}</label>
           <input type="password" class="form-control mb-3" id="password" name="password" required autocomplete="current-password">
-          <button type="submit" class="btn btn-primary w-100">Ingresar</button>
+          <button type="submit" class="btn btn-primary w-100">{{ _('Ingresar') }}</button>
         </form>
         {% if google_login %}
-        <a href="{{ url_for('google_login', next=next_url) }}" class="btn btn-outline-dark w-100 mt-3">Entrar con Google</a>
+        <a href="{{ url_for('google_login', next=next_url) }}" class="btn btn-outline-dark w-100 mt-3">{{ _('Entrar con Google') }}</a>
         {% endif %}
-        <p class="text-center mt-3 mb-0"><a href="{{ url_for('forgot_password') }}">¿Olvidaste tu contraseña?</a></p>
+        <p class="text-center mt-3 mb-0"><a href="{{ url_for('forgot_password') }}">{{ _('¿Olvidaste tu contraseña?') }}</a></p>
         {% if signup_open %}
-        <p class="text-center mt-3 mb-0"><a href="{{ url_for('register', next=next_url) }}">Crear una cuenta</a></p>
+        <p class="text-center mt-3 mb-0"><a href="{{ url_for('register', next=next_url) }}">{{ _('Crear una cuenta') }}</a></p>
         {% endif %}
+        {% include "_language_links.html" %}
       </div>
     </div>
   </main>

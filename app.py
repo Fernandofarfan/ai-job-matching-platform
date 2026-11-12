@@ -9,6 +9,7 @@ import profile_store
 from flask_wtf.csrf import CSRFProtect
 import accounts
 import auth
+import i18n
 import user_sessions
 import os
 import logging
@@ -87,9 +88,17 @@ limiter = Limiter(
 if not auth.auth_enabled():
     logger.warning("LOGIN_REQUIRED=false: la app no pide login (usala solo en local)")
 
-PUBLIC_ENDPOINTS = {'login', 'register', 'static', 'health', 'service_worker',
+PUBLIC_ENDPOINTS = {'login', 'register', 'static', 'health', 'service_worker', 'set_language',
                     'forgot_password', 'reset_password', 'verify_email',
                     'google_login', 'google_callback', 'login_two_factor'}
+
+
+@app.before_request
+def select_language():
+    i18n.set_locale(i18n.negotiate(request.cookies.get(i18n.COOKIE), request.headers.get('Accept-Language')))
+
+
+app.jinja_env.globals['_'] = i18n.jinja_gettext
 
 
 @app.before_request
@@ -212,7 +221,18 @@ def _clear_offline_data(response):
 def inject_auth():
     user = accounts.get_user(g.get('user_id')) if auth.auth_enabled() and g.get('user_id') else None
     return {'auth_enabled': auth.auth_enabled(), 'current_user_email': user['email'] if user else '',
-            'current_user_is_admin': bool(user) and accounts.is_admin(user['id'])}
+            'current_user_is_admin': bool(user) and accounts.is_admin(user['id']),
+            'current_lang': i18n.get_locale(), 'languages': i18n.LANGUAGES}
+
+
+@app.route('/lang/<code>')
+def set_language(code):
+    """Guarda el idioma elegido en una cookie y vuelve a la página donde estaba."""
+    response = redirect(_safe_next(request.args.get('next', '')))
+    if code in i18n.LANGUAGES:
+        response.set_cookie(i18n.COOKIE, code, max_age=365 * 24 * 3600, samesite='Lax',
+                            secure=request.is_secure, httponly=True)
+    return response
 
 
 @app.before_request

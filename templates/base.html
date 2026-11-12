@@ -1,6 +1,6 @@
 <!-- job_scraper_app/templates/base.html -->
 <!DOCTYPE html>
-<html lang="es">
+<html lang="{{ current_lang|default('es') }}">
 
 <head>
     <meta charset="UTF-8">
@@ -9,7 +9,7 @@
     <meta name="theme-color" content="#667eea">
     <meta name="csrf-token" content="{{ csrf_token() if csrf_token is defined else '' }}">
     <meta name="push-account" content="{{ current_user_email or '' }}">
-    <title>EmpleoIA - Buscador de Empleos con IA</title>
+    <title>EmpleoIA - {{ _('Buscador de Empleos con IA') }}</title>
 
     <!-- PWA Manifest -->
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
@@ -290,25 +290,25 @@
 </head>
 
 <body>
-    <a class="visually-hidden-focusable position-absolute top-0 start-0 m-2 p-2 bg-light text-dark rounded" style="z-index:2000" href="#contenido">Saltar al contenido</a>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark" aria-label="Navegación principal">
+    <a class="visually-hidden-focusable position-absolute top-0 start-0 m-2 p-2 bg-light text-dark rounded" style="z-index:2000" href="#contenido">{{ _('Saltar al contenido') }}</a>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark" aria-label="{{ _('Navegación principal') }}">
         <div class="container">
             <a class="navbar-brand" href="/">
                 <i class="bi bi-robot"></i> EmpleoIA
             </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Menú de navegación">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="{{ _('Menú de navegación') }}">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="/"><i class="bi bi-house me-1"></i>Inicio</a>
+                        <a class="nav-link" href="/"><i class="bi bi-house me-1"></i>{{ _('Inicio') }}</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="/scraper"><i class="bi bi-search me-1"></i>Buscar Empleos</a>
+                        <a class="nav-link" href="/scraper"><i class="bi bi-search me-1"></i>{{ _('Buscar Empleos') }}</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="/results"><i class="bi bi-file-earmark-spreadsheet me-1"></i>Resultados</a>
+                        <a class="nav-link" href="/results"><i class="bi bi-file-earmark-spreadsheet me-1"></i>{{ _('Resultados') }}</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="/tracker">
@@ -316,7 +316,7 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="/profile"><i class="bi bi-person me-1"></i>Perfil</a>
+                        <a class="nav-link" href="/profile"><i class="bi bi-person me-1"></i>{{ _('Perfil') }}</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="/analytics">
@@ -324,30 +324,36 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="/connections"><i class="bi bi-people me-1"></i>Conexiones</a>
+                        <a class="nav-link" href="/connections"><i class="bi bi-people me-1"></i>{{ _('Conexiones') }}</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="/alerts"><i class="bi bi-bell me-1"></i>Alertas</a>
+                        <a class="nav-link" href="/alerts"><i class="bi bi-bell me-1"></i>{{ _('Alertas') }}</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="/optimize_resume"><i class="bi bi-magic me-1"></i>Optimizar CV</a>
+                        <a class="nav-link" href="/optimize_resume"><i class="bi bi-magic me-1"></i>{{ _('Optimizar CV') }}</a>
                     </li>
                     <!-- 🆕 Mock Interview -->
                     <li class="nav-item">
                         <a class="nav-link" href="/mock-interview">
-                            <i class="bi bi-mic me-1"></i>Entrevistas
+                            <i class="bi bi-mic me-1"></i>{{ _('Entrevistas') }}
                         </a>
                     </li>
                 </ul>
                 {% if auth_enabled %}
                 <form method="POST" action="{{ url_for('logout') }}" class="d-flex align-items-center">
-                    {% if current_user_is_admin %}<a class="navbar-text text-white small me-3" href="{{ url_for('admin_panel') }}"><i class="bi bi-shield-lock me-1" aria-hidden="true"></i>Administración</a>{% endif %}
-                    {% if current_user_email %}<a class="navbar-text text-white small me-2" href="{{ url_for('account') }}" title="Mi cuenta"><i class="bi bi-person-circle me-1" aria-hidden="true"></i>{{ current_user_email }}</a>{% endif %}
-                    <button type="submit" class="btn btn-sm btn-light"><i class="bi bi-box-arrow-right me-1" aria-hidden="true"></i>Salir</button>
+                    {% if current_user_is_admin %}<a class="navbar-text text-white small me-3" href="{{ url_for('admin_panel') }}"><i class="bi bi-shield-lock me-1" aria-hidden="true"></i>{{ _('Administración') }}</a>{% endif %}
+                    {% if current_user_email %}<a class="navbar-text text-white small me-2" href="{{ url_for('account') }}" title="{{ _('Mi cuenta') }}"><i class="bi bi-person-circle me-1" aria-hidden="true"></i>{{ current_user_email }}</a>{% endif %}
+                    <button type="submit" class="btn btn-sm btn-light"><i class="bi bi-box-arrow-right me-1" aria-hidden="true"></i>{{ _('Salir') }}</button>
                 </form>
                 {% endif %}
+                <div class="dropdown ms-2">
+                    <button class="btn btn-sm btn-outline-light dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="{{ _('Idioma') }}"><i class="bi bi-translate" aria-hidden="true"></i> {{ current_lang|default('es')|upper }}</button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        {% for code, name in (languages or {}).items() %}<li><a class="dropdown-item{{ ' active' if code == current_lang }}" lang="{{ code }}" href="/lang/{{ code }}?next={{ (request.full_path if request.query_string else request.path)|urlencode }}">{{ name }}</a></li>{% endfor %}
+                    </ul>
+                </div>
                 <!-- Indicador de estado de red -->
-                <div class="navbar-text ms-2" id="network-indicator" title="Estado de conexión">
+                <div class="navbar-text ms-2" id="network-indicator" title="{{ _('Estado de conexión') }}">
                     <span class="badge" style="background:#15803d; font-size:0.7rem;">● Online</span>
                 </div>
             </div>
@@ -359,8 +365,8 @@
         {% if messages %}
         {% for category, message in messages %}
         <div class="alert alert-{{ category }} alert-dismissible fade show">
-            {{ message }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+            {{ _(message) }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="{{ _('Cerrar') }}"></button>
         </div>
         {% endfor %}
         {% endif %}
@@ -377,24 +383,24 @@
     <div id="copilot-overlay" onclick="closeCopilot()"></div>
 
     <!-- Sidebar -->
-    <div id="copilot-sidebar" role="complementary" aria-label="Asistente Copilot">
+    <div id="copilot-sidebar" role="complementary" aria-label="{{ _('Asistente Copilot') }}">
         <!-- Header -->
         <div class="copilot-header">
             <div class="copilot-header-logo">🤖</div>
             <div class="copilot-header-text">
-                <h6>Asistente Copilot</h6>
-                <small id="copilot-ai-status">Impulsado por Gemini</small>
+                <h6>{{ _('Asistente Copilot') }}</h6>
+                <small id="copilot-ai-status">{{ _('Impulsado por Gemini') }}</small>
             </div>
-            <button class="copilot-close-btn" onclick="closeCopilot()" title="Cerrar">✕</button>
+            <button class="copilot-close-btn" onclick="closeCopilot()" title="{{ _('Cerrar') }}">✕</button>
         </div>
 
         <!-- Quick Action Chips -->
         <div class="copilot-quick-actions">
-            <span class="qa-chip" onclick="quickAction('¿Cómo mejoro mi tasa de respuesta?')">📈 Mejorar tasa</span>
+            <span class="qa-chip" onclick="quickAction('¿Cómo mejoro mi tasa de respuesta?')">📈 {{ _('Mejorar tasa') }}</span>
             <span class="qa-chip" onclick="quickAction('Dame consejos para el follow-up')">📧 Follow-up</span>
-            <span class="qa-chip" onclick="quickAction('¿Cómo negocio mi salario?')">💰 Salario</span>
+            <span class="qa-chip" onclick="quickAction('¿Cómo negocio mi salario?')">💰 {{ _('Salario') }}</span>
             <span class="qa-chip" onclick="quickAction('Consejos para el perfil de LinkedIn')">💼 LinkedIn</span>
-            <span class="qa-chip" onclick="quickAction('¿Dónde buscan talento tech en Argentina?')">🇦🇷 Mercado</span>
+            <span class="qa-chip" onclick="quickAction('¿Dónde buscan talento tech en Argentina?')">🇦🇷 {{ _('Mercado') }}</span>
         </div>
 
         <!-- Messages -->
@@ -402,10 +408,9 @@
             <div class="msg assistant">
                 <div class="msg-avatar">🤖</div>
                 <div class="msg-bubble">
-                    ¡Hola! Soy tu AI Copilot de EmpleoIA 🚀<br><br>
-                    Puedo ayudarte con análisis de ofertas, mejora de CVs, preparación para entrevistas, 
-                    estrategia de búsqueda, negociación salarial y mucho más.<br><br>
-                    ¿En qué te ayudo hoy?
+                    {{ _('¡Hola! Soy tu AI Copilot de EmpleoIA 🚀') }}<br><br>
+                    {{ _('Puedo ayudarte con análisis de ofertas, mejora de CVs, preparación para entrevistas, estrategia de búsqueda, negociación salarial y mucho más.') }}<br><br>
+                    {{ _('¿En qué te ayudo hoy?') }}
                 </div>
             </div>
         </div>
@@ -413,19 +418,19 @@
         <!-- Input -->
         <div class="copilot-input-area">
             <div class="copilot-input-row">
-                <textarea aria-label="Preguntale algo al Copilot..."
+                <textarea aria-label="{{ _('Preguntale algo al Copilot...') }}"
                     id="copilot-input"
                     class="copilot-textarea"
-                    placeholder="Preguntale algo al Copilot..."
+                    placeholder="{{ _('Preguntale algo al Copilot...') }}"
                     rows="1"
                     onkeydown="handleCopilotKeydown(event)"
                     oninput="autoResizeTextarea(this)"
                 ></textarea>
-                <button class="copilot-send-btn" id="copilot-send-btn" onclick="sendCopilotMessage()" title="Enviar">
+                <button class="copilot-send-btn" id="copilot-send-btn" onclick="sendCopilotMessage()" title="{{ _('Enviar') }}">
                     <i class="bi bi-send-fill"></i>
                 </button>
             </div>
-            <div class="copilot-status" id="copilot-status">Presioná Enter para enviar · Shift+Enter para nueva línea</div>
+            <div class="copilot-status" id="copilot-status">{{ _('Presioná Enter para enviar · Shift+Enter para nueva línea') }}</div>
         </div>
     </div>
 
