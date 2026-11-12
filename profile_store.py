@@ -76,6 +76,7 @@ def _run(db_op, json_op):
 
 
 def _read_json_raw():
+    """Contenido completo del JSON (perfiles y lista de borrados)."""
     if not os.path.exists(JSON_PATH):
         return {}
     with open(JSON_PATH, 'r', encoding='utf-8') as f:
@@ -96,6 +97,7 @@ def _write_json(profiles, deleted):
 
 
 def _json_deleted():
+    """Roles borrados mientras MySQL no respondía."""
     deleted = _read_json_raw().get(DELETED_KEY, [])
     return set(deleted) if isinstance(deleted, list) else set()
 
@@ -103,20 +105,23 @@ def _json_deleted():
 def _import_legacy_json():
     """Pasa a MySQL lo escrito en el JSON (perfiles viejos o cambios durante una caída).
 
-    El JSON es más reciente que MySQL: sus perfiles reemplazan a los de la tabla y sus borrados
-    se aplican. Después se renombra a .migrated.
+    Solo se aplica sobre filas que no cambiaron después de la última escritura del JSON, para no
+    pisar cambios hechos en MySQL por otra instancia. Después se renombra a .migrated.
     """
     legacy, deleted = _read_json(), _json_deleted()
     if not legacy and not deleted:
         return
     with _session_factory() as session:
+        written_at = datetime.fromtimestamp(os.path.getmtime(JSON_PATH))
         rows = {row.role_type: row for row in session.scalars(select(UserProfile))}
+        stale = {role for role, row in rows.items()
+                 if row.updated_at and row.updated_at > written_at}
         for role, data in legacy.items():
-            if role in rows:
-                rows[role].data = data
-            else:
+            if role not in rows:
                 session.add(UserProfile(role_type=role, data=data))
-        for role in deleted - set(legacy):
+            elif role not in stale:
+                rows[role].data = data
+        for role in deleted - set(legacy) - stale:
             if role in rows:
                 session.delete(rows[role])
         session.commit()
@@ -125,6 +130,7 @@ def _import_legacy_json():
 
 
 def _find(session, role_type):
+    """Fila del rol en MySQL o None."""
     return session.scalars(select(UserProfile).where(UserProfile.role_type == role_type)).first()
 
 
@@ -177,6 +183,8 @@ def delete_profile(role_type):
     def json_op():
         profiles = _read_json()
         removed = profiles.pop(role_type, None)
-        _write_json(profiles, _json_deleted() | {role_type})
+        # Sin MySQL no se puede borrar un perfil que solo está en la tabla: se informa que no existe
+        if removed is not None:
+            _write_json(profiles, _json_deleted() | {role_type})
         return removed
     return _run(db_op, json_op)
