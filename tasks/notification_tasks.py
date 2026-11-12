@@ -235,24 +235,46 @@ def email_configured() -> bool:
     return bool(SMTP_USER and SMTP_PASSWORD and NOTIFICATION_EMAIL)
 
 
+TELEGRAM_MAX_CHARS = 4096
+
+
+def _telegram_chunks(text: str, size: int = TELEGRAM_MAX_CHARS) -> list:
+    """Parte el texto en mensajes de hasta `size` caracteres, cortando entre ofertas (líneas '• ')."""
+    chunks, current = [], ""
+    for block in text.split("\n• "):
+        block = block if not current and not chunks else "• " + block
+        candidate = f"{current}\n{block}" if current else block
+        if len(candidate) <= size:
+            current = candidate
+            continue
+        if current:
+            chunks.append(current)
+        current = block[:size]
+    if current:
+        chunks.append(current)
+    return chunks
+
+
 def send_telegram(text: str) -> bool:
-    """Envía un mensaje HTML al chat configurado vía Bot API."""
+    """Envía un mensaje HTML al chat configurado vía Bot API (en partes si supera el límite)."""
     if not telegram_configured():
         logger.warning("Telegram no configurado. Configurá TELEGRAM_BOT_TOKEN y TELEGRAM_CHAT_ID en .env")
         return False
     import requests
     try:
-        resp = requests.post(
-            f"https://api.telegram.org/bot{os.getenv('TELEGRAM_BOT_TOKEN')}/sendMessage",
-            json={
-                "chat_id": os.getenv("TELEGRAM_CHAT_ID"), "text": text,
-                "parse_mode": "HTML", "disable_web_page_preview": True,
-            },
-            timeout=10,
-        )
-        if not resp.ok:
-            logger.error(f"Telegram respondió {resp.status_code}")
-        return resp.ok
+        for chunk in _telegram_chunks(text):
+            resp = requests.post(
+                f"https://api.telegram.org/bot{os.getenv('TELEGRAM_BOT_TOKEN')}/sendMessage",
+                json={
+                    "chat_id": os.getenv("TELEGRAM_CHAT_ID"), "text": chunk,
+                    "parse_mode": "HTML", "disable_web_page_preview": True,
+                },
+                timeout=10,
+            )
+            if not resp.ok:
+                logger.error(f"Telegram respondió {resp.status_code}")
+                return False
+        return True
     except Exception as e:
         logger.error(f"Error enviando a Telegram: {type(e).__name__}")
         return False
