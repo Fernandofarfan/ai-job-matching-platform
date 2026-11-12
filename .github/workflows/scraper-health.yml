@@ -1,0 +1,50 @@
+name: Monitor de scrapers
+
+on:
+  schedule:
+    - cron: "0 11 * * *"  # todos los días, 8:00 en Argentina
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  scrapers:
+    name: Computrabajo y Bumeran devuelven ofertas
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: 'pip'
+
+      - name: Instalar dependencias de los scrapers
+        run: pip install selenium beautifulsoup4 lxml pandas python-dotenv requests
+
+      - name: Correr el monitor
+        id: monitor
+        run: |
+          set +e
+          python scripts/scraper_health.py > result.json
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+          cat result.json
+
+      - name: Abrir o actualizar el issue si falla
+        if: steps.monitor.outputs.exit_code != '0'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          title="Monitor de scrapers: un portal no devuelve ofertas"
+          body=$(printf 'Corrida: %s/%s/actions/runs/%s\n\n```json\n%s\n```\n' \
+            "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" "$(cat result.json)")
+          number=$(gh issue list --state open --search "\"$title\" in:title" --json number --jq '.[0].number')
+          if [ -n "$number" ]; then
+            gh issue comment "$number" --body "$body"
+          else
+            gh issue create --title "$title" --body "$body"
+          fi
+          exit 1

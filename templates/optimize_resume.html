@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1 class="h2 fw-bold text-dark mb-1">Optimizar CV para una oferta</h1>
+    <p class="text-muted mb-0">Gemini reescribe tu CV con las palabras clave de la oferta, sin inventar experiencia.</p>
+  </div>
+  <a href="/batch_optimize" class="btn btn-outline-primary">
+    <i class="bi bi-collection me-2"></i> Optimizar en lote
+  </a>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-5">
+    <div class="card border-0 shadow-sm">
+      <div class="card-body p-4">
+        <form method="POST" action="{{ url_for('optimize_resume') }}">
+          {% if csrf_token is defined %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+          <div class="mb-3">
+            <label for="job_title" class="form-label fw-bold">Puesto</label>
+            <input type="text" class="form-control" id="job_title" name="job_title" value="{{ job_title or '' }}" placeholder="Ej.: Data Analyst">
+          </div>
+          <div class="mb-3">
+            <label for="company" class="form-label fw-bold">Empresa</label>
+            <input type="text" class="form-control" id="company" name="company" value="{{ company or '' }}">
+          </div>
+          <div class="mb-3">
+            <label for="job_description" class="form-label fw-bold">Descripción de la oferta</label>
+            <textarea class="form-control" id="job_description" name="job_description" rows="8" required></textarea>
+          </div>
+          <div class="mb-3">
+            <label for="resume_text" class="form-label fw-bold">Texto del CV <span class="fw-normal text-muted">(opcional)</span></label>
+            <textarea class="form-control" id="resume_text" name="resume_text" rows="6" aria-describedby="resume_help"></textarea>
+            <div id="resume_help" class="form-text">Si lo dejás vacío se usa el CV de tu <a href="/profile">perfil</a>.</div>
+          </div>
+          <button type="submit" class="btn btn-primary w-100">
+            <i class="bi bi-magic me-2"></i> Optimizar CV
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-7">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body p-4">
+        {% if optimized_resume %}
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h2 class="h5 fw-bold mb-0">CV optimizado</h2>
+          <a href="{{ url_for('download_resume', filename=filename) }}" class="btn btn-success btn-sm">
+            <i class="bi bi-download me-1"></i> Descargar .docx
+          </a>
+        </div>
+        <pre class="bg-light p-3 rounded" style="white-space: pre-wrap;">{{ optimized_resume }}</pre>
+        {% else %}
+        <div class="text-center text-muted py-5">
+          <i class="bi bi-file-earmark-text display-4 d-block mb-3" aria-hidden="true"></i>
+          Completá la oferta y tocá "Optimizar CV" para ver el resultado acá.
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

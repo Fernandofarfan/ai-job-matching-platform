@@ -2,6 +2,8 @@
 import os
 from flask import jsonify, request
 
+import ai_usage
+
 from app import (  # noqa: F401
     AI_AVAILABLE,
     ai_engine,
@@ -11,6 +13,12 @@ from app import (  # noqa: F401
     logger,
     notification_manager,
 )
+
+
+@app.route('/api/ai/usage')
+def api_ai_usage():
+    """Tokens de Gemini consumidos en el mes, tope configurado y costo estimado."""
+    return jsonify({'success': True, 'usage': ai_usage.summary()})
 
 
 @app.route('/api/ai/analyze-job', methods=['POST'])
