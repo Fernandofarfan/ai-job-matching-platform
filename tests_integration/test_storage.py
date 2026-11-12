@@ -108,3 +108,16 @@ def test_bookmarked_job_gets_applied_date_when_skipping_applied(migrated_db):
     assert db.update_job_status(job_id, 'accepted')
     assert db.get_tracked_job_by_id(job_id)['applied_date'].date() == date.today()
     db.delete_tracked_job(job_id)
+
+
+def test_bookmarked_job_rejected_keeps_saved_date(migrated_db):
+    """Descartar una oferta guardada no inventa una fecha de postulación."""
+    from datetime import datetime
+
+    from db_config import DatabaseManager
+    db = DatabaseManager()
+    job_id = db.add_job_to_tracker({'title': f'QA {uuid.uuid4().hex[:8]}', 'company': 'Despegar',
+                                    'status': 'bookmarked', 'date_applied': datetime(2000, 1, 2)})
+    assert db.update_job_status(job_id, 'rejected')
+    assert db.get_tracked_job_by_id(job_id)['applied_date'].year == 2000
+    db.delete_tracked_job(job_id)

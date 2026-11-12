@@ -131,3 +131,10 @@ def test_advanced_analytics_hides_internal_errors(app, client, monkeypatch):
     monkeypatch.setattr(db.get_all_tracked_jobs, 'side_effect', RuntimeError('detalle secreto'))
     resp = client.get('/api/analytics/advanced')
     assert resp.status_code == 500 and 'secreto' not in resp.get_data(as_text=True)
+
+
+def test_avg_days_to_apply_ignores_rejected():
+    """Una oferta guardada y descartada no cuenta como postulación."""
+    from web.analytics import avg_days_to_apply
+    jobs = [{'status': 'rejected', 'created_at': '2026-01-01', 'applied_date': '2026-01-01'}]
+    assert avg_days_to_apply(jobs) is None

@@ -195,7 +195,8 @@ def avg_days_to_apply(jobs):
     days = []
     for job in jobs:
         saved, applied = _as_date(job.get('created_at')), _as_date(job.get('applied_date'))
-        if saved and applied and applied >= saved and job.get('status') in APPLIED_OR_LATER:
+        # 'rejected' queda afuera: una oferta guardada y descartada nunca tuvo postulación
+        if saved and applied and applied >= saved and job.get('status') in APPLIED_OR_LATER - {'rejected'}:
             days.append((applied - saved).days)
     return round(sum(days) / len(days), 1) if days else None
 

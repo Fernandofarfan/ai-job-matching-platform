@@ -469,7 +469,8 @@ class DatabaseManager:
                 # De guardada directo a entrevista/oferta: la postulación fue ahora, no al guardarla
                 query = """
                 UPDATE applications
-                SET applied_date = IF(status IN ('bookmarked', 'applying') AND %s NOT IN ('bookmarked', 'applying'),
+                SET applied_date = IF(status IN ('bookmarked', 'applying')
+                                      AND %s IN ('interviewing', 'negotiating', 'accepted'),
                                       CURDATE(), applied_date),
                     status = %s
                 WHERE id = %s
