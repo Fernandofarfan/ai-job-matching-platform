@@ -11,7 +11,8 @@ import logging
 import os
 import time
 from datetime import datetime, timedelta
-from typing import Optional
+from collections.abc import MutableMapping
+from typing import Any, Optional
 from urllib.parse import urlparse
 
 from sqlalchemy import DateTime, Integer, String, Text, delete as sql_delete, func, select
@@ -86,7 +87,7 @@ def _unb64(value: str) -> bytes:
     return base64url_to_bytes(value)
 
 
-def new_challenge(session: dict, purpose: str, user_id: Optional[int] = None) -> bytes:
+def new_challenge(session: MutableMapping[str, Any], purpose: str, user_id: Optional[int] = None) -> bytes:
     """Desafío de un solo uso, guardado en la sesión por `CHALLENGE_MAX_AGE` segundos."""
     challenge = os.urandom(32)
     now = datetime.now()
@@ -99,7 +100,7 @@ def new_challenge(session: dict, purpose: str, user_id: Optional[int] = None) ->
     return challenge
 
 
-def take_challenge(session: dict, purpose: str, user_id: Optional[int] = None) -> Optional[bytes]:
+def take_challenge(session: MutableMapping[str, Any], purpose: str, user_id: Optional[int] = None) -> Optional[bytes]:
     """Saca el desafío de la sesión y lo borra de la base (sirve una vez, aunque se restaure una cookie vieja);
     None si no hay, es de otro uso, venció o ya se usó."""
     data = session.pop('webauthn', None)
@@ -133,12 +134,12 @@ def registration_options(user_id: int, email: str, site: str, challenge: bytes) 
     return webauthn.options_to_json(options)
 
 
-def register(user_id: int, credential: dict, challenge: bytes, site: str, name: str) -> dict:
+def register(user_id: int, credential: dict[str, Any], challenge: bytes, site: str, name: str) -> dict[str, Any]:
     """Verifica la respuesta del navegador y guarda la passkey."""
     import webauthn
     name = (name or '').strip()[:100] or 'Passkey'
     with accounts._sessions()() as session:
-        if session.scalar(select(func.count()).select_from(Passkey).where(Passkey.user_id == user_id)) >= MAX_PER_USER:
+        if (session.scalar(select(func.count()).select_from(Passkey).where(Passkey.user_id == user_id)) or 0) >= MAX_PER_USER:
             raise PasskeyError(f'Llegaste al máximo de {MAX_PER_USER} passkeys: borrá una antes de agregar otra')
     try:
         verified = webauthn.verify_registration_response(
@@ -167,7 +168,7 @@ def authentication_options(site: str, challenge: bytes) -> str:
         rp_id=rp_id(site), challenge=challenge, user_verification=UserVerificationRequirement.REQUIRED))
 
 
-def authenticate(credential: dict, challenge: bytes, site: str) -> int:
+def authenticate(credential: dict[str, Any], challenge: bytes, site: str) -> int:
     """Cuenta dueña de la passkey si la firma es válida; levanta PasskeyError si no."""
     import webauthn
     credential_id = credential.get('id') if isinstance(credential, dict) else None
@@ -188,10 +189,10 @@ def authenticate(credential: dict, challenge: bytes, site: str) -> int:
         row.sign_count = verified.new_sign_count
         row.last_used_at = datetime.now()
         session.commit()
-        return row.user_id
+        return int(row.user_id)
 
 
-def list_for(user_id: Optional[int]) -> list:
+def list_for(user_id: Optional[int]) -> list[dict[str, Any]]:
     """Passkeys de la cuenta para Mi cuenta."""
     with accounts._sessions()() as session:
         rows = session.scalars(select(Passkey).where(Passkey.user_id == user_id).order_by(Passkey.id)).all()

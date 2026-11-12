@@ -3,7 +3,7 @@ import hashlib
 import logging
 import secrets
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Any, Optional
 
 from sqlalchemy import DateTime, Integer, String, delete, or_, select, update
 from sqlalchemy.orm import Mapped, mapped_column
@@ -54,7 +54,8 @@ def is_active(user_id: int, sid: Optional[str]) -> bool:
         row = session.execute(select(UserSession).where(UserSession.sid_hash == _hash(sid))).scalar_one_or_none()
         if row is None or row.user_id != user_id or row.revoked_at is not None:
             return False
-        if (row.last_seen_at or row.created_at) < now - LIFETIME:
+        seen = row.last_seen_at or row.created_at
+        if seen is None or seen < now - LIFETIME:
             return False
         if row.last_seen_at is None or row.last_seen_at < now - TOUCH_EVERY:
             row.last_seen_at = now
@@ -62,7 +63,7 @@ def is_active(user_id: int, sid: Optional[str]) -> bool:
         return True
 
 
-def active(user_id: Optional[int], current_sid: Optional[str] = None) -> list:
+def active(user_id: Optional[int], current_sid: Optional[str] = None) -> list[dict[str, Any]]:
     """Sesiones abiertas de la cuenta, la más reciente primero; `current` marca la del navegador actual."""
     if not user_id:
         return []
@@ -83,10 +84,10 @@ def revoke(user_id: int, session_id: int) -> bool:
             UserSession.id == session_id, UserSession.user_id == user_id, UserSession.revoked_at.is_(None),
         ).values(revoked_at=datetime.now()))
         session.commit()
-        return bool(result.rowcount)
+        return bool(accounts.rowcount(result))
 
 
-def revoke_sid(sid: Optional[str]):
+def revoke_sid(sid: Optional[str]) -> None:
     """Cierra la sesión de esa cookie (logout)."""
     if not sid:
         return
@@ -104,7 +105,7 @@ def revoke_all(user_id: int, except_sid: Optional[str] = None) -> int:
     with accounts._sessions()() as session:
         result = session.execute(query.values(revoked_at=datetime.now()))
         session.commit()
-        return result.rowcount or 0
+        return accounts.rowcount(result) or 0
 
 
 def purge() -> int:
@@ -114,13 +115,13 @@ def purge() -> int:
         result = session.execute(delete(UserSession).where(or_(
             UserSession.revoked_at < limit, UserSession.last_seen_at < limit - LIFETIME)))
         session.commit()
-        return result.rowcount or 0
+        return accounts.rowcount(result) or 0
 
 
-def last_seen_by_user() -> dict:
+def last_seen_by_user() -> dict[int, datetime]:
     """Última actividad de cada cuenta (panel de administración)."""
     from sqlalchemy import func
     with accounts._sessions()() as session:
         rows = session.execute(select(UserSession.user_id, func.max(UserSession.last_seen_at))
                                .group_by(UserSession.user_id))
-        return {user_id: seen for user_id, seen in rows}
+        return {user_id: seen for user_id, seen in rows if seen is not None}

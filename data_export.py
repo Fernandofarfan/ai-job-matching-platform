@@ -51,6 +51,8 @@ def build(user_id: int) -> bytes:
     with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_DEFLATED) as zf, accounts.as_user(user_id):
         with accounts._sessions()() as session:
             row = session.get(accounts.User, user_id)
+            if row is None:
+                raise ValueError('La cuenta no existe')
             zf.writestr('cuenta.json', _dump({
                 'email': row.email, 'creada': row.created_at, 'email_verificado': row.email_verified_at,
                 'terminos_aceptados': row.terms_accepted_at, 'permiso_ia': row.ai_consent_at,

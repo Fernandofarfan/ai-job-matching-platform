@@ -6,6 +6,15 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar] - mypy estricto, etapa 1
+
+- `accounts`, `auth`, `models`, `passkeys`, `security_events`, `two_factor` y `user_sessions` cumplen las reglas de `--strict`
+  (override en `pyproject.toml`): todas las funciones tipadas, genéricos con parámetros y sin devolver `Any`.
+- `accounts.rowcount()` lee las filas tocadas por un UPDATE/DELETE con su tipo real (`CursorResult`).
+- Casos que el chequeo destapó: exportar los datos de una cuenta que se borra a mitad de la exportación, una sesión sin
+  `created_at` ni `last_seen_at`, y `is_local_path` con algo que no es texto. Antes daban error 500; ahora se
+  rechazan.
+
 ## [Sin publicar] - Archivos grandes partidos
 
 Sin cambios de comportamiento: mismas rutas, mismos nombres de ruta y mismos nombres de tareas de Celery.
