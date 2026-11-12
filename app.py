@@ -113,8 +113,10 @@ def login():
             user_id = accounts.authenticate(request.form.get('email', ''), request.form.get('password', ''))
             user = accounts.get_user(user_id) if user_id else None
             if user and auth.verification_required() and not user['email_verified']:
-                account.send_verification(user)
-                flash('Antes de entrar confirmá tu email: te mandamos un enlace', 'warning')
+                if account.send_verification(user):
+                    flash('Antes de entrar confirmá tu email: te mandamos un enlace', 'warning')
+                else:
+                    flash('Tenés que confirmar tu email, pero no se pudo mandar el enlace: avisale al administrador', 'danger')
             elif user:
                 auth.start_session(session, app.secret_key, user['id'])
                 return redirect(_safe_next(next_url))
@@ -151,10 +153,13 @@ def register():
                     flash(str(e), 'danger')
                 else:
                     user = accounts.get_user(user_id)
-                    if not user['email_verified']:
-                        account.send_verification(user)
+                    sent = not user['email_verified'] and account.send_verification(user)
                     if auth.verification_required() and not user['email_verified']:
-                        flash('Te mandamos un enlace para confirmar tu email', 'info')
+                        if sent:
+                            flash('Te mandamos un enlace para confirmar tu email', 'info')
+                        else:
+                            flash('Cuenta creada, pero no se pudo mandar el enlace para confirmar el email: '
+                                  'avisale al administrador', 'danger')
                         return redirect(url_for('login', next=next_url))
                     auth.start_session(session, app.secret_key, user_id)
                     return redirect(_safe_next(next_url))
