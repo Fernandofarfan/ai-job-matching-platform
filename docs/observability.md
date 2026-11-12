@@ -31,7 +31,7 @@ scrape_configs:
 |---|---|
 | `EmpleoIAErrores5xx` | Más del 5 % de 5xx durante 10 min |
 | `EmpleoIALatenciaAlta` | p95 > 5 s durante 15 min |
-| `EmpleoIASinTrafico` | Sin pedidos ni métricas durante 30 min (web caída o `METRICS_TOKEN` cambiado) |
+| `EmpleoIASinMetricas` | Prometheus no recibe métricas durante 10 min (web caída o `METRICS_TOKEN` cambiado) |
 | `EmpleoIAColaCelery` | Más de 20 tareas esperando en una cola durante 15 min |
 | `EmpleoIACuotaIA80` / `EmpleoIACuotaIAAgotada` | Consumo de IA del mes ≥ 80 % / 100 % de `AI_MONTHLY_TOKEN_LIMIT` |
 

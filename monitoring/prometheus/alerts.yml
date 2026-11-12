@@ -25,13 +25,15 @@ groups:
           summary: El p95 de latencia supera 5 s
           description: "p95 = {{ $value | humanizeDuration }}."
 
-      - alert: EmpleoIASinTrafico
-        expr: sum(rate(empleoia_http_requests_total[30m])) == 0 or absent(empleoia_http_requests_total)
-        for: 30m
+      # Los propios raspados de /metrics cuentan como pedidos: no se alerta por falta de visitas,
+      # sino cuando Prometheus deja de recibir las métricas.
+      - alert: EmpleoIASinMetricas
+        expr: absent(empleoia_http_requests_total)
+        for: 10m
         labels:
           severity: warning
         annotations:
-          summary: Prometheus no ve pedidos ni métricas de la web
+          summary: Prometheus no recibe métricas de la web
           description: La web está caída, no responde /metrics o cambió METRICS_TOKEN.
 
       - alert: EmpleoIAColaCelery

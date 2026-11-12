@@ -48,17 +48,27 @@ tests:
         alertname: EmpleoIACuotaIAAgotada
         exp_alerts: []
       - eval_time: 25m
-        alertname: EmpleoIASinTrafico
+        alertname: EmpleoIASinMetricas
         exp_alerts: []
   - interval: 1m
     input_series:
+      # Sin visitas (el contador no sube) pero con raspados: no es una caída
       - series: 'empleoia_http_requests_total{method="GET",route="/",status="200"}'
         values: '100x70'
     alert_rule_test:
       - eval_time: 65m
-        alertname: EmpleoIASinTrafico
+        alertname: EmpleoIASinMetricas
+        exp_alerts: []
+  - interval: 1m
+    input_series:
+      # La web deja de responder a los 10 min
+      - series: 'empleoia_http_requests_total{method="GET",route="/",status="200"}'
+        values: '100x10 stale'
+    alert_rule_test:
+      - eval_time: 40m
+        alertname: EmpleoIASinMetricas
         exp_alerts:
           - exp_labels: {severity: warning}
             exp_annotations:
-              summary: Prometheus no ve pedidos ni métricas de la web
+              summary: Prometheus no recibe métricas de la web
               description: La web está caída, no responde /metrics o cambió METRICS_TOKEN.

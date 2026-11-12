@@ -8,7 +8,7 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [Sin publicar] - Alertas y prueba de carga
 
-- Reglas de alerta de Prometheus en `monitoring/prometheus/alerts.yml` (5xx, latencia p95, sin tráfico, cola de Celery, cuota de IA al 80 % y agotada), con tests de `promtool` en el CI.
+- Reglas de alerta de Prometheus en `monitoring/prometheus/alerts.yml` (5xx, latencia p95, sin métricas, cola de Celery, cuota de IA al 80 % y agotada), con tests de `promtool` en el CI.
 - `terraform/monitoring.tf`: uptime check de `/api/health` y alertas de Cloud Monitoring (5xx, p95, disco de Cloud SQL), por email con `alert_email`.
 - Prueba de carga con Locust (`loadtest/locustfile.py`, `requirements-loadtest.txt`) que falla si el p95 o los errores superan el objetivo; línea base en `docs/load-testing.md`.
 
