@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session, send_from_directory
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session, send_from_directory, make_response
 from flask_limiter import Limiter
 import rate_limit
 import profile_store
@@ -103,13 +103,19 @@ def login():
             session.permanent = True
             return redirect(_safe_next(next_url))
         flash('Contraseña incorrecta', 'danger')
-    return render_template('login.html', next_url=next_url)
+    return _clear_offline_data(make_response(render_template('login.html', next_url=next_url)))
 
 
 @app.route('/logout', methods=['POST'])
 def logout():
     session.clear()
-    return redirect(url_for('login'))
+    return _clear_offline_data(redirect(url_for('login')))
+
+
+def _clear_offline_data(response):
+    """Sin sesión no deben quedar páginas ni datos del tracker en el caché del service worker ni en IndexedDB."""
+    response.headers['Clear-Site-Data'] = '"cache", "storage"'
+    return response
 
 
 @app.context_processor

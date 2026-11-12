@@ -81,10 +81,15 @@ self.addEventListener('fetch', (event) => {
 
 // ── Estrategias ───────────────────────────────────────────────
 
+// Las redirecciones (p. ej. al login cuando venció la sesión) no se guardan bajo la URL pedida.
+function cacheable(response) {
+  return response.ok && !response.redirected;
+}
+
 async function networkFirstStrategy(request) {
   try {
     const response = await fetch(request);
-    if (response.ok) {
+    if (cacheable(response)) {
       const cache = await caches.open(CACHE_NAME);
       cache.put(request, response.clone());
     }
@@ -102,7 +107,7 @@ async function networkFirstStrategy(request) {
 async function networkFirstWithOfflineFallback(request) {
   try {
     const response = await fetch(request);
-    if (response.ok) {
+    if (cacheable(response)) {
       const cache = await caches.open(CACHE_NAME);
       cache.put(request, response.clone());
     }
