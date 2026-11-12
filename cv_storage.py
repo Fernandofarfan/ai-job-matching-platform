@@ -26,6 +26,11 @@ def _fernet() -> Optional[Fernet]:
     return Fernet(key.encode()) if key else None
 
 
+def get_fernet() -> Optional[Fernet]:
+    """Fernet de CV_ENCRYPTION_KEY (también cifra los perfiles) o None si no hay clave."""
+    return _fernet()
+
+
 def _path(filename: str) -> str:
     """Ruta dentro de uploads/; rechaza nombres con directorios."""
     if not filename or os.path.basename(filename) != filename:

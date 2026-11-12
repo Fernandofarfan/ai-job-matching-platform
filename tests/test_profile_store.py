@@ -121,3 +121,50 @@ def test_delete_all_fails_while_mysql_is_down(monkeypatch):
     with pytest.raises(RuntimeError):
         profile_store.delete_all()
 
+
+
+@pytest.fixture
+def cv_key(monkeypatch):
+    """CV_ENCRYPTION_KEY temporal."""
+    from cryptography.fernet import Fernet
+    monkeypatch.setenv('CV_ENCRYPTION_KEY', Fernet.generate_key().decode())
+
+
+def test_profiles_are_encrypted_in_db_and_json(db, cv_key):
+    """Con clave, el texto del CV no queda legible en MySQL ni en el JSON de respaldo."""
+    from sqlalchemy import text
+    profile_store.save_profile('backend', {'raw_text': 'Ana Pérez, Python'})
+    with profile_store._session_factory() as session:
+        raw = session.execute(text('SELECT data FROM user_profiles')).scalar()
+    assert 'Ana' not in raw and profile_store.ENC_KEY in raw
+    assert profile_store.get_profile('backend') == {'raw_text': 'Ana Pérez, Python'}
+
+    profile_store.configure(None)
+    profile_store._write_json({'data': {'raw_text': 'Ana SQL'}}, set())
+    assert 'Ana' not in open(profile_store.JSON_PATH, encoding='utf-8').read()
+    assert profile_store._read_json() == {'data': {'raw_text': 'Ana SQL'}}
+
+
+def test_encrypt_existing_profiles(db, monkeypatch, tmp_path):
+    """Los perfiles guardados antes de configurar la clave se cifran y se siguen leyendo."""
+    from cryptography.fernet import Fernet
+    from sqlalchemy import text
+    profile_store.save_profile('backend', {'raw_text': 'Ana Python'})
+    (tmp_path / 'user_profiles.json.migrated').write_text(json.dumps({'old': {'raw_text': 'Ana vieja'}}))
+    assert profile_store.encrypt_existing() == 0
+    monkeypatch.setenv('CV_ENCRYPTION_KEY', Fernet.generate_key().decode())
+    assert profile_store.encrypt_existing() == 2
+    assert profile_store.encrypt_existing() == 0
+    with profile_store._session_factory() as session:
+        assert 'Ana' not in session.execute(text('SELECT data FROM user_profiles')).scalar()
+    assert 'Ana' not in (tmp_path / 'user_profiles.json.migrated').read_text()
+    assert profile_store.get_profile('backend') == {'raw_text': 'Ana Python'}
+
+
+def test_wrong_key_gives_clear_error(db, cv_key, monkeypatch):
+    """Con otra clave, leer un perfil cifrado da un error claro."""
+    from cryptography.fernet import Fernet
+    profile_store.save_profile('backend', {'raw_text': 'x'})
+    monkeypatch.setenv('CV_ENCRYPTION_KEY', Fernet.generate_key().decode())
+    with pytest.raises(RuntimeError, match='CV_ENCRYPTION_KEY'):
+        profile_store.get_profile('backend')

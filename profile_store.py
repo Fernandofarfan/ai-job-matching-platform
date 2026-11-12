@@ -1,13 +1,22 @@
-"""Perfiles de CV por rol en MySQL (tabla user_profiles), con fallback a profiles/user_profiles.json."""
+"""Perfiles de CV por rol en MySQL (tabla user_profiles), con fallback a profiles/user_profiles.json.
+
+Con CV_ENCRYPTION_KEY cada perfil (incluido el texto del CV en `raw_text`) se guarda cifrado como
+{"_enc": <token Fernet>}, tanto en MySQL como en el JSON de respaldo.
+"""
 import json
 import logging
 import os
 import time
 from datetime import datetime
 
-from sqlalchemy import JSON, Column, DateTime, Integer, String, delete, select
+from cryptography.fernet import InvalidToken
+from sqlalchemy import JSON, Column, DateTime, Integer, String, delete, select, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm.attributes import flag_modified
+from sqlalchemy.types import TypeDecorator
+
+import cv_storage
 
 logger = logging.getLogger(__name__)
 
@@ -18,9 +27,47 @@ DELETED_KEY = '_deleted'
 # Momento exacto de la escritura: el mtime del archivo tiene resolución de milisegundos
 WRITTEN_KEY = '_written_at'
 _RETRY_SECONDS = 60
+ENC_KEY = '_enc'
 
 _session_factory = None
 _last_failure = 0.0
+
+
+def _is_sealed(data) -> bool:
+    return isinstance(data, dict) and set(data) == {ENC_KEY}
+
+
+def _seal(data):
+    """Perfil cifrado si hay CV_ENCRYPTION_KEY; si no, tal cual."""
+    fernet = cv_storage.get_fernet()
+    if fernet is None or not isinstance(data, dict) or _is_sealed(data):
+        return data
+    return {ENC_KEY: fernet.encrypt(json.dumps(data, ensure_ascii=False).encode()).decode()}
+
+
+def _unseal(data):
+    """Perfil descifrado; los guardados en texto plano se devuelven igual."""
+    if not _is_sealed(data):
+        return data
+    fernet = cv_storage.get_fernet()
+    if fernet is None:
+        raise RuntimeError('Los perfiles están cifrados y falta CV_ENCRYPTION_KEY')
+    try:
+        return json.loads(fernet.decrypt(data[ENC_KEY].encode()))
+    except InvalidToken:
+        raise RuntimeError('No se pudo descifrar el perfil: CV_ENCRYPTION_KEY no es la clave con que se cifró') from None
+
+
+class SealedJSON(TypeDecorator):
+    """Columna JSON que cifra/descifra el perfil al escribir/leer (el tipo en MySQL sigue siendo JSON)."""
+    impl = JSON
+    cache_ok = True
+
+    def process_bind_param(self, value, dialect):
+        return _seal(value)
+
+    def process_result_value(self, value, dialect):
+        return _unseal(value)
 
 
 class UserProfile(Base):  # type: ignore[misc,valid-type]
@@ -29,7 +76,7 @@ class UserProfile(Base):  # type: ignore[misc,valid-type]
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     role_type = Column(String(100), nullable=False, unique=True)
-    data = Column(JSON, nullable=False)
+    data = Column(SealedJSON, nullable=False)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
 
@@ -86,12 +133,12 @@ def _read_json_raw():
 
 
 def _read_json():
-    return {k: v for k, v in _read_json_raw().items() if isinstance(v, dict)}
+    return {k: _unseal(v) for k, v in _read_json_raw().items() if isinstance(v, dict)}
 
 
 def _write_json(profiles, deleted):
     os.makedirs(os.path.dirname(JSON_PATH), exist_ok=True)
-    data = dict(profiles)
+    data = {role: _seal(profile) for role, profile in profiles.items()}
     if deleted:
         data[DELETED_KEY] = sorted(deleted)
     data[WRITTEN_KEY] = time.time()
@@ -216,3 +263,36 @@ def delete_all():
     for path in (JSON_PATH, JSON_PATH + '.migrated'):
         if os.path.exists(path):
             os.remove(path)
+
+
+def _seal_json_file(path) -> int:
+    """Cifra los perfiles en texto plano de un JSON de respaldo, sin tocar el resto de las claves."""
+    if not os.path.exists(path):
+        return 0
+    with open(path, 'r', encoding='utf-8') as f:
+        raw = json.load(f)
+    plain = [k for k, v in raw.items() if isinstance(v, dict) and not _is_sealed(v)]
+    if plain:
+        raw.update({k: _seal(raw[k]) for k in plain})
+        with open(path, 'w', encoding='utf-8') as f:
+            json.dump(raw, f, indent=2, ensure_ascii=False)
+    return len(plain)
+
+
+def encrypt_existing() -> int:
+    """Cifra los perfiles guardados en texto plano (MySQL, JSON y .migrated). Sin clave no hace nada."""
+    if cv_storage.get_fernet() is None:
+        return 0
+    done = 0
+    sessions = _sessions()
+    if sessions is not None:
+        with sessions() as session:
+            for row_id, raw in session.execute(text('SELECT id, data FROM user_profiles')):
+                if not _is_sealed(json.loads(raw) if isinstance(raw, str) else raw):
+                    row = session.get(UserProfile, row_id)
+                    flag_modified(row, 'data')
+                    done += 1
+            session.commit()
+    for path in (JSON_PATH, JSON_PATH + '.migrated'):
+        done += _seal_json_file(path)
+    return done

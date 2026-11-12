@@ -1,4 +1,4 @@
-"""Privacidad de CVs: cifrado de los archivos viejos y retención (CV_RETENTION_DAYS)."""
+"""Privacidad de CVs: cifrado de los archivos y perfiles viejos y retención (CV_RETENTION_DAYS)."""
 import logging
 import os
 
@@ -9,11 +9,15 @@ logger = logging.getLogger(__name__)
 
 @celery.task(name="tasks.privacy_tasks.enforce_cv_retention")
 def enforce_cv_retention():
-    """Cifra los CVs en texto plano y borra los que superan CV_RETENTION_DAYS junto con su perfil."""
+    """Cifra los CVs y perfiles en texto plano y borra los que superan CV_RETENTION_DAYS junto con su perfil."""
     import cv_storage
     import profile_store
 
     encrypted = cv_storage.encrypt_existing()
+    try:
+        encrypted += profile_store.encrypt_existing()
+    except Exception as e:
+        logger.warning(f"No se pudieron cifrar los perfiles existentes: {e}")
     days = int(os.getenv("CV_RETENTION_DAYS", "0") or 0)
     if days <= 0:
         return {"encrypted": encrypted, "deleted_cvs": 0, "deleted_profiles": 0, "deleted_generated": 0}
