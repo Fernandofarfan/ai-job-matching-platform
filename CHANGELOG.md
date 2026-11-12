@@ -8,7 +8,7 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [Sin publicar] - Chequeo de que la app está lista
 
-- `GET /api/ready`: 200 si la base responde a `SELECT 1` y cada Redis configurado a `PING`; 503 si algo falla, sin el error interno. `/api/health` sigue diciendo solo que el proceso está vivo.
+- `GET /api/ready`: 200 si la base responde a `SELECT 1` y, si `RATELIMIT_STORAGE_URI` es Redis, ese Redis a `PING` (sin él no andan login ni APIs; `REDIS_URL` tiene respaldo local); 503 si algo falla, sin el error interno. `/api/health` sigue diciendo solo que el proceso está vivo.
 - Cloud Run: el startup probe y el uptime check usan `/api/ready`; el liveness sigue en `/api/health`, así una caída de la base no reinicia las instancias en loop.
 - Docker Compose: healthcheck de `web` contra `/api/ready`.
 

@@ -101,10 +101,8 @@ async def health_check():
     return {"status": "ok", "service": "EmpleoIA API (FastAPI Mode)"}
 
 
-READY_REDIS_ENV = ("REDIS_URL", "RATELIMIT_STORAGE_URI", "CELERY_BROKER_URL")
-
-
 def _check_database():
+    """`SELECT 1` contra la base; levanta si no responde."""
     from sqlalchemy import text
 
     import models
@@ -113,18 +111,22 @@ def _check_database():
 
 
 def _check_redis():
+    """`PING` al Redis de los límites de pedidos, si `RATELIMIT_STORAGE_URI` es redis://; levanta si no responde.
+
+    Es el único Redis sin el que la web no atiende: sin él, login y APIs fallan. `REDIS_URL` (Celery, cachés,
+    métricas) tiene respaldo local, así que no lo revisa."""
     import redis
-    for url in {os.getenv(name, "") for name in READY_REDIS_ENV}:
-        if url.startswith(("redis://", "rediss://")):
-            client = redis.Redis.from_url(url, socket_timeout=2, socket_connect_timeout=2)
-            try:
-                client.ping()
-            finally:
-                client.close()
+    url = os.getenv("RATELIMIT_STORAGE_URI", "")
+    if url.startswith(("redis://", "rediss://")):
+        client = redis.Redis.from_url(url, socket_timeout=2, socket_connect_timeout=2)
+        try:
+            client.ping()
+        finally:
+            client.close()
 
 
 def readiness_check():
-    """Lista para recibir pedidos: la base responde y, si hay Redis configurado, también. 503 si algo falla.
+    """Lista para recibir pedidos: la base responde y, si los límites usan Redis, también. 503 si algo falla.
     /api/health solo dice que el proceso está vivo (liveness); esta es la de startup y del uptime check."""
     checks, ok = {}, True
     for name, check in (("database", _check_database), ("redis", _check_redis)):
