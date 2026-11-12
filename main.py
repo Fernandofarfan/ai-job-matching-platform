@@ -17,6 +17,25 @@ except Exception as e:
 app.include_router(ai.router)
 app.include_router(analytics.router)
 
+import os  # noqa: E402
+from fastapi.responses import JSONResponse  # noqa: E402
+from limits import parse as parse_rate_limit  # noqa: E402
+from limits.storage import storage_from_string  # noqa: E402
+from limits.strategies import MovingWindowRateLimiter  # noqa: E402
+
+_ai_rate_limit = parse_rate_limit(os.getenv("AI_RATE_LIMIT", "30 per minute"))
+_ai_rate_limiter = MovingWindowRateLimiter(storage_from_string(os.getenv("RATELIMIT_STORAGE_URI", "memory://")))
+
+
+@app.middleware("http")
+async def rate_limit_ai(request: Request, call_next):
+    """Aplica AI_RATE_LIMIT a /api/ai/* también cuando lo atiende FastAPI."""
+    if request.url.path.startswith("/api/ai/"):
+        client_ip = request.client.host if request.client else "unknown"
+        if not _ai_rate_limiter.hit(_ai_rate_limit, "fastapi-ai", client_ip):
+            return JSONResponse({"error": "Demasiadas solicitudes de IA, probá de nuevo en un minuto"}, status_code=429)
+    return await call_next(request)
+
 # ========================================================
 # WebSockets Nativos (Reemplazo de Flask-SocketIO)
 # ========================================================
