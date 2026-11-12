@@ -7,11 +7,13 @@ TODAY = date(2026, 11, 12)
 
 
 def _job(title, status, company='Acme', created='2026-10-01', link='https://www.getonbrd.com/jobs/x'):
+    """Postulación del tracker con los campos que usa el ranking."""
     return {'title': title, 'company': company, 'location': 'Buenos Aires', 'status': status,
             'created_at': created, 'job_link': link}
 
 
 def _history():
+    """4 postulaciones de Python, 3 guardadas viejas de ventas y 1 guardada reciente (neutral)."""
     applied = [_job(f'Backend Python Developer {i}', 'applied') for i in range(3)]
     applied.append(_job('Python Data Engineer', 'interviewing'))
     ignored = [_job(f'Vendedor de salón {i}', 'bookmarked', company='Tienda') for i in range(3)]
@@ -99,3 +101,18 @@ def test_view_file_escapes_scraped_text_and_adds_affinity(client, monkeypatch, t
     assert '"><script>' not in html
     assert 'Afinidad' in html
     assert html.index('Python Backend') < html.index('&lt;img src=x')
+
+
+def test_view_file_reads_utf8_bom_csv(client, monkeypatch, tmp_path):
+    """Un CSV UTF-8 con BOM (Bumeran) conserva acentos y la columna URL para el ranking."""
+    import pandas as pd
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / 'results').mkdir()
+    pd.DataFrame([{'URL': 'https://www.bumeran.com.ar/empleos/1', 'Title': 'Diseñador Gráfico', 'Company': 'Señal'}]
+                 ).to_csv(tmp_path / 'results' / 'jobs.csv', index=False, encoding='utf-8-sig')
+    seen = []
+    monkeypatch.setattr(job_ranking, 'load_model', lambda: {'n_pos': 3})
+    monkeypatch.setattr(job_ranking, 'rank', lambda jobs, model, match_key: seen.extend(jobs) or jobs)
+    html = client.get('/view/jobs.csv').get_data(as_text=True)
+    assert 'Diseñador Gráfico' in html
+    assert seen[0]['Title'] == 'Diseñador Gráfico' and seen[0]['URL'].startswith('https://www.bumeran')
