@@ -68,10 +68,12 @@ class TaggedJSON:
 
     @staticmethod
     def dumps(value: Any) -> str:
+        """JSON compacto con etiquetas, como lo guardaba Flask."""
         return json.dumps(_tag(value), separators=(',', ':'))
 
     @staticmethod
     def loads(value: str | bytes) -> Any:
+        """Valor original a partir del JSON con etiquetas."""
         return json.loads(value, object_hook=_untag)
 
 
