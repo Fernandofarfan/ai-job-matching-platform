@@ -16,7 +16,8 @@ import pytest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 APP_PASSWORD = secrets.token_urlsafe(16)
-CV_ENCRYPTION_KEY = base64.urlsafe_b64encode(secrets.token_bytes(32)).decode()
+# Con la clave del .env local la app de desarrollo sigue leyendo los perfiles que escribe el E2E (misma base)
+CV_ENCRYPTION_KEY = os.getenv('CV_ENCRYPTION_KEY') or base64.urlsafe_b64encode(secrets.token_bytes(32)).decode()
 
 
 def pytest_collection_modifyitems(config, items):

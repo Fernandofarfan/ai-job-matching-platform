@@ -6,10 +6,12 @@ import pytest
 
 
 @pytest.fixture
-def mysql(migrated_db):
-    """Sesión SQLAlchemy contra la base migrada."""
+def mysql(migrated_db, monkeypatch):
+    """Sesión SQLAlchemy contra la base migrada, con la misma clave de cifrado que la app levantada."""
     import job_alerts
     import profile_store
+    from tests_integration.conftest import CV_ENCRYPTION_KEY
+    monkeypatch.setenv('CV_ENCRYPTION_KEY', CV_ENCRYPTION_KEY)
     profile_store.configure(None)
     job_alerts.configure(None)
     yield
@@ -26,6 +28,10 @@ def test_profile_round_trip(mysql, monkeypatch, tmp_path):
     assert profile_store._sessions() is not None
     assert profile_store.get_profile(role)['skills'] == ['python', 'sql']
     assert not os.path.exists(profile_store.JSON_PATH)
+    from sqlalchemy import text
+    with profile_store._sessions()() as session:
+        raw = session.execute(text('SELECT data FROM user_profiles WHERE role_type = :r'), {'r': role}).scalar()
+    assert 'python' not in raw and profile_store.ENC_KEY in raw
     assert profile_store.delete_profile(role)
     assert profile_store.get_profile(role) is None
 
