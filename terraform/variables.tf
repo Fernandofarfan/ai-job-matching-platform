@@ -59,4 +59,8 @@ variable "app_password" {
   description = "Contraseña de acceso a la app (login de usuario único). Obligatoria porque el servicio es público."
   type        = string
   sensitive   = true
+  validation {
+    condition     = length(var.app_password) >= 12
+    error_message = "app_password debe tener al menos 12 caracteres (vacía dejaría el servicio sin login)."
+  }
 }
