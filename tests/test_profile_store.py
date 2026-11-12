@@ -56,3 +56,23 @@ def test_upload_creates_profile_and_view_profile_reads_it(app, client):
     assert client.get('/view_profile', follow_redirects=False).headers['Location'].endswith('/view_profile/backend')
     assert app_module.delete_user_profile_by_role('backend')
     assert app_module.get_all_user_profiles() == {}
+
+
+def test_db_outage_falls_back_to_json_and_syncs_on_recovery(db, monkeypatch):
+    """Si MySQL se cae, los perfiles siguen en el JSON y esos cambios se aplican al volver."""
+    from sqlalchemy.exc import OperationalError
+    profile_store.save_profile('backend', {'skills': ['python']})
+    profile_store.save_profile('data', {'skills': ['sql']})
+    working = profile_store._session_factory
+
+    def broken():
+        raise OperationalError('SELECT 1', {}, Exception('MySQL caído'))
+    profile_store.configure(broken)
+    profile_store.save_profile('backend', {'skills': ['go']})
+    profile_store.delete_profile('data')
+    assert profile_store._session_factory is None
+    assert profile_store.get_all_profiles() == {'backend': {'skills': ['go']}}
+
+    profile_store.configure(working)
+    profile_store._import_legacy_json()
+    assert profile_store.get_all_profiles() == {'backend': {'skills': ['go']}}

@@ -6,12 +6,15 @@ import time
 from datetime import datetime
 
 from sqlalchemy import JSON, Column, DateTime, Integer, String, select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import declarative_base
 
 logger = logging.getLogger(__name__)
 
 Base = declarative_base()
 JSON_PATH = os.path.join('profiles', 'user_profiles.json')
+# Roles borrados mientras MySQL no respondía; se borran en MySQL al volver
+DELETED_KEY = '_deleted'
 _RETRY_SECONDS = 60
 
 _session_factory = None
@@ -35,9 +38,17 @@ def configure(session_factory):
     _last_failure = 0.0
 
 
+def _mark_failure(error):
+    """Pasa al JSON y reintenta MySQL dentro de _RETRY_SECONDS."""
+    global _session_factory, _last_failure
+    _session_factory = None
+    _last_failure = time.time()
+    logger.warning(f"MySQL no disponible para perfiles ({error}); se usa {JSON_PATH}")
+
+
 def _sessions():
     """Devuelve la fábrica de sesiones de MySQL, o None si se usa el JSON."""
-    global _session_factory, _last_failure
+    global _session_factory
     if _session_factory is not None:
         return _session_factory
     if os.getenv('PROFILE_STORAGE', 'mysql') != 'mysql' or time.time() - _last_failure < _RETRY_SECONDS:
@@ -48,47 +59,81 @@ def _sessions():
         _session_factory = SessionLocal
         _import_legacy_json()
     except Exception as e:
-        _session_factory = None
-        _last_failure = time.time()
-        logger.warning(f"MySQL no disponible para perfiles ({e}); se usa {JSON_PATH}")
+        _mark_failure(e)
     return _session_factory
 
 
-def _read_json():
+def _run(db_op, json_op):
+    """Ejecuta db_op(session) en MySQL; si no hay MySQL o falla, json_op() sobre el JSON."""
+    sessions = _sessions()
+    if sessions is not None:
+        try:
+            with sessions() as session:
+                return db_op(session)
+        except SQLAlchemyError as e:
+            _mark_failure(e)
+    return json_op()
+
+
+def _read_json_raw():
     if not os.path.exists(JSON_PATH):
         return {}
     with open(JSON_PATH, 'r', encoding='utf-8') as f:
-        data = json.load(f)
-    return {k: v for k, v in data.items() if isinstance(v, dict)}
+        return json.load(f)
 
 
-def _write_json(profiles):
+def _read_json():
+    return {k: v for k, v in _read_json_raw().items() if isinstance(v, dict)}
+
+
+def _write_json(profiles, deleted):
     os.makedirs(os.path.dirname(JSON_PATH), exist_ok=True)
+    data = dict(profiles)
+    if deleted:
+        data[DELETED_KEY] = sorted(deleted)
     with open(JSON_PATH, 'w', encoding='utf-8') as f:
-        json.dump(profiles, f, indent=2, ensure_ascii=False)
+        json.dump(data, f, indent=2, ensure_ascii=False)
+
+
+def _json_deleted():
+    deleted = _read_json_raw().get(DELETED_KEY, [])
+    return set(deleted) if isinstance(deleted, list) else set()
 
 
 def _import_legacy_json():
-    """Primera vez con MySQL: copia los perfiles del JSON y lo renombra a .migrated."""
-    legacy = _read_json()
-    if not legacy:
+    """Pasa a MySQL lo escrito en el JSON (perfiles viejos o cambios durante una caída).
+
+    El JSON es más reciente que MySQL: sus perfiles reemplazan a los de la tabla y sus borrados
+    se aplican. Después se renombra a .migrated.
+    """
+    legacy, deleted = _read_json(), _json_deleted()
+    if not legacy and not deleted:
         return
     with _session_factory() as session:
-        if session.execute(select(UserProfile.id).limit(1)).first():
-            return
-        session.add_all(UserProfile(role_type=role, data=data) for role, data in legacy.items())
+        rows = {row.role_type: row for row in session.scalars(select(UserProfile))}
+        for role, data in legacy.items():
+            if role in rows:
+                rows[role].data = data
+            else:
+                session.add(UserProfile(role_type=role, data=data))
+        for role in deleted - set(legacy):
+            if role in rows:
+                session.delete(rows[role])
         session.commit()
     os.replace(JSON_PATH, JSON_PATH + '.migrated')
-    logger.info(f"Migrados {len(legacy)} perfiles de {JSON_PATH} a MySQL")
+    logger.info(f"Migrados {len(legacy)} perfiles y {len(deleted)} borrados de {JSON_PATH} a MySQL")
+
+
+def _find(session, role_type):
+    return session.scalars(select(UserProfile).where(UserProfile.role_type == role_type)).first()
 
 
 def get_all_profiles():
     """{role_type: perfil} de todos los perfiles."""
-    sessions = _sessions()
-    if sessions is None:
-        return _read_json()
-    with sessions() as session:
-        return {row.role_type: row.data for row in session.scalars(select(UserProfile).order_by(UserProfile.id))}
+    def db_op(session):
+        rows = session.scalars(select(UserProfile).order_by(UserProfile.id))
+        return {row.role_type: row.data for row in rows}
+    return _run(db_op, _read_json)
 
 
 def get_profile(role_type):
@@ -103,35 +148,35 @@ def get_first_profile():
 
 def save_profile(role_type, data):
     """Crea o reemplaza el perfil de un rol."""
-    sessions = _sessions()
-    if sessions is None:
-        profiles = _read_json()
-        profiles[role_type] = data
-        _write_json(profiles)
-        return
-    with sessions() as session:
-        row = session.scalars(select(UserProfile).where(UserProfile.role_type == role_type)).first()
+    def db_op(session):
+        row = _find(session, role_type)
         if row:
             row.data = data
         else:
             session.add(UserProfile(role_type=role_type, data=data))
         session.commit()
 
+    def json_op():
+        profiles = _read_json()
+        profiles[role_type] = data
+        _write_json(profiles, _json_deleted() - {role_type})
+    _run(db_op, json_op)
+
 
 def delete_profile(role_type):
     """Borra el perfil de un rol; devuelve los datos borrados o None si no existía."""
-    sessions = _sessions()
-    if sessions is None:
-        profiles = _read_json()
-        removed = profiles.pop(role_type, None)
-        if removed is not None:
-            _write_json(profiles)
-        return removed
-    with sessions() as session:
-        row = session.scalars(select(UserProfile).where(UserProfile.role_type == role_type)).first()
+    def db_op(session):
+        row = _find(session, role_type)
         if not row:
             return None
         removed = row.data
         session.delete(row)
         session.commit()
         return removed
+
+    def json_op():
+        profiles = _read_json()
+        removed = profiles.pop(role_type, None)
+        _write_json(profiles, _json_deleted() | {role_type})
+        return removed
+    return _run(db_op, json_op)
