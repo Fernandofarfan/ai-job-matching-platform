@@ -1,4 +1,5 @@
 """Tests del contador de tokens, el tope mensual y la caché de Gemini."""
+import time
 from types import SimpleNamespace
 from unittest import mock
 
@@ -59,8 +60,10 @@ def test_low_temperature_responses_are_cached(monkeypatch):
 def test_cache_is_shared_through_redis(monkeypatch):
     shared = {}
     fake = mock.Mock()
-    fake.get.side_effect = lambda k: shared.get(k)
     fake.setex.side_effect = lambda k, ttl, v: shared.__setitem__(k, v.encode())
+    fake.pipeline.return_value.get.return_value.ttl.return_value.execute.side_effect = (
+        lambda: (next(iter(shared.values()), None), 5)
+    )
     monkeypatch.setattr(ai_usage, '_redis', lambda: fake)
     client = _fake_gemini(monkeypatch)
     ai_engine._call_gemini('analizá esto', temperature=0.3)
@@ -68,11 +71,13 @@ def test_cache_is_shared_through_redis(monkeypatch):
     assert ai_engine._call_gemini('analizá esto', temperature=0.3) == 'respuesta'
     assert client.models.generate_content.call_count == 1
     assert ai_usage.summary()['cache_hits'] == 1
+    expires, _ = next(iter(ai_usage._cache.values()))
+    assert expires - time.monotonic() <= 5  # la copia local vence con la de Redis, no con un TTL nuevo
 
 
 def test_redis_errors_do_not_break_calls(monkeypatch):
     fake = mock.Mock()
-    fake.get.side_effect = fake.setex.side_effect = ConnectionError('caído')
+    fake.pipeline.side_effect = fake.setex.side_effect = ConnectionError('caído')
     monkeypatch.setattr(ai_usage, '_redis', lambda: fake)
     client = _fake_gemini(monkeypatch)
     assert ai_engine._call_gemini('analizá esto', temperature=0.3) == 'respuesta'
