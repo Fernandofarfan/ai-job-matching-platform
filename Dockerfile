@@ -13,9 +13,10 @@ RUN apt-get update && apt-get install -y \
 # Actualiza pip
 RUN pip install --upgrade pip
 
-# Copia los requerimientos e instálalos
+# Copia los requerimientos e instálalos: pip verifica el hash de cada paquete (requirements.txt
+# sale de pip-compile --generate-hashes) y corta si alguno no coincide
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --require-hashes -r requirements.txt
 
 # Copia todo el código fuente del proyecto
 COPY . .

@@ -233,8 +233,8 @@ python -m venv .venv
 .venv\Scripts\activate  # Windows
 # source .venv/bin/activate  # Mac/Linux
 
-# 3. Instalar dependencias
-pip install -r requirements.txt
+# 3. Instalar dependencias (requirements.txt trae versión y hash de cada paquete)
+pip install --require-hashes -r requirements.txt
 
 # 4. Instalar modelo de spaCy (IMPORTANTE)
 python -m spacy download en_core_web_sm
@@ -399,7 +399,8 @@ EmpleoIA/
 ├── 📄 resume_parser.py       # Parser de CVs
 ├── 📄 db_config.py           # Configuración de MySQL
 │
-├── 📄 requirements.txt       # Dependencias Python
+├── 📄 requirements.in        # Dependencias directas (se editan acá)
+├── 📄 requirements.txt       # Generado con pip-compile: todas las dependencias con hash
 ├── 📄 docker-compose.yml     # 🆕 Stack completo con Redis + Celery
 ├── 📄 db_schema.py           # Metadata de los modelos y chequeo de drift contra la base
 ├── 📄 .env.example           # Plantilla de configuración

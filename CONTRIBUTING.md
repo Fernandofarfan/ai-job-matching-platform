@@ -182,6 +182,15 @@ Antes de enviar tu PR, asegurate de que:
 
 ## 🧪 Testing
 
+Para agregar o subir una dependencia, editá `requirements.in` y regenerá `requirements.txt` (con la versión y el hash de cada paquete, incluidas las indirectas):
+
+```bash
+pip install pip-tools==7.6.2
+pip-compile --generate-hashes --allow-unsafe --no-strip-extras requirements.in -o requirements.txt
+```
+
+El CI falla si `requirements.txt` no coincide con `requirements.in`.
+
 Instalá los hooks una vez (`pip install pre-commit && pre-commit install`): en cada commit corren Ruff, mypy y gitleaks. A mano: `ruff check .` y `mypy`.
 
 Antes de enviar un PR, ejecutá los tests:
