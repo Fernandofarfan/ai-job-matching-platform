@@ -64,7 +64,7 @@
 
 ### 🚀 **Nueva Arquitectura y Escalabilidad (Fases 1-5 completadas)**
 - **Migración a Playwright**: El motor de scraping abandona Selenium y adopta `playwright` asincrónico para máxima velocidad y evitar detecciones.
-- **FastAPI Core**: las APIs JSON y las páginas ya migradas (`routers/pages.py`: inicio, scraper, resultados, perfil, entrevista, tracker y analytics; `routers/auth_pages.py`: login, registro, recuperación, verificación en dos pasos y Google; `routers/account_pages.py`: Mi cuenta, Administración y exportación; `routers/content_pages.py`: resultados, documentos, perfiles y alertas) y `routers/scraper_pages.py`: búsquedas y conexiones) corren en FastAPI (`main.py`). Flask ya no forma parte del proyecto; las sesiones abiertas antes siguen valiendo (`web_settings.py`).
+- **FastAPI Core**: las APIs JSON y las páginas ya migradas (`routers/pages.py`: inicio, scraper, resultados, perfil, entrevista, tracker y analytics; `routers/auth_pages.py`: login, registro, recuperación, verificación en dos pasos y Google; `routers/account_pages.py`: Mi cuenta; `routers/security_pages.py`: segundo factor y passkeys; `routers/admin_pages.py`: Administración; `routers/export_pages.py`: Excel y PDF; `routers/content_pages.py`: resultados y documentos; `routers/profile_pages.py`: perfiles de CV; `routers/alert_pages.py`: alertas y "me interesa") y `routers/scraper_pages.py`: búsquedas y conexiones) corren en FastAPI (`main.py`). Flask ya no forma parte del proyecto; las sesiones abiertas antes siguen valiendo (`web_settings.py`).
 - **Entorno DevContainer**: Repositorio "Docker-first" con `.devcontainer` que soluciona conflictos de C++ y restricciones de Windows Defender para dependencias de IA.
 - **Web Speech API**: Interfaz de *Mock Interviews* actualizada con funcionalidad de voz-a-texto en la UI.
 - **Autonomías Externas**: Tracker automático para Gmail vía OAuth e introducción de auto-aplicación en LinkedIn.
@@ -365,7 +365,7 @@ EmpleoIA/
 ├── 📂 tasks/                 # 🆕 Tareas asíncronas Celery
 │   ├── scraping_tasks.py     # Scraping en background
 │   ├── ai_tasks.py           # Análisis IA por lotes
-│   └── notification_tasks.py # Notificaciones por email
+│   └── notification_tasks.py # Envío de notificaciones (email, Telegram, push)
 │
 ├── 📂 templates/             # Plantillas HTML (Frontend)
 │   ├── base.html             # Plantilla base + AI Copilot
@@ -401,6 +401,8 @@ EmpleoIA/
 ├── 📄 market_analyzer.py     # 🆕 Análisis salarial
 ├── 📄 notifier.py            # 🆕 Notificaciones por email
 ├── 📄 resume_parser.py       # Parser de CVs
+├── 📄 job_matcher.py         # Match entre perfil y oferta
+├── 📄 notification_messages.py # Textos de emails y mensajes de Telegram
 ├── 📄 db_config.py           # Configuración de MySQL
 │
 ├── 📄 requirements.in        # Dependencias directas (se editan acá)

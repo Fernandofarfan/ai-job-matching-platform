@@ -44,7 +44,7 @@ def language(name):
 
 def evaluate(dataset=None, matcher=None):
     """{'profiles': {nombre: métricas y top-5}, 'mean': promedio, 'by_language': promedio por idioma del CV}."""
-    from resume_parser import jobMatcher
+    from job_matcher import jobMatcher
     dataset = dataset or load()
     matcher = matcher or jobMatcher()
     jobs = dataset['jobs']

@@ -6,6 +6,15 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar] - Archivos grandes partidos
+
+Sin cambios de comportamiento: mismas rutas, mismos nombres de ruta y mismos nombres de tareas de Celery.
+
+- `resume_parser.py` (786 líneas) → `resume_parser.py` (lectura del CV) y `job_matcher.py` (`jobMatcher`, `MAX_REQUIRED_YEARS`).
+- `routers/account_pages.py` (772) → `account_pages.py` (Mi cuenta), `security_pages.py` (segundo factor y passkeys), `admin_pages.py` y `export_pages.py`.
+- `routers/content_pages.py` (602) → `content_pages.py` (resultados y documentos), `profile_pages.py` y `alert_pages.py`.
+- `tasks/notification_tasks.py` (561) → las tareas y el envío quedan ahí; los textos de emails y de Telegram pasan a `notification_messages.py`.
+
 ## [Sin publicar] - Peso del ranking aprendido de "me interesa / no me interesa"
 
 - `job_ranking.learn_weight()`: con al menos `MIN_TUNING` (5) ofertas marcadas con match de cada lado, elige por cuenta el peso del ranking frente al match (0 a 0,8) que maximiza el AUC de "me interesa" sobre "no me interesa". La preferencia de cada oferta marcada sale de un modelo entrenado sin ella. A igual AUC gana el peso más cercano a `RANKING_WEIGHT`.

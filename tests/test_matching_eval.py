@@ -29,7 +29,7 @@ def test_dataset_labels_point_to_existing_jobs():
     ('Empresa con 30 años en el mercado.', 0),
 ])
 def test_required_experience_in_spanish_and_portuguese(text, years):
-    from resume_parser import jobMatcher
+    from job_matcher import jobMatcher
     assert jobMatcher()._extract_required_experience(text) == years
 
 
@@ -40,7 +40,7 @@ def test_dataset_covers_three_languages():
 
 def test_company_age_is_not_required_experience():
     """Los años de la empresa no se toman como experiencia pedida."""
-    from resume_parser import jobMatcher
+    from job_matcher import jobMatcher
     m = jobMatcher()
     assert m._extract_required_experience('Empresa con 30 años de experiencia en el mercado. Buscamos dev.') == 0
     assert m._extract_required_experience('Empresa com 25 anos de experiência. Pelo menos 2 anos em Java.') == 2

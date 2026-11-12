@@ -2,7 +2,8 @@
 import pandas as pd
 import pytest
 
-from resume_parser import jobMatcher, resumeParser
+from job_matcher import jobMatcher
+from resume_parser import resumeParser
 
 
 @pytest.fixture(scope='module')
