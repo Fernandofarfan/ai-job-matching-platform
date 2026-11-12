@@ -29,7 +29,8 @@ def test_celery_backend_queues_task(monkeypatch):
     fake.send_task.return_value.id = 'abc'
     with mock.patch.object(job_dispatch, 'resolve'), mock.patch('celery_app.celery', fake):
         assert job_dispatch.launch(status, 'bumeran_scraping', 'run_bumeran_job', [{'position': 'x'}]) == 'abc'
-    fake.send_task.assert_called_once_with(job_dispatch.TASK_NAME, args=['bumeran_scraping', 'run_bumeran_job', [[{'position': 'x'}]]])
+    fake.send_task.assert_called_once_with(job_dispatch.TASK_NAME, args=['bumeran_scraping', 'run_bumeran_job', [[{'position': 'x'}]]],
+                                                kwargs={'user_id': None})
     assert status['bumeran_scraping']['status'] == 'queued'
     assert status['bumeran_scraping']['task_id'] == 'abc'
 

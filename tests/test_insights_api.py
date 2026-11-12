@@ -21,9 +21,8 @@ def test_profile_summary_404_without_profile(api):
     assert resp.status_code == 404 and resp.json() == {'success': False, 'error': 'No profile found'}
 
 
-def test_insights_require_login(api, monkeypatch):
-    """Con APP_PASSWORD, todas las rutas migradas devuelven 401 sin sesión."""
-    monkeypatch.setenv('APP_PASSWORD', 'secreta')
+def test_insights_require_login(api, accounts_db):
+    """Con login obligatorio, todas las rutas migradas devuelven 401 sin sesión."""
     for url in ('/api/get_applications', '/api/all_profiles', '/api/profile_summary',
                 '/api/analytics/advanced', '/api/tracker/stats', '/api/ranking'):
         assert api.get(url).status_code == 401, url

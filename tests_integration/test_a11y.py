@@ -25,12 +25,12 @@ def test_login_page_is_accessible(page):
 
 
 @pytest.fixture(scope='module')
-def authed_page(browser, live_server, app_password):
+def authed_page(browser, live_server, credentials):
     """Una sola sesión iniciada para todas las páginas (no gasta el límite de intentos de login)."""
     context = browser.new_context(base_url=live_server, reduced_motion='reduce')
     page = context.new_page()
     page.set_default_timeout(20000)
-    page.app_password = app_password
+    page.credentials = credentials
     _login(page)
     yield page
     context.close()
