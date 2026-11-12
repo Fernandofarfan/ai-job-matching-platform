@@ -210,9 +210,9 @@ def redirect(request: Request, target: str, status_code: int = 302) -> RedirectR
     return save_session(request, RedirectResponse(target, status_code=status_code))
 
 
-def legacy(request: Request) -> dict:
-    """Globals de app.py (perfil, resultados, base, job_status)."""
-    return web_app_for(request).extensions['empleoia_app_globals']
+def services_for(request: Request):
+    """Servicios de la app (base, job_status, perfiles, búsquedas, conexiones) que arma app.py."""
+    return web_app_for(request).extensions['empleoia_services']
 
 
 def client_ip(request: Request) -> str:

@@ -20,7 +20,7 @@ def test_upload_resume_sanitizes_path_traversal(client, app):
     before = set(os.listdir('uploads'))
     data = {'role_type': '../x', 'resume': (io.BytesIO(b'cv'), '../../evil.txt')}
     save_profile = mock.Mock(return_value=True)
-    with mock.patch.dict(app.extensions['empleoia_app_globals'], {'save_user_profile_for_role': save_profile}):
+    with mock.patch.object(app.extensions['empleoia_services'].profiles, 'save_user_profile_for_role', save_profile):
         client.post('/upload_resume', data=data, content_type='multipart/form-data')
     new_files = set(os.listdir('uploads')) - before
     try:

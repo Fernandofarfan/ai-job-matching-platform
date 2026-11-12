@@ -18,9 +18,9 @@ JsonBody = Body(default_factory=dict)
 
 
 def get_resume_text():
-    """Lector del CV guardado en el perfil (app.py); se sobrescribe en tests."""
-    import app
-    return app.get_resume_text_from_profile
+    """Lector del CV guardado en el perfil (services/profiles.py); se sobrescribe en tests."""
+    from services import profiles
+    return profiles.get_resume_text_from_profile
 
 
 def get_optimizer():

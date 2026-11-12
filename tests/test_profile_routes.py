@@ -3,8 +3,8 @@ from unittest import mock
 
 
 def _patch_profiles(app, profiles):
-    """Reemplaza get_all_user_profiles en el módulo de la app por un valor fijo."""
-    return mock.patch.dict(app.extensions['empleoia_app_globals'], {'get_all_user_profiles': lambda: profiles})
+    """Reemplaza get_all_user_profiles de services/profiles.py por un valor fijo."""
+    return mock.patch.object(app.extensions['empleoia_services'].profiles, 'get_all_user_profiles', lambda: profiles)
 
 
 def test_view_profile_redirects_to_latest_role(client, app):

@@ -382,7 +382,8 @@ EmpleoIA/
 │   └── variables.tf
 │
 ├── 📄 main.py                # App FastAPI (routers, login, límites, métricas, páginas de error)
-├── 📄 app.py                 # Configuración de la web (web_settings.py), helpers de perfiles y scrapers en segundo plano
+├── 📄 app.py                 # Arma la web (web_settings.py) y sus servicios (AppServices)
+├── 📁 services/              # Perfiles, búsquedas de Indeed/LinkedIn, conexiones y pruebas de scrapers
 ├── 📁 routers/               # Páginas y APIs de FastAPI por área
 ├── 📄 ai_engine.py           # 🆕 Motor de IA centralizado (Gemini)
 ├── 📄 celery_app.py          # 🆕 Configuración de Celery

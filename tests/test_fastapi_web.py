@@ -1,4 +1,5 @@
 """Páginas de FastAPI: sesión, CSRF, avisos y URLs compatibles con lo que dejaba Flask (fastapi_web.py)."""
+from types import SimpleNamespace
 from unittest import mock
 import re
 
@@ -211,11 +212,11 @@ def test_scraper_forms_need_csrf_and_launch_for_the_account(client, app, monkeyp
 def test_test_task_status_rejects_paths_and_other_accounts(client, app):
     """task_id debe ser un UUID y la prueba tiene que ser de la cuenta actual."""
     import uuid
-    app_globals = app.extensions['empleoia_app_globals']
+    probe = app.extensions['empleoia_services'].probe_tasks
     assert client.get('/test_task_status?task_id=../../secret').status_code == 404
     mine, other = str(uuid.uuid4()), str(uuid.uuid4())
-    app_globals['test_tasks'][mine] = {'status': 'completed', 'result': [{'Title': 'x'}], 'user_id': None}
-    app_globals['test_tasks'][other] = {'status': 'completed', 'result': [], 'user_id': 999}
+    probe.tasks[mine] = {'status': 'completed', 'result': [{'Title': 'x'}], 'user_id': None}
+    probe.tasks[other] = {'status': 'completed', 'result': [], 'user_id': 999}
     assert client.get(f'/test_task_status?task_id={mine}').get_json()['count'] == 1
     assert client.get(f'/test_task_status?task_id={other}').status_code == 404
 
@@ -225,9 +226,9 @@ def test_linkedin_test_fails_when_token_login_fails(app):
     from routers import scraper_pages
     fake = mock.Mock()
     fake.return_value.login_with_cookie.return_value = False
-    app_globals = {'test_tasks': {'t': {}}, 'save_task_to_disk': lambda tid: None}
+    probe = SimpleNamespace(tasks={'t': {}}, save=lambda tid: None)
     with mock.patch('scrapers.linkedin_pw.linkedinClass', fake):
-        scraper_pages._run_linkedin_test(app_globals, 't', 'tok', 'python', '', 5)
-    assert app_globals['test_tasks']['t']['status'] == 'failed'
+        scraper_pages._run_linkedin_test(probe, 't', 'tok', 'python', '', 5)
+    assert probe.tasks['t']['status'] == 'failed'
     fake.return_value.search_jobs.assert_not_called()
     fake.return_value.close.assert_called_once()

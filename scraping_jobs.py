@@ -9,11 +9,11 @@ import pandas as pd
 
 import accounts
 import scraper_stats
-from app import job_status
 from scrapers.bumeran_scraper import BumeranScraper
 from scrapers.computrabajo_scraper import ComputrabajoScraper
 from scrapers.getonboard_scraper import GetOnBoardScraper
 from scrapers.zonajobs_scraper import ZonaJobsScraper
+from services.state import job_status
 
 logger = logging.getLogger(__name__)
 

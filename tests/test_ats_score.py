@@ -51,7 +51,7 @@ def test_ats_routes(client, api, app, monkeypatch):
     assert api.post('/api/ats_score', json={'resume_text': ''}).status_code == 200
     api.app.dependency_overrides[documents.get_resume_text] = lambda: lambda: None
     assert api.post('/api/ats_score', json={'job_description': JOB}).status_code == 400
-    monkeypatch.setitem(app.extensions['empleoia_app_globals'], 'get_resume_text_from_profile',
+    monkeypatch.setattr(app.extensions['empleoia_services'].profiles, 'get_resume_text_from_profile',
                         lambda: GOOD_CV)
     page = client.post('/ats_score', data={'job_description': JOB})
     assert page.status_code == 200 and 'Puntaje ATS' in page.get_data(as_text=True)

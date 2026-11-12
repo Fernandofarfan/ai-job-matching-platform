@@ -62,13 +62,13 @@ def test_refresh_ignores_finished_tasks():
 
 def test_worker_publishes_progress_and_result():
     from tasks import scraping_tasks
-    fake_app = mock.Mock(job_status={})
+    fake_state = mock.Mock(job_status={})
 
     def job(position):
-        fake_app.job_status['k'].update(progress=50, message=position)
-        fake_app.job_status['k'].update(status='completed', progress=100)
+        fake_state.job_status['k'].update(progress=50, message=position)
+        fake_state.job_status['k'].update(status='completed', progress=100)
 
-    with mock.patch.dict('sys.modules', {'app': fake_app}), \
+    with mock.patch.dict('sys.modules', {'services.state': fake_state}), \
             mock.patch('job_dispatch.resolve', return_value=job), \
             mock.patch.object(scraping_tasks.run_web_job, 'update_state'):
         result = scraping_tasks.run_web_job.run('k', 'run_bumeran_job', ['python'], poll_seconds=0.01)
