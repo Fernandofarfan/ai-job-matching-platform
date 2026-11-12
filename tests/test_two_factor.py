@@ -31,7 +31,7 @@ def _enable(client):
     secret = re.search(r'id="totp-secret">([A-Z2-7]+)<', page).group(1)
     assert '<svg' in page
     page = client.post('/account/2fa/enable', data={'code': _code(secret)}).get_data(as_text=True)
-    codes = re.findall(r'<li>([0-9a-f]{5}-[0-9a-f]{5})</li>', page)
+    codes = re.findall(r'<li>([0-9a-f]{5}(?:-[0-9a-f]{5}){3})</li>', page)
     return secret, codes
 
 
@@ -48,7 +48,7 @@ def test_setup_shows_qr_and_recovery_codes_once(client, ana):
     bad = client.post('/account/2fa/enable', data={'code': '000000' if _code(secret) != '000000' else '111111'})
     assert not two_factor.is_enabled(ana) and 'totp-secret' in bad.get_data(as_text=True)
     response = client.post('/account/2fa/enable', data={'code': _code(secret)})
-    codes = re.findall(r'<li>([0-9a-f]{5}-[0-9a-f]{5})</li>', response.get_data(as_text=True))
+    codes = re.findall(r'<li>([0-9a-f]{5}(?:-[0-9a-f]{5}){3})</li>', response.get_data(as_text=True))
     assert two_factor.is_enabled(ana) and len(codes) == 10
     assert response.headers['Cache-Control'] == 'no-store'
     assert 'recovery-codes' not in client.get('/account').get_data(as_text=True)
@@ -113,7 +113,7 @@ def test_disable_requires_password_and_code(client, ana):
 def test_regenerate_recovery_codes_invalidates_old(client, ana):
     secret, old = _enable(client)
     page = client.post('/account/2fa/recovery', data={'password': PASSWORD, 'code': _code(secret, 1)})
-    new = re.findall(r'<li>([0-9a-f]{5}-[0-9a-f]{5})</li>', page.get_data(as_text=True))
+    new = re.findall(r'<li>([0-9a-f]{5}(?:-[0-9a-f]{5}){3})</li>', page.get_data(as_text=True))
     assert len(new) == 10 and not set(new) & set(old)
     _login(client)
     client.post('/login/2fa', data={'code': old[0]})

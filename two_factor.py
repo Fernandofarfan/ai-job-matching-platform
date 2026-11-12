@@ -62,8 +62,9 @@ def _hash(code: str) -> str:
 
 
 def _new_recovery_codes() -> list:
-    """Códigos legibles tipo `a1b2c-d3e4f`."""
-    return [f'{c[:5]}-{c[5:]}' for c in (secrets.token_hex(5) for _ in range(RECOVERY_CODES))]
+    """Códigos de 80 bits tipo `a1b2c-d3e4f-a5b6c-d7e8f`: aun con la base filtrada no se adivinan."""
+    codes = (secrets.token_hex(10) for _ in range(RECOVERY_CODES))
+    return ['-'.join(c[i:i + 5] for i in range(0, 20, 5)) for c in codes]
 
 
 def _row(user_id: Optional[int]) -> Optional[UserTotp]:
