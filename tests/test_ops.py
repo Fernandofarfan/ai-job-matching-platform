@@ -91,7 +91,10 @@ def test_concurrent_first_hits_share_one_counter(monkeypatch):
     monkeypatch.setenv('AI_RATE_LIMIT', '5 per minute')
     rate_limit.reset()
     results = []
-    threads = [threading.Thread(target=lambda: results.append(rate_limit.hit_ai_limit('7.7.7.7'))) for _ in range(20)]
+    def hit():
+        results.append(rate_limit.hit_ai_limit('7.7.7.7'))
+
+    threads = [threading.Thread(target=hit) for _ in range(20)]
     for t in threads:
         t.start()
     for t in threads:

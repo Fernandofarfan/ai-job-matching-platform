@@ -29,12 +29,17 @@ def _limiter():
     with _lock:
         if not _state:
             storage = storage_from_string(os.getenv('RATELIMIT_STORAGE_URI', 'memory://'))
-            _state.update(limit=_parse_limit(), storage=storage, limiter=MovingWindowRateLimiter(storage))
+            _state.update(
+                limit=_parse_limit(), storage=storage, limiter=MovingWindowRateLimiter(storage),
+            )
         return _state
 
 
 def hit_ai_limit(client_ip: str) -> bool:
-    """Suma una llamada de IA para la IP; False si superó AI_RATE_LIMIT. Si el storage falla, deja pasar."""
+    """Suma una llamada de IA para la IP; False si superó AI_RATE_LIMIT.
+
+    Si el storage falla, deja pasar la solicitud.
+    """
     try:
         state = _limiter()
         return state['limiter'].hit(state['limit'], 'ai', client_ip or 'unknown')
