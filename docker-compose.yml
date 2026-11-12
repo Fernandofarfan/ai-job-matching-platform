@@ -33,6 +33,11 @@ services:
       - LINKEDIN_PASSWORD=${LINKEDIN_PASSWORD:-}
       - INDEED_EMAIL=${INDEED_EMAIL:-}
       - INDEED_PASSWORD=${INDEED_PASSWORD:-}
+      - METRICS_TOKEN=${METRICS_TOKEN:-}
+      - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      - OTEL_SERVICE_NAME=${OTEL_SERVICE_NAME:-empleoia}
+      - OTEL_TRACES_SAMPLER=${OTEL_TRACES_SAMPLER:-parentbased_traceidratio}
+      - OTEL_TRACES_SAMPLER_ARG=${OTEL_TRACES_SAMPLER_ARG:-0.1}
     volumes:
       - ./uploads:/app/uploads
       - ./results:/app/results
@@ -69,6 +74,10 @@ services:
       - SMTP_USER=${SMTP_USER:-}
       - SMTP_PASSWORD=${SMTP_PASSWORD:-}
       - NOTIFICATION_EMAIL=${NOTIFICATION_EMAIL:-}
+      - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      - OTEL_SERVICE_NAME=${OTEL_SERVICE_NAME:-empleoia}-worker
+      - OTEL_TRACES_SAMPLER=${OTEL_TRACES_SAMPLER:-parentbased_traceidratio}
+      - OTEL_TRACES_SAMPLER_ARG=${OTEL_TRACES_SAMPLER_ARG:-0.1}
     volumes:
       - ./uploads:/app/uploads
       - ./results:/app/results
