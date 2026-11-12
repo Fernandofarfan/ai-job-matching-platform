@@ -460,8 +460,8 @@
               <div class="mb-3">
                 <label class="small text-muted fw-bold text-uppercase">Fechas</label>
                 <div class="small">
-                  <div class="mb-1">Guardado: ${new Date(job.date_saved).toLocaleDateString()}</div>
-                  <div class="mb-1">Aplicado: ${job.date_applied ? new Date(job.date_applied).toLocaleDateString() : 'Pendiente'}</div>
+                  <div class="mb-1">Guardado: ${new Date(job.date_saved || job.created_at).toLocaleDateString()}</div>
+                  <div class="mb-1">Aplicado: ${(job.date_applied || job.applied_date) ? new Date(job.date_applied || job.applied_date).toLocaleDateString() : 'Pendiente'}</div>
                 </div>
               </div>
               <div class="mb-3">

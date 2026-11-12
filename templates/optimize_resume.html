@@ -47,7 +47,7 @@
   <div class="col-lg-7">
     <div class="card border-0 shadow-sm h-100">
       <div class="card-body p-4">
-        {% if ats_result.score is number %}
+        {% if ats_result is defined and ats_result.score is number %}
         <h2 class="h5 fw-bold mb-3">Puntaje ATS: <span class="badge {{ 'bg-success' if ats_result.score >= 75 else 'bg-warning text-dark' if ats_result.score >= 50 else 'bg-danger' }}">{{ ats_result.score }}/100</span></h2>
         <ul class="list-group mb-3">
           {% for c in ats_result.checks %}
