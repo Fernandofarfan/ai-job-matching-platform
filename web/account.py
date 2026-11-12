@@ -1,6 +1,7 @@
 """Cuenta: cambiar y recuperar la contraseña, verificar el email y borrar la cuenta."""
 import logging
 import os
+from urllib.parse import urlsplit
 
 from flask import flash, make_response, redirect, render_template, request, session, url_for
 
@@ -9,7 +10,7 @@ import auth
 from app import _clear_offline_data, app, delete_user_profile, limiter
 
 logger = logging.getLogger(__name__)
-LOCAL_HOSTS = {'localhost', '127.0.0.1', '[::1]'}
+LOCAL_HOSTS = {'localhost', '127.0.0.1', '::1'}
 
 
 def _public_url(endpoint: str, **values):
@@ -17,7 +18,7 @@ def _public_url(endpoint: str, **values):
     base = os.getenv('PUBLIC_BASE_URL', '').rstrip('/')
     if not base:
         # sin PUBLIC_BASE_URL solo se confía en el Host si es local: si no, un Host falso robaría el enlace
-        if request.host.split(':')[0] not in LOCAL_HOSTS:
+        if urlsplit('//' + request.host).hostname not in LOCAL_HOSTS:
             logger.error('Definí PUBLIC_BASE_URL para mandar enlaces por email')
             return None
         base = request.url_root.rstrip('/')

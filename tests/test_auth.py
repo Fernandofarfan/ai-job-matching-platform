@@ -240,3 +240,9 @@ def test_admin_account_kept_while_others_exist(registered, monkeypatch, app):
     _login(registered)
     registered.post('/account/delete', data={'password': PASSWORD})
     assert accounts.find_user_id('ana@example.com')
+
+
+def test_reset_link_on_ipv6_loopback(registered, outbox):
+    """[::1] es local: recibe el enlace aunque no haya PUBLIC_BASE_URL."""
+    registered.post('/forgot_password', data={'email': 'ana@example.com'}, headers={'Host': '[::1]:5000'})
+    assert len(outbox) == 1
