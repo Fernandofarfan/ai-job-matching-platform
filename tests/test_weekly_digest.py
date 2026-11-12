@@ -67,6 +67,8 @@ def test_seen_since_counts_only_recent_and_own(alerts_db):
     with accounts.as_user(1):
         total, recent = job_alerts.seen_since(datetime.now() - timedelta(days=7), limit=2)
     assert total == 3 and len(recent) == 2 and {r['title'] for r in recent} <= {'T0', 'T1', 'T2'}
+    with accounts.as_user(1):
+        assert job_alerts.seen_since(datetime.now() - timedelta(days=30), until=old + timedelta(seconds=1))[0] == 1
 
 
 def _users(_accounts_sqlite):
@@ -108,7 +110,7 @@ def test_task_retries_failed_send_and_skips_without_account(monkeypatch, _accoun
     db = mock.Mock()
     db.get_all_tracked_jobs.return_value = [_job(applied_date=datetime.now() - timedelta(days=30))]
     monkeypatch.setattr('db_config.db_manager', db, raising=False)
-    monkeypatch.setattr(job_alerts, 'seen_since', lambda since: (0, []))
+    monkeypatch.setattr(job_alerts, 'seen_since', lambda since, until=None: (0, []))
     monkeypatch.setattr(nt, 'email_configured', lambda: True)
     monkeypatch.setattr(nt, '_send_email', mock.Mock(return_value=False))
     assert nt.send_weekly_digests()['sent'] == 0
