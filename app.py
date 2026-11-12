@@ -95,6 +95,8 @@ def login():
     next_url = request.args.get('next', '')
     if not auth.auth_enabled():
         return redirect(_safe_next(next_url))
+    if request.method == 'GET' and auth.is_session_valid(session, app.secret_key):
+        return redirect(_safe_next(next_url))
     if request.method == 'POST':
         if auth.check_password(request.form.get('password', '')):
             session.clear()

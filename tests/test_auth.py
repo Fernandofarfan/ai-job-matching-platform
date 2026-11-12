@@ -80,3 +80,12 @@ def test_login_and_logout_clear_offline_data(client, monkeypatch):
     assert client.get('/login').headers['Clear-Site-Data'] == '"cache", "storage"'
     _login(client, 'secreta')
     assert client.post('/logout').headers['Clear-Site-Data'] == '"cache", "storage"'
+
+
+def test_login_page_keeps_offline_data_with_active_session(client, monkeypatch):
+    """Con sesión activa, abrir /login redirige sin borrar los datos offline."""
+    monkeypatch.setenv('APP_PASSWORD', 'secreta')
+    _login(client, 'secreta')
+    response = client.get('/login')
+    assert response.status_code == 302
+    assert 'Clear-Site-Data' not in response.headers
