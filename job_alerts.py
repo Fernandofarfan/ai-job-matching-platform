@@ -103,7 +103,12 @@ def _normalize(text):
 
 def _field(job, name):
     """Lee un campo de oferta con la mayúscula de los scrapers ('Title') o en minúscula."""
-    return job.get(name.capitalize()) or job.get(name) or ''
+    for key in (name.capitalize(), name):
+        value = job.get(key)
+        # NaN de pandas (celda vacía del CSV) es truthy: cuenta como vacío, igual que en la tabla
+        if value and value == value:
+            return value
+    return ''
 
 
 def fingerprint(job):
