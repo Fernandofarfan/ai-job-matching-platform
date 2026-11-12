@@ -48,7 +48,26 @@ def compare(min_ndcg=0.0, as_json=False):
             if not embeddings.enabled() and backend == 'embeddings':
                 results[backend] = {'skipped': 'sin GEMINI_API_KEY: no se mide'}
                 continue
-            results[backend] = {'mean': matching_eval.evaluate()['mean']}
+            if backend == 'tfidf':
+                results[backend] = {'mean': matching_eval.evaluate()['mean']}
+                continue
+            # si Gemini falla o se agota el tope, el matcher vuelve a TF-IDF en silencio: se cuentan esos casos
+            fallbacks = 0
+            original = embeddings.similarity
+
+            def counted(profile_text, job_text, _similarity=original):
+                nonlocal fallbacks
+                value = _similarity(profile_text, job_text)
+                fallbacks += value is None
+                return value
+
+            embeddings.similarity = counted
+            try:
+                mean = matching_eval.evaluate()['mean']
+            finally:
+                embeddings.similarity = original
+            results[backend] = ({'skipped': f'{fallbacks} comparaciones cayeron a TF-IDF: no se mide'} if fallbacks
+                                else {'mean': mean})
     finally:
         if previous is None:
             os.environ.pop('MATCHING_BACKEND', None)

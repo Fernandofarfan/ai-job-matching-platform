@@ -39,3 +39,13 @@ def test_compare_honors_json_and_threshold(monkeypatch, capsys):
     assert eval_matching.main(['--compare', '--json', '--min-ndcg', '1.01']) == 1
     out = json.loads(capsys.readouterr().out)
     assert 'mean' in out['tfidf'] and 'skipped' in out['embeddings']
+
+
+def test_compare_does_not_report_tfidf_as_embeddings(monkeypatch, capsys):
+    import embeddings
+    monkeypatch.setattr(embeddings, 'enabled', lambda: True)
+    monkeypatch.setattr(embeddings, 'embed', lambda texts: None)
+    from scripts import eval_matching
+    assert eval_matching.main(['--compare', '--json']) == 0
+    out = json.loads(capsys.readouterr().out)
+    assert 'cayeron a TF-IDF' in out['embeddings']['skipped']
