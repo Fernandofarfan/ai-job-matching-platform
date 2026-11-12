@@ -136,6 +136,14 @@ def test_run_all_skips_paused(db):
     assert [r['search_id'] for r in results] == [a['id']]
 
 
+def test_run_all_skips_blocked_accounts(db, monkeypatch):
+    """Las alertas de una cuenta bloqueada desde Administración no corren."""
+    import accounts
+    job_alerts.create_search({'position': 'a', 'portals': ['bumeran']})
+    monkeypatch.setattr(accounts, 'blocked_ids', lambda: {None})
+    assert job_alerts.run_all(mock.Mock(), lambda p: _FakeScraper([])) == []
+
+
 def test_telegram_message_escapes_and_truncates(monkeypatch):
     """El texto scrapeado se escapa."""
     jobs = [_job(f'<b>Dev {i}</b>', match_percent=75.0) for i in range(3)]

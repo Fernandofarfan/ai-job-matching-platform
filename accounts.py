@@ -126,12 +126,17 @@ def owner_ids(active_only: bool = False) -> list:
     `active_only` deja afuera las cuentas bloqueadas (avisos); la retención de datos sí las recorre."""
     ids = user_ids()
     if active_only and ids:
-        with _sessions()() as session:
-            blocked = set(session.execute(select(User.id).where(User.disabled_at.isnot(None))).scalars())
+        blocked = blocked_ids()
         ids = [i for i in ids if i not in blocked]
     if not ids or os.getenv('LOGIN_REQUIRED', 'true').strip().lower() == 'false':
         ids.append(None)
     return ids
+
+
+def blocked_ids() -> set:
+    """Cuentas bloqueadas desde el panel de administración (no reciben avisos)."""
+    with _sessions()() as session:
+        return set(session.execute(select(User.id).where(User.disabled_at.isnot(None))).scalars())
 
 
 def get_user(user_id) -> Optional[dict]:
