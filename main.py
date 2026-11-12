@@ -81,8 +81,8 @@ async def record_metrics(request: Request, call_next):
 
 
 @app.get("/metrics", include_in_schema=False)
-async def metrics(authorization: str | None = Header(default=None)):
-    """Métricas Prometheus; exige `Authorization: Bearer $METRICS_TOKEN` (sin token configurado, 404)."""
+def metrics(authorization: str | None = Header(default=None)):
+    """Corre en el threadpool: render() lee Redis de forma sincrónica. Métricas Prometheus; exige `Authorization: Bearer $METRICS_TOKEN` (sin token configurado, 404)."""
     allowed = observability.metrics_allowed(authorization)
     if allowed is None:
         return JSONResponse({"detail": "Not Found"}, status_code=404)

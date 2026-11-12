@@ -18,8 +18,11 @@ def view_file(filename):
     try:
         file_path = os.path.join('results', filename)
         if os.path.exists(file_path) and filename.endswith('.csv'):
-            # SOLUCIÓN: latin-1 puede decodificar cualquier byte (0-255) sin errores
-            df = pd.read_csv(file_path, encoding='latin-1')
+            # Los scrapers escriben UTF-8 (Bumeran con BOM); latin-1 queda para CSVs viejos
+            try:
+                df = pd.read_csv(file_path, encoding='utf-8-sig')
+            except UnicodeDecodeError:
+                df = pd.read_csv(file_path, encoding='latin-1')
             
             has_matches = 'overall_match' in df.columns
             
