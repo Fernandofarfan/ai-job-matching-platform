@@ -52,6 +52,11 @@ run "staging" {
   }
 
   assert {
+    condition     = google_storage_bucket.uploads.soft_delete_policy[0].retention_duration_seconds == 0
+    error_message = "Sin soft delete: un CV borrado no debe poder restaurarse"
+  }
+
+  assert {
     condition     = one(google_storage_bucket.uploads.lifecycle_rule[0].condition).age == 31
     error_message = "El bucket debe borrar CVs pasada la retención"
   }

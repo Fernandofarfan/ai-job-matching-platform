@@ -196,9 +196,12 @@ resource "google_storage_bucket" "uploads" {
   force_destroy               = !local.prod
   labels                      = local.labels
 
-  # Sin versionado: un CV borrado ("Borrar mis datos" o retención) no debe quedar en versiones viejas.
+  # Sin versionado ni soft delete: un CV borrado ("Borrar mis datos" o retención) no debe poder recuperarse.
   versioning {
     enabled = false
+  }
+  soft_delete_policy {
+    retention_duration_seconds = 0
   }
 
   # Respaldo de la retención de la app por si el worker no corre.
