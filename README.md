@@ -347,7 +347,7 @@ docker-compose logs -f web
 
 ### Calidad del matching
 
-`python scripts/eval_matching.py` ordena las ofertas de `eval/matching_dataset.json` para cada CV etiquetado y muestra NDCG@5, precisión@3 y MRR. Con `MATCHING_BACKEND=embeddings` (y `GEMINI_API_KEY`) mide el matching por embeddings, y `--compare` mide los dos seguidos. El dataset tiene CVs y ofertas en inglés, español y portugués. `--min-ndcg 0.9` sale con código 1 si el promedio queda por debajo. Para cubrir un caso nuevo, sumá ofertas o CVs con sus etiquetas al JSON.
+`python scripts/eval_matching.py` ordena las ofertas de `eval/matching_dataset.json` para cada CV etiquetado y muestra NDCG@5, precisión@3 y MRR. Con `MATCHING_BACKEND=embeddings` (y `GEMINI_API_KEY`) mide el matching por embeddings, y `--compare` mide los dos seguidos, en total y por idioma del CV, con la diferencia entre ambos. El workflow "Comparar matching" lo corre los lunes y a pedido con el secreto `GEMINI_API_KEY`, y deja el JSON como artefacto. El dataset tiene CVs y ofertas en inglés, español y portugués. `--min-ndcg 0.9` sale con código 1 si el promedio queda por debajo. Para cubrir un caso nuevo, sumá ofertas o CVs con sus etiquetas al JSON.
 
 ## 📁 Estructura del Proyecto
 
