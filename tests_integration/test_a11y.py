@@ -7,7 +7,7 @@ AXE_URL = 'https://cdn.jsdelivr.net/npm/axe-core@4.10.2/axe.min.js'
 PAGES = ['/', '/scraper', '/results', '/profile', '/view_profile', '/mock-interview', '/tracker', '/analytics',
          '/alerts', '/optimize_resume', '/batch_cover_letters', '/batch_optimize', '/connections', '/account',
          '/admin', '/no-existe']
-PUBLIC_PAGES = ['/login', '/forgot_password']
+PUBLIC_PAGES = ['/login', '/forgot_password', '/terms', '/privacy']
 BLOCKING = {'serious', 'critical'}
 
 

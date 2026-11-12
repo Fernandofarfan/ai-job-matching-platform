@@ -20,7 +20,7 @@ def _register(client, accept=True):
 @pytest.mark.parametrize('path, title', [('/terms', 'Términos y condiciones'), ('/privacy', 'Política de privacidad')])
 def test_legal_pages_are_public_and_translated(client, accounts_db, path, title):
     body = client.get(path).get_data(as_text=True)
-    assert title in body and 'Google Gemini' in body or path == '/terms'
+    assert title in body and 'login' not in client.get(path).headers.get('Location', '')
     client.set_cookie('lang', 'en')
     assert ('Terms and conditions' if path == '/terms' else 'Privacy policy') in client.get(path).get_data(as_text=True)
 
