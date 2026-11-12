@@ -8,6 +8,7 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Cambiado
+- `db_config.DatabaseManager` usa el engine SQLAlchemy de `models.py` (un solo pool para tracker, perfiles y alertas) en lugar de su pool propio de `mysql.connector`; las consultas y los valores devueltos no cambian.
 - Las APIs de documentos (`/api/batch_cover_letters`, `/api/batch_optimize`, `/api/documents/tasks/<id>`, `/api/ats_score`, `/api/optimize_resume`) pasan a FastAPI (`routers/documents.py`); las páginas siguen en Flask. `/api/optimize_resume` y `/api/save_applications` ya no devuelven el mensaje interno del error.
 - La API de IA (`/api/ai/*`), notificaciones y `/api/salary/analyze-csv` pasan a FastAPI (`routers/ai.py`); se elimina `web/ai_api.py`. El copiloto vuelve a recibir los conteos del tracker, `/api/salary/analyze-csv` ya no lee archivos fuera de `results/` y los errores de IA no devuelven el mensaje interno.
 - `/api/tracker/stats`, `/api/analytics/advanced`, `/api/get_applications`, `/api/all_profiles`, `/api/profile_summary` y `/api/ranking` pasan de Flask a FastAPI (`routers/insights.py`), con el mismo login y formato de error que la API del tracker; los errores internos ya no devuelven el mensaje de la excepción.
@@ -27,6 +28,7 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 - Auto-Apply de LinkedIn apagado por defecto (`AUTO_APPLY_ENABLED`), sin envío salvo `AUTO_APPLY_SUBMIT=true`, limitado a 10 URLs `https://*.linkedin.com/jobs/`, con tope de pasos en el formulario y el token tomado del entorno en vez del mensaje de Celery.
 
 ### Corregido
+- `tasks/gmail_tracker.py` usaba `trackerDbClass`, `fetch_all_tracked` y `move_to_stage`, que no existen; ahora mueve la postulación a `interviewing`, y una respuesta vacía de Gemini ya no marca todas las empresas.
 - Lotes de cartas y CVs: el nombre del archivo ya no permite leer fuera de `results/`, la cantidad se limita a 50 ofertas, los errores no exponen mensajes internos y la tabla de resultados ya no interpreta como HTML los títulos y empresas de los portales.
 - Contraste insuficiente en el indicador Online/Offline, botones outline, textos secundarios y KPIs de Analytics; el botón "Salir" era invisible (blanco sobre blanco).
 - Botón de refrescar perfiles sin nombre accesible y columnas del tracker con scroll no alcanzables con teclado.

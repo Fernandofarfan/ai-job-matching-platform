@@ -56,9 +56,8 @@ def check_interview_emails():
             return "No hay nuevos correos de entrevistas."
 
         updates_made = 0
-        from db_config import trackerDbClass
-        db_manager = trackerDbClass()
-        tracked_jobs = db_manager.fetch_all_tracked()
+        from db_config import db_manager
+        tracked_jobs = db_manager.get_all_tracked_jobs()
 
         for message in messages:
             msg = service.users().messages().get(userId='me', id=message['id']).execute()
@@ -71,12 +70,12 @@ def check_interview_emails():
             from ai_engine import _call_gemini
             prompt = f"El reclutador {sender} envió este correo: {subject}. ¿Corresponde a alguna de estas empresas? {', '.join([j['company'] for j in tracked_jobs])}. Responde el nombre de la empresa exacto."
             
-            matched_company = _call_gemini(prompt).strip()
+            matched_company = (_call_gemini(prompt) or '').strip()
             
-            for job in tracked_jobs:
+            for job in tracked_jobs if matched_company else ():
                 if matched_company.lower() in job['company'].lower():
                     logger.info(f"¡Match! Actualizando estado de {job['company']} a ENTRENVISTA.")
-                    db_manager.move_to_stage(job['id'], "Interview")
+                    db_manager.update_job_status(job['id'], 'interviewing')
                     updates_made += 1
                     
             # Marcar como leído
