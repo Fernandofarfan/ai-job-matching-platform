@@ -1,6 +1,8 @@
 """Tests de health check, límites de upload y rate limit de IA."""
 import io
 
+import pytest
+
 
 def test_health_endpoint(client):
     """El health check responde 200 con estado ok."""
@@ -21,24 +23,29 @@ def test_upload_too_large_redirects(client, app):
         app.config['MAX_CONTENT_LENGTH'] = previous
 
 
-def test_ai_endpoints_are_rate_limited(client, app):
+@pytest.fixture
+def limited_api(api):
+    """Cliente FastAPI con el middleware de rate limit de IA de main.py."""
+    import main
+    import rate_limit
+    api.app.middleware('http')(main.rate_limit_ai)
+    rate_limit.reset()
+    yield api
+    rate_limit.reset()
+
+
+def test_ai_endpoints_are_rate_limited(limited_api):
     """Las rutas /api/ai/* devuelven 429 al superar el límite; el resto no."""
-    import rate_limit
-    rate_limit.reset()
-    codes = [client.post('/api/ai/copilot', json={'message': 'hola'}).status_code for _ in range(35)]
+    codes = [limited_api.post('/api/ai/copilot', json={'message': 'hola'}).status_code for _ in range(35)]
     assert 429 in codes
-    assert all(client.get('/api/health').status_code == 200 for _ in range(35))
-    rate_limit.reset()
+    assert all(limited_api.get('/api/tracker/jobs').status_code != 429 for _ in range(35))
 
 
-def test_ai_limit_is_shared_across_ai_routes(client):
+def test_ai_limit_is_shared_across_ai_routes(limited_api):
     """El límite es por IP para todas las rutas de IA, no por endpoint."""
-    import rate_limit
-    rate_limit.reset()
     for _ in range(30):
-        client.post('/api/ai/copilot', json={'message': 'hola'})
-    assert client.post('/api/ai/rewrite-bullet', json={'bullet': 'x'}).status_code == 429
-    rate_limit.reset()
+        limited_api.post('/api/ai/copilot', json={'message': 'hola'})
+    assert limited_api.post('/api/ai/rewrite-bullet', json={'bullet': 'x'}).status_code == 429
 
 
 def test_ai_limit_fails_open_when_storage_down(monkeypatch):

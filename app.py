@@ -820,7 +820,7 @@ def emit_scraper_progress(scraper_key: str):
 
 # Las rutas viven en web/ y se registran sobre `app` al importarse
 from web import (  # noqa: E402,F401
-    ai_api, alerts, analytics, documents, exports, files, pages, profiles, scrapers, tracker,
+    alerts, analytics, documents, exports, files, pages, profiles, scrapers, tracker,
 )
 
 

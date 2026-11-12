@@ -78,9 +78,10 @@ def test_invalid_limit_means_no_limit(monkeypatch):
     assert not ai_usage.budget_exceeded()
 
 
-def test_usage_endpoint(client):
+def test_usage_endpoint(api):
+    """/api/ai/usage (FastAPI) devuelve el consumo del mes."""
     ai_usage.record(10, 5)
-    data = client.get('/api/ai/usage').get_json()
+    data = api.get('/api/ai/usage').json()
     assert data['success'] and data['usage']['total_tokens'] == 15
 
 
