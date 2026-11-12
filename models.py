@@ -24,14 +24,14 @@ class Base(DeclarativeBase):
 # ── Database URL ──────────────────────────────────────────────────────────────
 def get_database_url() -> str:
     """URL de MySQL con usuario y contraseña escapados (admite '@', ':' o '/' en DB_PASSWORD)."""
-    return URL.create(
+    return str(URL.create(
         "mysql+mysqlconnector",
         username=os.getenv("DB_USER", "root"),
         password=os.getenv("DB_PASSWORD", ""),
         host=os.getenv("DB_HOST", "127.0.0.1"),
         database=os.getenv("DB_NAME", "job_tracker"),
         query={"charset": "utf8mb4"},
-    ).render_as_string(hide_password=False)
+    ).render_as_string(hide_password=False))
 
 
 # ── Engine & Session Factory ──────────────────────────────────────────────────

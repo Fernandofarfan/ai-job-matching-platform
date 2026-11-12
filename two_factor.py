@@ -56,7 +56,7 @@ def _decrypt(value: str) -> str:
     fernet = cv_storage.get_fernet()
     if fernet is None:
         raise TwoFactorError('El secreto del segundo factor está cifrado y falta CV_ENCRYPTION_KEY')
-    return fernet.decrypt(value.encode()).decode()
+    return str(fernet.decrypt(value.encode()).decode())
 
 
 def _hash(code: str) -> str:
@@ -94,7 +94,7 @@ def start_setup(user_id: int) -> str:
         session.execute(delete(UserTotp).where(UserTotp.user_id == user_id))
         session.add(UserTotp(user_id=user_id, secret=_encrypt(secret)))
         session.commit()
-    return secret
+    return str(secret)
 
 
 def pending_secret(user_id: Optional[int]) -> Optional[str]:
@@ -105,13 +105,13 @@ def pending_secret(user_id: Optional[int]) -> Optional[str]:
 
 def provisioning_uri(email: str, secret: str) -> str:
     """URI otpauth:// para la app autenticadora."""
-    return pyotp.TOTP(secret).provisioning_uri(name=email, issuer_name=ISSUER)
+    return str(pyotp.TOTP(secret).provisioning_uri(name=email, issuer_name=ISSUER))
 
 
 def qr_svg(uri: str) -> str:
     """QR en SVG para incrustar en la página (sin servicios externos)."""
-    return segno.make(uri, error='m').svg_inline(scale=4, title='Código QR para la app autenticadora')
-
+    return str(segno.make(uri, error='m').svg_inline(scale=4, title='Código QR para la app autenticadora')
+)
 
 def _matching_step(secret: str, code: str) -> Optional[int]:
     """Paso de 30 s cuyo código coincide, dentro de la ventana permitida."""

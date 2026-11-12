@@ -78,13 +78,13 @@ def _sha(value: str) -> str:
 def _b64(data: bytes) -> str:
     """bytes -> base64url sin relleno."""
     from webauthn.helpers import bytes_to_base64url
-    return bytes_to_base64url(data)
+    return str(bytes_to_base64url(data))
 
 
 def _unb64(value: str) -> bytes:
     """base64url -> bytes."""
     from webauthn import base64url_to_bytes
-    return base64url_to_bytes(value)
+    return bytes(base64url_to_bytes(value))
 
 
 def new_challenge(session: MutableMapping[str, Any], purpose: str, user_id: Optional[int] = None) -> bytes:
@@ -131,7 +131,7 @@ def registration_options(user_id: int, email: str, site: str, challenge: bytes) 
         exclude_credentials=[PublicKeyCredentialDescriptor(id=_unb64(c)) for c in existing],
         authenticator_selection=AuthenticatorSelectionCriteria(
             resident_key=ResidentKeyRequirement.REQUIRED, user_verification=UserVerificationRequirement.REQUIRED))
-    return webauthn.options_to_json(options)
+    return str(webauthn.options_to_json(options))
 
 
 def register(user_id: int, credential: dict[str, Any], challenge: bytes, site: str, name: str) -> dict[str, Any]:
@@ -164,8 +164,8 @@ def authentication_options(site: str, challenge: bytes) -> str:
     """Opciones de `navigator.credentials.get` en JSON (passkeys guardadas en el dispositivo: sin email)."""
     import webauthn
     from webauthn.helpers.structs import UserVerificationRequirement
-    return webauthn.options_to_json(webauthn.generate_authentication_options(
-        rp_id=rp_id(site), challenge=challenge, user_verification=UserVerificationRequirement.REQUIRED))
+    return str(webauthn.options_to_json(webauthn.generate_authentication_options(
+        rp_id=rp_id(site), challenge=challenge, user_verification=UserVerificationRequirement.REQUIRED)))
 
 
 def authenticate(credential: dict[str, Any], challenge: bytes, site: str) -> int:
