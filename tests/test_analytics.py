@@ -70,9 +70,9 @@ class TestAnalyticsAdvanced:
         response = client.get('/analytics')
         assert response.status_code == 200
         content = response.data.decode('utf-8')
-        # Verificar elementos clave del template
-        assert 'Centro de Analytics' in content
+        # /analytics lo sirve FastAPI con dashboard.html
         assert 'Embudo de Conversión' in content
+        assert 'portalStats' in content or 'loadPortalStats' in content
 
     def test_tracker_stats_counts_by_status(self, api):
         """El endpoint /api/tracker/stats agrupa bien por estado."""

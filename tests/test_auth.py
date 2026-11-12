@@ -175,9 +175,9 @@ def test_password_reset_flow(registered, outbox):
     assert 'forgot_password' in registered.get(link).headers['Location']
 
 
-def test_change_password_closes_other_sessions(registered, app):
+def test_change_password_closes_other_sessions(registered, app, make_client):
     """Cambiar la contraseña mantiene esta sesión y cierra las demás."""
-    other = app.test_client()
+    other = make_client()
     _login(other)
     _login(registered)
     bad = registered.post('/account/password', data={'current': 'mal', 'password': 'otra-clave-12', 'confirm': 'otra-clave-12'})

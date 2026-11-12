@@ -36,11 +36,11 @@ def test_client_ip_trusts_only_configured_proxy_hops(monkeypatch, hops, expected
     assert rate_limit.client_ip('10.0.0.1', '6.6.6.6, 5.5.5.5') == expected
 
 
-def test_account_limits_are_per_account_not_per_ip(app, limited):
+def test_account_limits_are_per_account_not_per_ip(app, limited, make_client):
     """Dos cuentas en la misma red tienen cada una su límite de tokens de la extensión."""
     accounts.register('ana@example.com', PASSWORD)
     accounts.register('beto@example.com', PASSWORD)
-    ana, beto = app.test_client(), app.test_client()
+    ana, beto = make_client(), make_client()
     _login(ana, 'ana@example.com')
     _login(beto, 'beto@example.com')
     assert [ana.post('/account/extension_token').status_code for _ in range(6)][-1] == 429

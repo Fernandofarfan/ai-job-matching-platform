@@ -83,6 +83,11 @@ def legacy_extension_token(candidate: str) -> bool:
             and integrations.legacy_allowed(accounts.first_user_id(), 'extension'))
 
 
+def is_local_path(target) -> bool:
+    """Ruta de esta app (`/algo`), no una URL externa ni `//host`."""
+    return bool(target) and target.startswith('/') and not target.startswith('//') and '\\' not in target
+
+
 def load_session_cookie(flask_app, cookie_value) -> dict:
     """Contenido de la cookie de sesión de Flask (para rutas servidas por FastAPI); {} si no vale."""
     if not cookie_value:
