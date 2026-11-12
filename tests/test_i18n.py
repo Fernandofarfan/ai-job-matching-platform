@@ -63,7 +63,7 @@ def test_jinja_gettext_escapes():
 @pytest.fixture
 def one_account(client, accounts_db):
     """Con una cuenta creada, /login muestra el formulario en vez de mandar a /register."""
-    client.post('/register', data={'email': 'ana@example.com', 'password': 'clave-larga-1', 'confirm': 'clave-larga-1'})
+    client.post('/register', data={'accept_terms': 'on', 'email': 'ana@example.com', 'password': 'clave-larga-1', 'confirm': 'clave-larga-1'})
     client.post('/logout')
     client.delete_cookie('lang')
 

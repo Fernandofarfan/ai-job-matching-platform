@@ -6,6 +6,13 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar] - Términos, Privacidad y permiso para usar la IA
+
+- Páginas públicas `/terms` y `/privacy` en español, inglés y portugués, enlazadas desde el login, el registro y el pie de cada página. `LEGAL_OPERATOR_NAME` y `LEGAL_CONTACT_EMAIL` (por defecto `ADMIN_EMAIL`) completan los textos; revisalos con un abogado antes de abrir el registro.
+- Crear una cuenta exige aceptar los Términos y la Privacidad (`users.terms_accepted_at`); entrar por primera vez con Google lo acepta, como avisa el login.
+- Las funciones de IA (cartas, CVs, Copilot, entrevista, parseo del CV y embeddings) no mandan nada a Gemini sin el permiso de la cuenta (`users.ai_consent_at`). Se da desde un aviso en todas las páginas o en Mi cuenta, y se puede quitar; sin permiso, el matching usa TF-IDF. Sin login (modo local) no hace falta.
+- La exportación incluye las fechas de aceptación y del permiso. Migración `0014_legal_consent`.
+
 ## [Sin publicar] - Cabeceras de seguridad y accesibilidad en todas las páginas
 
 - Todas las respuestas llevan CSP con nonce por pedido (sin `'unsafe-inline'` en scripts), `X-Content-Type-Options`, `X-Frame-Options: DENY`, `Referrer-Policy`, `Permissions-Policy` y `Cross-Origin-Opener-Policy`; HSTS solo bajo HTTPS (`X-Forwarded-Proto` o `SESSION_COOKIE_SECURE=1`). `CSP_REPORT_ONLY=1` solo informa y `CSP_REPORT_URI` recibe los reportes.

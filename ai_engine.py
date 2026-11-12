@@ -65,10 +65,17 @@ except ImportError:
     logger.warning("google-genai not installed — AI features disabled")
 
 
+# empieza como los demás errores de Gemini (document_generators.GEMINI_ERROR_PREFIXES)
+AI_CONSENT_ERROR = "Error al contactar Gemini: falta tu permiso para usar la IA (activalo en Mi cuenta)"
+
+
 def _call_gemini(prompt: str, temperature: float = 0.7) -> str:
     """Wrapper seguro para llamar a Gemini con manejo de errores."""
     if not GEMINI_AVAILABLE:
         return "⚠️ Gemini no está configurado. Agregá GEMINI_API_KEY al archivo .env"
+    import accounts
+    if accounts.ai_consent_missing():
+        return AI_CONSENT_ERROR
     cached = ai_usage.cache_get(GEMINI_MODEL, prompt, temperature)
     if cached is not None:
         return cached

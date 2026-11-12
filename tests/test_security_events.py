@@ -18,7 +18,7 @@ FIREFOX = 'Mozilla/5.0 Firefox/132'
 def ana(client, accounts_db, monkeypatch):
     """Primera cuenta registrada por el formulario y sesión cerrada."""
     monkeypatch.setenv('PUBLIC_BASE_URL', 'https://empleoia.example')
-    client.post('/register', data={'email': 'ana@example.com', 'password': PASSWORD, 'confirm': PASSWORD},
+    client.post('/register', data={'accept_terms': 'on', 'email': 'ana@example.com', 'password': PASSWORD, 'confirm': PASSWORD},
                 headers={'User-Agent': CHROME})
     client.post('/logout')
     return accounts.find_user_id('ana@example.com')
@@ -122,7 +122,7 @@ def test_register_is_recorded_when_verification_is_required(client, accounts_db,
     monkeypatch.setenv('REQUIRE_EMAIL_VERIFICATION', 'true')
     monkeypatch.setenv('ALLOW_SIGNUP', 'true')
     accounts.register('admin@example.com', PASSWORD)
-    client.post('/register', data={'email': 'nuevo@example.com', 'password': PASSWORD, 'confirm': PASSWORD})
+    client.post('/register', data={'accept_terms': 'on', 'email': 'nuevo@example.com', 'password': PASSWORD, 'confirm': PASSWORD})
     uid = accounts.find_user_id('nuevo@example.com')
     assert [e['kind'] for e in security_events.recent(uid)] == ['register']
 

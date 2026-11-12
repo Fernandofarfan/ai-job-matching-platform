@@ -12,7 +12,7 @@ PASSWORD = 'clave-larga-1'
 
 def _register(client, email='ana@example.com', password=PASSWORD, confirm=None):
     """Envía el formulario de registro."""
-    return client.post('/register', data={'email': email, 'password': password,
+    return client.post('/register', data={'accept_terms': 'on', 'email': email, 'password': password,
                                           'confirm': password if confirm is None else confirm})
 
 

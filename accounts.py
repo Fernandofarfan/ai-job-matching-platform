@@ -12,7 +12,7 @@ from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import Column, DateTime, Integer, String, select
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import declarative_base
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -35,6 +35,9 @@ class User(Base):  # type: ignore[misc,valid-type]
     created_at = Column(DateTime, default=datetime.now)
     email_verified_at = Column(DateTime, nullable=True)
     disabled_at = Column(DateTime, nullable=True)
+    terms_accepted_at = Column(DateTime, nullable=True)
+    # permiso para mandar el CV y las ofertas a Gemini; sin él las funciones de IA no se llaman
+    ai_consent_at = Column(DateTime, nullable=True)
 
 
 class AccountError(ValueError):
@@ -148,7 +151,8 @@ def get_user(user_id) -> Optional[dict]:
         if user is None:
             return None
         return {'id': user.id, 'email': user.email, 'password_hash': user.password_hash,
-                'email_verified': user.email_verified_at is not None, 'disabled': user.disabled_at is not None}
+                'email_verified': user.email_verified_at is not None, 'disabled': user.disabled_at is not None,
+                'terms_accepted': user.terms_accepted_at is not None, 'ai_consent': user.ai_consent_at is not None}
 
 
 def is_admin(user_id) -> bool:
@@ -350,6 +354,41 @@ def mark_verified(user_id: int):
         if user is not None and user.email_verified_at is None:
             user.email_verified_at = datetime.now()
             session.commit()
+
+
+def accept_terms(user_id: int):
+    """Guarda cuándo la cuenta aceptó los Términos y la Política de privacidad."""
+    with _sessions()() as session:
+        user = session.get(User, user_id)
+        if user is not None and user.terms_accepted_at is None:
+            user.terms_accepted_at = datetime.now()
+            session.commit()
+
+
+def set_ai_consent(user_id: int, granted: bool):
+    """Da o quita el permiso para mandar los datos de la cuenta a la IA."""
+    with _sessions()() as session:
+        user = session.get(User, user_id)
+        if user is not None:
+            user.ai_consent_at = datetime.now() if granted else None
+            session.commit()
+
+
+def ai_consent_missing() -> bool:
+    """True si la cuenta actual no dio permiso para usar la IA. Sin cuenta (modo local) no hace falta.
+
+    Si la base no responde, se asume que falta: ante la duda no se mandan datos a la IA.
+    """
+    user_id = current_user_id()
+    if user_id is None:
+        return False
+    try:
+        with _sessions()() as session:
+            user = session.get(User, user_id)
+            return user is None or user.ai_consent_at is None
+    except SQLAlchemyError as e:
+        logger.error(f'No se pudo leer el permiso de IA de la cuenta {user_id}: {e}')
+        return True
 
 
 def delete_account(user_id: int):

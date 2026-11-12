@@ -372,8 +372,23 @@
         {% endif %}
         {% endwith %}
 
+        {% if ai_consent_needed %}
+        <div class="alert alert-info d-flex flex-wrap align-items-center gap-2" role="region" aria-label="{{ _('Permiso para usar la IA') }}">
+            <span class="me-auto">{% set more_link %}<a href="{{ url_for('privacy') }}">{{ _('más información') }}</a>{% endset %}{{ _('Las funciones de IA envían el texto de tu CV y de las ofertas a Google Gemini. Necesitamos tu permiso para usarlas (%(more)s).', more=more_link) }}</span>
+            <form method="POST" action="{{ url_for('ai_consent') }}" class="m-0">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="granted" value="1">
+                <input type="hidden" name="next" value="{{ current_path }}">
+                <button type="submit" class="btn btn-sm btn-primary">{{ _('Dar permiso') }}</button>
+            </form>
+        </div>
+        {% endif %}
         {% block content %}{% endblock %}
     </main>
+    <footer class="container small text-center text-muted py-4">
+        <a href="{{ url_for('terms') }}" class="text-secondary">{{ _('Términos') }}</a> ·
+        <a href="{{ url_for('privacy') }}" class="text-secondary">{{ _('Privacidad') }}</a>
+    </footer>
 
     <!-- ═══════════════════════════════════════════════════════════════════ -->
     <!-- AI COPILOT SIDEBAR                                                  -->

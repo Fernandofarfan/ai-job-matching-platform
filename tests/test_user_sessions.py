@@ -14,7 +14,7 @@ FIREFOX = 'Mozilla/5.0 Firefox/132'
 @pytest.fixture
 def two_browsers(client, app, accounts_db):
     """La misma cuenta abierta en dos navegadores (dos clientes con cookies separadas)."""
-    client.post('/register', data={'email': 'ana@example.com', 'password': PASSWORD, 'confirm': PASSWORD},
+    client.post('/register', data={'accept_terms': 'on', 'email': 'ana@example.com', 'password': PASSWORD, 'confirm': PASSWORD},
                 headers={'User-Agent': CHROME})
     other = type(client)(app)
     other.post('/login', data={'email': 'ana@example.com', 'password': PASSWORD}, headers={'User-Agent': FIREFOX})

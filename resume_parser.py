@@ -418,7 +418,11 @@ class resumeParser:
         """
         
         try:
+            import accounts
             import ai_usage
+            if accounts.ai_consent_missing():
+                print("La cuenta no dio permiso para usar la IA; el CV se parsea sin IA")
+                return None
             if ai_usage.budget_exceeded():
                 print("Límite mensual de tokens de IA alcanzado; el CV se parsea sin IA")
                 return None

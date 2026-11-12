@@ -4,6 +4,7 @@ Los nombres de ruta son los endpoints que usaba Flask; la sesión es la misma co
 """
 import hmac
 import logging
+import os
 import secrets
 import time
 from typing import Optional
@@ -25,6 +26,8 @@ from fastapi_web import (TextForm, clear_offline_data, client_info, client_ip, f
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["auth"], include_in_schema=False)
+# fecha de la última versión de templates/legal/*: cambiala al modificar los textos
+LEGAL_UPDATED = '2026-11-12'
 PENDING_MAX_AGE = 300
 
 
@@ -147,7 +150,10 @@ def _register(request: Request, form: Optional[TextForm]) -> Response:
             return redirect(request, url_for(request, 'login', next=next_url))
         if form is not None:
             password = form.get('password', '')
-            if password != form.get('confirm', ''):
+            if form.get('accept_terms') != 'on':
+                flash(request, 'Para crear la cuenta tenés que aceptar los Términos y la Política de privacidad',
+                      'danger')
+            elif password != form.get('confirm', ''):
                 flash(request, 'Las contraseñas no coinciden', 'danger')
             else:
                 try:
@@ -155,6 +161,7 @@ def _register(request: Request, form: Optional[TextForm]) -> Response:
                 except accounts.AccountError as e:
                     flash(request, str(e), 'danger')
                 else:
+                    accounts.accept_terms(user_id)
                     audit(request, user_id, 'register')
                     user = accounts.get_user(user_id) or {}
                     sent = not user['email_verified'] and send_verification(request, user)
@@ -353,6 +360,8 @@ def google_callback(request: Request):
         except accounts.AccountError as e:
             flash(request, str(e), 'warning')
             return redirect(request, url_for(request, 'login'))
+        # el login avisa que continuar con Google acepta los Términos y la Privacidad
+        accounts.accept_terms(user_id)
         audit(request, user_id, 'register')
     user = accounts.get_user(user_id)
     if user is None:
@@ -369,3 +378,23 @@ def google_callback(request: Request):
     user = accounts.get_user(user_id) or user
     next_url = pending.get('next', '')
     return begin_login(request, user, 'login_google', next_url) or _finish_login(request, user, 'login_google', next_url)
+
+
+def _legal(request: Request, page: str) -> Response:
+    """Términos o Privacidad en el idioma de la interfaz; públicas, sin login."""
+    return render(request, 'legal.html', page=page,
+                  operator=os.getenv('LEGAL_OPERATOR_NAME', '').strip() or 'EmpleoIA',
+                  contact=os.getenv('LEGAL_CONTACT_EMAIL', '').strip() or os.getenv('ADMIN_EMAIL', '').strip(),
+                  updated=LEGAL_UPDATED)
+
+
+@router.get("/terms", name="terms")
+def terms(request: Request):
+    """Términos y condiciones."""
+    return _legal(request, 'terms')
+
+
+@router.get("/privacy", name="privacy")
+def privacy(request: Request):
+    """Política de privacidad."""
+    return _legal(request, 'privacy')
