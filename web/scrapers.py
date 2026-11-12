@@ -5,7 +5,7 @@ import random
 import threading
 import time
 from datetime import datetime
-from dotenv import load_dotenv
+from dotenv import dotenv_values
 import job_dispatch
 from flask import flash, jsonify, redirect, request, url_for
 from scrapers.bumeran_scraper import BumeranScraper
@@ -26,10 +26,20 @@ from app import (  # noqa: F401
 )
 
 
+_PORTAL_PREFIXES = ('INDEED_', 'LINKEDIN_', 'COMPUTRABAJO_', 'BUMERAN_')
+
+
+def _reload_portal_credentials(path=None):
+    """Relee del .env solo las credenciales de portales; no pisa SCRAPER_BACKEND ni otra config del entorno."""
+    for name, value in dotenv_values(path).items():
+        if value is not None and name.startswith(_PORTAL_PREFIXES):
+            os.environ[name] = value
+
+
 @app.route('/start_indeed_scraper', methods=['POST'])
 def start_indeed_scraper():
     # Forzar recarga de .env para asegurar que tenemos las últimas credenciales
-    load_dotenv(override=True)
+    _reload_portal_credentials()
     
     env_email = os.getenv('INDEED_EMAIL')
     env_password = os.getenv('INDEED_PASSWORD')
@@ -84,7 +94,7 @@ def start_indeed_scraper():
 @app.route('/start_linkedin_scraper', methods=['POST'])
 def start_linkedin_scraper():
     # Force reload of .env to get latest credentials
-    load_dotenv(override=True)
+    _reload_portal_credentials()
     
     linkedin_token = request.form.get('linkedin_token')
     
@@ -146,7 +156,7 @@ def start_linkedin_scraper():
 def start_computrabajo_scraper():
     """Start Computrabajo scraper"""
     # Force reload of .env to ensure we have the latest credentials
-    load_dotenv(override=True)
+    _reload_portal_credentials()
     
     email = os.getenv('COMPUTRABAJO_EMAIL')
     password = os.getenv('COMPUTRABAJO_PASSWORD')

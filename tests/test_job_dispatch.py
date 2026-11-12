@@ -1,4 +1,5 @@
 """Lanzamiento de scrapers en thread o Celery y lectura de su progreso."""
+import os
 from unittest import mock
 
 import pytest
@@ -72,3 +73,14 @@ def test_worker_publishes_progress_and_result():
         result = scraping_tasks.run_web_job.run('k', 'run_bumeran_job', ['python'], poll_seconds=0.01)
     assert result['status'] == 'completed'
     assert result['message'] == 'python'
+
+
+def test_credential_reload_keeps_backend(monkeypatch, tmp_path):
+    """Releer el .env actualiza credenciales pero no cambia el backend fijado por el entorno."""
+    from web import scrapers
+    (tmp_path / '.env').write_text('SCRAPER_BACKEND=thread\nINDEED_EMAIL=nuevo@x.com\n')
+    monkeypatch.setenv('SCRAPER_BACKEND', 'celery')
+    monkeypatch.setenv('INDEED_EMAIL', 'viejo@x.com')
+    scrapers._reload_portal_credentials(tmp_path / '.env')
+    assert os.environ['SCRAPER_BACKEND'] == 'celery'
+    assert os.environ['INDEED_EMAIL'] == 'nuevo@x.com'
