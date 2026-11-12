@@ -543,7 +543,7 @@ En ⚙️ cargá la URL de tu EmpleoIA y el token que generás en **Mi cuenta �
 | Memorystore Redis 7 | Rate limit, caché de IA y broker de Celery (HA en prod) |
 | Bucket `<proyecto>-empleoia-uploads-<env>` | CVs montados en `/app/uploads`; privado, sin versionado y con borrado por antigüedad si `cv_retention_days > 0` |
 | Bucket `<proyecto>-empleoia-results-<env>` | Resultados de búsqueda montados en `/app/results`, compartidos entre el worker y la web |
-| Cloud Monitoring | Uptime check de `/api/health`, alertas de 5xx, latencia p95 y disco de Cloud SQL; por email con `alert_email` (`docs/observability.md`) |
+| Cloud Monitoring | Uptime check de `/api/ready` (app, base y Redis), alertas de 5xx, latencia p95 y disco de Cloud SQL; por email con `alert_email` (`docs/observability.md`) |
 | Secret Manager | `DB_PASSWORD`, `SECRET_KEY`, `GEMINI_API_KEY`, `CV_ENCRYPTION_KEY` y `extra_secrets` |
 
 Los valores no secretos de cada ambiente están en `terraform/envs/<env>.tfvars`. Los secretos se pasan como `TF_VAR_*` y nunca van al repo (quedan en el estado de Terraform, así que el bucket del estado debe ser privado).
@@ -551,7 +551,7 @@ Los valores no secretos de cada ambiente están en `terraform/envs/<env>.tfvars`
 ### Deploy automático (GitHub Actions)
 
 - **`Terraform`**: en cada PR que toca `terraform/` corre `fmt`, `validate` y `terraform test` (con un provider simulado, sin credenciales).
-- **`Deploy a GCP`**: cada push a `main` despliega en staging: build de la imagen con el SHA del commit, migraciones, `terraform apply` y smoke test de `/api/health`. Producción se despliega con "Run workflow" eligiendo `prod`. En los PRs publica el `terraform plan` de staging en el resumen del job.
+- **`Deploy a GCP`**: cada push a `main` despliega en staging: build de la imagen con el SHA del commit, migraciones, `terraform apply` y smoke test de `/api/ready`. Producción se despliega con "Run workflow" eligiendo `prod`. En los PRs publica el `terraform plan` de staging en el resumen del job.
 
 El deploy se saltea hasta que crees la variable de repositorio `GCP_DEPLOY_ENABLED=true` y configures, en cada GitHub Environment (`staging`, `prod`):
 - **Variables:** `GCP_PROJECT_ID`, `GCP_WORKLOAD_IDENTITY_PROVIDER`, `GCP_DEPLOY_SA`, `TF_STATE_BUCKET` y, opcionalmente, `GCP_REGION`.

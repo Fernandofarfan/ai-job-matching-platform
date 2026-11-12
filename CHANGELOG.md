@@ -6,6 +6,12 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar] - Chequeo de que la app está lista
+
+- `GET /api/ready`: 200 si la base responde a `SELECT 1` y cada Redis configurado a `PING`; 503 si algo falla, sin el error interno. `/api/health` sigue diciendo solo que el proceso está vivo.
+- Cloud Run: el startup probe y el uptime check usan `/api/ready`; el liveness sigue en `/api/health`, así una caída de la base no reinicia las instancias en loop.
+- Docker Compose: healthcheck de `web` contra `/api/ready`.
+
 ## [Sin publicar] - Dependencias con hash, Trivy y SBOM
 
 - `requirements.in` tiene las dependencias directas; `requirements.txt` sale de `pip-compile --generate-hashes` con todas las dependencias (también las indirectas) y su hash. Docker y el CI instalan con `--require-hashes`: si un paquete cambia en PyPI, la instalación se corta.

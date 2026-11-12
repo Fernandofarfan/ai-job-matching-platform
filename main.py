@@ -22,10 +22,10 @@ import security_headers
 from routers import account_pages, ai, analytics, auth_pages, content_pages, scraper_pages, documents, insights, pages, tracker
 from routers import push as push_router
 
-PUBLIC_API_PATHS = {"/api/health"}
+PUBLIC_API_PATHS = {"/api/health", "/api/ready"}
 EXTENSION_API_PATHS = {"/api/tracker/save-from-extension"}
 LOGIN_ROUTERS = [account_pages.router, content_pages.router, scraper_pages.router, ai.router, analytics.router, pages.router]
-PUBLIC_PAGES = {"set_language", "service_worker", "health_check"}
+PUBLIC_PAGES = {"set_language", "service_worker", "health_check", "readiness_check"}
 
 
 def _matches(routers, scope) -> bool:
@@ -101,6 +101,42 @@ async def health_check():
     return {"status": "ok", "service": "EmpleoIA API (FastAPI Mode)"}
 
 
+READY_REDIS_ENV = ("REDIS_URL", "RATELIMIT_STORAGE_URI", "CELERY_BROKER_URL")
+
+
+def _check_database():
+    from sqlalchemy import text
+
+    import models
+    with models.engine.connect() as conn:
+        conn.execute(text("SELECT 1"))
+
+
+def _check_redis():
+    import redis
+    for url in {os.getenv(name, "") for name in READY_REDIS_ENV}:
+        if url.startswith(("redis://", "rediss://")):
+            client = redis.Redis.from_url(url, socket_timeout=2, socket_connect_timeout=2)
+            try:
+                client.ping()
+            finally:
+                client.close()
+
+
+def readiness_check():
+    """Lista para recibir pedidos: la base responde y, si hay Redis configurado, también. 503 si algo falla.
+    /api/health solo dice que el proceso está vivo (liveness); esta es la de startup y del uptime check."""
+    checks, ok = {}, True
+    for name, check in (("database", _check_database), ("redis", _check_redis)):
+        try:
+            check()
+            checks[name] = "ok"
+        except Exception as e:
+            logging.warning(f"Readiness: {name} no responde ({type(e).__name__}: {e})")
+            checks[name], ok = "error", False
+    return JSONResponse({"status": "ok" if ok else "error", "checks": checks}, status_code=200 if ok else 503)
+
+
 async def http_error(request: Request, exc: StarletteHTTPException):
     """Errores HTTP: JSON en /api/* y en los 405; página de error en el resto (404 sin detalles internos)."""
     if request.url.path.startswith("/api/") or exc.status_code != 404:
@@ -146,6 +182,7 @@ def create_app(web_app=None) -> FastAPI:
 
     app.get("/metrics", include_in_schema=False)(metrics)
     app.get("/api/health", name="health_check")(health_check)
+    app.get("/api/ready", name="readiness_check")(readiness_check)
     # el último registrado es el más externo: métricas > cabeceras > login > límites
     for middleware in (rate_limit_ai, require_login, security_headers.add_security_headers, record_metrics):
         app.middleware("http")(middleware)
