@@ -38,7 +38,10 @@ def test_requests_counted_by_route_template(monkeypatch):
     from app import app as flask_app
     scope = {'type': 'http', 'path': '/download_resume/cv.docx', 'method': 'GET', 'root_path': ''}
     assert observability.route_label(main.app, scope, flask_app) == '/download_resume/<filename>'
-    scope['path'] = '/no/existe/123'
+    scope['path'] = '/api/tracker/job/7/reminder'
+    scope['method'] = 'PUT'
+    assert observability.route_label(main.app, scope, flask_app) == '/api/tracker/job/{job_id}/reminder'
+    scope['path'], scope['method'] = '/no/existe/123', 'GET'
     assert observability.route_label(main.app, scope, flask_app) == 'unmatched'
 
 

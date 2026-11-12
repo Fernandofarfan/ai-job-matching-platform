@@ -69,15 +69,9 @@ def observe_request(method, route, status, seconds):
 
 def route_label(asgi_app, scope, flask_app=None):
     """Plantilla de la ruta (/download_resume/<filename>) para no crear una serie por URL."""
-    from starlette.routing import Match, Mount
-
-    for route in asgi_app.router.routes:
-        if isinstance(route, Mount):
-            if route.path and route.matches(scope)[0] == Match.FULL:
-                return f'{route.path}/*'
-            continue
-        if route.matches(scope)[0] == Match.FULL:
-            return getattr(route, 'path', 'unmatched')
+    label = _asgi_route(asgi_app.router.routes, scope)
+    if label:
+        return label
     if flask_app is not None:
         try:
             rule, _ = flask_app.url_map.bind('localhost').match(
@@ -86,6 +80,29 @@ def route_label(asgi_app, scope, flask_app=None):
         except Exception:
             pass
     return 'unmatched'
+
+
+def _asgi_route(routes, scope, prefix=''):
+    from starlette.routing import Match, Mount
+
+    for route in routes:
+        if isinstance(route, Mount):
+            if route.path and route.matches(scope)[0] == Match.FULL:
+                return f'{route.path}/*'
+            continue
+        if route.matches(scope)[0] != Match.FULL:
+            continue
+        nested = getattr(route, 'original_router', None)  # FastAPI >= 0.13x agrupa los include_router
+        if nested is not None:
+            context = getattr(route, 'include_context', None)
+            label = _asgi_route(nested.routes, scope, prefix + getattr(context, 'prefix', ''))
+            if label:
+                return label
+            continue
+        path = getattr(route, 'path', None)
+        if path:
+            return prefix + path
+    return None
 
 
 def metrics_allowed(authorization):
