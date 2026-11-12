@@ -162,16 +162,24 @@ class DatabaseManager:
             return []
 
     def save_processed_file(self, filename, total_jobs, jobs_applied):
-        """Registra (o actualiza) un CSV procesado."""
-        return self._write("""
-            INSERT INTO processed_files (filename, total_jobs, jobs_applied, processed_date, user_id)
-            VALUES (:filename, :total, :applied, :date, :uid)
-            ON DUPLICATE KEY UPDATE
-                total_jobs = VALUES(total_jobs),
-                jobs_applied = VALUES(jobs_applied),
-                processed_date = VALUES(processed_date)
-        """, {'filename': filename, 'total': total_jobs, 'applied': jobs_applied, 'date': datetime.now()},
-            label='processed file') is not None
+        """Registra (o actualiza) un CSV procesado; sin cuenta el índice único no ve los NULL, así que actualiza primero."""
+        params = self._params({'filename': filename, 'total': total_jobs, 'applied': jobs_applied,
+                               'date': datetime.now()})
+        try:
+            with self.engine.begin() as conn:
+                updated = conn.execute(text("""
+                    UPDATE processed_files SET total_jobs = :total, jobs_applied = :applied, processed_date = :date
+                    WHERE filename = :filename AND user_id <=> :uid
+                """), params)
+                if updated.rowcount == 0:
+                    conn.execute(text("""
+                        INSERT INTO processed_files (filename, total_jobs, jobs_applied, processed_date, user_id)
+                        VALUES (:filename, :total, :applied, :date, :uid)
+                    """), params)
+            return True
+        except SQLAlchemyError as err:
+            logger.error(f"Error writing processed file: {err}")
+            return False
 
     # ==== JOB TRACKER ====
 
