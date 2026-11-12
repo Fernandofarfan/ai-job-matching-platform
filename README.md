@@ -575,7 +575,7 @@ docker run -d -p 6379:6379 redis:7-alpine
 ## 🚀 Future Enhancements
 
 ### 🔴 En Desarrollo Activo
-- **Auto-Apply**: Postulación automática a trabajos "Easy Apply" de LinkedIn
+- **Auto-Apply** (experimental, apagado por defecto): completa postulaciones "Easy Apply" de LinkedIn. Se activa con `AUTO_APPLY_ENABLED=true` y solo envía con `AUTO_APPLY_SUBMIT=true`. Postular con bots puede violar los términos de LinkedIn y hacer que te bloqueen la cuenta.
 - **Email Tracking**: Detección automática de respuestas de empleadores vía Gmail/Outlook
 - **Playwright**: Migración de Selenium a Playwright para mayor velocidad y estabilidad
 

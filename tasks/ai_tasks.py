@@ -264,57 +264,87 @@ def export_tracker_to_excel(self, job_list: list, output_path: str):
         logger.error(f"Excel export task failed: {e}", exc_info=True)
         raise
 
+AUTO_APPLY_MAX_JOBS = 10
+_MAX_FORM_STEPS = 10
+AUTO_APPLY_DISABLED_MESSAGE = (
+    "Auto-Apply está apagado (AUTO_APPLY_ENABLED=false). Postular con bots puede violar "
+    "los términos de LinkedIn y hacer que te bloqueen la cuenta."
+)
+
+
+def _env_flag(name: str) -> bool:
+    return os.getenv(name, "false").strip().lower() in ("1", "true", "yes")
+
+
+def _is_linkedin_job(link) -> bool:
+    from urllib.parse import urlparse
+
+    url = urlparse(str(link))
+    host = (url.hostname or "").lower()
+    return (url.scheme == "https" and (host == "linkedin.com" or host.endswith(".linkedin.com"))
+            and url.path.startswith("/jobs/"))
+
+
 @celery.task(bind=True, name="tasks.ai_tasks.auto_apply_jobs")
 def auto_apply_jobs(self, resume_path: str, user_profile: dict, job_links: list):
     """
-    Tarea experimental de autocompletado en portales (Playwright).
-    Busca empleos 'Easy Apply' en LinkedIn e intenta rellenar los datos.
+    Experimental y apagado por defecto: completa postulaciones 'Easy Apply' de LinkedIn con Playwright.
+
+    Requiere AUTO_APPLY_ENABLED=true. Sin AUTO_APPLY_SUBMIT=true recorre el formulario pero no lo envía.
     """
+    if not _env_flag("AUTO_APPLY_ENABLED"):
+        logger.warning("Auto-Apply pedido con AUTO_APPLY_ENABLED apagado; no se hace nada")
+        return {"status": "disabled", "message": AUTO_APPLY_DISABLED_MESSAGE}
+
     from scrapers.linkedin_pw import linkedinClass
     import time
-    
+
+    links = [link for link in job_links if _is_linkedin_job(link)][:AUTO_APPLY_MAX_JOBS]
+    submit = _env_flag("AUTO_APPLY_SUBMIT")
+    token = os.getenv("LINKEDIN_LI_AT") or os.getenv("LI_AT_TOKEN") or (user_profile or {}).get("li_at_token")
+    logger.warning(f"Auto-Apply experimental: {len(links)} ofertas, envío {'activado' if submit else 'desactivado'}")
+
     try:
-        self.update_state(state="PROGRESS", meta={"progress": 5, "message": "Inicializando Auto-Apply Engine..."})
-        
-        # Iniciar instancia limpia (idealmente con proxies y sesión reutilizada)
-        bot = linkedinClass(li_at_token=user_profile.get("li_at_token"))
+        self.update_state(state="PROGRESS", meta={"progress": 5, "message": "Iniciando Auto-Apply..."})
+        bot = linkedinClass(li_at_token=token)
         if not bot.login_with_cookie():
-            return {"status": "failed", "message": "Fallo el login de LinkedIn para AutoApply."}
-            
-        success_count = 0
-        for i, link in enumerate(job_links):
+            return {"status": "failed", "message": "Falló el login de LinkedIn para Auto-Apply."}
+
+        applied = ready = 0
+        for i, link in enumerate(links):
             self.update_state(state="PROGRESS", meta={
-                "progress": 20 + int((i / max(len(job_links), 1)) * 70),
-                "message": f"Aplicando a vacante {i+1}..."
+                "progress": 20 + int((i / max(len(links), 1)) * 70),
+                "message": f"Oferta {i + 1} de {len(links)}..."
             })
-            
             try:
                 bot.page.goto(link)
                 time.sleep(2)
-                
                 easy_apply_btn = bot.page.locator("button.jobs-apply-button")
-                if easy_apply_btn.count() > 0 and "Easy Apply" in easy_apply_btn.inner_text():
-                    easy_apply_btn.click()
-                    time.sleep(2)
-                    
-                    # Logica simulada para atravesar modales
+                if easy_apply_btn.count() == 0 or "Easy Apply" not in easy_apply_btn.inner_text():
+                    continue
+                easy_apply_btn.click()
+                time.sleep(2)
+                for _ in range(_MAX_FORM_STEPS):
                     next_btn = bot.page.locator("button[aria-label='Continue to next step']")
-                    while next_btn.count() > 0:
-                        next_btn.click()
-                        time.sleep(1)
-                        next_btn = bot.page.locator("button[aria-label='Continue to next step']")
-                        
-                    submit_btn = bot.page.locator("button[aria-label='Submit application']")
-                    if submit_btn.count() > 0:
-                        submit_btn.click()
-                        success_count += 1
-                        logger.info(f"Auto-Apply exitoso para: {link}")
-                        
+                    if next_btn.count() == 0:
+                        break
+                    next_btn.click()
+                    time.sleep(1)
+                submit_btn = bot.page.locator("button[aria-label='Submit application']")
+                if submit_btn.count() == 0:
+                    continue
+                if submit:
+                    submit_btn.click()
+                    applied += 1
+                    logger.info(f"Auto-Apply enviado: {link}")
+                else:
+                    ready += 1
             except Exception as loop_e:
-                logger.error(f"Error aplicando en {link}: {loop_e}")
-                
-        return {"status": "completed", "applied_count": success_count, "total_attempted": len(job_links)}
+                logger.error(f"Error en Auto-Apply para {link}: {loop_e}")
+
+        return {"status": "completed", "submitted": submit, "applied_count": applied, "ready_count": ready,
+                "total_attempted": len(links), "skipped": len(job_links) - len(links)}
 
     except Exception as e:
         logger.error(f"AutoApply fatal error: {e}", exc_info=True)
-        return {"status": "failed", "error": str(e)}
+        return {"status": "failed", "error": "No se pudo completar Auto-Apply"}
