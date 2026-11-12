@@ -119,12 +119,15 @@
     const headers = Array.from(document.querySelectorAll('#jobTable thead th')).map(th => th.textContent.trim());
     const cells = row.querySelectorAll('td');
     const cell = (name) => { const i = headers.indexOf(name); return i !== -1 && cells[i] ? cells[i] : null; };
-    const link = cell('Enlace') ? cell('Enlace').querySelector('a') : null;
+    // Indeed y LinkedIn traen 'Enlace' (botón); Computrabajo, Bumeran, ZonaJobs y GetOnBoard, 'URL' (texto)
+    const linkCell = cell('Enlace') || cell('URL');
+    const link = linkCell ? linkCell.querySelector('a') : null;
+    const linkText = linkCell ? linkCell.textContent.trim() : '';
     return {
       title: cell('Título') ? cell('Título').textContent.trim() : '',
       company: cell('Empresa') ? cell('Empresa').textContent.trim() : '',
       location: cell('Ubicación') ? cell('Ubicación').textContent.trim() : '',
-      job_link: link ? link.href : '',
+      job_link: link ? link.href : (/^https?:\/\//.test(linkText) ? linkText : ''),
     };
   }
 
