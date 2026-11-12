@@ -65,6 +65,7 @@ async def require_login(request: Request, call_next):
     cookie = request.cookies.get(web_app.config.get("SESSION_COOKIE_NAME", "session"))
     user_id = await run_in_threadpool(auth.cookie_user_id, web_app, cookie) if cookie else None
     accounts.set_current_user(user_id)
+    error_reporting.identify(user_id)
     if (auth.auth_enabled() and user_id is None and request.url.path not in PUBLIC_API_PATHS
             and _matches(LOGIN_ROUTERS, request.scope)):
         if request.url.path.startswith("/api/"):
