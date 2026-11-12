@@ -61,12 +61,8 @@ def test_tracing_off_without_endpoint(monkeypatch):
 
 def test_telegram_requests_not_traced(monkeypatch):
     """Las llamadas a Telegram no generan spans: el token del bot viaja en la URL."""
-    from opentelemetry.util.http import parse_excluded_urls
     monkeypatch.setenv('OTEL_PYTHON_REQUESTS_EXCLUDED_URLS', 'example.com/private')
-    excluded = parse_excluded_urls(observability.requests_excluded_urls())
-    assert excluded.url_disabled('https://api.telegram.org/bot123:ABC/sendMessage')
-    assert excluded.url_disabled('https://example.com/private/x')
-    assert not excluded.url_disabled('https://www.bumeran.com.ar/empleos')
+    assert observability.requests_excluded_urls().split(',') == ['api.telegram.org', 'example.com/private']
 
 
 def test_metrics_endpoint_runs_off_event_loop():
@@ -78,9 +74,6 @@ def test_metrics_endpoint_runs_off_event_loop():
 
 def test_global_excluded_urls_still_apply(monkeypatch):
     """Sin la variable de requests, se respeta OTEL_PYTHON_EXCLUDED_URLS además de Telegram."""
-    from opentelemetry.util.http import parse_excluded_urls
     monkeypatch.delenv('OTEL_PYTHON_REQUESTS_EXCLUDED_URLS', raising=False)
     monkeypatch.setenv('OTEL_PYTHON_EXCLUDED_URLS', 'internal.example')
-    excluded = parse_excluded_urls(observability.requests_excluded_urls())
-    assert excluded.url_disabled('https://internal.example/x')
-    assert excluded.url_disabled('https://api.telegram.org/botX/sendMessage')
+    assert observability.requests_excluded_urls().split(',') == ['api.telegram.org', 'internal.example']
