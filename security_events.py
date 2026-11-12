@@ -44,6 +44,7 @@ class SecurityEvent(accounts.Base):  # type: ignore[misc,valid-type]
 
 
 def device_id(user_agent: Optional[str]) -> str:
+    """Huella corta del navegador (hash del user agent)."""
     return hashlib.sha256((user_agent or '').encode()).hexdigest()[:16]
 
 
@@ -98,4 +99,5 @@ def purge(days: Optional[int] = None) -> int:
 
 
 def login_alerts_enabled() -> bool:
+    """LOGIN_ALERTS=false apaga el aviso por email de login desde un navegador nuevo."""
     return os.getenv('LOGIN_ALERTS', 'true').strip().lower() != 'false'
