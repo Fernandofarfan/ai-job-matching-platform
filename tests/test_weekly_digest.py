@@ -68,7 +68,8 @@ def test_seen_since_counts_only_recent_and_own(alerts_db):
         total, recent = job_alerts.seen_since(datetime.now() - timedelta(days=7), limit=2)
     assert total == 3 and len(recent) == 2 and {r['title'] for r in recent} <= {'T0', 'T1', 'T2'}
     with accounts.as_user(1):
-        assert job_alerts.seen_since(datetime.now() - timedelta(days=30), until=old + timedelta(seconds=1))[0] == 1
+        month_ago = datetime.now() - timedelta(days=30)
+        assert job_alerts.seen_since(month_ago, until=old + timedelta(seconds=1))[0] == 1
 
 
 def _users(_accounts_sqlite):
