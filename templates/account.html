@@ -55,7 +55,7 @@
         </div>
         <div class="col-sm-3">
           <label for="tf-code" class="form-label small">Código actual</label>
-          <input type="text" class="form-control form-control-sm" id="tf-code" name="code" required inputmode="numeric" autocomplete="one-time-code" maxlength="16">
+          <input type="text" class="form-control form-control-sm" id="tf-code" name="code" required inputmode="numeric" autocomplete="one-time-code" maxlength="32">
         </div>
         <div class="col-sm-4 d-flex gap-2 flex-wrap">
           <button type="submit" class="btn btn-sm btn-outline-primary" formaction="{{ url_for('two_factor_recovery') }}">Códigos nuevos</button>

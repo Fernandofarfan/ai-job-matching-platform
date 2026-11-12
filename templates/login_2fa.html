@@ -20,7 +20,7 @@
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <label for="code" class="form-label">Código de tu app autenticadora</label>
           <input type="text" class="form-control mb-2" id="code" name="code" required autofocus
-                 autocomplete="one-time-code" inputmode="numeric" maxlength="16" aria-describedby="code-help">
+                 autocomplete="one-time-code" inputmode="numeric" maxlength="32" aria-describedby="code-help">
           <p id="code-help" class="text-muted small">Si perdiste el teléfono, escribí uno de tus códigos de recuperación.</p>
           <button type="submit" class="btn btn-primary w-100">Verificar</button>
         </form>
