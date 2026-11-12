@@ -1,4 +1,5 @@
 """Segundo factor: paso extra del login y configuración en Mi cuenta."""
+import hmac
 import logging
 import time
 
@@ -19,7 +20,8 @@ def begin_login(user: dict, kind: str, next_url: str):
     """Con segundo factor activo deja el login pendiente y devuelve la redirección; si no, None."""
     if not two_factor.is_enabled(user['id']):
         return None
-    session['two_factor'] = {'uid': user['id'], 'kind': kind, 'next': next_url or '', 'ts': time.time()}
+    session['two_factor'] = {'uid': user['id'], 'kind': kind, 'next': next_url or '', 'ts': time.time(),
+                             'fp': auth.session_fingerprint(app.secret_key, user)}
     return redirect(url_for('login_two_factor'))
 
 
@@ -44,7 +46,8 @@ def login_two_factor():
     """Pide el código de la app autenticadora (o uno de recuperación) después de la contraseña."""
     pending = _pending()
     user = accounts.get_user(pending['uid']) if pending else None
-    if not user:
+    if not user or not hmac.compare_digest(str(pending.get('fp', '')), auth.session_fingerprint(app.secret_key, user)):
+        session.pop('two_factor', None)
         flash('Volvé a ingresar tu email y contraseña', 'warning')
         return redirect(url_for('login'))
     if request.method == 'POST':

@@ -154,3 +154,13 @@ def test_setup_requires_password(client, ana):
     """Con una sesión robada no se puede enrolar otro autenticador sin la contraseña."""
     response = client.post('/account/2fa/setup', data={'password': 'mal'})
     assert response.status_code == 302 and two_factor.pending_secret(ana) is None
+
+
+def test_password_change_invalidates_pending_login(client, ana):
+    """Un login pendiente del segundo factor deja de valer si la contraseña cambió."""
+    secret, _ = _enable(client)
+    _login(client)
+    accounts.set_password(ana, 'otra-clave-larga-2')
+    response = client.post('/login/2fa', data={'code': _code(secret, 1)})
+    assert response.headers['Location'].endswith('/login')
+    assert client.get('/account').status_code == 302
