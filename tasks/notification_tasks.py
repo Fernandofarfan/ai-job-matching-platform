@@ -252,7 +252,8 @@ def _send_weekly_digest():
     user = accounts.get_user(uid)
     if user is None or not user["weekly_digest"]:
         return {"sent": 0, "reason": "apagado"}
-    now = datetime.now()
+    # sin microsegundos: DATETIME de MySQL no los guarda y confirm_weekly_digest compara por igualdad
+    now = datetime.now().replace(microsecond=0)
     since = user["weekly_digest_since"] or now - timedelta(days=WEEKLY_DAYS)
     if now - since < timedelta(days=WEEKLY_DAYS):
         return {"sent": 0, "reason": "todavía no"}
