@@ -97,3 +97,15 @@ def test_interview_evaluate_without_gemini_has_no_grade(api, engine):
     resp = api.post('/api/ai/interview/evaluate', json={'question': 'q', 'answer': 'a'})
     assert resp.status_code == 503
     assert resp.json() == {'success': False, 'error': 'Error al contactar Gemini: falta tu permiso'}
+
+
+def test_rewrite_and_interview_validation(api, engine):
+    assert api.post('/api/ai/rewrite-bullet', json={}).status_code == 400
+    engine.rewrite_cv_bullet.return_value = {'mejorado': 'ETL con Spark'}
+    assert api.post('/api/ai/rewrite-bullet', json={'bullet': 'Hice ETL'}).json()['mejorado'] == 'ETL con Spark'
+    assert api.post('/api/ai/interview/generate', json={}).status_code == 400
+    engine.generate_interview_questions.return_value = {'preguntas': [{'n': 1}], 'consejo_general': 'STAR'}
+    data = api.post('/api/ai/interview/generate', json={'job_title': 'DE'}).json()
+    assert data['questions'] == [{'n': 1}] and data['consejo'] == 'STAR'
+    engine.rewrite_cv_bullet.side_effect = RuntimeError('cuota')
+    assert api.post('/api/ai/rewrite-bullet', json={'bullet': 'x'}).status_code == 500
