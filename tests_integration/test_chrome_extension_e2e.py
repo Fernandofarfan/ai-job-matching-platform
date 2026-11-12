@@ -100,6 +100,13 @@ def test_link_stores_token_only_on_device(extension_context):
     """Con el state que generó el popup, el service worker guarda el token en storage.local y no en sync."""
     context, worker = extension_context
     worker.evaluate(f"chrome.storage.session.set({{ linkState: '{STATE}' }})")
+    # espera la migración del arranque para que no copie el token viejo después
+    worker.evaluate("""async () => {
+        while (!(await chrome.storage.local.get('tokenMigrated')).tokenMigrated) {
+            await new Promise(r => setTimeout(r, 50));
+        }
+        await chrome.storage.sync.set({ extensionToken: 'viejo' });
+    }""")
     _serve_link_page(context)
     context.new_page().goto(LINK_URL)
     assert _local_token(worker) == TOKEN
@@ -121,15 +128,28 @@ def test_link_ignores_page_with_another_state(extension_context):
     assert _local_token(worker, wait=False) is None
 
 
-def test_token_from_old_version_moves_out_of_sync(extension_context):
-    """El token que versiones anteriores dejaban en storage.sync pasa a storage.local."""
+def test_token_from_old_version_is_copied_once(extension_context):
+    """El token que versiones anteriores dejaban en storage.sync se copia a storage.local una sola vez.
+
+    Queda en sync para los otros Chrome que todavía no se actualizaron; desvincular no lo vuelve a copiar."""
     _context, worker = extension_context
     result = worker.evaluate("""async () => {
+        while (!(await chrome.storage.local.get('tokenMigrated')).tokenMigrated) {
+            await new Promise(r => setTimeout(r, 50));
+        }
+        await chrome.storage.local.remove('tokenMigrated');
         await chrome.storage.sync.set({ extensionToken: 'viejo' });
         await EmpleoIALink.migrateToken(chrome.storage);
-        return { sync: await chrome.storage.sync.get('extensionToken'), local: await chrome.storage.local.get('extensionToken') };
+        const first = {
+            sync: await chrome.storage.sync.get('extensionToken'),
+            local: await chrome.storage.local.get('extensionToken'),
+        };
+        await chrome.storage.local.remove('extensionToken');
+        await EmpleoIALink.migrateToken(chrome.storage);
+        return { first, again: await chrome.storage.local.get('extensionToken') };
     }""")
-    assert result == {'sync': {}, 'local': {'extensionToken': 'viejo'}}
+    assert result == {'first': {'sync': {'extensionToken': 'viejo'}, 'local': {'extensionToken': 'viejo'}},
+                      'again': {}}
 
 
 def test_popup_link_button_opens_account_with_state(extension_context):
