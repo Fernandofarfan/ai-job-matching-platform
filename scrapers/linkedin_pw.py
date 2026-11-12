@@ -18,7 +18,6 @@ CITIZENSHIP_KEYWORDS = (
     "federal background",
 )
 YEARS_PATTERNS = (
-    r'(\d+)\s*\+\s*(?:years?|yrs?)\s*(?:of\s+)?(?:[\w/.#+-]+\s+){0,3}?(?:experience|exp)\b',
     r'(\d+)(?:\+)?\s*(?:-|to)\s*(\d+)\s*(?:years?|yrs?)\s*(?:of\s+)?(?:experience)',
     r'(\d+)\s*\+?\s*(?:years?|yrs?)\s*(?:of\s+)?(?:experience)',
     r'(?:experience(?:\s*of)?|minimum(?:\s*of)?|at\s*least)\s*(\d+)\s*(?:years?|yrs?)',
@@ -33,19 +32,27 @@ def has_citizenship_requirements(description_text: str) -> bool:
     return any(keyword in description_text for keyword in CITIZENSHIP_KEYWORDS)
 
 
+# "20+ years ago", "10 years old": antigüedad de la empresa, no requisito
+NOT_REQUIREMENT = re.compile(r'\s*(?:ago|old|in business|of history)\b', re.IGNORECASE)
+
+
 def extract_years_of_experience(description_text: str) -> str:
-    """'8+ years', '2-3 years', '2 years' o 'Not specified' según la descripción."""
+    """'8+ years', '2-3 years', '2 years' o 'Not specified'; si pide varios, el mínimo más alto."""
+    best = None
     for pattern in YEARS_PATTERNS:
-        match = re.search(pattern, description_text, re.IGNORECASE)
-        if not match:
-            continue
-        if match.lastindex and match.lastindex > 1:
-            return f"{match.group(1)}-{match.group(2)} years"
-        years = match.group(1)
-        if re.search(rf'\b{years}\s*\+', description_text):
-            return f"{years}+ years"
-        return f"{years} years"
-    return "Not specified"
+        for match in re.finditer(pattern, description_text, re.IGNORECASE):
+            if NOT_REQUIREMENT.match(description_text, match.end()):
+                continue
+            if match.lastindex and match.lastindex > 1:
+                label = f"{match.group(1)}-{match.group(2)} years"
+            elif re.search(r'\d\s*(?:-|to)\s*$', description_text[:match.start()]):
+                continue  # el "3" de "2-3 years"
+            else:
+                years = match.group(1)
+                label = f"{years}+ years" if re.search(rf'\b{years}\s*\+', description_text) else f"{years} years"
+            if best is None or int(match.group(1)) > best[0]:
+                best = (int(match.group(1)), label)
+    return best[1] if best else "Not specified"
 
 
 def categorize_experience_with_limit(years: str) -> str:
