@@ -94,3 +94,22 @@ tests:
             exp_annotations:
               summary: "bumeran no devuelve ofertas"
               description: "24 búsquedas en 24 h sin ofertas: revisar el parser con scripts/scraper_health.py."
+  - interval: 1h
+    input_series:
+      # La instancia "a" se reemplaza por "b" a mitad del día: las 3 búsquedas vacías del día deben contarse igual
+      - series: 'empleoia_scraper_runs_total{portal="zonajobs",outcome="empty",instance="a"}'
+        values: '0 0 1 1 1 1 1 1 1 1 1 1 2 _x14'
+      - series: 'empleoia_scraper_runs_total{portal="zonajobs",outcome="empty",instance="b"}'
+        values: '_x13 2 2 2 2 2 3 3 3 3 3 3 4 4 4'
+      - series: 'empleoia_scraper_runs_total{portal="zonajobs",outcome="ok",instance="a"}'
+        values: '0x12 _x14'
+      - series: 'empleoia_scraper_runs_total{portal="zonajobs",outcome="ok",instance="b"}'
+        values: '_x13 0x13'
+    alert_rule_test:
+      - eval_time: 26h
+        alertname: EmpleoIAPortalSinOfertas
+        exp_alerts:
+          - exp_labels: {severity: warning, portal: zonajobs}
+            exp_annotations:
+              summary: "zonajobs no devuelve ofertas"
+              description: "3 búsquedas en 24 h sin ofertas: revisar el parser con scripts/scraper_health.py."
