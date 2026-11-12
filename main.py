@@ -14,6 +14,7 @@ from starlette.routing import Match
 
 import accounts
 import auth
+import error_reporting
 import fastapi_web
 import observability
 import rate_limit
@@ -107,8 +108,9 @@ async def http_error(request: Request, exc: StarletteHTTPException):
 
 
 async def server_error(request: Request, exc: Exception):
-    """500 sin el mensaje interno (queda en el log)."""
+    """500 sin el mensaje interno (queda en el log y, con SENTRY_DSN, en Sentry)."""
     logging.exception(f"500 en {request.url.path}: {exc}")
+    error_reporting.capture(exc)
     if request.url.path.startswith("/api/"):
         return security_headers.apply(request, JSONResponse({"error": "Error interno"}, status_code=500))
     return security_headers.apply(request, fastapi_web.templates.TemplateResponse(
@@ -118,6 +120,7 @@ async def server_error(request: Request, exc: Exception):
 
 def create_app(web_app=None) -> FastAPI:
     """FastAPI con sus routers; `web_app` (por defecto la de app.py) tiene la clave, la config y los globals."""
+    error_reporting.setup("web")
     docs = os.getenv("ENABLE_API_DOCS", "0") == "1"
     app = FastAPI(title="EmpleoIA API", description="FastAPI Core para EmpleoIA", version="1.0.0",
                   docs_url="/docs" if docs else None, redoc_url="/redoc" if docs else None,

@@ -465,7 +465,9 @@ SCRAPER_MAX_ATTEMPTS=3   # intentos por página (espera 2 s, 4 s… entre intent
 
 # === Observabilidad (opcional) ===
 LOG_LEVEL=INFO
-SENTRY_DSN=
+SENTRY_DSN=                      # errores 500 y tareas fallidas a Sentry (solo el id de la cuenta, sin cookies ni emails)
+SENTRY_ENVIRONMENT=development   # en Cloud Run lo pone Terraform
+SENTRY_TRACES_SAMPLE_RATE=0
 METRICS_TOKEN=                  # /metrics (Prometheus) con 'Authorization: Bearer <token>'; vacío = 404
 OTEL_EXPORTER_OTLP_ENDPOINT=    # trazas OpenTelemetry (web + worker); ver docs/observability.md
 

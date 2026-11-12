@@ -6,6 +6,11 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar] - Errores de producción en Sentry
+
+- Con `SENTRY_DSN`, los errores 500 de la web y las tareas de Celery que fallan llegan a Sentry, con el entorno (`SENTRY_ENVIRONMENT`, que Terraform pone en staging/prod), la versión (`SENTRY_RELEASE` o `K_REVISION` de Cloud Run) y el componente (`web` o `worker`). Antes Sentry solo se iniciaba en la web, y los 500 que atrapaba el manejador de errores no llegaban.
+- Los eventos no llevan cookies, cabeceras de autenticación, cuerpos de pedidos, query strings ni emails: solo el id de la cuenta. Los `logger.error` quedan como contexto, no como eventos.
+
 ## [Sin publicar] - Todo el esquema de la base en Alembic
 
 - Alembic crea y actualiza todas las tablas: `0000_core_tables` crea las que antes creaba `setup_database.sql` y `0015_core_schema` lleva cada tabla a la forma de los modelos, venga la base del script viejo o de `create_all`. Se eliminaron `setup_database.sql` e `init_db.py`.

@@ -26,6 +26,13 @@ def _tracing(**_):
     observability.setup_tracing(celery_worker=True)
 
 
+@worker_process_init.connect
+def _error_reporting(**_):
+    """Tareas que fallan a Sentry si hay SENTRY_DSN."""
+    import error_reporting
+    error_reporting.setup("worker")
+
+
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
 celery = Celery(
