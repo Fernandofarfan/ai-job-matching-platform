@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="EmpleoIA – Plataforma inteligente de búsqueda de empleo con IA. Scrapea, trackea y analiza tus postulaciones.">
     <meta name="theme-color" content="#667eea">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="csrf-token" content="{{ csrf_token() if csrf_token is defined else '' }}">
     <title>EmpleoIA - Buscador de Empleos con IA</title>
 
     <!-- PWA Manifest -->
