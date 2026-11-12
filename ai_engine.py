@@ -48,6 +48,8 @@ class JobAnalysisSchema(BaseModel):
 
 # ── Gemini client ─────────────────────────────────────────────────────────────
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+# Modelo más barato para extraer datos o clasificar (salarios, correos); vacío = GEMINI_MODEL
+GEMINI_LIGHT_MODEL = os.getenv("GEMINI_LIGHT_MODEL", "gemini-2.5-flash-lite") or GEMINI_MODEL
 
 try:
     from google import genai
@@ -70,14 +72,15 @@ GEMINI_ERROR_PREFIX = "Error al contactar Gemini"
 AI_CONSENT_ERROR = "Error al contactar Gemini: falta tu permiso para usar la IA (activalo en Mi cuenta)"
 
 
-def _call_gemini(prompt: str, temperature: float = 0.7) -> str:
-    """Wrapper seguro para llamar a Gemini con manejo de errores."""
+def _call_gemini(prompt: str, temperature: float = 0.7, model: Optional[str] = None) -> str:
+    """Wrapper seguro para llamar a Gemini con manejo de errores; model=None usa GEMINI_MODEL."""
+    model = model or GEMINI_MODEL
     if not GEMINI_AVAILABLE:
         return "⚠️ Gemini no está configurado. Agregá GEMINI_API_KEY al archivo .env"
     import accounts
     if accounts.ai_consent_missing():
         return AI_CONSENT_ERROR
-    cached = ai_usage.cache_get(GEMINI_MODEL, prompt, temperature)
+    cached = ai_usage.cache_get(model, prompt, temperature)
     if cached is not None:
         return cached
     if ai_usage.budget_exceeded():
@@ -85,7 +88,7 @@ def _call_gemini(prompt: str, temperature: float = 0.7) -> str:
         return "Error al contactar Gemini: se alcanzó el límite mensual de tokens"
     try:
         response = _gemini_client.models.generate_content(
-            model=GEMINI_MODEL,
+            model=model,
             contents=prompt,
             config=genai_types.GenerateContentConfig(
                 temperature=temperature,
@@ -99,7 +102,7 @@ def _call_gemini(prompt: str, temperature: float = 0.7) -> str:
         ai_usage.record(input_tokens, output_tokens)
         logger.info(f"Gemini: {input_tokens} tokens de entrada, {output_tokens} de salida")
         text = response.text.strip()
-        ai_usage.cache_set(GEMINI_MODEL, prompt, temperature, text)
+        ai_usage.cache_set(model, prompt, temperature, text)
         return text
     except Exception as e:
         logger.error(f"Gemini API error: {e}")
@@ -375,7 +378,7 @@ Respondé en JSON sin bloques de código:
 
 Si no hay info salarial, usá inferencias del mercado latinoamericano 2025 para el rol y nivel de experiencia."""
 
-    raw = _call_gemini(prompt, temperature=0.2)
+    raw = _call_gemini(prompt, temperature=0.2, model=GEMINI_LIGHT_MODEL)
     raw = re.sub(r'```(?:json)?\s*', '', raw).strip()
     try:
         return json.loads(raw)

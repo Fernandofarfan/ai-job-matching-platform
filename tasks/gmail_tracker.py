@@ -105,10 +105,10 @@ def _process_mailbox(service):
             
             # Aqui integramos AI Engine para revisar si el correo (texto completo)
             # corresponde a alguna empresa guardada en el tracker
-            from ai_engine import GEMINI_ERROR_PREFIX, _call_gemini
+            from ai_engine import GEMINI_ERROR_PREFIX, GEMINI_LIGHT_MODEL, _call_gemini
             prompt = f"El reclutador {sender} envió este correo: {subject}. ¿Corresponde a alguna de estas empresas? {', '.join([j['company'] for j in tracked_jobs])}. Responde el nombre de la empresa exacto."
             
-            matched_company = (_call_gemini(prompt) or '').strip()
+            matched_company = (_call_gemini(prompt, temperature=0, model=GEMINI_LIGHT_MODEL) or '').strip()
             if matched_company.startswith(GEMINI_ERROR_PREFIX):
                 # sin permiso o sin cuota: el correo queda sin leer para revisarlo cuando Gemini responda
                 logger.warning(f"Correo {message['id']} sin revisar: {matched_company}")
