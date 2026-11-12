@@ -252,33 +252,6 @@
   </div>
 </div>
 
-<!-- ── Rendimiento por portal (cargado via AJAX) ── -->
-<div class="row g-4 mb-4" id="portal-row" style="display:none;">
-  <div class="col-12">
-    <div class="analytics-card">
-      <div class="analytics-card-header">
-        <h2 class="analytics-card-title h5"><i class="bi bi-globe2 me-2" aria-hidden="true"></i>Rendimiento por portal</h2>
-        <span id="avg-days-to-apply" class="text-muted small"></span>
-      </div>
-      <div class="table-responsive">
-        <table class="table table-sm align-middle mb-0" id="portal-table">
-          <caption class="visually-hidden">Ofertas guardadas, postulaciones y tasa de respuesta de cada portal</caption>
-          <thead>
-            <tr>
-              <th scope="col">Portal</th>
-              <th scope="col" class="text-end">Guardadas</th>
-              <th scope="col" class="text-end">Postulaciones</th>
-              <th scope="col" class="text-end">Respuestas</th>
-              <th scope="col" class="text-end">Tasa de respuesta</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-</div>
-
 {% endblock %}
 
 {% block scripts %}
@@ -452,31 +425,6 @@
             </div>
           </div>
         `).join('');
-      }
-
-      // ── Rendimiento por portal ──
-      const portalRow = document.getElementById('portal-row');
-      if (portalRow && data.by_portal && data.by_portal.length > 0) {
-        const tbody = document.querySelector('#portal-table tbody');
-        tbody.replaceChildren(...data.by_portal.map(p => {
-          const tr = document.createElement('tr');
-          const th = document.createElement('th');
-          th.scope = 'row';
-          th.textContent = p.portal;
-          tr.appendChild(th);
-          [p.saved, p.applied, p.responses, `${p.response_rate}%`].forEach(value => {
-            const td = document.createElement('td');
-            td.className = 'text-end';
-            td.textContent = value;
-            tr.appendChild(td);
-          });
-          return tr;
-        }));
-        if (data.avg_days_to_apply !== null && data.avg_days_to_apply !== undefined) {
-          document.getElementById('avg-days-to-apply').textContent =
-            `Postulás en promedio ${data.avg_days_to_apply} días después de guardar una oferta`;
-        }
-        portalRow.style.display = '';
       }
 
     } catch (err) {
