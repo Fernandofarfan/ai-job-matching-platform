@@ -348,6 +348,11 @@ async def passkey_login_options(request: Request):
     _, error = await passkey_json(request, '20 per minute', 'passkey_login', client_ip(request))
     if error:
         return error
+    return await run_in_threadpool(_passkey_login_options, request)
+
+
+def _passkey_login_options(request: Request) -> Response:
+    """Guarda el desafío en la base (fuera del event loop) y arma las opciones."""
     site = request_origin(request)
     challenge = passkeys.new_challenge(get_session(request), 'login')
     return save_session(request, Response(passkeys.authentication_options(site, challenge),
