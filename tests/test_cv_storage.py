@@ -111,7 +111,12 @@ def test_retention_waits_while_mysql_is_down(workdir, monkeypatch):
 
     old = cv_storage.save(b'a', 'old.pdf')
     os.utime(old, (time.time() - 40 * 86400,) * 2)
+    os.makedirs(os.path.join('temp', 'cover_letters'))
+    gen = os.path.join('temp', 'cover_letters', 'carta.docx')
+    open(gen, 'w').close()
+    os.utime(gen, (time.time() - 40 * 86400,) * 2)
     monkeypatch.setattr(profile_store, 'primary_available', lambda: False)
     monkeypatch.setenv('CV_RETENTION_DAYS', '30')
-    assert privacy_tasks.enforce_cv_retention.run()['deleted_cvs'] == 0
+    result = privacy_tasks.enforce_cv_retention.run()
+    assert result['deleted_cvs'] == 0 and result['deleted_generated'] == 1
     assert os.listdir('uploads') == ['old.pdf']

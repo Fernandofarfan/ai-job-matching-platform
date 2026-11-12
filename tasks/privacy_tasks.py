@@ -18,9 +18,11 @@ def enforce_cv_retention():
     if days <= 0:
         return {"encrypted": encrypted, "deleted_cvs": 0, "deleted_profiles": 0, "deleted_generated": 0}
 
+    deleted_generated = cv_storage.purge_generated(days)
     if not profile_store.primary_available():
         logger.warning("Retención de CVs postergada: MySQL no responde y quedarían perfiles sin borrar")
-        return {"encrypted": encrypted, "deleted_cvs": 0, "deleted_profiles": 0, "deleted_generated": 0}
+        return {"encrypted": encrypted, "deleted_cvs": 0, "deleted_profiles": 0,
+                "deleted_generated": deleted_generated}
 
     old = set(cv_storage.expired(days))
     deleted_profiles = 0
@@ -28,7 +30,6 @@ def enforce_cv_retention():
         if data.get("resume_filename") in old and profile_store.delete_profile(role) is not None:
             deleted_profiles += 1
     deleted_cvs = sum(cv_storage.delete(name) for name in old)
-    deleted_generated = cv_storage.purge_generated(days)
     logger.info(f"Retención de CVs ({days} días): {deleted_cvs} CVs, {deleted_profiles} perfiles, "
                 f"{deleted_generated} documentos generados")
     return {"encrypted": encrypted, "deleted_cvs": deleted_cvs,
