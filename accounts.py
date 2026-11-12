@@ -33,6 +33,7 @@ class User(Base):  # type: ignore[misc,valid-type]
     email = Column(String(255), nullable=False, unique=True)
     password_hash = Column(String(255), nullable=False)
     created_at = Column(DateTime, default=datetime.now)
+    email_verified_at = Column(DateTime, nullable=True)
 
 
 class AccountError(ValueError):
@@ -132,7 +133,10 @@ def get_user(user_id) -> Optional[dict]:
         return None
     with _sessions()() as session:
         user = session.get(User, user_id)
-        return {'id': user.id, 'email': user.email, 'password_hash': user.password_hash} if user else None
+        if user is None:
+            return None
+        return {'id': user.id, 'email': user.email, 'password_hash': user.password_hash,
+                'email_verified': user.email_verified_at is not None}
 
 
 def normalize_email(email: str) -> str:
@@ -145,8 +149,7 @@ def register(email: str, password: str) -> int:
     email = normalize_email(email)
     if not EMAIL_RE.match(email) or len(email) > 255:
         raise AccountError('Email inválido')
-    if len(password or '') < MIN_PASSWORD:
-        raise AccountError(f'La contraseña debe tener al menos {MIN_PASSWORD} caracteres')
+    _check_password(password)
     admin = normalize_email(os.getenv('ADMIN_EMAIL', ''))
     with _sessions()() as session:
         first = _count(session) == 0
@@ -156,7 +159,9 @@ def register(email: str, password: str) -> int:
             raise AccountError('Definí ADMIN_EMAIL antes de crear la primera cuenta')
         if not first and not _signup_allowed():
             raise AccountError('El registro de cuentas nuevas está cerrado')
-        user = User(email=email, password_hash=generate_password_hash(password))
+        # la primera cuenta es la del administrador: no espera el email de verificación
+        user = User(email=email, password_hash=generate_password_hash(password),
+                    email_verified_at=datetime.now() if first else None)
         session.add(user)
         try:
             session.commit()
@@ -235,3 +240,64 @@ def claim_orphans(user_id: int):
                 session.execute(text(f'UPDATE {table} SET user_id = :uid WHERE user_id IS NULL'), {'uid': user_id})
         session.commit()
     claim_legacy_files(user_id)
+
+
+def _check_password(password: str):
+    """Valida el largo mínimo de una contraseña nueva."""
+    if len(password or '') < MIN_PASSWORD:
+        raise AccountError(f'La contraseña debe tener al menos {MIN_PASSWORD} caracteres')
+
+
+def find_user_id(email: str) -> Optional[int]:
+    """Id de la cuenta con ese email, o None."""
+    with _sessions()() as session:
+        return session.execute(select(User.id).where(User.email == normalize_email(email))).scalar_one_or_none()
+
+
+def set_password(user_id: int, password: str):
+    """Reemplaza la contraseña (invalida las sesiones abiertas y los enlaces de recuperación)."""
+    _check_password(password)
+    with _sessions()() as session:
+        user = session.get(User, user_id)
+        if user is None:
+            raise AccountError('La cuenta no existe')
+        user.password_hash = generate_password_hash(password)
+        session.commit()
+
+
+def change_password(user_id: int, current: str, new: str):
+    """Cambia la contraseña si `current` es la actual."""
+    user = get_user(user_id)
+    if user is None or not check_password_hash(user['password_hash'], current or ''):
+        raise AccountError('La contraseña actual no es correcta')
+    set_password(user_id, new)
+
+
+def check_password(user_id: int, password: str) -> bool:
+    """True si `password` es la contraseña de la cuenta."""
+    user = get_user(user_id)
+    return user is not None and check_password_hash(user['password_hash'], password or '')
+
+
+def mark_verified(user_id: int):
+    """Marca el email de la cuenta como verificado."""
+    with _sessions()() as session:
+        user = session.get(User, user_id)
+        if user is not None and user.email_verified_at is None:
+            user.email_verified_at = datetime.now()
+            session.commit()
+
+
+def delete_account(user_id: int):
+    """Borra la cuenta, todas sus filas y sus carpetas de resultados (los CVs los borra quien llama)."""
+    import shutil
+    from sqlalchemy import delete, inspect, text
+    with _sessions()() as session:
+        inspector = inspect(session.get_bind())
+        for table in OWNED_TABLES:
+            if inspector.has_table(table) and 'user_id' in {c['name'] for c in inspector.get_columns(table)}:
+                session.execute(text(f'DELETE FROM {table} WHERE user_id = :uid'), {'uid': user_id})
+        session.execute(delete(User).where(User.id == user_id))
+        session.commit()
+    shutil.rmtree(os.path.join(RESULTS_ROOT, f'u{user_id}'), ignore_errors=True)
+    shutil.rmtree(os.path.join(os.getenv('GENERATED_DIR', 'temp'), f'u{user_id}'), ignore_errors=True)

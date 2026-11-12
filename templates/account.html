@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-4" style="max-width: 720px;">
+  <h1 class="h3 fw-bold mb-4">Mi cuenta</h1>
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-body p-4">
+      <h2 class="h5 fw-bold">Email</h2>
+      <p class="mb-2">{{ user.email }}
+        {% if user.email_verified %}<span class="badge bg-success ms-2">Verificado</span>
+        {% else %}<span class="badge bg-warning text-dark ms-2">Sin verificar</span>{% endif %}</p>
+      {% if not user.email_verified %}
+      <form method="POST" action="{{ url_for('resend_verification') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-outline-primary btn-sm">Reenviar email de verificación</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-body p-4">
+      <h2 class="h5 fw-bold">Cambiar contraseña</h2>
+      <p class="text-muted small">Al cambiarla se cierran las sesiones abiertas en otros dispositivos.</p>
+      <form method="POST" action="{{ url_for('change_password') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label for="current" class="form-label">Contraseña actual</label>
+        <input type="password" class="form-control mb-3" id="current" name="current" required autocomplete="current-password">
+        <label for="password" class="form-label">Contraseña nueva</label>
+        <input type="password" class="form-control mb-1" id="password" name="password" required minlength="{{ min_password }}" autocomplete="new-password" aria-describedby="password-help">
+        <div id="password-help" class="form-text mb-3">Al menos {{ min_password }} caracteres.</div>
+        <label for="confirm" class="form-label">Repetir contraseña nueva</label>
+        <input type="password" class="form-control mb-3" id="confirm" name="confirm" required minlength="{{ min_password }}" autocomplete="new-password">
+        <button type="submit" class="btn btn-primary">Cambiar contraseña</button>
+      </form>
+    </div>
+  </div>
+  <div class="card border-danger shadow-sm">
+    <div class="card-body p-4">
+      <h2 class="h5 fw-bold text-danger">Borrar la cuenta</h2>
+      <p class="text-muted small">Borra la cuenta y todos sus datos: tracker, perfiles, CVs, alertas y resultados de búsquedas. No se puede deshacer.</p>
+      <form method="POST" action="{{ url_for('delete_account') }}" onsubmit="return confirm('¿Borrar tu cuenta y todos tus datos? No se puede deshacer.');">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label for="delete-password" class="form-label">Tu contraseña</label>
+        <input type="password" class="form-control mb-3" id="delete-password" name="password" required autocomplete="current-password">
+        <button type="submit" class="btn btn-danger" id="deleteAccountBtn">Borrar mi cuenta</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
