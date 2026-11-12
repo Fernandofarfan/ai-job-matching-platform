@@ -103,7 +103,6 @@ class TestJobMatcher:
         if not hasattr(self.matcher, 'calculate_skill_match'):
             pytest.skip("calculate_skill_match not available")
 
-        user_profile = {'skills': ['python', 'sql']}
-        job_description = "We need someone with Python and SQL skills."
-        score = self.matcher.calculate_skill_match(user_profile, job_description)
+        job_description = "We need someone with Python and SQL experience."
+        score = self.matcher.calculate_skill_match(['python', 'sql'], job_description)
         assert score > 0, "Expected positive match score"
