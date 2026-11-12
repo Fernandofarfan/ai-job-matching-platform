@@ -517,7 +517,7 @@ class linkedinConnections:
                             time.sleep(1)
                             logging.info(f"Closed modal using selector: {selector}")
                             return True
-                except Exception as e:
+                except Exception:
                     continue
             
             # Try pressing Escape as last resort
@@ -569,7 +569,7 @@ class linkedinConnections:
                                 found_location = True
                                 break
                                 
-                    except Exception as e:
+                    except Exception:
                         continue
                 
                 if not found_location:
@@ -1005,7 +1005,7 @@ class linkedinConnections:
                             logging.error("❌ Could not click the button with any method")
                             return False
                     
-                except Exception as e:
+                except Exception:
                     continue
             
             logging.warning("❌ No button with text 'Conectar' or 'Connect' found")
@@ -1158,7 +1158,7 @@ class linkedinConnections:
                             is_target = True
                         
                         if is_target:
-                            logging.info(f"🎯 Found it via fallback!")
+                            logging.info("🎯 Found it via fallback!")
                             
                             # Highlight and click
                             try:
@@ -1427,7 +1427,7 @@ class linkedinConnections:
                                 connect_buttons = visible_buttons
                                 logging.info(f"Found {len(connect_buttons)} connect buttons using selector: {selector}")
                                 break
-                    except Exception as e:
+                    except Exception:
                         continue
                 
                 total_buttons_found += len(connect_buttons)
@@ -1748,7 +1748,7 @@ class linkedinConnections:
             # Step 2: Select People filter
             self._update_debug_banner("Selecting People filter...")
             if not self.select_people_filter():
-                logging.error(f"Failed to select People filter")
+                logging.error("Failed to select People filter")
                 return False
             
             time.sleep(2)

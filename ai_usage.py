@@ -16,8 +16,8 @@ CACHE_MAX_ENTRIES = 256
 # Por encima de esta temperatura se esperan respuestas distintas (entrevistas, chat): no se cachean
 CACHE_MAX_TEMPERATURE = 0.5
 
-_state = {}
-_cache = OrderedDict()
+_state: dict = {}
+_cache: OrderedDict = OrderedDict()
 _lock = threading.Lock()
 
 

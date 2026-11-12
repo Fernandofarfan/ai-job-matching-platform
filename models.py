@@ -6,7 +6,7 @@ import os
 from datetime import datetime
 from sqlalchemy import (
     create_engine, Column, Integer, String, Text, DateTime,
-    Date, Float, Boolean, Enum, ForeignKey, Index, event
+    Date, Float, Boolean, Enum, ForeignKey, Index
 )
 from sqlalchemy.orm import declarative_base, relationship, sessionmaker, Session
 from sqlalchemy.pool import QueuePool

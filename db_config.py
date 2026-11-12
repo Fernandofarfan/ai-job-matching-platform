@@ -1,5 +1,4 @@
 import mysql.connector
-from mysql.connector import pooling
 import os
 from datetime import datetime
 import logging

@@ -249,7 +249,7 @@ Algunas áreas donde podés contribuir:
 #### Refactoring
 - **Modularización**: Separar lógica de negocio de rutas de Flask
 - **Type Hints**: Agregar type hints completos en todo el código Python
-- **Code Quality**: Implementar linters (pylint, flake8, black)
+- **Code Quality**: Ruff y mypy ya corren en CI y en pre-commit (`pre-commit install`); falta sumar formateo automático
 - **Arquitectura**: Migrar a arquitectura más escalable (microservicios, API REST)
 
 ### 🆕 Ideas Innovadoras

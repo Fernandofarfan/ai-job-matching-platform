@@ -6,29 +6,18 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException, NoSuchElementException
-from selenium.webdriver.common.action_chains import ActionChains
-from webdriver_manager.chrome import ChromeDriverManager
-from selenium.webdriver.chrome.service import Service
 import ssl
 import time
 import random
 import logging
 import os
-from selenium.webdriver.remote.webelement import WebElement
-import undetected_chromedriver as uc
 from datetime import datetime
-import time
-import random
 import pandas as pd
-from typing import List, Dict, Any
-from datetime import datetime
-import logging
-import pickle
+from typing import List, Dict
 from functools import wraps
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from job_precheck import quick_precheck_job, classify_job_role, should_save_job
+from job_precheck import quick_precheck_job, should_save_job
 
 logging.basicConfig(
     level=logging.INFO,
@@ -874,7 +863,7 @@ class indeedScraper:
                 if isinstance(match, tuple):
                     if len(match) > 1 and match[1]:
                         min_years = int(match[0])
-                        max_years = int(match[1])
+                        int(match[1])
                         if min_years > 3:
                             return "SKIP_HIGH_EXPERIENCE"
                         return f"{match[0]}-{match[1]}"
@@ -1018,7 +1007,7 @@ class indeedScraper:
                                 logger.info("Found 'Apply now' or Easy Apply button - skipping this job")
                                 return False
                                 
-                    except Exception as e:
+                    except Exception:
                         continue
                 
                 logger.warning("Could not determine apply type - skipping job")
@@ -1149,7 +1138,7 @@ class indeedScraper:
                     self.safe_click(google_button)
                     time.sleep(3)
 
-                    google_window = self.handle_google_popup(indeed_window)
+                    self.handle_google_popup(indeed_window)
                     break
                 except Exception as e:
                     if attempt == 2:

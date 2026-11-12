@@ -9,7 +9,6 @@ import time
 from datetime import datetime
 
 import pandas as pd
-from celery import shared_task
 from celery_app import celery
 
 logger = logging.getLogger(__name__)

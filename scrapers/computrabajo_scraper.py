@@ -10,7 +10,6 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
-from selenium.common.exceptions import TimeoutException, NoSuchElementException, ElementClickInterceptedException
 
 from scrapers.common import configure_driver, get_with_retries
 
@@ -291,7 +290,6 @@ class ComputrabajoScraper:
     def _go_to_next_page(self):
         """Navigate to next page of results"""
         try:
-            next_selectors = ["span.b_primary.w48.buildLink.cp", "div.paginator span.next"]
             # Note: Computrabajo pagination is tricky. Sometimes it's a span that acts as a button.
             # We look for the element that has the 'next' class or similar.
             

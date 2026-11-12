@@ -100,7 +100,7 @@ def analytics():
         for fpath in sorted(csv_files, key=os.path.getmtime, reverse=True)[:15]:
             fname = os.path.basename(fpath)
             try:
-                df_tmp = pd.read_csv(fpath, encoding='latin-1', nrows=1)
+                pd.read_csv(fpath, encoding='latin-1', nrows=1)
                 count  = sum(1 for _ in open(fpath, encoding='latin-1')) - 1
             except Exception:
                 count = 0

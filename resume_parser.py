@@ -12,7 +12,6 @@ try:
 except (ImportError, Exception):
     spacy = None
     _SPACY_AVAILABLE = False
-from collections import Counter
 import json
 from datetime import datetime
 
@@ -260,7 +259,6 @@ class resumeParser:
         lines = text.split('\n')
         
         # Track if we're in experience section (helpful but not required)
-        in_experience_section = False
         in_education_section = False
         i = 0
         
@@ -269,14 +267,12 @@ class resumeParser:
             
             # Detect section markers
             if re.match(r'^experience\s*$', line.lower()) or ('professional' in line.lower() and 'experience' in line.lower()):
-                in_experience_section = True
                 in_education_section = False
                 i += 1
                 continue
             
             if re.match(r'^education\s*$', line.lower()) or re.match(r'^projects?\s*$', line.lower()):
                 in_education_section = True
-                in_experience_section = False
             
             # Skip lines in education section
             if in_education_section:
@@ -422,7 +418,16 @@ class resumeParser:
         """
         
         try:
+            import ai_usage
+            if ai_usage.budget_exceeded():
+                print("Límite mensual de tokens de IA alcanzado; el CV se parsea sin IA")
+                return None
             response = self.client.models.generate_content(model=self.model_name, contents=prompt)
+            usage = getattr(response, 'usage_metadata', None)
+            ai_usage.record(
+                getattr(usage, 'prompt_token_count', 0) or 0,
+                (getattr(usage, 'candidates_token_count', 0) or 0) + (getattr(usage, 'thoughts_token_count', 0) or 0),
+            )
             json_str = response.text.strip()
             # Clean up potential markdown code blocks
             if json_str.startswith("```json"):
@@ -750,5 +755,3 @@ class jobMatcher:
         results_df = results_df.sort_values('overall_match', ascending=False)
         
         return results_df
-
-

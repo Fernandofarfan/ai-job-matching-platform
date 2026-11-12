@@ -118,7 +118,6 @@ def export_tracker_pdf():
         from reportlab.lib.units import cm
         from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
         from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-        from reportlab.lib.enums import TA_CENTER, TA_LEFT
 
         jobs = db_manager.get_all_tracked_jobs()
 

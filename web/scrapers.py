@@ -374,9 +374,9 @@ def run_test_scraper():
                     try:
                         test_tasks[tid]['progress'] = 10
                         save_task_to_disk(tid)
-                        logged = getattr(scraper, 'login_with_cookie', lambda: True)()
+                        getattr(scraper, 'login_with_cookie', lambda: True)()
                     except Exception:
-                        logged = False
+                        pass
                     test_tasks[tid]['progress'] = 30
                     save_task_to_disk(tid)
                     jobs = scraper.search_jobs(position, location, max_jobs_per_search=max_jobs)
@@ -500,9 +500,6 @@ def start_universal_scraper():
     def run_universal_scraper():
         try:
             all_results = []
-            completed_scrapers = 0
-            total_scrapers = 4
-            scraper_threads = []
             scraper_results = {
                 'indeed': [],
                 'linkedin': [],
@@ -511,9 +508,6 @@ def start_universal_scraper():
             }
             
             # Get credentials from environment
-            indeed_email = os.getenv('INDEED_EMAIL')
-            indeed_password = os.getenv('INDEED_PASSWORD')
-            linkedin_token = os.getenv('LINKEDIN_TOKEN')
             computrabajo_email = os.getenv('COMPUTRABAJO_EMAIL')
             computrabajo_password = os.getenv('COMPUTRABAJO_PASSWORD')
             bumeran_email = os.getenv('BUMERAN_EMAIL')

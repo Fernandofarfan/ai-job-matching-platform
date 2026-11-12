@@ -2,7 +2,6 @@
 test_analytics.py – Tests del endpoint de Analytics avanzado.
 """
 import json
-import pytest
 
 
 class TestAnalyticsAdvanced:

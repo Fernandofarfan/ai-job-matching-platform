@@ -10,7 +10,7 @@ from limits.strategies import MovingWindowRateLimiter
 logger = logging.getLogger(__name__)
 
 DEFAULT_AI_RATE_LIMIT = '30 per minute'
-_state = {}
+_state: dict = {}
 _lock = threading.Lock()
 
 

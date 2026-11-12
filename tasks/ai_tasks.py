@@ -5,7 +5,6 @@ Para procesamiento por lotes, análisis semántico masivo y exportaciones.
 import os
 import glob
 import logging
-from datetime import datetime
 
 from celery_app import celery
 
@@ -173,7 +172,7 @@ def cleanup_old_temp_files(days: int = 7):
 def export_tracker_to_excel(self, job_list: list, output_path: str):
     """Exporta el Job Tracker a Excel con formato premium."""
     import openpyxl
-    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.styles import Font, PatternFill, Alignment
     from openpyxl.utils import get_column_letter
 
     try:
