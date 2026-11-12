@@ -11,7 +11,7 @@ from contextlib import contextmanager
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import DateTime, Integer, String, select
+from sqlalchemy import DateTime, Integer, String, select, update
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -397,7 +397,18 @@ def set_weekly_digest(user_id: int, enabled: bool):
             session.commit()
 
 
-def mark_weekly_digest(user_id: int, when: datetime):
+def claim_weekly_digest(user_id: int, previous: Optional[datetime], when: datetime) -> bool:
+    """Toma el resumen de la cuenta: anota `when` solo si el último envío sigue siendo `previous`.
+    Si dos ejecuciones se pisan, solo una gana y manda el email."""
+    last = User.weekly_digest_sent_at
+    with _sessions()() as session:
+        result = session.execute(update(User).where(User.id == user_id, last.is_(None) if previous is None
+                                                    else last == previous).values(weekly_digest_sent_at=when))
+        session.commit()
+        return bool(getattr(result, 'rowcount', 0))
+
+
+def mark_weekly_digest(user_id: int, when: Optional[datetime]):
     """Anota hasta cuándo cubrió el último resumen semanal de la cuenta (el próximo arranca ahí)."""
     with _sessions()() as session:
         user = session.get(User, user_id)

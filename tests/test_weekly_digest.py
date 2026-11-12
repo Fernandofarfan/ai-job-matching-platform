@@ -151,3 +151,14 @@ def test_first_digest_of_old_account_counts_only_last_week(monkeypatch, _account
     monkeypatch.setattr(nt, '_send_email', mock.Mock(return_value=True))
     assert nt.send_weekly_digests()['sent'] == 1
     assert datetime.now() - seen_since.call_args[0][0] < timedelta(days=7, minutes=1)
+
+
+def test_claim_lets_only_one_overlapping_run_send(monkeypatch, _accounts_sqlite):
+    monkeypatch.setenv('ALLOW_SIGNUP', 'true')
+    on, _ = _users(_accounts_sqlite)
+    now = datetime.now()
+    assert accounts.claim_weekly_digest(on, None, now)
+    assert not accounts.claim_weekly_digest(on, None, now)
+    assert accounts.get_user(on)['weekly_digest_sent_at'] == now
+    later = now + timedelta(days=7)
+    assert accounts.claim_weekly_digest(on, now, later) and not accounts.claim_weekly_digest(on, now, later)
