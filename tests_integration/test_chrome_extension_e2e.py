@@ -1,7 +1,6 @@
 """E2E de la extensión: Chromium la carga, el content script extrae una oferta y el popup responde."""
 import os
 import tempfile
-from urllib.parse import unquote
 
 import pytest
 
@@ -135,15 +134,15 @@ def test_token_from_old_version_moves_out_of_sync(extension_context):
 def test_popup_link_button_opens_account_with_state(extension_context):
     """"Vincular con mi cuenta" abre Mi cuenta con un state nuevo, que queda guardado para comprobar la respuesta."""
     context, worker = extension_context
-    _serve_link_page(context, state='-', token='-')
     extension_id = worker.url.split('/')[2]
     popup = context.new_page()
     popup.goto(f'chrome-extension://{extension_id}/popup.html')
     assert 'Sin vincular' in popup.locator('#link-status').inner_text()
-    with context.expect_page() as opened:
-        popup.click('#settings-toggle')
-        popup.click('#link-btn')
-    # La pestaña la abre la extensión (context.route no la intercepta): sin sesión, la app manda al login con next
-    url = unquote(opened.value.url)
+    # se registra la URL que abriría la pestaña: así no depende de que haya una app escuchando en el puerto
+    popup.evaluate("() => { window.openedUrls = []; chrome.tabs.create = async (o) => { window.openedUrls.push(o.url); return {}; }; }")
+    popup.click('#settings-toggle')
+    popup.click('#link-btn')
+    popup.wait_for_function('window.openedUrls.length > 0')
+    url = popup.evaluate('window.openedUrls[0]')
     state = worker.evaluate("async () => (await chrome.storage.session.get('linkState')).linkState")
-    assert '/account/extension/link?state=' in url and url.endswith(state) and len(state) >= 32
+    assert url == f'{LINK_URL}?state={state}' and len(state) >= 32
