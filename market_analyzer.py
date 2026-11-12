@@ -207,31 +207,3 @@ def get_salary_by_company(jobs_df: pd.DataFrame,
             })
 
     return sorted(results, key=lambda x: x["avg_salary"], reverse=True)[:20]
-
-
-def enrich_csv_with_salary_data(csv_path: str) -> str:
-    """
-    Lee un CSV de trabajos, extrae datos salariales de la columna Salary/Salario
-    y agrega columnas normalizadas al CSV.
-    """
-    try:
-        df = pd.read_csv(csv_path, encoding="latin-1")
-        salary_col = next((c for c in ["Salary", "Salario", "salary"] if c in df.columns), None)
-
-        if not salary_col:
-            logger.warning(f"No salary column found in {csv_path}")
-            return csv_path
-
-        extracted = df[salary_col].apply(lambda x: extract_salary_from_text(str(x)))
-        df["salary_min"] = extracted.apply(lambda x: x.get("min"))
-        df["salary_max"] = extracted.apply(lambda x: x.get("max"))
-        df["salary_avg"] = extracted.apply(lambda x: x.get("avg"))
-        df["salary_currency"] = extracted.apply(lambda x: x.get("currency"))
-
-        output = csv_path.replace(".csv", "_salary_enriched.csv")
-        df.to_csv(output, index=False)
-        return output
-
-    except Exception as e:
-        logger.error(f"Error enriching CSV with salary data: {e}")
-        return csv_path

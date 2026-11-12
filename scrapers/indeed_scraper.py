@@ -18,7 +18,6 @@ from typing import List, Dict
 from functools import wraps
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from job_precheck import quick_precheck_job, should_save_job
 
 logging.basicConfig(
     level=logging.INFO,
@@ -565,25 +564,6 @@ class indeedScraper:
             
             
             try:
-                
-                card_preview_text = job_element.get_attribute('innerText') or job_element.text
-                
-                
-                should_process, reason = quick_precheck_job(
-                    card_preview_text, 
-                    job_info["Title"],
-                    job_info.get("Company", "")
-                )
-                
-                if not should_process:
-                    logger.info(f"❌ PRE-CHECK FAILED: {reason} | Job: {job_info['Title']} at {job_info.get('Company', 'Unknown')}")
-                    return None
-                    
-                logger.info(f"✅ PRE-CHECK PASSED: {job_info['Title']} at {job_info.get('Company', 'Unknown')}")
-                
-            except Exception as e:
-                logger.warning(f"Pre-check error (continuing anyway): {e}")
-            try:
                 card_html = job_element.get_attribute('innerHTML')
                 if card_html and ('Easily apply' in card_html or 'easily apply' in card_html.lower()):
                     logger.info(f"❌ Skipping job due to 'Easily apply' in card: {job_info['Title']}")
@@ -788,29 +768,10 @@ class indeedScraper:
                     job_info = self.extract_job_details(job_element, job_index, len(job_elements))
                     
                     if job_info:
-                        if self.user_skills:
-                            should_save, reason, match_pct = should_save_job(
-                                job_title=job_info['Title'],
-                                jd_text=job_info.get('Description', ''),
-                                user_skills=self.user_skills,
-                                skill_threshold=0.5
-                            )
-                            
-                            if should_save:
-                                logger.info(f"✅ SAVING: {reason}")
-                                job_info["Search_Position"] = search_position
-                                job_info["Search_Location"] = search_location
-                                job_info["Match_Percentage"] = round(match_pct * 100, 1)
-                                job_info["Match_Reason"] = reason
-                                self.all_jobs.append(job_info)
-                                jobs_found += 1
-                            else:
-                                logger.info(f"❌ SKIPPING: {reason}")
-                        else:
-                            job_info["Search_Position"] = search_position
-                            job_info["Search_Location"] = search_location
-                            self.all_jobs.append(job_info)
-                            jobs_found += 1
+                        job_info["Search_Position"] = search_position
+                        job_info["Search_Location"] = search_location
+                        self.all_jobs.append(job_info)
+                        jobs_found += 1
                     
                     job_index += 1
                     time.sleep(random.uniform(1, 3))

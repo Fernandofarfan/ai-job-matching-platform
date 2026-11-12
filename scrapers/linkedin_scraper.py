@@ -22,9 +22,7 @@ from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.service import Service
 import logging
 
-# Import the pre-check module
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from job_precheck import quick_precheck_job
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -1088,27 +1086,6 @@ class linkedinClass:
             
             print(f"DEBUG: Processing job: {job_info['Title']} at {job_info['Company']}")
             
-            # ===== QUICK PRE-CHECK USING CARD PREVIEW =====
-            try:
-                # Get preview text from job card (before clicking for full details)
-                card_preview_text = card.get_attribute('innerText') or card.text
-                
-                # Run quick pre-check (includes company blacklist check)
-                should_process, reason = quick_precheck_job(
-                    card_preview_text, 
-                    job_info["Title"],
-                    job_info.get("Company", "")
-                )
-                
-                if not should_process:
-                    print(f"❌ PRE-CHECK FAILED: {reason} | Job: {job_info['Title']} at {job_info.get('Company', 'Unknown')}")
-                    return None
-                    
-                print(f"✅ PRE-CHECK PASSED: {job_info['Title']} at {job_info.get('Company', 'Unknown')}")
-                
-            except Exception as e:
-                print(f"Pre-check error (continuing anyway): {e}")
-                # Continue even if pre-check fails to avoid missing jobs
             
             # Extract salary from metadata
             metadata_elements = card.find_elements(By.CSS_SELECTOR, ".artdeco-entity-lockup__metadata div[dir='ltr']")

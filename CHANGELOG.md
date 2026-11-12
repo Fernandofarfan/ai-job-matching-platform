@@ -8,6 +8,9 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [Sin publicar] - Cuentas e integraciones por cuenta
 
+- Limpieza de código muerto: Flask-SocketIO, eventlet y el WebSocket `/ws` (ninguna página los usaba), `routers/views.py` y `routers/scraping.py` (no se montaban), `job_precheck.py` (stubs que siempre aprobaban), tareas de Celery que nadie encolaba (`batch_analyze_jobs`, `batch_generate_cover_letters`, `export_tracker_to_excel`), funciones de IA y salarios sin uso, la tabla heredada `job_tracker` (ya no se crea; el tracker usa `applications`) y `scripts/test_bumeran.py`/`test_linkedin.py`. `CORS_ALLOWED_ORIGINS` ya no se usa.
+- Un lote de cartas o CVs que estaba generándose cuando se borró la cuenta se corta y no vuelve a crear sus archivos.
+
 - Resultados del scraping (CSV), documentos generados y progreso de búsquedas separados por cuenta (`results/u<id>`, `GENERATED_DIR/u<id>`); los archivos previos pasan a la primera cuenta.
 - `AI_USER_MONTHLY_TOKEN_LIMIT`: tope mensual de tokens de IA por cuenta, además del tope total `AI_MONTHLY_TOKEN_LIMIT`.
 - Historial de estados del tracker (`application_status_history`, migración `0006_status_history`); el embudo y los días hasta postular lo usan.

@@ -143,16 +143,6 @@ class DatabaseManager:
             logger.error(f"Error retrieving applications: {err}")
             return []
 
-    def save_connection_request(self, company, application_ids=None):
-        """Registra un pedido de conexión enviado a una empresa."""
-        result = self._write(
-            "INSERT INTO connection_requests (company, sent_date, status, application_ids, user_id) "
-            "VALUES (:company, :sent_date, 'sent', :ids, :uid)",
-            {'company': company, 'sent_date': datetime.now(),
-             'ids': ','.join(map(str, application_ids)) if application_ids else ''},
-            label='connection request')
-        return result.lastrowid if result is not None else None
-
     def create_networking_exclusions_table(self):
         """Crea la tabla de empresas excluidas del networking."""
         return self._write("""
@@ -209,33 +199,6 @@ class DatabaseManager:
             return False
 
     # ==== JOB TRACKER ====
-
-    def create_job_tracker_table(self):
-        """Crea la tabla `job_tracker` heredada (el tracker usa `applications`)."""
-        created = self._write("""
-            CREATE TABLE IF NOT EXISTS job_tracker (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                title VARCHAR(255) NOT NULL,
-                company VARCHAR(255) NOT NULL,
-                location VARCHAR(255),
-                salary VARCHAR(100),
-                job_link TEXT,
-                status ENUM('bookmarked', 'applying', 'applied', 'interviewing', 'negotiating',
-                            'accepted', 'rejected') DEFAULT 'bookmarked',
-                excitement INT DEFAULT 0,
-                date_saved TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                date_applied DATE NULL,
-                deadline DATE NULL,
-                follow_up DATE NULL,
-                notes TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                INDEX idx_status (status),
-                INDEX idx_company (company),
-                INDEX idx_date_saved (date_saved)
-            )
-        """, label='job tracker table')
-        return created is not None
 
     def add_job_to_tracker(self, job_data):
         """Agrega un empleo al tracker; si ya existe (título + empresa) devuelve su id con exists=True."""

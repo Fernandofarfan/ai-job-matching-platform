@@ -38,9 +38,7 @@ def _mk(name):
 # (debe hacerse ANTES de cualquier import de app.py o scrapers)
 _ALL_MOCKS = [
     # Flask extensions
-    'flask_socketio',
     # Async
-    'eventlet', 'eventlet.wsgi',
     # Selenium (todos los subpaths conocidos)
     'selenium', 'selenium.webdriver', 'selenium.webdriver.chrome',
     'selenium.webdriver.chrome.options', 'selenium.webdriver.chrome.service',
@@ -130,7 +128,6 @@ def app():
     mock_db.update_job_status.return_value = True
     mock_db.delete_tracked_job.return_value = True
     mock_db.get_applications.return_value = mock_jobs
-    mock_db.create_job_tracker_table.return_value = True
     mock_db.get_companies_for_connections.return_value = []
 
     # Fuera del patch.dict para que app y los tests compartan el mismo módulo (y su JSON_PATH temporal)
@@ -183,7 +180,7 @@ def mock_db(app):
 @pytest.fixture
 def tracker_db(app):
     """Mock del DatabaseManager que usan las rutas (el mismo que ven las vistas de Flask)."""
-    return app.view_functions['tracker'].__globals__['db_manager']
+    return app.view_functions['index'].__globals__['db_manager']
 
 
 @pytest.fixture
