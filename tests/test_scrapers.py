@@ -75,8 +75,10 @@ def test_browser_uses_remote_endpoint_and_proxy(monkeypatch):
     monkeypatch.setenv('PLAYWRIGHT_WS_ENDPOINT', 'ws://chrome:3000')
     Browser(playwright_factory=factory).close()
     playwright.chromium.connect.assert_called_once_with('ws://chrome:3000')
-    monkeypatch.delenv('PLAYWRIGHT_WS_ENDPOINT')
     monkeypatch.setenv('PROXY_SERVER', 'http://proxy:8080')
+    Browser(playwright_factory=factory).close()
+    assert playwright.chromium.connect.return_value.new_context.call_args.kwargs['proxy'] == {'server': 'http://proxy:8080'}
+    monkeypatch.delenv('PLAYWRIGHT_WS_ENDPOINT')
     Browser(playwright_factory=factory)
     assert playwright.chromium.launch.call_args.kwargs['proxy'] == {'server': 'http://proxy:8080'}
     assert playwright.chromium.launch.call_args.kwargs['headless'] is True
