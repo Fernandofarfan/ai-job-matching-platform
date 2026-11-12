@@ -273,10 +273,12 @@ def _csrf_ok(request: Request, token: Optional[str]) -> bool:
 
 
 def csrf_error(request: Request) -> Response:
+    """Página 400 por token CSRF faltante o inválido."""
     return render(request, 'error.html', 400, code=400, message='The CSRF token is missing or invalid.')
 
 
 async def _parse(request: Request, max_bytes: int, max_files: int) -> tuple[TextForm, dict, Optional[Response]]:
+    """Cuerpo limitado a `max_bytes`, campos de texto, archivos y error (413/400) si corresponde."""
     if not await _body_within(request, max_bytes):
         return TextForm(), {}, render(request, 'error.html', 413, code=413, message='Request Entity Too Large')
     parsed = await request.form(max_files=max_files, max_fields=FORM_MAX_FIELDS)

@@ -33,6 +33,7 @@ DOCX = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 
 
 def _go(request: Request, endpoint: str, **values) -> Response:
+    """Redirección al endpoint con nombre (como redirect(url_for(...)) en Flask)."""
     return redirect(request, url_for(request, endpoint, **values))
 
 
@@ -45,6 +46,7 @@ def _csv_path(filename: str) -> Optional[str]:
 
 
 def _attachment(path: str, filename: str, media_type: Optional[str] = None) -> FileResponse:
+    """Archivo como descarga (Content-Disposition: attachment)."""
     return FileResponse(path, media_type=media_type, filename=filename)
 
 
@@ -92,6 +94,7 @@ def _job_table(file_path: str) -> dict:
 
 @router.get('/view/{filename}', name='view_file')
 def view_file(request: Request, filename: str):
+    """Tabla con las ofertas de un CSV de resultados de la cuenta."""
     path = _csv_path(filename)
     if path is None:
         flash(request, 'File not found or not a CSV file', 'danger')
@@ -105,6 +108,7 @@ def view_file(request: Request, filename: str):
 
 
 def _json_error(message: str, status: int) -> JSONResponse:
+    """Error JSON con `success: False`."""
     return JSONResponse({'success': False, 'error': message}, status_code=status)
 
 
@@ -125,6 +129,7 @@ async def api_save_applications(request: Request):
     db = legacy(request)['db_manager']
 
     def save():
+        """Guarda las postulaciones y el archivo procesado; devuelve ids y empresas."""
         saved, companies = [], set()
         for job in applied_jobs.values():
             application_id = db.save_application(job)
@@ -144,6 +149,7 @@ async def api_save_applications(request: Request):
 
 @router.post('/exclude_company_from_networking', name='exclude_company_from_networking')
 async def exclude_company_from_networking(request: Request):
+    """Saca una empresa de la lista para pedir conexiones (sesión y base)."""
     form, error = await read_form(request)
     if error:
         return error
@@ -165,6 +171,7 @@ async def exclude_company_from_networking(request: Request):
 
 @router.get('/connections', name='connections')
 def connections(request: Request):
+    """Página de conexiones con las empresas a las que te postulaste."""
     session = get_session(request)
     companies = session.get('applied_companies', [])
     if not companies:
@@ -176,6 +183,7 @@ def connections(request: Request):
 
 @router.get('/debug/directories', name='debug_directories')
 def debug_directories(request: Request):
+    """Estado de las carpetas de trabajo; solo con debug activo."""
     if not flask_app_for(request).debug:
         return JSONResponse({'error': 'Not found'}, status_code=404)
     directories: dict = {}
@@ -191,11 +199,13 @@ def debug_directories(request: Request):
 
 @router.get('/status', name='status')
 def status(request: Request):
+    """Progreso de las búsquedas de la cuenta."""
     return dict(job_dispatch.refresh(legacy(request)['job_status']))
 
 
 @router.get('/results/{filename}', name='download_file')
 def download_file(request: Request, filename: str):
+    """Descarga un archivo de resultados de la cuenta (sin ocultos ni rutas)."""
     path = os.path.join(accounts.results_dir(), filename)
     if filename != os.path.basename(filename) or filename.startswith('.') or not os.path.isfile(path):
         return render(request, 'error.html', 404, code=404, message='Página no encontrada')
@@ -204,6 +214,7 @@ def download_file(request: Request, filename: str):
 
 @router.get('/download_csv/{filename}', name='download_csv_file')
 def download_csv_file(request: Request, filename: str):
+    """Descarga un CSV de resultados de la cuenta."""
     path = _csv_path(filename)
     if path is None:
         flash(request, 'File not found or not a CSV file', 'danger')
@@ -212,6 +223,7 @@ def download_csv_file(request: Request, filename: str):
 
 
 def _companies(file_path: str) -> list:
+    """Hasta 20 empresas del CSV, sin las grandes tecnológicas."""
     df = pd.read_csv(file_path, encoding='latin-1')
     companies = set()
     for company in (df['Company'].dropna().unique() if 'Company' in df.columns else []):
@@ -224,6 +236,7 @@ def _companies(file_path: str) -> list:
 
 @router.get('/extract_companies/{filename}', name='extract_companies_from_file')
 def extract_companies_from_file(request: Request, filename: str):
+    """Guarda en la sesión las empresas de un CSV y lleva a conexiones."""
     path = _csv_path(filename)
     if path is None:
         flash(request, 'File not found or not a CSV file', 'danger')
@@ -241,6 +254,7 @@ def extract_companies_from_file(request: Request, filename: str):
 
 @router.get('/download_resume/{filename}', name='download_resume')
 def download_resume(request: Request, filename: str):
+    """Descarga un documento generado (carta o CV) de la cuenta."""
     import document_batch
     name = os.path.basename(filename)
     for kind in document_batch.KINDS:
@@ -270,6 +284,7 @@ async def delete_csv(request: Request, filename: str):
 
 @router.get('/batch_cover_letters', name='batch_cover_letters')
 def batch_cover_letters(request: Request):
+    """Página de cartas en lote con los CSV de la cuenta."""
     results_dir = accounts.results_dir()
     os.makedirs(results_dir, exist_ok=True)
     job_files = sorted((f for f in os.listdir(results_dir) if f.endswith('.csv')), reverse=True)
@@ -278,16 +293,19 @@ def batch_cover_letters(request: Request):
 
 @router.get('/batch_optimize', name='batch_optimize_page')
 def batch_optimize_page(request: Request):
+    """Página de CVs optimizados en lote."""
     return render(request, 'batch_optimize.html', job_files=legacy(request)['get_recent_job_files']())
 
 
 @router.get('/optimize_resume', name='optimize_resume_page')
 def optimize_resume_page(request: Request):
+    """Formulario para optimizar el CV contra una oferta."""
     return render(request, 'optimize_resume.html')
 
 
 @router.post('/optimize_resume', name='optimize_resume')
 async def optimize_resume(request: Request):
+    """Optimiza el CV (pegado o del perfil) para la oferta con IA y lo guarda en .docx."""
     form, error = await read_form(request)
     if error:
         return error
@@ -302,6 +320,7 @@ async def optimize_resume(request: Request):
         return _go(request, 'optimize_resume_page')
 
     def optimize():
+        """CV optimizado y nombre del .docx guardado."""
         optimizer = ResumeOptimizer()
         optimized = optimizer.optimize_resume(resume_text, job_description, job_title, company)
         return optimized, optimizer.save_resume(optimized, job_title, company)
@@ -335,6 +354,7 @@ async def ats_score_page(request: Request):
 
 @router.get('/view_profile', name='view_profile')
 def view_profile(request: Request):
+    """Lleva al perfil de CV subido más reciente."""
     profiles = legacy(request)['get_all_user_profiles']()
     if not profiles:
         flash(request, 'No profile found. Please upload a resume first.', 'warning')
@@ -362,6 +382,7 @@ def _parse_and_save(request: Request, data: bytes, filename: str, role_type: str
 
 @router.post('/upload_resume', name='upload_resume')
 async def upload_resume(request: Request):
+    """Sube un CV (PDF, DOCX o TXT), lo parsea y crea o reemplaza el perfil del rol."""
     form, files, error = await read_upload(request)
     if error is not None and error.status_code == 413:
         flash(request, f'El archivo supera el máximo de {upload_max_bytes(request) // (1024 * 1024)} MB', 'danger')
@@ -409,6 +430,7 @@ async def delete_profile(request: Request):
 
 @router.get('/view_profile/{role_type}', name='view_profile_by_role')
 def view_profile_by_role(request: Request, role_type: str):
+    """Perfil de CV de un rol."""
     profile = legacy(request)['get_user_profile_by_role'](role_type)
     if not profile:
         flash(request, f"No profile found for {role_type.replace('_', ' ').title()}", 'warning')
@@ -428,6 +450,7 @@ def delete_profile_by_role(request: Request, role_type: str):
 
 @router.post('/delete_profile/{role_type}/confirm', name='confirm_delete_profile')
 async def confirm_delete_profile(request: Request, role_type: str):
+    """Borra el perfil de CV del rol."""
     _form, error = await read_form(request)
     if error:
         return error
@@ -441,6 +464,7 @@ async def confirm_delete_profile(request: Request, role_type: str):
 # ─── Alertas ─────────────────────────────────────────────────────────────────
 
 def _channels_status() -> dict:
+    """Qué canales de aviso están configurados para la cuenta."""
     import push
     from tasks.notification_tasks import email_configured, telegram_configured
     return {'email': email_configured(), 'telegram': telegram_configured(),
@@ -449,6 +473,7 @@ def _channels_status() -> dict:
 
 @router.get('/alerts', name='alerts')
 def alerts(request: Request):
+    """Búsquedas guardadas de la cuenta."""
     try:
         searches, db_error = job_alerts.list_searches(), False
     except Exception as e:
@@ -460,6 +485,7 @@ def alerts(request: Request):
 
 @router.post('/alerts', name='create_alert')
 async def create_alert(request: Request):
+    """Crea una búsqueda guardada con sus portales y canales."""
     form, error = await read_form(request)
     if error:
         return error
@@ -479,6 +505,7 @@ async def create_alert(request: Request):
 
 @router.post('/alerts/{search_id}/delete', name='delete_alert')
 async def delete_alert(request: Request, search_id: int):
+    """Borra una búsqueda guardada de la cuenta."""
     _form, error = await read_form(request)
     if error:
         return error
@@ -489,6 +516,7 @@ async def delete_alert(request: Request, search_id: int):
 
 @router.post('/alerts/{search_id}/toggle', name='toggle_alert')
 async def toggle_alert(request: Request, search_id: int):
+    """Pausa o reanuda una búsqueda guardada."""
     _form, error = await read_form(request)
     if error:
         return error
@@ -500,6 +528,7 @@ async def toggle_alert(request: Request, search_id: int):
 
 
 def _start_alert(search_id: int) -> None:
+    """Corre la búsqueda en el worker de Celery o en un hilo de la cuenta."""
     if job_dispatch.use_celery():
         from celery_app import celery
         celery.send_task('tasks.notification_tasks.run_job_alert', args=[search_id])
@@ -510,6 +539,7 @@ def _start_alert(search_id: int) -> None:
 
 @router.post('/alerts/{search_id}/run', name='run_alert')
 async def run_alert(request: Request, search_id: int):
+    """Corre ahora una búsqueda guardada."""
     _form, error = await read_form(request)
     if error:
         return error
