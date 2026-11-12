@@ -113,12 +113,12 @@ run "alerts" {
 
   assert {
     condition     = length(google_monitoring_notification_channel.email) == 1 && length(google_monitoring_uptime_check_config.health) == 1
-    error_message = "Con alert_email y acceso público debe haber canal de email y uptime check de /api/health"
+    error_message = "Con alert_email y acceso público debe haber canal de email y uptime check de /api/ready"
   }
 
   assert {
-    condition     = google_monitoring_uptime_check_config.health[0].http_check[0].path == "/api/health"
-    error_message = "El uptime check debe pegarle a /api/health"
+    condition     = google_monitoring_uptime_check_config.health[0].http_check[0].path == "/api/ready"
+    error_message = "El uptime check debe pegarle a /api/ready (app, base y Redis)"
   }
 }
 
