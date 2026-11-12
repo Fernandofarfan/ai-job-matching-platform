@@ -27,3 +27,8 @@ output "uploads_bucket" {
   description = "Bucket privado montado en /app/uploads"
   value       = google_storage_bucket.uploads.name
 }
+
+output "results_bucket" {
+  description = "Bucket privado montado en /app/results (CSV de búsquedas compartidos entre worker y web)"
+  value       = google_storage_bucket.results.name
+}

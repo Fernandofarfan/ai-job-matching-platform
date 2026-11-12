@@ -52,6 +52,7 @@ locals {
   secret_names = nonsensitive(toset(keys(local.secret_values)))
 
   uploads_mount = "/app/uploads"
+  results_mount = "/app/results"
 }
 
 resource "google_project_service" "apis" {
@@ -220,6 +221,18 @@ resource "google_storage_bucket" "uploads" {
   depends_on = [google_project_service.apis]
 }
 
+# Resultados de búsqueda (CSV): el worker de Celery los escribe y la web los lee.
+resource "google_storage_bucket" "results" {
+  name                        = "${var.project_id}-empleoia-results-${local.env}"
+  location                    = var.region
+  uniform_bucket_level_access = true
+  public_access_prevention    = "enforced"
+  force_destroy               = !local.prod
+  labels                      = local.labels
+
+  depends_on = [google_project_service.apis]
+}
+
 # ── Secret Manager ────────────────────────────────────────────────────────────
 resource "google_secret_manager_secret" "app" {
   for_each  = local.secret_names
@@ -256,6 +269,12 @@ resource "google_storage_bucket_iam_member" "app_uploads" {
   member = "serviceAccount:${google_service_account.app.email}"
 }
 
+resource "google_storage_bucket_iam_member" "app_results" {
+  bucket = google_storage_bucket.results.name
+  role   = "roles/storage.objectUser"
+  member = "serviceAccount:${google_service_account.app.email}"
+}
+
 # ── Cloud Run: web ────────────────────────────────────────────────────────────
 resource "google_cloud_run_v2_service" "empleoia_web" {
   name                = "empleoia-web-${local.env}"
@@ -287,6 +306,12 @@ resource "google_cloud_run_v2_service" "empleoia_web" {
       name = "uploads"
       gcs {
         bucket = google_storage_bucket.uploads.name
+      }
+    }
+    volumes {
+      name = "results"
+      gcs {
+        bucket = google_storage_bucket.results.name
       }
     }
 
@@ -325,6 +350,10 @@ resource "google_cloud_run_v2_service" "empleoia_web" {
         name       = "uploads"
         mount_path = local.uploads_mount
       }
+      volume_mounts {
+        name       = "results"
+        mount_path = local.results_mount
+      }
 
       ports {
         container_port = 5000
@@ -354,6 +383,7 @@ resource "google_cloud_run_v2_service" "empleoia_web" {
     google_secret_manager_secret_iam_member.app,
     google_secret_manager_secret_version.app,
     google_storage_bucket_iam_member.app_uploads,
+    google_storage_bucket_iam_member.app_results,
   ]
 }
 
@@ -398,6 +428,12 @@ resource "google_cloud_run_v2_worker_pool" "celery" {
         bucket = google_storage_bucket.uploads.name
       }
     }
+    volumes {
+      name = "results"
+      gcs {
+        bucket = google_storage_bucket.results.name
+      }
+    }
 
     containers {
       image   = var.image
@@ -440,6 +476,10 @@ resource "google_cloud_run_v2_worker_pool" "celery" {
         name       = "uploads"
         mount_path = local.uploads_mount
       }
+      volume_mounts {
+        name       = "results"
+        mount_path = local.results_mount
+      }
     }
   }
 
@@ -454,6 +494,7 @@ resource "google_cloud_run_v2_worker_pool" "celery" {
     google_secret_manager_secret_iam_member.app,
     google_secret_manager_secret_version.app,
     google_storage_bucket_iam_member.app_uploads,
+    google_storage_bucket_iam_member.app_results,
   ]
 }
 

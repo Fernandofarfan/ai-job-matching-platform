@@ -490,6 +490,7 @@ La extensión **EmpleoIA Saver** permite guardar ofertas de trabajo con 1 click.
 | Cloud SQL MySQL 8.0 | Solo IP privada, backups diarios (`backup_retention_count`) y point-in-time recovery de 7 días; en prod regional y con protección contra borrado |
 | Memorystore Redis 7 | Rate limit, caché de IA y broker de Celery (HA en prod) |
 | Bucket `<proyecto>-empleoia-uploads-<env>` | CVs montados en `/app/uploads`; privado, sin versionado y con borrado por antigüedad si `cv_retention_days > 0` |
+| Bucket `<proyecto>-empleoia-results-<env>` | Resultados de búsqueda montados en `/app/results`, compartidos entre el worker y la web |
 | Secret Manager | `DB_PASSWORD`, `SECRET_KEY`, `APP_PASSWORD`, `GEMINI_API_KEY`, `CV_ENCRYPTION_KEY` y `extra_secrets` |
 
 Los valores no secretos de cada ambiente están en `terraform/envs/<env>.tfvars`. Los secretos se pasan como `TF_VAR_*` y nunca van al repo (quedan en el estado de Terraform, así que el bucket del estado debe ser privado).

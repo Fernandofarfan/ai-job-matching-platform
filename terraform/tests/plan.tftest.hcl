@@ -67,6 +67,14 @@ run "staging" {
   }
 
   assert {
+    condition = (
+      contains([for v in google_cloud_run_v2_service.empleoia_web.template[0].volumes : v.name], "results") &&
+      contains([for v in google_cloud_run_v2_worker_pool.celery[0].template[0].volumes : v.name], "results")
+    )
+    error_message = "Web y worker deben compartir results/: el worker escribe los CSV que la web lista"
+  }
+
+  assert {
     condition     = google_cloud_run_v2_worker_pool.celery[0].scaling[0].manual_instance_count == 1
     error_message = "El worker con beat embebido debe tener una sola instancia"
   }
