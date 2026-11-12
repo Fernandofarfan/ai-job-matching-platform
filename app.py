@@ -3016,11 +3016,13 @@ def export_results_excel(filename):
 
 @app.route('/api/health')
 def health():
+    """Health check del servidor Flask."""
     return jsonify({'status': 'ok', 'gemini': bool(AI_AVAILABLE)})
 
 
 @app.errorhandler(413)
 def file_too_large(e):
+    """Responde a uploads que superan MAX_CONTENT_LENGTH."""
     if request.path.startswith('/api/'):
         return jsonify({'error': f"El archivo supera el máximo de {app.config['MAX_CONTENT_LENGTH'] // (1024 * 1024)} MB"}), 413
     flash(f"El archivo supera el máximo de {app.config['MAX_CONTENT_LENGTH'] // (1024 * 1024)} MB", 'danger')
@@ -3029,6 +3031,7 @@ def file_too_large(e):
 
 @app.errorhandler(429)
 def rate_limited(e):
+    """Responde 429 cuando se supera AI_RATE_LIMIT."""
     return jsonify({'error': 'Demasiadas solicitudes de IA, probá de nuevo en un minuto'}), 429
 
 
