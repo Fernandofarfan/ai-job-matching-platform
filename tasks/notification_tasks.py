@@ -281,7 +281,8 @@ def _send_weekly_digest():
         jobs = db_manager.get_all_tracked_jobs()
         # sin resumen previo (cuenta anterior al resumen) solo cuentan las ofertas de la última semana
         offers_since = since if user["weekly_digest_sent_at"] else max(since, now - timedelta(days=WEEKLY_DAYS))
-        new_total, new_offers = job_alerts.seen_since(offers_since)
+        # hasta `now`, que es donde arranca el próximo resumen: una oferta no sale en dos emails
+        new_total, new_offers = job_alerts.seen_since(offers_since, until=now)
     except Exception as e:
         logger.error(f"No se pudo armar el resumen semanal: {type(e).__name__}: {e}")
         accounts.mark_weekly_digest(uid, previous)
