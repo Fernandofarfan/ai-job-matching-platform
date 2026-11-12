@@ -10,6 +10,8 @@ from typing import Any
 
 @dataclass
 class AppServices:
+    """Dependencias de las páginas: base de datos, progreso de búsquedas, parser de CVs y módulos de servicios."""
+
     db: Any
     job_status: MutableMapping
     resume_parser: Any
