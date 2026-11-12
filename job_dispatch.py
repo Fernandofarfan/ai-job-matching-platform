@@ -20,6 +20,29 @@ JOBS = {
     'run_universal_job': 'web.scrapers',
 }
 ACTIVE = ('queued', 'running', 'idle')
+_TASK_TTL = 24 * 3600
+
+
+def _task_key(key):
+    return f'empleoia:scraper_task:{key}'
+
+
+def _remember(celery, key, task_id):
+    """Guarda en Redis la última tarea de cada búsqueda: `job_status` es local a cada proceso web."""
+    try:
+        celery.backend.client.set(_task_key(key), task_id, ex=_TASK_TTL)
+    except Exception as e:
+        logger.warning(f'No se pudo guardar la tarea {task_id} de {key}: {e}')
+
+
+def _recall(celery, key):
+    try:
+        value = celery.backend.client.get(_task_key(key))
+    except Exception:
+        return None
+    if isinstance(value, bytes):
+        value = value.decode()
+    return value if isinstance(value, str) else None
 
 
 def use_celery():
@@ -38,6 +61,7 @@ def launch(job_status, key, name, *args):
     if use_celery():
         from celery_app import celery
         result = celery.send_task(TASK_NAME, args=[key, name, list(args)])
+        _remember(celery, key, result.id)
         job_status[key] = {
             **job_status.get(key, {}),
             'status': 'queued', 'progress': 0, 'message': 'En cola...', 'task_id': result.id,
@@ -48,7 +72,17 @@ def launch(job_status, key, name, *args):
 
 
 def refresh(job_status):
-    """Actualiza en `job_status` las búsquedas que corren en Celery."""
+    """Actualiza en `job_status` las búsquedas que corren en Celery.
+
+    Adopta la última tarea guardada en Redis de cada búsqueda, así otra instancia web
+    (o la misma tras reiniciar) sigue mostrando el progreso.
+    """
+    if use_celery():
+        from celery_app import celery
+        for key, value in job_status.items():
+            task_id = _recall(celery, key) if isinstance(value, dict) else None
+            if task_id and task_id != value.get('task_id'):
+                value.update(task_id=task_id, status='queued')
     pending = {
         key: value['task_id'] for key, value in job_status.items()
         if isinstance(value, dict) and value.get('task_id') and value.get('status') in ACTIVE

@@ -84,3 +84,26 @@ def test_credential_reload_keeps_backend(monkeypatch, tmp_path):
     scrapers._reload_portal_credentials(tmp_path / '.env')
     assert os.environ['SCRAPER_BACKEND'] == 'celery'
     assert os.environ['INDEED_EMAIL'] == 'nuevo@x.com'
+
+
+def test_refresh_adopts_task_from_redis(monkeypatch):
+    """Tras reiniciar (o en otra instancia) se recupera la tarea guardada en Redis."""
+    monkeypatch.setenv('SCRAPER_BACKEND', 'celery')
+    status = {'bumeran_scraping': {'status': 'idle', 'progress': 0}, 'other': {'status': 'idle'}}
+    fake = mock.Mock()
+    fake.backend.client.get.side_effect = lambda k: b't9' if k.endswith(':bumeran_scraping') else None
+    fake.AsyncResult.return_value = mock.Mock(state='PROGRESS', info={'status': 'running', 'progress': 30})
+    with mock.patch('celery_app.celery', fake):
+        job_dispatch.refresh(status)
+    fake.AsyncResult.assert_called_once_with('t9')
+    assert status['bumeran_scraping'] == {'status': 'running', 'progress': 30, 'task_id': 't9'}
+    assert status['other'] == {'status': 'idle'}
+
+
+def test_launch_remembers_task_in_redis(monkeypatch):
+    monkeypatch.setenv('SCRAPER_BACKEND', 'celery')
+    fake = mock.Mock()
+    fake.send_task.return_value.id = 'abc'
+    with mock.patch.object(job_dispatch, 'resolve'), mock.patch('celery_app.celery', fake):
+        job_dispatch.launch({}, 'bumeran_scraping', 'run_bumeran_job', [])
+    fake.backend.client.set.assert_called_once_with('empleoia:scraper_task:bumeran_scraping', 'abc', ex=86400)
