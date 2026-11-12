@@ -107,3 +107,19 @@ def test_extension_token_counts_per_account(api_limited, monkeypatch):
     assert codes[-1] == 429
     assert api.post('/api/tracker/save-from-extension', json={},
                     headers={'X-Extension-Token': 'tb'}).status_code != 429
+
+
+def test_invalid_extension_tokens_stop_querying_the_db(api_limited, monkeypatch):
+    """Superado el límite de tokens inválidos de una IP, no se consulta más la base; /api/health no consulta."""
+    import auth
+    api, _ = api_limited
+    calls = []
+    monkeypatch.setattr(auth, 'extension_token_user', lambda token: calls.append(token))
+    for _ in range(6):
+        api.post('/api/tracker/save-from-extension', json={}, headers={'X-Extension-Token': 'malo'})
+    assert len(calls) == 3
+    before = len(calls)
+    assert api.post('/api/tracker/save-from-extension', json={},
+                    headers={'X-Extension-Token': 'malo'}).status_code == 429
+    api.get('/api/health', headers={'X-Extension-Token': 'malo'})
+    assert len(calls) == before

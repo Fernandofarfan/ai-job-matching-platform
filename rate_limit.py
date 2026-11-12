@@ -62,11 +62,15 @@ def client_key(user_id: Optional[int], ip: Optional[str]) -> str:
     return f'user:{user_id}' if user_id else f'ip:{ip or "unknown"}'
 
 
-def _hit(limit_name: str, namespace: str, key: str) -> bool:
-    """Suma un pedido a `key`; False si superó el límite. Si el storage falla, deja pasar."""
+def _hit(limit_name: str, namespace: str, key: str, consume: bool = True) -> bool:
+    """Suma un pedido a `key` (o solo consulta, con consume=False); False si superó el límite.
+
+    Si el storage falla, deja pasar.
+    """
     try:
         state = _limiter()
-        return state['limiter'].hit(state[limit_name], namespace, key or 'unknown')
+        check = state['limiter'].hit if consume else state['limiter'].test
+        return check(state[limit_name], namespace, key or 'unknown')
     except Exception as e:
         logger.warning(f"Rate limit no disponible ({e}); se permite la solicitud")
         return True
@@ -80,6 +84,16 @@ def hit_ai_limit(key: str) -> bool:
 def hit_api_limit(key: str) -> bool:
     """Suma un pedido a /api/*; False si superó API_RATE_LIMIT."""
     return _hit('api_limit', 'api', key)
+
+
+def bad_token_allowed(ip: str) -> bool:
+    """False si la IP ya mandó API_RATE_LIMIT tokens de extensión inválidos (sin consumir)."""
+    return _hit('api_limit', 'bad_token', ip, consume=False)
+
+
+def record_bad_token(ip: str) -> None:
+    """Cuenta un token de extensión inválido de la IP."""
+    _hit('api_limit', 'bad_token', ip)
 
 
 def reset() -> None:
