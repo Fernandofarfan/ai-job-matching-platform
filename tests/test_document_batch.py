@@ -95,33 +95,50 @@ def test_status_unknown_task_is_none():
     fake.AsyncResult.assert_not_called()
 
 
-def test_batch_route_runs_inline(client, monkeypatch):
+def test_batch_route_runs_inline(api, monkeypatch):
     monkeypatch.delenv('AI_BACKEND', raising=False)
     with mock.patch('document_batch.run', return_value={'success': True, 'results': [], 'total': 0,
                                                         'successful': 0}) as run:
-        resp = client.post('/api/batch_optimize', json={'filename': 'jobs.csv', 'num_jobs': 2})
+        resp = api.post('/api/batch_optimize', json={'filename': 'jobs.csv', 'num_jobs': 2})
     assert resp.status_code == 200
     assert run.call_args.args[:3] == ('resumes', 'jobs.csv', 2)
 
 
-def test_batch_route_queues_in_celery(client, monkeypatch):
+def test_batch_route_queues_in_celery(api, monkeypatch):
     monkeypatch.setenv('AI_BACKEND', 'celery')
     with mock.patch('document_batch.enqueue', return_value='t9') as enqueue:
-        resp = client.post('/api/batch_cover_letters', json={'filename': 'jobs.csv'})
+        resp = api.post('/api/batch_cover_letters', json={'filename': 'jobs.csv'})
     assert resp.status_code == 202
-    assert resp.get_json() == {'success': True, 'task_id': 't9'}
+    assert resp.json() == {'success': True, 'task_id': 't9'}
     enqueue.assert_called_once_with('cover_letters', 'jobs.csv', 5)
 
 
-def test_batch_route_reports_validation_error(client, monkeypatch):
+def test_batch_route_reports_validation_error(api, monkeypatch):
     monkeypatch.delenv('AI_BACKEND', raising=False)
-    resp = client.post('/api/batch_optimize', json={'filename': '../secreto.csv'})
+    resp = api.post('/api/batch_optimize', json={'filename': '../secreto.csv'})
     assert resp.status_code == 400
-    assert resp.get_json()['success'] is False
+    assert resp.json()['success'] is False
 
 
-def test_task_status_route(client):
+def test_task_status_route(api):
     with mock.patch('document_batch.status', return_value=None):
-        assert client.get('/api/documents/tasks/x').status_code == 404
+        assert api.get('/api/documents/tasks/x').status_code == 404
     with mock.patch('document_batch.status', return_value={'success': True, 'state': 'queued', 'progress': 0}):
-        assert client.get('/api/documents/tasks/x').get_json()['state'] == 'queued'
+        assert api.get('/api/documents/tasks/x').json()['state'] == 'queued'
+
+
+def test_optimize_resume_api(api):
+    """/api/optimize_resume usa el CV guardado y no expone errores internos."""
+    from routers import documents
+    optimizer = mock.Mock()
+    optimizer.optimize_resume.return_value = 'CV nuevo'
+    optimizer.save_resume.return_value = 'cv.docx'
+    api.app.dependency_overrides[documents.get_optimizer] = lambda: optimizer
+    assert api.post('/api/optimize_resume', json={'job_description': 'Python'}).status_code == 400
+    api.app.dependency_overrides[documents.get_resume_text] = lambda: lambda: 'CV viejo'
+    data = api.post('/api/optimize_resume', json={'job_description': 'Python', 'job_title': 'Dev'}).json()
+    assert data == {'success': True, 'filename': 'cv.docx', 'resume_text': 'CV nuevo'}
+    optimizer.optimize_resume.assert_called_once_with('CV viejo', 'Python', 'Dev', '')
+    optimizer.save_resume.side_effect = OSError('/ruta/secreta')
+    resp = api.post('/api/optimize_resume', json={'job_description': 'Python'})
+    assert resp.status_code == 500 and 'secreta' not in resp.text

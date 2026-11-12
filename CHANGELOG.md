@@ -8,6 +8,7 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Cambiado
+- Las APIs de documentos (`/api/batch_cover_letters`, `/api/batch_optimize`, `/api/documents/tasks/<id>`, `/api/ats_score`, `/api/optimize_resume`) pasan a FastAPI (`routers/documents.py`); las páginas siguen en Flask. `/api/optimize_resume` y `/api/save_applications` ya no devuelven el mensaje interno del error.
 - La API de IA (`/api/ai/*`), notificaciones y `/api/salary/analyze-csv` pasan a FastAPI (`routers/ai.py`); se elimina `web/ai_api.py`. El copiloto vuelve a recibir los conteos del tracker, `/api/salary/analyze-csv` ya no lee archivos fuera de `results/` y los errores de IA no devuelven el mensaje interno.
 - `/api/tracker/stats`, `/api/analytics/advanced`, `/api/get_applications`, `/api/all_profiles`, `/api/profile_summary` y `/api/ranking` pasan de Flask a FastAPI (`routers/insights.py`), con el mismo login y formato de error que la API del tracker; los errores internos ya no devuelven el mensaje de la excepción.
 
