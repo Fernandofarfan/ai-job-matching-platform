@@ -6,6 +6,7 @@ import json
 import logging
 import os
 import secrets
+from collections.abc import Mapping
 from datetime import datetime
 from html import escape
 from typing import Optional
@@ -207,7 +208,7 @@ def status(request: Request):
 
 def _translated(state):
     """Copia del estado con los `message` en el idioma de la cuenta."""
-    if isinstance(state, dict):
+    if isinstance(state, Mapping):
         return {key: (i18n.render_message(value) if key == 'message' else _translated(value))
                 for key, value in state.items()}
     return state

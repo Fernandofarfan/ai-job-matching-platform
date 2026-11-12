@@ -124,7 +124,8 @@ def test_progress_messages_are_translated_when_read(client, one_account, monkeyp
         'universal_scraping': {'status': 'running', 'message': 'texto viejo',
                                'scrapers': {'indeed': {'message': i18n.lazy('Usá la búsqueda individual de este portal')}}},
     }
-    monkeypatch.setattr(job_dispatch, 'refresh', lambda job_status: state)
+    # el estado real es un PerUserStatus (Mapping, no dict)
+    monkeypatch.setattr(job_dispatch, 'refresh', lambda job_status: job_dispatch.PerUserStatus(state))
     client.post('/login', data={'email': 'ana@example.com', 'password': 'clave-larga-1'})
     expected = {'en': ('3 jobs for Python', "Use this site's own search"),
                 'pt': ('3 vagas para Python', 'Use a busca individual deste portal'),
