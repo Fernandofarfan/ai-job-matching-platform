@@ -156,7 +156,7 @@ def ats_score_page():
         return redirect(url_for('optimize_resume_page'))
     return render_template('optimize_resume.html', ats_result=ats_score.score_resume(resume_text, job_description),
                            job_title=request.form.get('job_title', ''), company=request.form.get('company', ''),
-                           job_description=job_description)
+                           job_description=job_description, resume_text=request.form.get('resume_text', ''))
 
 
 @app.route('/api/ats_score', methods=['POST'])

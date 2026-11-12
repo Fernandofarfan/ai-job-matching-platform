@@ -51,3 +51,9 @@ def test_ats_routes(client, app, monkeypatch):
     page = client.post('/ats_score', data={'job_description': JOB})
     assert page.status_code == 200 and 'Puntaje ATS' in page.get_data(as_text=True)
     assert 'kubernetes' in page.get_data(as_text=True)
+
+
+def test_ats_page_keeps_pasted_resume(client):
+    resp = client.post('/ats_score', data={'resume_text': 'Ana <Dev>\nana@example.com', 'job_description': 'Python'})
+    assert resp.status_code == 200
+    assert 'Ana &lt;Dev&gt;' in resp.get_data(as_text=True)

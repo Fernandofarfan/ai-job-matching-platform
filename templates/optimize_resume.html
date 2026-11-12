@@ -30,7 +30,7 @@
           </div>
           <div class="mb-3">
             <label for="resume_text" class="form-label fw-bold">Texto del CV <span class="fw-normal text-muted">(opcional)</span></label>
-            <textarea class="form-control" id="resume_text" name="resume_text" rows="6" aria-describedby="resume_help"></textarea>
+            <textarea class="form-control" id="resume_text" name="resume_text" rows="6" aria-describedby="resume_help">{{ resume_text or '' }}</textarea>
             <div id="resume_help" class="form-text">Si lo dejás vacío se usa el CV de tu <a href="/profile">perfil</a>.</div>
           </div>
           <button type="submit" class="btn btn-primary w-100">
