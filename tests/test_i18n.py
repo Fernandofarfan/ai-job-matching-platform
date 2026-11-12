@@ -95,3 +95,19 @@ def test_flash_messages_are_translated(client, one_account):
     client.set_cookie('lang', 'en')
     response = client.post('/login', data={'email': 'ana@example.com', 'password': 'x' * 12}, follow_redirects=True)
     assert 'Wrong email or password' in response.get_data(as_text=True)
+
+
+@pytest.mark.parametrize('path,english', [
+    ('/scraper', 'Start universal search'),
+    ('/results', 'Search results'),
+    ('/tracker', 'Application board'),
+    ('/alerts', 'Job alerts'),
+    ('/profile', 'Upload a new resume'),
+])
+def test_app_pages_are_translated(client, one_account, path, english):
+    client.post('/login', data={'email': 'ana@example.com', 'password': 'clave-larga-1'})
+    client.set_cookie('lang', 'en')
+    page = client.get(path).get_data(as_text=True)
+    assert english in page
+    client.set_cookie('lang', 'es')
+    assert english not in client.get(path).get_data(as_text=True)
