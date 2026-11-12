@@ -6,6 +6,12 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar] - Peso del ranking aprendido de "me interesa / no me interesa"
+
+- `job_ranking.learn_weight()`: con al menos `MIN_TUNING` (5) ofertas marcadas con match de cada lado, elige por cuenta el peso del ranking frente al match (0 a 0,8) que maximiza el AUC de "me interesa" sobre "no me interesa". La preferencia de cada oferta marcada sale de un modelo entrenado sin ella. A igual AUC gana el peso más cercano a `RANKING_WEIGHT`.
+- `rank()` usa ese peso; sin marcas suficientes sigue `RANKING_WEIGHT`.
+- `/api/ranking` devuelve `weight` y `tuning` (`auc`, `match_auc`, `examples`).
+
 ## [Sin publicar] - Acciones e imagen base fijadas por hash
 
 - Todas las GitHub Actions se usan por SHA de commit, con la versión en un comentario (`actions/checkout@11d5960…  # v4.4.0`). Una etiqueta como `@v4` la puede mover quien controle la acción, y el CI correría ese código con acceso a los secretos.

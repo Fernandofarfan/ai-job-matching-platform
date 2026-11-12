@@ -81,7 +81,8 @@ def profile_summary(profiles=Depends(get_profiles)):
 @router.get('/ranking')
 def ranking(model=Depends(get_ranking_model)):
     """Qué aprendió el ranking personal (palabras, empresas y portales que suben o bajan) y, en `feedback`,
-    cuántas ofertas marcaste y qué tan seguido el match ordena "me interesa" por encima de "no me interesa"."""
+    cuántas ofertas marcaste y qué tan seguido el match ordena "me interesa" por encima de "no me interesa".
+    `weight` es el peso del ranking frente al match; `tuning`, si se eligió con lo que marcaste (AUC antes y después)."""
     import job_feedback
     import job_ranking
     try:
@@ -94,4 +95,5 @@ def ranking(model=Depends(get_ranking_model)):
                 'message': f'Hacen falta al menos {job_ranking.MIN_EXAMPLES} postulaciones y '
                            f'{job_ranking.MIN_EXAMPLES} ofertas guardadas sin postular'}
     return {'success': True, 'enabled': True, 'feedback': feedback, 'positives': model['n_pos'],
-            'negatives': model['n_neg'], **job_ranking.top_signals(model)}
+            'negatives': model['n_neg'], 'weight': model.get('weight', job_ranking._weight()),
+            'tuning': model.get('tuning'), **job_ranking.top_signals(model)}

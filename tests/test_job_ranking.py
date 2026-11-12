@@ -83,6 +83,7 @@ def test_api_ranking(api, monkeypatch):
     monkeypatch.setattr(job_ranking, 'load_model', lambda: model)
     data = api.get('/api/ranking').json()
     assert data['enabled'] and data['positives'] == 5 and data['likes']
+    assert data['weight'] == job_ranking._weight() and data['tuning'] is None
 
 
 def test_view_file_escapes_scraped_text_and_adds_affinity(client, monkeypatch, tmp_path):
@@ -116,3 +117,43 @@ def test_view_file_reads_utf8_bom_csv(client, monkeypatch, tmp_path):
     html = client.get('/view/jobs.csv').get_data(as_text=True)
     assert 'Diseñador Gráfico' in html
     assert seen[0]['Title'] == 'Diseñador Gráfico' and seen[0]['URL'].startswith('https://www.bumeran')
+
+
+def _marked(n, title, company, interested, match):
+    """`n` ofertas marcadas con el mismo match."""
+    return [{'title': f'{title} {i}', 'company': company, 'interested': interested, 'match_score': match}
+            for i in range(n)]
+
+
+def test_learn_weight_trusts_preference_when_match_misleads(monkeypatch):
+    """Si el match ordena al revés de lo que marcaste, sube el peso del ranking hasta el menor que lo corrige."""
+    monkeypatch.setenv('RANKING_WEIGHT', '0.0')
+    marks = _marked(6, 'Backend Python', 'Acme', True, 40) + _marked(6, 'Vendedor', 'Tienda', False, 60)
+    tuning = job_ranking.learn_weight(marks)
+    assert tuning['weight'] == 0.2 and tuning['examples'] == 12
+    assert tuning['match_auc'] == 0.0 and tuning['auc'] == 1.0
+
+
+def test_learn_weight_keeps_match_when_it_already_separates(monkeypatch):
+    """Si el match ya separa perfecto y el ranking no agrega nada, queda el peso más cercano al configurado."""
+    monkeypatch.setenv('RANKING_WEIGHT', '0.3')
+    marks = _marked(6, 'Developer', 'Acme', True, 80) + _marked(6, 'Developer', 'Acme', False, 30)
+    assert job_ranking.learn_weight(marks)['weight'] == 0.3
+
+
+def test_learn_weight_needs_enough_marks_with_match():
+    """Sin `MIN_TUNING` marcas con match de cada lado no se ajusta."""
+    marks = _marked(6, 'Backend', 'Acme', True, 40) + _marked(4, 'Vendedor', 'Tienda', False, 60)
+    assert job_ranking.learn_weight(marks) is None
+    marks += [{'title': 'Vendedor x', 'company': 'Tienda', 'interested': False, 'match_score': None}]
+    assert job_ranking.learn_weight(marks) is None
+
+
+def test_rank_uses_the_learned_weight(monkeypatch):
+    """El peso aprendido reemplaza a `RANKING_WEIGHT` al ordenar."""
+    monkeypatch.setenv('RANKING_WEIGHT', '0.0')
+    model = job_ranking.train(_marked(3, 'Backend Python', 'Acme', True, 0) + _marked(3, 'Vendedor', 'Tienda', False, 0))
+    model['weight'] = 0.8
+    jobs = job_ranking.rank([{'title': 'Vendedor', 'company': 'Tienda', 'match_percent': 70},
+                             {'title': 'Backend Python', 'company': 'Acme', 'match_percent': 60}], model)
+    assert jobs[0]['title'] == 'Backend Python'

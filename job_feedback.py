@@ -116,7 +116,7 @@ def drop_rejected(jobs):
 def examples():
     """Ofertas marcadas, con los campos del ranking personal y `interested`."""
     return [{'title': r.title, 'company': r.company, 'location': r.location, 'job_link': r.url,
-             'interested': r.interested} for r in _rows()]
+             'interested': r.interested, 'match_score': r.match_score} for r in _rows()]
 
 
 def agreement(rows):
