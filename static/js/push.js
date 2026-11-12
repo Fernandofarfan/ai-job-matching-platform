@@ -1,6 +1,6 @@
-// Notificaciones push. En cada página: si este navegador ya está suscripto y cambió la cuenta,
-// la suscripción pasa a la cuenta actual (no siguen llegando avisos de la anterior).
-// En Mi cuenta: activar, probar y desactivar.
+// Notificaciones push. Una suscripción es de la cuenta que la activó en este navegador: al salir o
+// al entrar con otra cuenta se da de baja (no llegan avisos de una cuenta a quien use el navegador después),
+// y la cuenta nueva tiene que activarla explícitamente en Mi cuenta.
 (function () {
   const OWNER_KEY = 'empleoia-push-account';
   const account = (document.querySelector('meta[name="push-account"]') || {}).content || '';
@@ -22,17 +22,41 @@
     return data;
   }
 
-  async function claim(subscription) {
-    if (!subscription || !account || localStorage.getItem(OWNER_KEY) === account) return;
-    await post('/api/push/subscribe', subscription.toJSON());
-    localStorage.setItem(OWNER_KEY, account);
+  async function currentSubscription() {
+    if (!supported) return null;
+    const registration = await navigator.serviceWorker.getRegistration('/');
+    return registration ? registration.pushManager.getSubscription() : null;
   }
 
-  async function claimInBackground() {
-    if (!supported || !account || Notification.permission !== 'granted') return;
-    const registration = await navigator.serviceWorker.getRegistration('/');
-    if (registration) await claim(await registration.pushManager.getSubscription());
+  // Suscripción de otra cuenta: se da de baja en el servicio de push (el servidor la borra al recibir 410).
+  async function dropIfOtherAccount(subscription) {
+    if (!subscription || !account || localStorage.getItem(OWNER_KEY) === account) return subscription;
+    try {
+      await subscription.unsubscribe();
+    } catch {
+      return subscription;
+    }
+    localStorage.removeItem(OWNER_KEY);
+    return null;
   }
+
+  async function dropOnLogout() {
+    const subscription = await currentSubscription();
+    if (!subscription) return;
+    await post('/api/push/unsubscribe', { endpoint: subscription.endpoint }).catch(() => {});
+    await subscription.unsubscribe().catch(() => {});
+    localStorage.removeItem(OWNER_KEY);
+  }
+
+  document.querySelectorAll('form[action$="/logout"]').forEach((form) => {
+    form.addEventListener('submit', (event) => {
+      if (!supported || form.dataset.pushDropped) return;
+      event.preventDefault();
+      form.dataset.pushDropped = '1';
+      const timeout = new Promise((resolve) => setTimeout(resolve, 1500));
+      Promise.race([dropOnLogout(), timeout]).finally(() => form.submit());
+    });
+  });
 
   async function settings(box) {
     const status = document.getElementById('push-status');
@@ -58,8 +82,7 @@
     }
     const registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
     await navigator.serviceWorker.ready;
-    let subscription = await registration.pushManager.getSubscription();
-    if (Notification.permission === 'granted') await claim(subscription);
+    let subscription = await dropIfOtherAccount(await registration.pushManager.getSubscription());
 
     function render() {
       if (Notification.permission === 'denied') {
@@ -129,7 +152,7 @@
     settings(box).catch((err) => {
       document.getElementById('push-status').textContent = `No se pudieron revisar las notificaciones: ${err.message}`;
     });
-  } else {
-    claimInBackground().catch(() => {});
+  } else if (account) {
+    currentSubscription().then(dropIfOtherAccount).catch(() => {});
   }
 })();

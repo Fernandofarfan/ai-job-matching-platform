@@ -9,6 +9,7 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 ## [Sin publicar] - Notificaciones push
 
 - Web Push con VAPID (`push.py`, `/api/push/*`, tabla `push_subscriptions`): cada cuenta suscribe sus dispositivos en **Mi cuenta** y recibe las alertas (canal `push`) y los recordatorios de seguimiento. Los endpoints se limitan a servicios de push conocidos (`PUSH_ALLOWED_HOSTS` agrega otros) y los que el servicio da de baja (404/410) se borran solos.
+- Una suscripción push es de la cuenta que la activó en ese navegador: al salir o al entrar con otra cuenta se da de baja, y la cuenta nueva tiene que activarla en **Mi cuenta**.
 - Íconos de la PWA (`static/icons/`), que el manifest pedía y no existían.
 
 
