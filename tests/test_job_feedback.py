@@ -124,3 +124,14 @@ def test_api_job_feedback(client, monkeypatch):
     assert saved == [({'title': 'Backend'}, False, 42)] and invalidated == [True]
     assert client.post('/api/job_feedback', json={'job': {'title': 'x'}, 'interested': 'si'}).status_code == 400
     assert client.post('/api/job_feedback', json={'job': 'x', 'interested': True}).status_code == 400
+
+
+def test_empty_csv_cells_match_the_displayed_offer(db):
+    """Una celda vacía del CSV (NaN de pandas) tiene la misma huella que el texto vacío que manda la tabla."""
+    import job_alerts
+    nan = float('nan')
+    from_csv = {'Title': 'Data Engineer', 'Company': 'Confidencial', 'Location': nan}
+    from_table = {'title': 'Data Engineer', 'company': 'Confidencial', 'location': ''}
+    assert job_alerts.fingerprint(from_csv) == job_alerts.fingerprint(from_table)
+    job_feedback.set_feedback(from_table, True)
+    assert job_feedback.states([from_csv]) == [True]
