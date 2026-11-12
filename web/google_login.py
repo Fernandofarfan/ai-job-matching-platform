@@ -87,6 +87,9 @@ def google_callback():
         except accounts.AccountError as e:
             flash(str(e), 'warning')
             return redirect(url_for('login'))
+    if not accounts.get_user(user_id)['email_verified']:
+        # la cuenta pudo crearla otro con este email: su contraseña y sus sesiones dejan de valer
+        accounts.set_password(user_id, secrets.token_urlsafe(32))
     # Google ya comprobó que el email es suyo
     accounts.mark_verified(user_id)
     auth.start_session(session, app.secret_key, user_id)
