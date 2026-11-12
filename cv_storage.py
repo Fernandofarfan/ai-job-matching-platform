@@ -123,8 +123,11 @@ def purge_generated(days: int, now: Optional[float] = None) -> int:
     for directory in GENERATED_DIRS:
         for path in glob.glob(os.path.join(directory, '*')):
             if os.path.isfile(path) and os.path.getmtime(path) < cutoff:
-                os.remove(path)
-                removed += 1
+                try:
+                    os.remove(path)
+                    removed += 1
+                except OSError as e:
+                    logger.warning(f"No se pudo borrar el documento generado {path}: {e}")
     return removed
 
 

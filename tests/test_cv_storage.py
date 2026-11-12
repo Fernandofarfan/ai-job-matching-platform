@@ -120,3 +120,16 @@ def test_retention_waits_while_mysql_is_down(workdir, monkeypatch):
     result = privacy_tasks.enforce_cv_retention.run()
     assert result['deleted_cvs'] == 0 and result['deleted_generated'] == 1
     assert os.listdir('uploads') == ['old.pdf']
+
+
+def test_purge_generated_skips_undeletable_files(workdir, monkeypatch):
+    """Un documento que no se puede borrar no corta la retención de los CVs."""
+    os.makedirs(os.path.join('temp', 'resumes'))
+    gen = os.path.join('temp', 'resumes', 'cv.docx')
+    open(gen, 'w').close()
+    os.utime(gen, (time.time() - 40 * 86400,) * 2)
+
+    def fail(path):
+        raise PermissionError(path)
+    monkeypatch.setattr(cv_storage.os, 'remove', fail)
+    assert cv_storage.purge_generated(30) == 0
