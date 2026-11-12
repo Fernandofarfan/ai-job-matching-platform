@@ -18,6 +18,7 @@ APP_PASSWORD = secrets.token_urlsafe(16)
 
 
 def pytest_collection_modifyitems(config, items):
+    """Saltea toda la suite salvo con INTEGRATION=1."""
     if os.getenv('INTEGRATION') != '1':
         skip = pytest.mark.skip(reason='INTEGRATION=1 para correr contra MySQL/Redis reales')
         for item in items:
@@ -26,6 +27,7 @@ def pytest_collection_modifyitems(config, items):
 
 @pytest.fixture(scope='session')
 def app_password():
+    """Contraseña con la que se levanta la app en los E2E."""
     return APP_PASSWORD
 
 
@@ -37,6 +39,7 @@ def migrated_db():
 
 
 def _free_port():
+    """Puerto TCP libre en 127.0.0.1 para levantar uvicorn."""
     with socket.socket() as s:
         s.bind(('127.0.0.1', 0))
         return s.getsockname()[1]

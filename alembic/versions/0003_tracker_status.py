@@ -17,15 +17,18 @@ _LEGACY = "'applied','interviewing','rejected','accepted'"
 
 
 def _has_applications():
+    """`applications` la crea setup_database.sql; en bases sin esa tabla no hay nada que migrar."""
     return context.is_offline_mode() or sa.inspect(op.get_bind()).has_table('applications')
 
 
 def upgrade():
+    """Amplía el ENUM de `status` a los estados del kanban."""
     if _has_applications():
         op.execute(f"ALTER TABLE applications MODIFY status ENUM({_KANBAN}) DEFAULT 'applied'")
 
 
 def downgrade():
+    """Vuelve al ENUM anterior, pasando los estados nuevos a 'applied'."""
     if _has_applications():
         op.execute("UPDATE applications SET status = 'applied' WHERE status IN ('bookmarked','applying','negotiating')")
         op.execute(f"ALTER TABLE applications MODIFY status ENUM({_LEGACY}) DEFAULT 'applied'")

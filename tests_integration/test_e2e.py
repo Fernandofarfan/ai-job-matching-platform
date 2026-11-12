@@ -12,6 +12,7 @@ CV = (
 
 @pytest.fixture(scope='module')
 def browser():
+    """Chromium headless compartido por los tests del módulo."""
     sync_api = pytest.importorskip('playwright.sync_api')
     with sync_api.sync_playwright() as p:
         b = p.chromium.launch()
@@ -21,6 +22,7 @@ def browser():
 
 @pytest.fixture
 def page(browser, live_server, app_password):
+    """Pestaña nueva apuntando a la app levantada."""
     context = browser.new_context(base_url=live_server)
     page = context.new_page()
     page.set_default_timeout(20000)
@@ -30,12 +32,14 @@ def page(browser, live_server, app_password):
 
 
 def _login(page, password=None):
+    """Inicia sesión desde /login con la contraseña dada (por defecto la correcta)."""
     page.goto('/login')
     page.fill('#password', password or page.app_password)
     page.click('button[type=submit]')
 
 
 def test_login_required_and_wrong_password(page):
+    """Sin sesión redirige a /login y una contraseña incorrecta no entra."""
     page.goto('/tracker')
     assert '/login' in page.url
     _login(page, 'incorrecta')
@@ -43,6 +47,7 @@ def test_login_required_and_wrong_password(page):
 
 
 def test_upload_resume_creates_profile(page, tmp_path):
+    """Subir un CV desde /profile crea el perfil del rol elegido."""
     cv = tmp_path / 'cv_ana.txt'
     cv.write_text(CV, encoding='utf-8')
     _login(page)
@@ -56,6 +61,7 @@ def test_upload_resume_creates_profile(page, tmp_path):
 
 
 def test_tracker_add_job(page):
+    """Agregar un empleo a mano en el tracker lo guarda y sigue tras recargar."""
     title = f'Data Engineer E2E {uuid.uuid4().hex[:6]}'
     _login(page)
     page.goto('/tracker')

@@ -7,6 +7,7 @@ import pytest
 
 @pytest.fixture
 def mysql(migrated_db):
+    """Sesión SQLAlchemy contra la base migrada."""
     import job_alerts
     import profile_store
     profile_store.configure(None)
