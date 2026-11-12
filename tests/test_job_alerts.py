@@ -197,3 +197,10 @@ def test_alert_links_use_scraper_url_field():
     job = {'Title': 'Dev', 'Company': 'Acme', 'URL': 'https://www.computrabajo.com.ar/oferta-1'}
     assert 'href="https://www.computrabajo.com.ar/oferta-1"' in notification_tasks.alert_telegram_text({'name': 'x'}, [job])
     assert 'https://www.computrabajo.com.ar/oferta-1' in notification_tasks.alert_email_html({'name': 'x'}, [job])
+
+
+def test_computrabajo_confidential_fallback_uses_location():
+    """Computrabajo usa 'Confidential' sin empresa: ofertas de distintas ciudades no colapsan."""
+    a = {'Title': 'Vendedor', 'Company': 'Confidential', 'Location': 'Córdoba'}
+    b = {'Title': 'Vendedor', 'Company': 'Confidential', 'Location': 'Rosario'}
+    assert job_alerts.fingerprint(a) != job_alerts.fingerprint(b)

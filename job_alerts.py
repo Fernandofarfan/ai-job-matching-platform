@@ -18,7 +18,7 @@ Base = declarative_base()
 PORTALS = ('computrabajo', 'bumeran')
 CHANNELS = ('email', 'telegram')
 MAX_JOBS_PER_PORTAL = 30
-_ANONYMOUS = {'', 'confidencial', 'empresa confidencial', 'importante empresa'}
+_ANONYMOUS = {'', 'confidential', 'confidencial', 'empresa confidencial', 'importante empresa'}
 
 _session_factory = None
 
