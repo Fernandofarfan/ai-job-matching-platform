@@ -56,7 +56,13 @@ def _key(text):
 def embed(texts):
     """Vectores de cada texto (con caché en memoria), o None si no se pudo."""
     texts = [str(t or '')[:MAX_CHARS] for t in texts]
-    missing = [t for t in dict.fromkeys(texts) if _key(t) not in _cache]
+    found = {}
+    for text in dict.fromkeys(texts):
+        key = _key(text)
+        if key in _cache:
+            _cache.move_to_end(key)
+            found[text] = _cache[key]
+    missing = [t for t in dict.fromkeys(texts) if t not in found]
     if missing:
         import ai_usage
         if ai_usage.budget_exceeded():
@@ -77,10 +83,11 @@ def embed(texts):
         # La API de embeddings no informa tokens: ~4 caracteres por token
         ai_usage.record(sum(len(t) for t in missing) // 4, 0)
         for text, vector in zip(missing, vectors, strict=True):
+            found[text] = vector
             _cache[_key(text)] = vector
             while len(_cache) > _CACHE_SIZE:
                 _cache.popitem(last=False)
-    return [_cache[_key(t)] for t in texts]
+    return [found[t] for t in texts]
 
 
 def cosine(a, b):

@@ -102,3 +102,13 @@ def test_job_matcher_prefers_embeddings():
             mock.patch.object(matcher, 'vectorizer') as vectorizer:
         matcher.calculate_text_similarity('cv', 'oferta')
         vectorizer.fit_transform.assert_called_once()
+
+
+def test_eviction_keeps_vectors_of_current_call(monkeypatch):
+    """Con la caché llena, el CV (usado recién) no se desaloja y la llamada no falla."""
+    monkeypatch.setattr(embeddings, '_CACHE_SIZE', 2)
+    client = FakeClient()
+    embeddings.configure(client)
+    for i in range(5):
+        assert embeddings.similarity('mi cv', f'oferta {i}') is not None
+    assert client.calls[1:] == [[f'oferta {i}'] for i in range(1, 5)]
