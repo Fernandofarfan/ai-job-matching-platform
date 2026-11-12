@@ -1,6 +1,5 @@
 import job_dispatch
-from flask import (Flask, render_template, request, redirect, url_for, flash, jsonify, session, make_response, g)
-from sqlalchemy.exc import SQLAlchemyError
+from flask import (Flask, render_template, request, redirect, url_for, flash, jsonify, session, g)
 from flask_limiter import Limiter
 from werkzeug.routing import Rule
 import rate_limit
@@ -10,7 +9,6 @@ from flask_wtf.csrf import CSRFProtect
 import accounts
 import auth
 import i18n
-import user_sessions
 import os
 import logging
 import glob
@@ -119,96 +117,6 @@ def _safe_next(target):
     is_local = auth.is_local_path(target)
     loops = is_local and target.split('?')[0].rstrip('/') in ('/login', '/logout', '/register')
     return target if is_local and not loops else url_for('index')
-
-
-@app.route('/login', methods=['GET', 'POST'])
-@limiter.limit('10 per minute', methods=['POST'], key_func=client_ip)
-@limiter.limit('20 per hour', methods=['POST'], key_func=email_limit_key)
-def login():
-    next_url = request.args.get('next', '')
-    if not auth.auth_enabled():
-        return redirect(_safe_next(next_url))
-    if request.method == 'GET' and auth.is_session_valid(session, app.secret_key):
-        return redirect(_safe_next(next_url))
-    try:
-        if accounts.count_users() == 0:
-            return redirect(url_for('register', next=next_url))
-        if request.method == 'POST':
-            user_id = accounts.authenticate(request.form.get('email', ''), request.form.get('password', ''))
-            user = accounts.get_user(user_id) if user_id else None
-            if user and auth.verification_required() and not user['email_verified']:
-                if account.send_verification(user):
-                    flash('Antes de entrar confirmá tu email: te mandamos un enlace', 'warning')
-                else:
-                    flash('Tenés que confirmar tu email, pero no se pudo mandar el enlace: avisale al administrador', 'danger')
-            elif user and user['disabled']:
-                account.audit(user['id'], 'login_blocked')
-                flash('Tu cuenta está bloqueada: hablá con el administrador', 'danger')
-            elif user:
-                pending = second_factor.begin_login(user, 'login', next_url)
-                if pending:
-                    return pending
-                auth.start_session(session, app.secret_key, user['id'], *account.client_info())
-                account.audit_login(user, 'login')
-                return redirect(_safe_next(next_url))
-            else:
-                account.audit(accounts.find_user_id(request.form.get('email', '')), 'login_failed')
-                flash('Email o contraseña incorrectos', 'danger')
-        signup = accounts.signup_open()
-    except SQLAlchemyError as e:
-        logger.error(f"Login sin base de datos: {e}")
-        flash('La base de datos no responde; probá de nuevo en unos minutos', 'danger')
-        signup = False
-    return _clear_offline_data(make_response(render_template('login.html', next_url=next_url, signup_open=signup)))
-
-
-@app.route('/register', methods=['GET', 'POST'])
-@limiter.limit('5 per minute', methods=['POST'], key_func=client_ip)
-def register():
-    """Alta de cuenta: siempre para la primera; después solo con ALLOW_SIGNUP=true."""
-    next_url = request.args.get('next', '')
-    if not auth.auth_enabled():
-        return redirect(_safe_next(next_url))
-    try:
-        first = accounts.count_users() == 0
-        if not accounts.signup_open():
-            flash('El registro está cerrado: pedile una cuenta al administrador', 'warning')
-            return redirect(url_for('login', next=next_url))
-        if request.method == 'POST':
-            password = request.form.get('password', '')
-            if password != request.form.get('confirm', ''):
-                flash('Las contraseñas no coinciden', 'danger')
-            else:
-                try:
-                    user_id = accounts.register(request.form.get('email', ''), password)
-                except accounts.AccountError as e:
-                    flash(str(e), 'danger')
-                else:
-                    account.audit(user_id, 'register')
-                    user = accounts.get_user(user_id)
-                    sent = not user['email_verified'] and account.send_verification(user)
-                    if auth.verification_required() and not user['email_verified']:
-                        if sent:
-                            flash('Te mandamos un enlace para confirmar tu email', 'info')
-                        else:
-                            flash('Cuenta creada, pero no se pudo mandar el enlace para confirmar el email: '
-                                  'avisale al administrador', 'danger')
-                        return redirect(url_for('login', next=next_url))
-                    auth.start_session(session, app.secret_key, user_id, *account.client_info())
-                    return redirect(_safe_next(next_url))
-    except SQLAlchemyError as e:
-        logger.error(f"Registro sin base de datos: {e}")
-        flash('La base de datos no responde; probá de nuevo en unos minutos', 'danger')
-        first = False
-    return _clear_offline_data(make_response(render_template(
-        'register.html', next_url=next_url, first_account=first, min_password=accounts.MIN_PASSWORD)))
-
-
-@app.route('/logout', methods=['POST'])
-def logout():
-    user_sessions.revoke_sid(session.get('sid'))
-    session.clear()
-    return _clear_offline_data(redirect(url_for('login')))
 
 
 def _clear_offline_data(response):
@@ -887,13 +795,21 @@ def server_error(e):
 # Páginas que ya atiende FastAPI (routers/pages.py): Flask solo las usa para armar URLs con url_for
 for _rule, _endpoint in [('/', 'index'), ('/scraper', 'scraper'), ('/results', 'results'), ('/profile', 'profile'),
                          ('/mock-interview', 'mock_interview'), ('/tracker', 'tracker'),
-                         ('/lang/<code>', 'set_language'), ('/sw.js', 'service_worker'), ('/api/health', 'health')]:
+                         ('/lang/<code>', 'set_language'), ('/sw.js', 'service_worker'), ('/api/health', 'health'),
+                         ('/login', 'login'), ('/register', 'register'), ('/logout', 'logout'),
+                         ('/forgot_password', 'forgot_password'), ('/reset_password/<token>', 'reset_password'),
+                         ('/verify_email/<token>', 'verify_email'), ('/login/2fa', 'login_two_factor'),
+                         ('/login/google', 'google_login'), ('/login/google/callback', 'google_callback')]:
     app.url_map.add(Rule(_rule, endpoint=_endpoint, build_only=True))
 
 # Las rutas viven en web/ y se registran sobre `app` al importarse
 from web import (  # noqa: E402,F401
-    account, admin, alerts, analytics, documents, exports, files, google_login, profiles, scrapers, second_factor,
+    account, admin, alerts, analytics, documents, exports, files, profiles, scrapers, second_factor,
 )
+
+
+# Helpers de este módulo para las páginas que ya sirve FastAPI (fastapi_web.legacy)
+app.extensions['empleoia_app_globals'] = globals()
 
 
 if __name__ == '__main__':

@@ -3,22 +3,27 @@
 La cookie `session` se lee y se escribe con el serializador de la app Flask montada en main.py,
 así una sesión abierta en Flask sirve en FastAPI y viceversa mientras dure la migración.
 """
+import logging
 import secrets
 from datetime import datetime, timezone
 from typing import Any, Optional, TypeVar
 from urllib.parse import urlencode
 
 from fastapi import Request
-from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from itsdangerous import URLSafeTimedSerializer
+from limits import parse
 from jinja2 import pass_context
 from starlette.routing import NoMatchFound
 
+import account_notify
 import accounts
 import auth
 import i18n
+import rate_limit
 
+logger = logging.getLogger(__name__)
 templates = Jinja2Templates(directory='templates')
 # Caracteres que Werkzeug deja sin escapar en la query: mismas URLs que el url_for de Flask
 QUERY_SAFE = "!$'()*,/:;?@"
@@ -46,6 +51,14 @@ class WebSession(dict):
     def __delitem__(self, key):
         self.modified = True
         super().__delitem__(key)
+
+    @property
+    def permanent(self) -> bool:
+        return bool(self.get('_permanent'))
+
+    @permanent.setter
+    def permanent(self, value: bool) -> None:
+        self['_permanent'] = bool(value)
 
     def pop(self, key, *default):
         if key in self:
@@ -175,3 +188,77 @@ def render(request: Request, name: str, status_code: int = 200, **context) -> HT
 
 def redirect(request: Request, target: str, status_code: int = 302) -> RedirectResponse:
     return save_session(request, RedirectResponse(target, status_code=status_code))
+
+
+def legacy(request: Request) -> dict:
+    """Globals de app.py (perfil, resultados, base) de la app Flask montada."""
+    return flask_app_for(request).extensions['empleoia_app_globals']
+
+
+def client_ip(request: Request) -> str:
+    """IP del cliente respetando TRUSTED_PROXY_HOPS (ver rate_limit.client_ip)."""
+    return rate_limit.client_ip(request.client.host if request.client else None,
+                                request.headers.get('x-forwarded-for'))
+
+
+def client_info(request: Request) -> tuple[str, Optional[str]]:
+    """IP y navegador del pedido, para registrar la sesión y los eventos de seguridad."""
+    return client_ip(request), request.headers.get('user-agent')
+
+
+def limit_key(request: Request) -> str:
+    """Clave por cuenta si hay sesión, si no por IP (como limit_key de app.py)."""
+    return rate_limit.client_key(current_user_id(), client_ip(request))
+
+
+def hit_limit(request: Request, spec: str, namespace: str, key: str) -> bool:
+    """Suma un pedido al límite `spec` de la página; False si lo superó.
+
+    Usa el limiter de Flask (mismo storage, y apagarlo en la config o en los tests apaga los dos).
+    Si el storage falla, deja pasar, como Flask-Limiter.
+    """
+    limiters = flask_app_for(request).extensions.get('limiter') or ()
+    for limiter in limiters if isinstance(limiters, (set, list, tuple)) else [limiters]:
+        if not limiter.enabled:
+            return True
+        try:
+            return limiter.limiter.hit(parse(spec), 'page', namespace, key or 'unknown')
+        except Exception as e:
+            logger.warning(f"Rate limit no disponible ({e}); se permite la solicitud")
+    return True
+
+
+def too_many_requests() -> JSONResponse:
+    """Misma respuesta que el 429 de Flask."""
+    return JSONResponse({'error': 'Demasiadas solicitudes, probá de nuevo en un minuto'}, status_code=429)
+
+
+async def read_form(request: Request) -> tuple[dict, Optional[Response]]:
+    """Formulario del POST y, si el token CSRF no es válido, la respuesta 400 (como CSRFProtect de Flask)."""
+    form = {k: v for k, v in (await request.form()).items() if isinstance(v, str)}
+    flask_app = flask_app_for(request)
+    if flask_app.config.get('WTF_CSRF_ENABLED', True):
+        token = form.get('csrf_token') or request.headers.get('x-csrftoken') or request.headers.get('x-csrf-token')
+        if not token or not auth.check_csrf_token(get_session(request), token, flask_app.secret_key,
+                                                  flask_app.config.get('WTF_CSRF_TIME_LIMIT', 3600)):
+            return form, render(request, 'error.html', 400, code=400, message='The CSRF token is missing or invalid.')
+    return form, None
+
+
+def clear_offline_data(response: ResponseT) -> ResponseT:
+    """Sin sesión no deben quedar páginas ni datos del tracker en el caché del service worker ni en IndexedDB."""
+    response.headers['Clear-Site-Data'] = '"cache", "storage"'
+    return response
+
+
+def safe_next(target: str) -> str:
+    """Destino local después del login; nunca otro sitio ni de vuelta al login."""
+    is_local = auth.is_local_path(target)
+    loops = is_local and target.split('?')[0].rstrip('/') in ('/login', '/logout', '/register')
+    return target if is_local and not loops else '/'
+
+
+def public_url(request: Request, endpoint: str, **values) -> Optional[str]:
+    """URL absoluta para los emails (ver account_notify.public_base)."""
+    base = account_notify.public_base(request.headers.get('host', ''), str(request.base_url))
+    return base + url_for(request, endpoint, **values) if base else None

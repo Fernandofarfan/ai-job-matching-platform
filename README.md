@@ -64,7 +64,7 @@
 
 ### 🚀 **Nueva Arquitectura y Escalabilidad (Fases 1-5 completadas)**
 - **Migración a Playwright**: El motor de scraping abandona Selenium y adopta `playwright` asincrónico para máxima velocidad y evitar detecciones.
-- **FastAPI Core**: las APIs JSON y las páginas ya migradas (`routers/pages.py`: inicio, scraper, resultados, perfil, entrevista, tracker y analytics) corren en FastAPI (`main.py`); Flask, montado debajo, sirve el resto de las páginas HTML mientras dura la migración.
+- **FastAPI Core**: las APIs JSON y las páginas ya migradas (`routers/pages.py`: inicio, scraper, resultados, perfil, entrevista, tracker y analytics; `routers/auth_pages.py`: login, registro, recuperación, verificación en dos pasos y Google) corren en FastAPI (`main.py`); Flask, montado debajo, sirve el resto de las páginas HTML mientras dura la migración.
 - **Entorno DevContainer**: Repositorio "Docker-first" con `.devcontainer` que soluciona conflictos de C++ y restricciones de Windows Defender para dependencias de IA.
 - **Web Speech API**: Interfaz de *Mock Interviews* actualizada con funcionalidad de voz-a-texto en la UI.
 - **Autonomías Externas**: Tracker automático para Gmail vía OAuth e introducción de auto-aplicación en LinkedIn.

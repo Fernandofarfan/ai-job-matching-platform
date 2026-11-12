@@ -2,13 +2,12 @@
 import io
 import logging
 import os
-from urllib.parse import urlsplit
 
 from datetime import date
 
-from markupsafe import escape
 from flask import flash, make_response, redirect, render_template, request, send_file, session, url_for
 
+import account_notify
 import accounts
 import auth
 import data_export
@@ -16,36 +15,24 @@ import integrations
 import security_events
 import two_factor
 import user_sessions
-from app import _clear_offline_data, app, client_ip, delete_user_profile, email_limit_key, limiter
+from app import _clear_offline_data, app, client_ip, delete_user_profile, limiter
 
 logger = logging.getLogger(__name__)
-LOCAL_HOSTS = {'localhost', '127.0.0.1', '::1'}
 
 
 def _public_url(endpoint: str, **values):
-    """URL absoluta para los emails: PUBLIC_BASE_URL (obligatoria en Cloud Run, evita usar el Host del pedido)."""
-    base = os.getenv('PUBLIC_BASE_URL', '').rstrip('/')
-    if not base:
-        # sin PUBLIC_BASE_URL solo se confía en el Host si es local: si no, un Host falso robaría el enlace
-        if urlsplit('//' + request.host).hostname not in LOCAL_HOSTS:
-            logger.error('Definí PUBLIC_BASE_URL para mandar enlaces por email')
-            return None
-        base = request.url_root.rstrip('/')
-    return base + url_for(endpoint, **values)
+    """URL absoluta para los emails (ver account_notify.public_base)."""
+    base = account_notify.public_base(request.host, request.url_root)
+    return base + url_for(endpoint, **values) if base else None
 
 
-def _deliver(to: str, subject: str, body: str, link: str, cta: str) -> bool:
-    """Manda el email con el enlace por SMTP."""
-    from tasks.notification_tasks import _get_email_template, _send_email
-    return _send_email(to, subject, _get_email_template(subject, body, link, cta))
+_deliver = account_notify.deliver
 
 
 def send_verification(user: dict) -> bool:
     """Email con el enlace para confirmar la cuenta."""
-    link = _public_url('verify_email', token=auth.account_token(app.secret_key, 'verify', user))
-    return bool(link) and _deliver(user['email'], 'Confirmá tu email en EmpleoIA',
-                                   '<p>Entrá al enlace para confirmar tu cuenta. Vence en 3 días.</p>',
-                                   link, 'Confirmar email')
+    return account_notify.send_verification(
+        user, _public_url('verify_email', token=auth.account_token(app.secret_key, 'verify', user)))
 
 
 def client_info() -> tuple:
@@ -55,100 +42,18 @@ def client_info() -> tuple:
 
 def audit(user_id, kind: str) -> bool:
     """Registra el evento con la IP y el navegador del pedido."""
-    return security_events.record(user_id, kind, client_ip(), request.headers.get('User-Agent'))
+    return account_notify.audit(user_id, kind, *client_info())
 
 
 def audit_login(user: dict, kind: str):
-    """Registra el login y, si es un navegador nuevo para la cuenta, avisa por email en segundo plano."""
-    agent = request.headers.get('User-Agent')
-    try:
-        new_device = security_events.login_alerts_enabled() and security_events.is_new_device(user['id'], agent)
-    except Exception as e:
-        logger.error(f'No se pudo comprobar el dispositivo del login: {e}')
-        new_device = False
-    audit(user['id'], kind)
-    link = _public_url('account') if new_device else None
-    if link:
-        body = ('<p>Se inició sesión en tu cuenta desde un navegador nuevo:</p>'
-                f'<p>{escape(agent or "navegador desconocido")}<br>IP {escape(client_ip())}</p>'
-                '<p>Si no fuiste vos, cambiá la contraseña ya.</p>')
-        accounts.thread(_deliver, (user['email'], 'Nuevo inicio de sesión en EmpleoIA', body, link,
-                                   'Revisar mi cuenta'), daemon=True).start()
-
-
-def _account_enabled():
-    """Las páginas de cuenta solo existen con login."""
-    return auth.auth_enabled()
-
-
-@app.route('/forgot_password', methods=['GET', 'POST'])
-@limiter.limit('5 per minute', methods=['POST'], key_func=client_ip)
-@limiter.limit('5 per hour', methods=['POST'], key_func=email_limit_key)
-def forgot_password():
-    """Pide el email y manda el enlace de recuperación (la respuesta no dice si la cuenta existe)."""
-    if not _account_enabled():
-        return redirect(url_for('index'))
-    if request.method == 'POST':
-        user_id = accounts.find_user_id(request.form.get('email', ''))
-        user = accounts.get_user(user_id) if user_id else None
-        if user:
-            link = _public_url('reset_password', token=auth.account_token(app.secret_key, 'reset', user))
-            if link:
-                _deliver(user['email'], 'Recuperar tu contraseña de EmpleoIA',
-                         '<p>Entrá al enlace para elegir una contraseña nueva. Vence en 1 hora. '
-                         'Si no lo pediste, ignorá este email.</p>', link, 'Elegir contraseña')
-        flash('Si hay una cuenta con ese email, te mandamos un enlace para recuperar la contraseña', 'info')
-        return redirect(url_for('login'))
-    return render_template('forgot_password.html')
-
-
-@app.route('/reset_password/<token>', methods=['GET', 'POST'])
-@limiter.limit('10 per minute', methods=['POST'], key_func=client_ip)
-def reset_password(token):
-    """Elige una contraseña nueva con el enlace del email; cierra las sesiones abiertas."""
-    if not _account_enabled():
-        return redirect(url_for('index'))
-    user = auth.read_account_token(app.secret_key, 'reset', token, auth.RESET_MAX_AGE)
-    if user is None:
-        flash('El enlace venció o ya se usó: pedí uno nuevo', 'danger')
-        return redirect(url_for('forgot_password'))
-    if request.method == 'POST':
-        password = request.form.get('password', '')
-        if password != request.form.get('confirm', ''):
-            flash('Las contraseñas no coinciden', 'danger')
-        else:
-            try:
-                accounts.set_password(user['id'], password, expected_hash=user['password_hash'])
-            except accounts.AccountError as e:
-                flash(str(e), 'danger')
-            else:
-                accounts.mark_verified(user['id'])  # recibió el email: la dirección es suya
-                audit(user['id'], 'password_reset')
-                session.clear()
-                flash('Listo: ya podés entrar con la contraseña nueva', 'success')
-                return _clear_offline_data(redirect(url_for('login')))
-    response = make_response(render_template('reset_password.html', token=token, min_password=accounts.MIN_PASSWORD))
-    response.headers['Referrer-Policy'] = 'no-referrer'
-    return response
-
-
-@app.route('/verify_email/<token>')
-def verify_email(token):
-    """Confirma el email con el enlace que se mandó al registrarse."""
-    user = auth.read_account_token(app.secret_key, 'verify', token, auth.VERIFY_MAX_AGE)
-    if user is None:
-        flash('El enlace de verificación venció o no es válido', 'danger')
-    else:
-        accounts.mark_verified(user['id'])
-        audit(user['id'], 'email_verified')
-        flash('Email confirmado', 'success')
-    return redirect(url_for('account') if auth.is_session_valid(session, app.secret_key) else url_for('login'))
+    """Registra el login y, si es un navegador nuevo para la cuenta, avisa por email."""
+    account_notify.audit_login(user, kind, *client_info(), lambda: _public_url('account'))
 
 
 @app.route('/account')
 def account():
     """Datos de la cuenta, cambio de contraseña y borrado."""
-    if not _account_enabled():
+    if not auth.auth_enabled():
         return redirect(url_for('index'))
     return _render_account()
 

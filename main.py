@@ -14,7 +14,7 @@ import accounts
 import auth
 import observability
 import rate_limit
-from routers import ai, analytics, documents, insights, pages, tracker
+from routers import ai, analytics, auth_pages, documents, insights, pages, tracker
 from routers import push as push_router
 
 PUBLIC_API_PATHS = {"/api/health"}
@@ -112,6 +112,7 @@ def create_app(flask_app=None) -> FastAPI:
     app.include_router(documents.router)
     app.include_router(push_router.router)
     app.include_router(pages.router)
+    app.include_router(auth_pages.router)
 
     app.get("/metrics", include_in_schema=False)(metrics)
     app.get("/api/health", name="health_check")(health_check)

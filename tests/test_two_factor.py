@@ -7,6 +7,7 @@ import pytest
 from cryptography.fernet import Fernet
 
 import accounts
+import google_oauth
 import security_events
 import two_factor
 
@@ -136,14 +137,12 @@ def test_account_deletion_and_export_skip_totp(client, ana):
 
 
 def test_google_login_also_requires_code(client, ana, monkeypatch, app):
-    import inspect
     from urllib.parse import parse_qs, urlsplit
     _enable(client)
     client.post('/logout')
     monkeypatch.setenv('GOOGLE_OAUTH_CLIENT_ID', 'cid')
     monkeypatch.setenv('GOOGLE_OAUTH_CLIENT_SECRET', 'secret')
-    monkeypatch.setitem(inspect.unwrap(app.view_functions['google_callback']).__globals__, '_google_email',
-                        lambda code, verifier, uri: 'ana@example.com')
+    monkeypatch.setattr(google_oauth, 'verified_email', lambda code, verifier, uri: 'ana@example.com')
     params = parse_qs(urlsplit(client.get('/login/google').headers['Location']).query)
     response = client.get(f"/login/google/callback?state={params['state'][0]}&code=c")
     assert response.headers['Location'].endswith('/login/2fa')

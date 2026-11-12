@@ -263,7 +263,7 @@ def mock_db(app):
 @pytest.fixture
 def tracker_db(app):
     """Mock del DatabaseManager que usan las rutas (el mismo que ven las vistas de Flask)."""
-    return app.view_functions['logout'].__globals__['db_manager']
+    return app.extensions['empleoia_app_globals']['db_manager']
 
 
 @pytest.fixture
@@ -274,7 +274,7 @@ def api(app, tracker_db):
 
     from routers import ai, documents, insights, tracker
     from routers import push as push_router
-    flask_globals = app.view_functions['logout'].__globals__
+    flask_globals = app.extensions['empleoia_app_globals']
     fastapi_app = FastAPI()
     fastapi_app.include_router(tracker.router)
     fastapi_app.include_router(insights.router)

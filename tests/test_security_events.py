@@ -2,10 +2,10 @@
 from datetime import datetime, timedelta
 from unittest import mock
 
-import inspect
 
 import pytest
 
+import account_notify
 import accounts
 import security_events
 
@@ -33,8 +33,7 @@ def _login(client, password=PASSWORD, agent=CHROME):
 def sent(monkeypatch, app):
     """Emails mandados (el aviso corre en un thread: se ejecuta en línea)."""
     outbox = []
-    routes = inspect.unwrap(app.view_functions['account']).__globals__
-    monkeypatch.setitem(routes, '_deliver', lambda to, subject, body, link, cta: outbox.append(
+    monkeypatch.setattr(account_notify, 'deliver', lambda to, subject, body, link, cta: outbox.append(
         (to, subject, body, link)) or True)
     monkeypatch.setattr(accounts, 'thread', lambda target, args=(), **kw: mock.Mock(start=lambda: target(*args)))
     return outbox

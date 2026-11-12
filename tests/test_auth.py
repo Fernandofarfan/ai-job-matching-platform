@@ -4,7 +4,9 @@ import io
 
 import pytest
 
+import account_notify
 import accounts
+import google_oauth
 
 PASSWORD = 'clave-larga-1'
 
@@ -150,8 +152,7 @@ def test_first_account_requires_admin_email_on_cloud_run(accounts_db, monkeypatc
 def outbox(monkeypatch, app):
     """Emails que mandaría la app (enlace incluido) en vez de usar SMTP."""
     sent = []
-    monkeypatch.setitem(inspect.unwrap(app.view_functions['forgot_password']).__globals__, '_deliver',
-                        lambda to, subject, body, link, cta: sent.append((to, link)) or True)
+    monkeypatch.setattr(account_notify, 'deliver', lambda to, subject, body, link, cta: sent.append((to, link)) or True)
     return sent
 
 
@@ -329,7 +330,6 @@ def test_gmail_callback_rejects_bad_state(registered):
 @pytest.fixture
 def google(monkeypatch, app):
     """Cliente OAuth de Google simulado: `google.email` es lo que devuelve Google (None = sin verificar)."""
-    import inspect
     from types import SimpleNamespace
     monkeypatch.setenv('GOOGLE_OAUTH_CLIENT_ID', 'cid')
     monkeypatch.setenv('GOOGLE_OAUTH_CLIENT_SECRET', 'secret')
@@ -338,7 +338,7 @@ def google(monkeypatch, app):
     def exchange(code, verifier, redirect_uri):
         fake.calls.append((code, verifier, redirect_uri))
         return fake.email
-    monkeypatch.setitem(inspect.unwrap(app.view_functions['google_callback']).__globals__, '_google_email', exchange)
+    monkeypatch.setattr(google_oauth, 'verified_email', exchange)
     return fake
 
 

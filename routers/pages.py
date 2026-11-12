@@ -7,14 +7,9 @@ from starlette.concurrency import run_in_threadpool
 
 import auth
 import i18n
-from fastapi_web import flask_app_for, render
+from fastapi_web import legacy, render
 
 router = APIRouter(tags=["pages"], include_in_schema=False)
-
-
-def _legacy(request: Request) -> dict:
-    """Helpers de app.py (perfil, resultados, base) de la app Flask montada."""
-    return flask_app_for(request).view_functions["logout"].__globals__
 
 
 @router.get("/", name="index")
@@ -24,12 +19,12 @@ def index(request: Request):
 
 @router.get("/scraper", name="scraper")
 def scraper(request: Request):
-    return render(request, "scraper.html", profile_available=_legacy(request)["get_user_profile"]() is not None)
+    return render(request, "scraper.html", profile_available=legacy(request)["get_user_profile"]() is not None)
 
 
 @router.get("/results", name="results")
 def results(request: Request):
-    return render(request, "results.html", job_files=_legacy(request)["get_recent_job_files"]())
+    return render(request, "results.html", job_files=legacy(request)["get_recent_job_files"]())
 
 
 @router.get("/profile", name="profile")
@@ -41,7 +36,7 @@ def profile(request: Request):
 def mock_interview(request: Request):
     """Página de entrevistas simuladas con IA."""
     try:
-        tracked_jobs = _legacy(request)["db_manager"].get_all_tracked_jobs()
+        tracked_jobs = legacy(request)["db_manager"].get_all_tracked_jobs()
     except Exception:
         tracked_jobs = []
     return render(request, "mock_interview.html", tracked_jobs=tracked_jobs)

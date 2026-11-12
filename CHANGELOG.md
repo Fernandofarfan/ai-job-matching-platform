@@ -6,6 +6,12 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar] - Páginas de Flask a FastAPI (2/5): login y cuentas
+
+- FastAPI sirve login, registro, salir, recuperar contraseña, verificar email, verificación en dos pasos y login con Google (`routers/auth_pages.py`), con los mismos límites por IP, email y login pendiente, CSRF y `Clear-Site-Data`.
+- `account_notify.py` (emails y eventos de seguridad) y `google_oauth.py` (OAuth con PKCE) no dependen del framework: los usan Flask y FastAPI.
+- Nueva dependencia `python-multipart` para leer formularios en FastAPI.
+
 ## [Sin publicar] - Páginas de Flask a FastAPI (1/5)
 
 - `fastapi_web.py`: sesión, CSRF, avisos (`flash`) y `url_for` para páginas servidas por FastAPI, compatibles con la cookie de Flask (no hace falta volver a entrar).
