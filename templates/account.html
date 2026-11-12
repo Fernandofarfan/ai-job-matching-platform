@@ -195,7 +195,7 @@
       <h2 class="h5 fw-bold">{{ _('Actividad reciente') }}</h2>
       <p class="text-muted small">{{ _('Inicios de sesión y cambios de seguridad de tu cuenta. Si ves algo que no hiciste, cambiá la contraseña.') }}</p>
       {% if events %}
-      <div class="table-responsive">
+      <div class="table-responsive" tabindex="0">
         <table class="table table-sm small mb-0" id="security-events">
           <thead><tr><th scope="col">{{ _('Fecha') }}</th><th scope="col">{{ _('Evento') }}</th><th scope="col">IP</th><th scope="col">{{ _('Navegador') }}</th></tr></thead>
           <tbody>
