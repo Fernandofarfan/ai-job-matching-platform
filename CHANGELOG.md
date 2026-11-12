@@ -6,6 +6,15 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar] - "Me interesa / no me interesa" en las ofertas
+
+- Resultados: cada oferta tiene "me interesa" y "no me interesa"; tocar la marca activa la quita. Se guarda por cuenta en la tabla nueva `job_feedback` (migración `0017_job_feedback`), identificada por título y empresa, así que vale para la misma oferta en otro portal. `POST /api/job_feedback`.
+- El ranking personal usa esas marcas con peso doble que las del tracker, y se recalcula apenas marcás una oferta.
+- Las alertas no vuelven a mandar ofertas marcadas "no me interesa".
+- Medición: `/api/ranking` devuelve en `feedback` cuántas marcaste y el AUC del match (qué tan seguido una "me interesa" tiene más match que una "no me interesa"). `python scripts/feedback_report.py` da lo mismo para todas las cuentas juntas.
+- Fix: el ranking personal guardaba en caché un solo modelo para todos, así que durante 10 minutos una cuenta podía ver sus resultados ordenados con lo que eligió otra. Ahora hay uno por cuenta.
+- Borrar la cuenta y exportar mis datos incluyen `job_feedback`.
+
 ## [Sin publicar] - E2E del recorrido completo
 
 - `tests_integration/test_main_flow.py`: con Chromium contra la app levantada, una cuenta nueva se registra, sube su CV, marca una oferta de sus resultados como postulada, la ve en el tracker, lo exporta a Excel y sale. Corre en el job `integration`.

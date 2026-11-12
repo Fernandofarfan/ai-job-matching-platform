@@ -107,8 +107,74 @@
   </div>
 </div>
 
+<script type="application/json" id="feedbackData" nonce="{{ csp_nonce() }}">{{ feedback | tojson }}</script>
+<script type="application/json" id="feedbackTexts" nonce="{{ csp_nonce() }}">{{ {'yes': _('Me interesa'), 'no': _('No me interesa'), 'error': _('No se pudo guardar tu respuesta')} | tojson }}</script>
 <script nonce="{{ csp_nonce() }}">
   let appliedJobs = {};
+  const feedbackData = JSON.parse(document.getElementById('feedbackData').textContent);
+  const feedbackTexts = JSON.parse(document.getElementById('feedbackTexts').textContent);
+
+  // Datos de la oferta de una fila, leídos de las celdas por nombre de columna
+  function rowJob(row) {
+    const headers = Array.from(document.querySelectorAll('#jobTable thead th')).map(th => th.textContent.trim());
+    const cells = row.querySelectorAll('td');
+    const cell = (name) => { const i = headers.indexOf(name); return i !== -1 && cells[i] ? cells[i] : null; };
+    const link = cell('Enlace') ? cell('Enlace').querySelector('a') : null;
+    return {
+      title: cell('Título') ? cell('Título').textContent.trim() : '',
+      company: cell('Empresa') ? cell('Empresa').textContent.trim() : '',
+      location: cell('Ubicación') ? cell('Ubicación').textContent.trim() : '',
+      job_link: link ? link.href : '',
+    };
+  }
+
+  function showFeedback(row, buttons, interested) {
+    buttons.yes.setAttribute('aria-pressed', interested === true ? 'true' : 'false');
+    buttons.no.setAttribute('aria-pressed', interested === false ? 'true' : 'false');
+    buttons.yes.className = 'btn btn-sm ' + (interested === true ? 'btn-success' : 'btn-outline-success');
+    buttons.no.className = 'btn btn-sm ' + (interested === false ? 'btn-danger' : 'btn-outline-danger');
+    row.classList.toggle('table-secondary', interested === false);
+  }
+
+  async function sendFeedback(index, row, buttons, value) {
+    const current = buttons.yes.getAttribute('aria-pressed') === 'true' ? true
+      : buttons.no.getAttribute('aria-pressed') === 'true' ? false : null;
+    const interested = current === value ? null : value;  // tocar la marca activa la quita
+    const info = feedbackData[index] || {};
+    try {
+      const response = await fetch('/api/job_feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ job: rowJob(row), interested: interested, match_score: info.match }),
+      });
+      const data = await response.json();
+      if (!data.success) throw new Error(data.error);
+      showFeedback(row, buttons, interested);
+    } catch (e) {
+      alert(feedbackTexts.error);
+    }
+  }
+
+  function feedbackButtons(index, row) {
+    const make = (value, icon, label) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.title = label;
+      button.setAttribute('aria-label', label);
+      button.innerHTML = `<i class="bi ${icon}"></i>`;
+      return button;
+    };
+    const buttons = { yes: make(true, 'bi-hand-thumbs-up', feedbackTexts.yes),
+                      no: make(false, 'bi-hand-thumbs-down', feedbackTexts.no) };
+    buttons.yes.classList.add('feedback-yes');
+    buttons.no.classList.add('feedback-no');
+    buttons.yes.addEventListener('click', () => sendFeedback(index, row, buttons, true));
+    buttons.no.addEventListener('click', () => sendFeedback(index, row, buttons, false));
+    showFeedback(row, buttons, (feedbackData[index] || {}).interested ?? null);
+    buttons.yes.id = `feedback_yes_${index}`;
+    buttons.no.id = `feedback_no_${index}`;
+    return buttons;
+  }
 
   document.addEventListener('DOMContentLoaded', function () {
     modifyTable();
@@ -189,6 +255,9 @@
       const actionsWrap = document.createElement('div');
       actionsWrap.className = 'd-flex gap-2';
       actionsWrap.appendChild(applyBtn);
+      const feedback = feedbackButtons(index, row);
+      actionsWrap.appendChild(feedback.yes);
+      actionsWrap.appendChild(feedback.no);
       actionsCell.appendChild(actionsWrap);
 
       // Create toggle cell

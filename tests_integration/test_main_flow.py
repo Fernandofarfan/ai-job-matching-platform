@@ -66,6 +66,13 @@ def test_signup_to_export(browser, live_server, credentials, tmp_path):
     page.goto('/results')
     page.click(f'a[href="/view/{filename}"]')
     page.get_by_text(title).first.wait_for()
+    with page.expect_response(lambda r: r.url.endswith('/api/job_feedback')) as resp:
+        page.click('#feedback_no_1')
+    assert resp.value.ok and resp.value.json()['success'], resp.value.text()
+    page.reload()
+    page.get_by_text(title).first.wait_for()
+    assert page.get_attribute('#feedback_no_1', 'aria-pressed') == 'true', '"no me interesa" no quedó guardado'
+    assert page.get_attribute('#feedback_yes_0', 'aria-pressed') == 'false'
     page.check('#applied_0')
     with page.expect_response(lambda r: r.url.endswith('/api/save_applications')) as resp:
         page.click('[data-onclick="saveApplicationStatus"]')
