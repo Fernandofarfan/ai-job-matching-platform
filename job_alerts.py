@@ -98,7 +98,7 @@ def fingerprint(job):
     if company in _ANONYMOUS:
         company = 'anon ' + _normalize(_field(job, 'location'))
     key = f"{_normalize(_field(job, 'title'))}|{company}"
-    return hashlib.sha1(key.encode('utf-8')).hexdigest()
+    return hashlib.sha1(key.encode('utf-8'), usedforsecurity=False).hexdigest()
 
 
 def _clean_list(values, allowed):
