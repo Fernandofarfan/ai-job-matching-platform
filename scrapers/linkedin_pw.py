@@ -18,7 +18,7 @@ CITIZENSHIP_KEYWORDS = (
     "federal background",
 )
 YEARS_PATTERNS = (
-    r'(\d+)(?:\+)?\s*(?:-|to)\s*(\d+)\s*(?:years?|yrs?)\s*(?:of\s+)?(?:experience)',
+    r'(\d+)(?:\+)?\s*(?:-|to)\s*(\d+)\s*\+?\s*(?:years?|yrs?)\s*(?:of\s+)?(?:experience)',
     r'(\d+)\s*\+?\s*(?:years?|yrs?)\s*(?:of\s+)?(?:experience)',
     r'(?:experience(?:\s*of)?|minimum(?:\s*of)?|at\s*least)\s*(\d+)\s*(?:years?|yrs?)',
     r'(\d+)\s*(?:years?|yrs?)\s*(?:or\s*more)',
