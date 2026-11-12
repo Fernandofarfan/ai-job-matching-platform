@@ -95,3 +95,16 @@ def test_tracker_jobs_return_iso_dates_and_due_flag(client, tracker_db):
     assert jobs[0]['follow_up'] == '2000-01-01' and jobs[0]['follow_up_due'] is True
     assert jobs[0]['applied_date'] == '1999-12-01T00:00:00'
     assert jobs[1]['follow_up_due'] is False
+
+
+def test_add_job_validates_dates_before_inserting(client, tracker_db):
+    resp = client.post('/api/tracker/job', json={'title': 'Dev', 'company': 'Acme', 'follow_up': '31/12/2026'})
+    assert resp.status_code == 400
+    tracker_db.add_job_to_tracker.assert_not_called()
+
+
+def test_add_job_warns_when_dates_not_saved(client, tracker_db):
+    tracker_db.add_job_to_tracker.return_value = 7
+    tracker_db.update_tracker_dates.return_value = False
+    data = client.post('/api/tracker/job', json={'title': 'Dev', 'company': 'Acme', 'follow_up': '2026-12-31'}).get_json()
+    assert data['success'] and data['job_id'] == 7 and 'no se guardaron' in data['warning']

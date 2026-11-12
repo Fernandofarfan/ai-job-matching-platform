@@ -555,6 +555,9 @@
           bootstrap.Modal.getInstance(document.getElementById('addJobModal')).hide();
           form.reset();
           loadAllJobs();
+          if (data.warning) alert(data.warning);
+        } else {
+          alert(data.error || data.message || 'No se pudo agregar la postulación');
         }
       });
   }

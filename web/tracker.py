@@ -120,6 +120,12 @@ def api_add_tracked_job():
         if not job_data.get('title') or not job_data.get('company'):
             return jsonify({'success': False, 'error': 'Title and Company are required'}), 400
         
+        try:
+            for key in DATE_FIELDS:
+                _parse_date(job_data.get(key))
+        except ValueError:
+            return jsonify({'success': False, 'error': 'Fecha inválida: usá AAAA-MM-DD'}), 400
+
         logger.info(f"Adding job to tracker: {job_data.get('title')} at {job_data.get('company')}")
         
         result = db_manager.add_job_to_tracker(job_data)
@@ -133,15 +139,18 @@ def api_add_tracked_job():
                 'message': 'Job already exists in tracker'
             }), 409
         
+        warning = None
         if result and any(job_data.get(k) for k in DATE_FIELDS + ('notes',)):
             error = _save_dates(result, job_data)
             if error:
                 logger.warning(f"Job {result} added without dates: {error}")
+                warning = f'Se agregó la postulación, pero no se guardaron las fechas ni las notas ({error}). Cargalas desde el detalle.'
         if result:
             logger.info(f"Successfully added job with ID: {result}")
             return jsonify({
                 'success': True,
                 'job_id': result,
+                'warning': warning,
                 'message': 'Job added to tracker'
             })
         else:
