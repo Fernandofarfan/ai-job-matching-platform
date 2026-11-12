@@ -7,7 +7,7 @@ Revision ID: 0001_user_profiles
 Revises:
 Create Date: 2026-11-12
 """
-from alembic import op
+from alembic import context, op
 import sqlalchemy as sa
 
 revision = '0001_user_profiles'
@@ -17,7 +17,7 @@ depends_on = None
 
 
 def upgrade():
-    if sa.inspect(op.get_bind()).has_table('user_profiles'):
+    if not context.is_offline_mode() and sa.inspect(op.get_bind()).has_table('user_profiles'):
         return
     op.create_table(
         'user_profiles',
