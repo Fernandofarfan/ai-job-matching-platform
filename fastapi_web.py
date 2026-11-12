@@ -54,10 +54,12 @@ class WebSession(dict):
 
     @property
     def permanent(self) -> bool:
+        """Si la cookie dura PERMANENT_SESSION_LIFETIME (como session.permanent de Flask)."""
         return bool(self.get('_permanent'))
 
     @permanent.setter
     def permanent(self, value: bool) -> None:
+        """Marca la sesión como permanente o de navegador."""
         self['_permanent'] = bool(value)
 
     def pop(self, key, *default):
@@ -233,10 +235,31 @@ def too_many_requests() -> JSONResponse:
     return JSONResponse({'error': 'Demasiadas solicitudes, probá de nuevo en un minuto'}, status_code=429)
 
 
+FORM_MAX_BYTES = 64 * 1024
+FORM_MAX_FIELDS = 50
+
+
+async def _body_within(request: Request, limit: int) -> bool:
+    """Lee el cuerpo hasta `limit` bytes (aunque no venga Content-Length); False si lo supera."""
+    length = request.headers.get('content-length', '')
+    if length.isdigit() and int(length) > limit:
+        return False
+    body = b''
+    async for chunk in request.stream():
+        body += chunk
+        if len(body) > limit:
+            return False
+    request._body = body  # request.form() lo parsea desde acá
+    return True
+
+
 async def read_form(request: Request) -> tuple[dict, Optional[Response]]:
     """Formulario del POST y, si el token CSRF no es válido, la respuesta 400 (como CSRFProtect de Flask)."""
-    form = {k: v for k, v in (await request.form()).items() if isinstance(v, str)}
     flask_app = flask_app_for(request)
+    if not await _body_within(request, FORM_MAX_BYTES):
+        return {}, render(request, 'error.html', 413, code=413, message='Request Entity Too Large')
+    parsed = await request.form(max_files=0, max_fields=FORM_MAX_FIELDS)
+    form = {k: v for k, v in parsed.items() if isinstance(v, str)}
     if flask_app.config.get('WTF_CSRF_ENABLED', True):
         token = form.get('csrf_token') or request.headers.get('x-csrftoken') or request.headers.get('x-csrf-token')
         if not token or not auth.check_csrf_token(get_session(request), token, flask_app.secret_key,

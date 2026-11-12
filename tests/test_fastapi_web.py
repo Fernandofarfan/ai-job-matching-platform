@@ -126,3 +126,10 @@ def test_permanent_session_is_renewed_on_fastapi_pages(client, app):
     client._c.cookies.set('session', cookie)
     renewed = re.search(r'session=([^;]+);.*expires=', client.get('/').headers.get('set-cookie', ''), re.I)
     assert renewed and auth.load_session_cookie(app, renewed.group(1).strip('"'))['n'] == 1
+
+
+def test_auth_form_rejects_oversized_body(client):
+    """Un formulario de login enorme se corta con 413 antes de parsearlo."""
+    big = {'email': 'a@b.c', 'password': 'x' * (fastapi_web.FORM_MAX_BYTES + 1)}
+    assert client.post('/login', data=big).status_code == 413
+    assert client.post('/login', data={'email': 'a@b.c', 'password': 'x'}).status_code != 413
