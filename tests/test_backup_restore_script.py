@@ -15,6 +15,7 @@ case "$*" in
   *"backups list"*) echo "${BACKUP_ID-1700000000000}" ;;
   *"instances describe"*) echo "sa@example.iam.gserviceaccount.com" ;;
   *"storage cat"*) cat "$DUMP" ;;
+  *"get-iam-policy"*) echo "${IAM_POLICY-{\"bindings\": []\}}" ;;
 esac
 exit 0
 '''
@@ -50,6 +51,17 @@ def test_restore_check_passes_and_cleans_up(tmp_path):
     assert steps == sorted(steps)
     assert '--point-in-time=' in calls[steps[0]] and 'empleoia-mysql-staging-restore-' in calls[steps[0]]
     assert 'OK:' in proc.stdout
+    grant = next(i for i, c in enumerate(calls) if 'add-iam-policy-binding' in c)
+    revoke = next(i for i, c in enumerate(calls) if 'remove-iam-policy-binding' in c)
+    assert steps[2] > grant and revoke > steps[2]
+
+
+def test_restore_check_keeps_preexisting_bucket_grant(tmp_path):
+    """Si la cuenta de la instancia ya tenía acceso al bucket, no lo agrega ni lo quita."""
+    proc, calls = _run(tmp_path, ['applications', 'user_profiles', 'alembic_version'],
+                       IAM_POLICY='serviceAccount:sa@example.iam.gserviceaccount.com')
+    assert proc.returncode == 0, proc.stderr
+    assert not any('add-iam-policy-binding' in c or 'remove-iam-policy-binding' in c for c in calls)
 
 
 def test_restore_check_fails_on_missing_table_and_still_cleans_up(tmp_path):

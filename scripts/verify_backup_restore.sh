@@ -18,9 +18,14 @@ STAMP="$(date -u +%Y%m%d%H%M%S)"
 TEMP_INSTANCE="${INSTANCE}-restore-${STAMP}"
 EXPORT_URI="gs://${BUCKET}/restore-checks/${TEMP_INSTANCE}.sql.gz"
 GCLOUD=(gcloud --project "$PROJECT_ID" --quiet)
+GRANTED_SA=""
 
 cleanup() {
   echo "Limpiando ${TEMP_INSTANCE} y ${EXPORT_URI}"
+  if [[ -n "$GRANTED_SA" ]]; then
+    gcloud storage buckets remove-iam-policy-binding "gs://${BUCKET}" --member="serviceAccount:${GRANTED_SA}" \
+      --role=roles/storage.objectAdmin >/dev/null 2>&1 || true
+  fi
   "${GCLOUD[@]}" sql instances delete "$TEMP_INSTANCE" >/dev/null 2>&1 || true
   gcloud storage rm "$EXPORT_URI" >/dev/null 2>&1 || true
 }
@@ -41,8 +46,12 @@ echo "2/4 Restaurando el backup ${BACKUP_ID} sobre ${TEMP_INSTANCE}"
 
 echo "3/4 Exportando ${DATABASE} a ${EXPORT_URI}"
 SA="$("${GCLOUD[@]}" sql instances describe "$TEMP_INSTANCE" --format='value(serviceAccountEmailAddress)')"
-gcloud storage buckets add-iam-policy-binding "gs://${BUCKET}" --member="serviceAccount:${SA}" \
-  --role=roles/storage.objectAdmin >/dev/null
+# El permiso se quita al terminar, salvo que ya existiera antes de la verificación
+if ! gcloud storage buckets get-iam-policy "gs://${BUCKET}" --format=json | grep -q "serviceAccount:${SA}"; then
+  gcloud storage buckets add-iam-policy-binding "gs://${BUCKET}" --member="serviceAccount:${SA}" \
+    --role=roles/storage.objectAdmin >/dev/null
+  GRANTED_SA="$SA"
+fi
 "${GCLOUD[@]}" sql export sql "$TEMP_INSTANCE" "$EXPORT_URI" --database="$DATABASE"
 
 echo "4/4 Comprobando tablas: ${EXPECTED_TABLES}"
