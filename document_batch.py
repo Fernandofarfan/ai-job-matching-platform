@@ -3,6 +3,7 @@
 En Celery el pedido no depende de que la instancia web siga viva: el worker publica el
 progreso como estado de la tarea y la página lo consulta en /api/documents/tasks/<id>.
 """
+import accounts
 import logging
 import os
 import time
@@ -45,7 +46,7 @@ def validate(kind, filename, num_jobs):
         raise BatchError('Elegí un archivo de empleos')
     if os.path.basename(filename) != filename or not filename.endswith('.csv'):
         raise BatchError('Archivo inválido')
-    if not os.path.isfile(os.path.join(RESULTS_DIR, filename)):
+    if not os.path.isfile(os.path.join(accounts.results_dir(), filename)):
         raise BatchError('No se encontró el archivo', 404)
     try:
         num_jobs = int(num_jobs)
@@ -61,7 +62,7 @@ def run(kind, filename, num_jobs, resume_text, progress=None, pause=2.0):
     filename, num_jobs = validate(kind, filename, num_jobs)
     if not resume_text:
         raise BatchError('Primero subí tu CV')
-    df = pd.read_csv(os.path.join(RESULTS_DIR, filename), encoding='latin-1')
+    df = pd.read_csv(os.path.join(accounts.results_dir(), filename), encoding='latin-1')
     description_col = next((c for c in DESCRIPTION_COLUMNS if c in df.columns), None)
     if not description_col:
         raise BatchError('El archivo no tiene una columna de descripción')
@@ -109,7 +110,8 @@ def enqueue(kind, filename, num_jobs):
     from celery_app import celery
 
     filename, num_jobs = validate(kind, filename, num_jobs)
-    result = celery.send_task(TASK_NAME, args=[kind, filename, num_jobs])
+    result = celery.send_task(TASK_NAME, args=[kind, filename, num_jobs],
+                             kwargs={'user_id': accounts.current_user_id()})
     celery.backend.client.set(_task_key(result.id), kind, ex=_TASK_TTL)
     return result.id
 

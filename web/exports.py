@@ -1,4 +1,5 @@
 """Exportación del tracker y resultados a Excel/PDF."""
+import accounts
 import io
 import os
 import pandas as pd
@@ -209,7 +210,7 @@ def export_results_excel(filename):
         from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
         from openpyxl.utils import get_column_letter
 
-        file_path = os.path.join('results', filename)
+        file_path = os.path.join(accounts.results_dir(), filename)
         if not os.path.exists(file_path) or not filename.endswith('.csv'):
             flash('Archivo no encontrado', 'danger')
             return redirect(url_for('results'))

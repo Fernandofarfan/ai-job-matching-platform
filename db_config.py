@@ -88,11 +88,35 @@ class DatabaseManager:
         result = self._write(query, params)
         return result is not None and result.rowcount > 0
 
+    def _log_status(self, job_id, old_status, new_status):
+        """Anota un cambio de estado en el historial (si falla, el cambio igual queda guardado)."""
+        self._write("""
+            INSERT INTO application_status_history (application_id, user_id, old_status, new_status, changed_at)
+            VALUES (:id, :uid, :old, :new, NOW())
+        """, {'id': job_id, 'old': old_status, 'new': new_status}, label='status history')
+
+    def get_status_history(self, job_id=None):
+        """Cambios de estado de la cuenta (o de una postulación), del más viejo al más nuevo."""
+        query = ("SELECT application_id, old_status, new_status, changed_at FROM application_status_history "
+                 "WHERE user_id <=> :uid")
+        params = {}
+        if job_id is not None:
+            query += " AND application_id = :id"
+            params['id'] = job_id
+        try:
+            return self._rows(query + " ORDER BY changed_at, id", params)
+        except SQLAlchemyError as err:
+            logger.error(f"Error reading status history: {err}")
+            return []
+
     def save_application(self, job_data):
         """Guarda una postulación enviada y devuelve su id."""
         result = self._write(_INSERT_APPLICATION, _application_values(
             job_data, applied_date=job_data.get('applied_date', datetime.now()), status='applied'))
-        return result.lastrowid if result is not None else None
+        if result is None:
+            return None
+        self._log_status(result.lastrowid, None, 'applied')
+        return result.lastrowid
 
     def get_applications(self, filters=None):
         """Postulaciones filtradas por estado, empresa y rango de fechas."""
@@ -224,10 +248,12 @@ class DatabaseManager:
                 if existing:
                     logger.warning(f"Job already exists in tracker with ID: {existing.id}")
                     return {'exists': True, 'job_id': existing.id, 'message': 'Job already in tracker'}
-                return conn.execute(_INSERT_APPLICATION, self._params(values)).lastrowid
+                new_id = conn.execute(_INSERT_APPLICATION, self._params(values)).lastrowid
         except SQLAlchemyError as err:
             logger.error(f"MySQL Error adding job to tracker: {err}", exc_info=True)
             return None
+        self._log_status(new_id, None, values['status'])
+        return new_id
 
     def get_all_tracked_jobs(self):
         """Todo el tracker, ordenado por columna del kanban y fecha."""
@@ -260,11 +286,28 @@ class DatabaseManager:
                     status = :status
                 WHERE id = :id AND user_id <=> :uid
             """
-        return self._execute_one(query, {'status': new_status, 'id': job_id})
+        params = self._params({'status': new_status, 'id': job_id})
+        try:
+            with self.engine.begin() as conn:
+                old_status = conn.execute(text("SELECT status FROM applications WHERE id = :id AND user_id <=> :uid"),
+                                          params).scalar()
+                if old_status is None:
+                    return False
+                conn.execute(text(query), params)
+        except SQLAlchemyError as err:
+            logger.error(f"Error writing applications: {err}")
+            return False
+        if old_status != new_status:
+            self._log_status(job_id, old_status, new_status)
+        return True
 
     def delete_tracked_job(self, job_id):
-        """Borra una postulación del tracker."""
-        return self._execute_one("DELETE FROM applications WHERE id = :id AND user_id <=> :uid", {'id': job_id})
+        """Borra una postulación del tracker y su historial."""
+        deleted = self._execute_one("DELETE FROM applications WHERE id = :id AND user_id <=> :uid", {'id': job_id})
+        if deleted:
+            self._write("DELETE FROM application_status_history WHERE application_id = :id AND user_id <=> :uid",
+                        {'id': job_id}, label='status history')
+        return deleted
 
     def update_tracker_dates(self, job_id, follow_up=None, deadline=None, notes=None):
         """Fecha de seguimiento, vencimiento y notas de una postulación (None borra la fecha)."""

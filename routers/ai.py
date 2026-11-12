@@ -1,6 +1,7 @@
 """API de IA (/api/ai/*), notificaciones y análisis salarial servida por FastAPI (antes web/ai_api.py).
 Comparte con routers/tracker.py la sesión de Flask, el login, el CSRF y el formato de error;
 el rate limit de IA lo aplica main.py sobre las rutas de `router`."""
+import accounts
 import logging
 import os
 from types import SimpleNamespace
@@ -228,7 +229,7 @@ def _results_csv(filename: Optional[str]) -> str:
         raise ApiError(400, 'filename requerido')
     if os.path.basename(name) != name or not name.endswith('.csv'):
         raise ApiError(400, 'Nombre de archivo inválido')
-    path = os.path.join('results', name)
+    path = os.path.join(accounts.results_dir(), name)
     if not os.path.isfile(path):
         raise ApiError(404, 'Archivo no encontrado')
     return path

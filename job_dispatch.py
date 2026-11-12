@@ -3,9 +3,11 @@
 Con Celery la búsqueda sobrevive a reinicios y escalado del contenedor web: el worker
 publica el progreso como estado de la tarea y `refresh()` lo copia a `job_status`.
 """
+import copy
 import importlib
 import logging
 import os
+from collections.abc import MutableMapping
 
 import accounts
 
@@ -24,8 +26,38 @@ ACTIVE = ('queued', 'running', 'idle')
 _TASK_TTL = 24 * 3600
 
 
+class PerUserStatus(MutableMapping):
+    """`job_status` separado por cuenta: cada usuario ve y modifica solo sus búsquedas."""
+
+    def __init__(self, default):
+        self._default = default
+        self._by_user: dict = {}
+
+    def _mine(self):
+        uid = accounts.current_user_id()
+        if uid not in self._by_user:
+            self._by_user[uid] = copy.deepcopy(self._default)
+        return self._by_user[uid]
+
+    def __getitem__(self, key):
+        return self._mine()[key]
+
+    def __setitem__(self, key, value):
+        self._mine()[key] = value
+
+    def __delitem__(self, key):
+        del self._mine()[key]
+
+    def __iter__(self):
+        return iter(self._mine())
+
+    def __len__(self):
+        return len(self._mine())
+
+
 def _task_key(key):
-    return f'empleoia:scraper_task:{key}'
+    uid = accounts.current_user_id()
+    return f'empleoia:scraper_task:{key}' if uid is None else f'empleoia:scraper_task:u{uid}:{key}'
 
 
 def _remember(celery, key, task_id):

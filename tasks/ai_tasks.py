@@ -141,7 +141,14 @@ Máximo 300 palabras."""
 
 
 @celery.task(bind=True, name="tasks.ai_tasks.generate_documents_batch")
-def generate_documents_batch(self, kind: str, filename: str, num_jobs: int):
+def generate_documents_batch(self, kind: str, filename: str, num_jobs: int, user_id=None):
+    """Genera los documentos como `user_id` (lee su CSV y guarda en su carpeta)."""
+    import accounts
+    with accounts.as_user(user_id):
+        return _generate_documents_batch(self, kind, filename, num_jobs)
+
+
+def _generate_documents_batch(self, kind: str, filename: str, num_jobs: int):
     """Cartas o CVs adaptados para las primeras `num_jobs` ofertas de un CSV de results/."""
     import document_batch
     from app import get_resume_text_from_profile

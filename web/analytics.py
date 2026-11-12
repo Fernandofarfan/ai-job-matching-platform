@@ -1,4 +1,5 @@
 """Analytics y estadísticas del tracker."""
+import accounts
 import glob
 import os
 import pandas as pd
@@ -96,7 +97,7 @@ def analytics():
 
     # ── CSV Stats ──
     try:
-        csv_files = glob.glob(os.path.join('results', '*.csv'))
+        csv_files = glob.glob(os.path.join(accounts.results_dir(), '*.csv'))
         for fpath in sorted(csv_files, key=os.path.getmtime, reverse=True)[:15]:
             fname = os.path.basename(fpath)
             try:
@@ -159,14 +160,40 @@ def _as_date(value):
         return None
 
 
-def portal_stats(jobs):
+POSTED = APPLIED_OR_LATER - {'rejected'}
+
+
+def history_by_job(history):
+    """{id de postulación: [cambios en orden]} a partir de get_status_history()."""
+    grouped = {}
+    for change in history or []:
+        grouped.setdefault(change.get('application_id'), []).append(change)
+    return grouped
+
+
+def _applied_on(job, changes):
+    """Fecha en que se postuló según el historial, o None si el historial no lo registra."""
+    return next((_as_date(c.get('changed_at')) for c in changes if c.get('new_status') in POSTED), None)
+
+
+def _was_applied(job, changes):
+    """Con historial, una rechazada cuenta solo si pasó por postulada; sin historial se asume que sí."""
+    status = job.get('status')
+    if status != 'rejected':
+        return status in APPLIED_OR_LATER
+    known = [c for c in changes if c.get('old_status') is not None]
+    return _applied_on(job, changes) is not None if known else True
+
+
+def portal_stats(jobs, history=None):
     """Por portal: guardadas, postuladas, con respuesta y tasa de respuesta (respuestas / postuladas)."""
     stats = {}
+    by_job = history_by_job(history)
     for job in jobs:
         row = stats.setdefault(portal_of(job.get('job_link')), {'saved': 0, 'applied': 0, 'responses': 0})
         row['saved'] += 1
         status = job.get('status')
-        row['applied'] += status in APPLIED_OR_LATER
+        row['applied'] += _was_applied(job, by_job.get(job.get('id'), []))
         row['responses'] += status in RESPONDED
     return sorted(
         ({'portal': name, **row, 'response_rate': round(row['responses'] / row['applied'] * 100, 1) if row['applied'] else 0}
@@ -175,18 +202,27 @@ def portal_stats(jobs):
     )
 
 
-def avg_days_to_apply(jobs):
+def avg_days_to_apply(jobs, history=None):
     """Días promedio entre que se guarda una oferta y se postula (None si no hay datos)."""
     days = []
+    by_job = history_by_job(history)
     for job in jobs:
-        saved, applied = _as_date(job.get('created_at')), _as_date(job.get('applied_date'))
-        # 'rejected' queda afuera: una oferta guardada y descartada nunca tuvo postulación
-        if saved and applied and applied >= saved and job.get('status') in APPLIED_OR_LATER - {'rejected'}:
+        changes = by_job.get(job.get('id'), [])
+        saved = _as_date(job.get('created_at'))
+        from_history = _applied_on(job, [c for c in changes if c.get('old_status') is not None])
+        if from_history:
+            applied = from_history
+        elif job.get('status') in POSTED:
+            # sin historial, una rechazada queda afuera: no se sabe si llegó a postularse
+            applied = _as_date(job.get('applied_date'))
+        else:
+            applied = None
+        if saved and applied and applied >= saved:
             days.append((applied - saved).days)
     return round(sum(days) / len(days), 1) if days else None
 
 
-def advanced_stats(all_jobs):
+def advanced_stats(all_jobs, history=None):
     """Métricas avanzadas: tiempos promedio por etapa, tasa respuesta, heatmap."""
     from collections import defaultdict
 
@@ -272,8 +308,8 @@ def advanced_stats(all_jobs):
         'heatmap': heatmap,
         'funnel': funnel,
         'insights': insights,
-        'by_portal': portal_stats(all_jobs),
-        'avg_days_to_apply': avg_days_to_apply(all_jobs),
+        'by_portal': portal_stats(all_jobs, history),
+        'avg_days_to_apply': avg_days_to_apply(all_jobs, history),
     }
 
 

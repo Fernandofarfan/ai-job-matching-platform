@@ -137,3 +137,22 @@ def test_avg_days_to_apply_ignores_rejected():
     from web.analytics import avg_days_to_apply
     jobs = [{'status': 'rejected', 'created_at': '2026-01-01', 'applied_date': '2026-01-01'}]
     assert avg_days_to_apply(jobs) is None
+
+
+def test_history_makes_rejected_and_days_exact():
+    """Con historial, una rechazada cuenta como postulada solo si pasó por 'applied'."""
+    from datetime import datetime
+    from web.analytics import avg_days_to_apply, portal_stats
+    jobs = [
+        {'id': 1, 'status': 'rejected', 'job_link': 'https://www.bumeran.com.ar/x', 'created_at': '2026-01-01'},
+        {'id': 2, 'status': 'rejected', 'job_link': 'https://www.bumeran.com.ar/y', 'created_at': '2026-01-01'},
+    ]
+    history = [
+        {'application_id': 1, 'old_status': None, 'new_status': 'bookmarked', 'changed_at': datetime(2026, 1, 1)},
+        {'application_id': 1, 'old_status': 'bookmarked', 'new_status': 'applied', 'changed_at': datetime(2026, 1, 4)},
+        {'application_id': 1, 'old_status': 'applied', 'new_status': 'rejected', 'changed_at': datetime(2026, 1, 9)},
+        {'application_id': 2, 'old_status': None, 'new_status': 'bookmarked', 'changed_at': datetime(2026, 1, 1)},
+        {'application_id': 2, 'old_status': 'bookmarked', 'new_status': 'rejected', 'changed_at': datetime(2026, 1, 2)},
+    ]
+    assert portal_stats(jobs, history)[0]['applied'] == 1
+    assert avg_days_to_apply(jobs, history) == 3.0

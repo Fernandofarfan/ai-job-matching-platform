@@ -43,7 +43,7 @@ def tracker_stats(db=Depends(get_db)):
 def analytics_advanced(db=Depends(get_db)):
     """Tasas, embudo, heatmap por día, desglose por portal y días hasta postular."""
     from web.analytics import advanced_stats
-    return {'success': True, **advanced_stats(_tracked_jobs(db))}
+    return {'success': True, **advanced_stats(_tracked_jobs(db), db.get_status_history())}
 
 
 @router.get('/get_applications')

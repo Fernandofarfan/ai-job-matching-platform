@@ -65,7 +65,8 @@ def test_enqueue_sends_task_without_resume_text(results_csv):
     fake.send_task.return_value.id = 't1'
     with mock.patch('celery_app.celery', fake):
         assert document_batch.enqueue('resumes', results_csv, 3) == 't1'
-    fake.send_task.assert_called_once_with(document_batch.TASK_NAME, args=['resumes', results_csv, 3])
+    fake.send_task.assert_called_once_with(document_batch.TASK_NAME, args=['resumes', results_csv, 3],
+                                                    kwargs={'user_id': None})
     fake.backend.client.set.assert_called_once()
 
 

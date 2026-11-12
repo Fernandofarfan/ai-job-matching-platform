@@ -1,3 +1,4 @@
+import job_dispatch
 from flask import (Flask, render_template, request, redirect, url_for, flash, jsonify, session, send_from_directory,
                    make_response, g)
 from sqlalchemy.exc import SQLAlchemyError
@@ -183,7 +184,7 @@ for folder in ['uploads', 'results', 'logs', 'profiles']:
 
 resume_parser = resumeParser()
 job_matcher = jobMatcher()
-job_status = {
+job_status = job_dispatch.PerUserStatus({
     'indeed_scraping': {'status': 'idle', 'progress': 0, 'message': ''},
     'linkedin_scraping': {'status': 'idle', 'progress': 0, 'message': ''},
     'computrabajo_scraping': {'status': 'idle', 'progress': 0, 'message': ''},
@@ -195,7 +196,7 @@ job_status = {
         'bumeran': {'status': 'idle', 'progress': 0}
     }},
     'connection_requests': {'status': 'idle', 'progress': 0, 'message': ''}
-}
+})
 
 # Simple in-memory task store for running quick test scrapers in background
 test_tasks = {}
@@ -230,7 +231,7 @@ def load_task_from_disk(task_id: str):
 
 
 def get_recent_job_files():
-    csv_files = glob.glob(os.path.join('results', '*.csv'))
+    csv_files = glob.glob(os.path.join(accounts.results_dir(), '*.csv'))
     files_with_time = [(f, os.path.getmtime(f)) for f in csv_files]
     files_with_time.sort(key=lambda x: x[1], reverse=True)
     return [os.path.basename(f[0]) for f in files_with_time[:10]]
@@ -447,7 +448,7 @@ def run_indeed_scraper_with_matching(credentials, searches, filters=None):
                 filename_suffix = "_with_matches" if user_profile else ""
                 indeed_filename = f"indeed_jobs_all{filename_suffix}_{timestamp}.csv"
                 
-                file_path = os.path.join('results', indeed_filename)
+                file_path = os.path.join(accounts.results_dir(), indeed_filename)
                 df.to_csv(file_path, index=False)
                 
                 job_status['indeed_scraping']['message'] = f"Saved {len(all_jobs)} jobs"
@@ -641,7 +642,7 @@ def run_linkedin_scraper_with_matching(credentials, searches, filters=None):
             
             os.makedirs('results', exist_ok=True)
             
-            file_path = os.path.join('results', linkedin_filename)
+            file_path = os.path.join(accounts.results_dir(), linkedin_filename)
             
             try:
                 df.to_csv(file_path, index=False)

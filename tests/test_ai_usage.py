@@ -116,3 +116,17 @@ def test_resume_parser_skips_ai_over_budget(monkeypatch):
     parser = _ai_parser(SimpleNamespace(text='{}', usage_metadata=None))
     assert parser.parse_with_ai('CV') is None
     parser.client.models.generate_content.assert_not_called()
+
+
+def test_user_limit_is_per_account(monkeypatch):
+    """Una cuenta que agota su tope no corta la IA de las demás."""
+    import accounts
+    monkeypatch.setenv('AI_USER_MONTHLY_TOKEN_LIMIT', '100')
+    with accounts.as_user(1):
+        ai_usage.record(80, 30)
+        assert ai_usage.budget_exceeded()
+        assert ai_usage.summary()['account']['total_tokens'] == 110
+    with accounts.as_user(2):
+        assert not ai_usage.budget_exceeded()
+        assert ai_usage.summary()['account']['total_tokens'] == 0
+    assert ai_usage.summary()['total_tokens'] == 110

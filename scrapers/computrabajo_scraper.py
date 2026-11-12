@@ -1,3 +1,4 @@
+import accounts
 import time
 import random
 import logging
@@ -316,7 +317,7 @@ class ComputrabajoScraper:
             if not filename:
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                 filename = f"computrabajo_jobs_{timestamp}.csv"
-            filepath = os.path.join('results', filename)
+            filepath = os.path.join(accounts.results_dir(), filename)
             
             # Ensure consistent columns
             df = pd.DataFrame(jobs)
