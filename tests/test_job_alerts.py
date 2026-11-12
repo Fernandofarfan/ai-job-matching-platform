@@ -227,3 +227,10 @@ def test_jobs_beyond_alert_limit_wait_for_next_alert(db, monkeypatch):
     assert len(notify.call_args.args[1]) == 2
     job_alerts.run_search(search['id'], notify, make, profile={})
     assert [j['Title'] for j in notify.call_args.args[1]] == ['Dev 2']
+
+
+def test_mark_seen_tolerates_jobs_already_recorded(db):
+    """Si otra búsqueda simultánea ya registró una oferta, se guardan igual las demás."""
+    job_alerts.mark_seen([_job('Dev Python')])
+    job_alerts.mark_seen([_job('Dev Python'), _job('QA')])
+    assert job_alerts.find_new([_job('Dev Python'), _job('QA')]) == []

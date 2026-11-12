@@ -11,6 +11,7 @@ from datetime import datetime
 
 from sqlalchemy import JSON, Boolean, Column, DateTime, Float, Integer, String, select
 from sqlalchemy.orm import declarative_base
+from sqlalchemy.exc import IntegrityError
 
 logger = logging.getLogger(__name__)
 
@@ -197,12 +198,16 @@ def mark_seen(jobs, search_id=None):
         return
     with _sessions()() as session:
         for job in jobs:
-            session.add(SeenJob(
-                fingerprint=fingerprint(job), search_id=search_id,
-                title=str(_field(job, 'title'))[:300], company=str(_field(job, 'company'))[:200],
-                url=str(_field(job, 'url') or job.get('URL') or '')[:1000],
-                source=str(_field(job, 'source'))[:50],
-            ))
+            try:
+                with session.begin_nested():
+                    session.add(SeenJob(
+                        fingerprint=fingerprint(job), search_id=search_id,
+                        title=str(_field(job, 'title'))[:300], company=str(_field(job, 'company'))[:200],
+                        url=str(_field(job, 'url') or job.get('URL') or '')[:1000],
+                        source=str(_field(job, 'source'))[:50],
+                    ))
+            except IntegrityError:
+                pass  # otra búsqueda simultánea ya la registró
         session.commit()
 
 
