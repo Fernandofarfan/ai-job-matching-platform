@@ -78,12 +78,14 @@ def test_worker_publishes_progress_and_result():
 def test_credential_reload_keeps_backend(monkeypatch, tmp_path):
     """Releer el .env actualiza credenciales pero no cambia el backend fijado por el entorno."""
     from web import scrapers
-    (tmp_path / '.env').write_text('SCRAPER_BACKEND=thread\nINDEED_EMAIL=nuevo@x.com\n')
+    (tmp_path / '.env').write_text('SCRAPER_BACKEND=thread\nINDEED_EMAIL=nuevo@x.com\nLI_AT_TOKEN=nuevo-token\n')
     monkeypatch.setenv('SCRAPER_BACKEND', 'celery')
     monkeypatch.setenv('INDEED_EMAIL', 'viejo@x.com')
+    monkeypatch.setenv('LI_AT_TOKEN', 'viejo-token')
     scrapers._reload_portal_credentials(tmp_path / '.env')
     assert os.environ['SCRAPER_BACKEND'] == 'celery'
     assert os.environ['INDEED_EMAIL'] == 'nuevo@x.com'
+    assert os.environ['LI_AT_TOKEN'] == 'nuevo-token'
 
 
 def test_refresh_adopts_task_from_redis(monkeypatch):
