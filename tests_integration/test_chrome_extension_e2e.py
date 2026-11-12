@@ -3,6 +3,7 @@ import os
 import tempfile
 
 import pytest
+from playwright.sync_api import expect
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 EXT = os.path.join(ROOT, 'chrome_extension')
@@ -138,12 +139,16 @@ def test_popup_link_button_opens_account_with_state(extension_context):
     popup = context.new_page()
     popup.goto(f'chrome-extension://{extension_id}/popup.html')
     # el estado lo carga el popup de forma asíncrona desde storage.local
-    popup.wait_for_function("document.getElementById('link-status').innerText.includes('Sin vincular')")
+    # (expect y no wait_for_function: la CSP de la extensión no permite evaluar strings)
+    expect(popup.locator('#link-status')).to_contain_text('Sin vincular')
     # se registra la URL que abriría la pestaña: así no depende de que haya una app escuchando en el puerto
     popup.evaluate("() => { window.openedUrls = []; chrome.tabs.create = async (o) => { window.openedUrls.push(o.url); return {}; }; }")
     popup.click('#settings-toggle')
     popup.click('#link-btn')
-    popup.wait_for_function('window.openedUrls.length > 0')
-    url = popup.evaluate('window.openedUrls[0]')
+    for _ in range(50):
+        if popup.evaluate('() => window.openedUrls.length'):
+            break
+        popup.wait_for_timeout(100)
+    url = popup.evaluate('() => window.openedUrls[0]')
     state = worker.evaluate("async () => (await chrome.storage.session.get('linkState')).linkState")
     assert url == f'{LINK_URL}?state={state}' and len(state) >= 32
