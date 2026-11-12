@@ -5,7 +5,8 @@ name: Deploy a GCP
 # Necesita, por GitHub Environment:
 #   variables: GCP_PROJECT_ID, GCP_REGION (opcional), GCP_WORKLOAD_IDENTITY_PROVIDER, GCP_DEPLOY_SA, TF_STATE_BUCKET
 #   secretos:  DB_PASSWORD, GEMINI_API_KEY, APP_PASSWORD, SECRET_KEY, CV_ENCRYPTION_KEY, EXTRA_SECRETS_JSON (opcional)
-# Sin GCP_PROJECT_ID el job se saltea (el repo funciona igual sin GCP).
+# El job corre solo con la variable de repositorio GCP_DEPLOY_ENABLED=true (las variables de un
+# Environment no se ven en el `if:` del job). Sin ella se saltea y el repo funciona igual sin GCP.
 
 on:
   push:
@@ -33,7 +34,7 @@ jobs:
     name: ${{ github.event_name == 'pull_request' && 'Terraform plan' || 'Deploy' }} (${{ inputs.environment || 'staging' }})
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment || 'staging' }}
-    if: vars.GCP_PROJECT_ID != '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    if: vars.GCP_DEPLOY_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     env:
       ENVIRONMENT: ${{ inputs.environment || 'staging' }}
       REGION: ${{ vars.GCP_REGION || 'southamerica-east1' }}

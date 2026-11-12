@@ -500,7 +500,7 @@ Los valores no secretos de cada ambiente están en `terraform/envs/<env>.tfvars`
 - **`Terraform`**: en cada PR que toca `terraform/` corre `fmt`, `validate` y `terraform test` (con un provider simulado, sin credenciales).
 - **`Deploy a GCP`**: cada push a `main` despliega en staging: build de la imagen con el SHA del commit, migraciones, `terraform apply` y smoke test de `/api/health`. Producción se despliega con "Run workflow" eligiendo `prod`. En los PRs publica el `terraform plan` de staging en el resumen del job.
 
-El deploy se saltea mientras no configures, en cada GitHub Environment (`staging`, `prod`):
+El deploy se saltea hasta que crees la variable de repositorio `GCP_DEPLOY_ENABLED=true` y configures, en cada GitHub Environment (`staging`, `prod`):
 - **Variables:** `GCP_PROJECT_ID`, `GCP_WORKLOAD_IDENTITY_PROVIDER`, `GCP_DEPLOY_SA`, `TF_STATE_BUCKET` y, opcionalmente, `GCP_REGION`.
 - **Secretos:** `DB_PASSWORD`, `GEMINI_API_KEY`, `APP_PASSWORD`, `SECRET_KEY`, `CV_ENCRYPTION_KEY` y, opcionalmente, `EXTRA_SECRETS_JSON` (p. ej. `{"TELEGRAM_BOT_TOKEN":"..."}`).
 
