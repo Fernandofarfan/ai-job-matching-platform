@@ -147,11 +147,22 @@ def _auc(pos, neg):
     return wins / (len(pos) * len(neg))
 
 
+def _same_offer(a, b):
+    """True si dos ejemplos son la misma oferta (mismo enlace, o mismo título y empresa)."""
+    link_a = _get(a, 'job_link', 'Job_Link', 'URL', 'url').strip()
+    if link_a and link_a == _get(b, 'job_link', 'Job_Link', 'URL', 'url').strip():
+        return True
+    title_a, company_a = _norm(_get(a, 'title', 'Title')), _norm(_get(a, 'company', 'Company'))
+    return bool(title_a and company_a) and (title_a, company_a) == (
+        _norm(_get(b, 'title', 'Title')), _norm(_get(b, 'company', 'Company')))
+
+
 def learn_weight(examples, today=None):
     """Peso del ranking que mejor separa "me interesa" de "no me interesa" en lo que marcó la cuenta.
 
     {'weight', 'auc', 'match_auc', 'examples'} o None si no hay `MIN_TUNING` ofertas marcadas con match de cada
-    lado. La preferencia de cada oferta marcada sale de un modelo entrenado sin ella, para no medir con trampa.
+    lado. La preferencia de cada oferta marcada sale de un modelo entrenado sin ella ni sus copias (p. ej. la del
+    tracker), para no medir con trampa.
     Entre pesos con el mismo AUC gana el más cercano a `RANKING_WEIGHT`.
     """
     marked = [e for e in examples if e.get('interested') is not None and e.get('match_score') is not None]
@@ -160,7 +171,7 @@ def learn_weight(examples, today=None):
         return None
     held_out = []
     for row in marked:
-        model = train([e for e in examples if e is not row], today)
+        model = train([e for e in examples if e is not row and not _same_offer(row, e)], today)
         held_out.append((row['interested'], float(row['match_score']), preference(model, row) if model else 50.0))
     default = _weight()
 
