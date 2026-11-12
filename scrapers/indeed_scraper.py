@@ -159,11 +159,12 @@ class indeedScraper:
             get_with_retries(self.page, search_url(job_title, location, filters, page_number * 10, self.base_url))
             if self._blocked(self.page):
                 break
-            cards = [card for node in self.page.query_selector_all(CARD)
-                     if (card := parse_card(node)) and self._link(card['id']) not in seen]
-            if not cards:
+            nodes = self.page.query_selector_all(CARD)
+            if not nodes:
                 break
-            for card in cards:
+            for card in filter(None, map(parse_card, nodes)):
+                if self._link(card['id']) in seen:
+                    continue
                 job = self.extract_job_details(card)
                 seen.add(self._link(card['id']))
                 if job:

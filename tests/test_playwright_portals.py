@@ -109,3 +109,32 @@ def test_linkedin_sends_to_current_employees_once(monkeypatch):
     assert not bot.login_with_credentials() and not bot.login_with_cookie()
     bot.cleanup()
     bot.cleanup()
+
+
+def test_extract_jobs_pages_past_filtered_page_and_skips_repeated_ids(monkeypatch):
+    nxt = "[data-testid='pagination-page-next']"
+    pages = {0: [_card('e1', 'QA', easy=True), _card('e2', 'Ops', easy=True)],
+             10: [_card('b1', 'Data Engineer'), _card('b1', 'Data Engineer')]}
+    page = Node()
+    page.content = lambda: '<html>ok</html>'
+
+    def load(p, url):
+        start = int(parse_qs(urlparse(url).query).get('start', ['0'])[0])
+        page.children = {indeed_scraper.CARD: pages.get(start, []), nxt: Node() if start == 0 else None}
+    monkeypatch.setattr(indeed_scraper, 'get_with_retries', load)
+    monkeypatch.setattr(indeed_scraper.time, 'sleep', lambda s: None)
+    scraper = indeed_scraper.indeedScraper(browser_factory=lambda: mock.Mock(page=page))
+    monkeypatch.setattr(scraper, '_description', lambda job_id: 'Python, 1 year of experience')
+    assert [j['Job_Link'] for j in scraper.extract_jobs('x', 'y')] == [scraper._link('b1')]
+
+
+def test_linkedin_process_company_with_small_limit(monkeypatch):
+    page = Node(children={lc.CARD: [_person(f'P{i}', f'https://l/in/p{i}', 'Acme', ['Conectar'])
+                                    for i in range(8)]})
+    page.mouse = mock.Mock()
+    monkeypatch.setattr(lc, 'get_with_retries', lambda p, url: None)
+    monkeypatch.setattr(lc.time, 'sleep', lambda s: None)
+    bot = lc.linkedinConnections(browser_factory=lambda: mock.Mock(page=page))
+    monkeypatch.setattr(bot, '_invite', lambda card: True)
+    assert bot.process_company('Acme', max_connections=3, max_pages=1)
+    assert bot.total_connections_sent == 3
