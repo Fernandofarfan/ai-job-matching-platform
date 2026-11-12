@@ -75,6 +75,4 @@ def upgrade():
 
 
 def downgrade():
-    """Borra las tablas base."""
-    for table in ('processed_files', 'connection_requests', 'applications'):
-        op.drop_table(table)
+    """No borra nada: en bases anteriores a Alembic estas tablas ya existían y tienen los datos del usuario."""

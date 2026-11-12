@@ -19,6 +19,7 @@ LEGACY_SQL = pathlib.Path(__file__).parent / 'fixtures' / 'legacy_schema.sql'
 
 
 def _engine(database=None):
+    """Engine al servidor de los tests, opcionalmente sobre otra base."""
     url = make_url(models.get_database_url())
     return create_engine(url.set(database=database) if database else url)
 
@@ -46,6 +47,7 @@ def _upgrade(database):
 
 
 def _diff(database):
+    """Diferencias entre `database` y los modelos."""
     engine = _engine(database)
     try:
         with engine.connect() as conn:

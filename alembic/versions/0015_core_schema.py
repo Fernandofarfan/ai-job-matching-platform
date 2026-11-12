@@ -51,6 +51,7 @@ LEGACY_INDEXES = (('connection_requests', 'idx_company'), ('connection_requests'
 
 
 def _inspector():
+    """Inspector de la base conectada (None en modo --sql)."""
     return None if context.is_offline_mode() else sa.inspect(op.get_bind())
 
 
@@ -67,12 +68,14 @@ def _columns(inspector, table):
 
 
 def _indexes(inspector, table):
+    """Nombres de los índices de `table` (vacío en modo --sql)."""
     if inspector is None:
         return {name for t, name in LEGACY_INDEXES if t == table}
     return {i['name'] for i in inspector.get_indexes(table)}
 
 
 def _has_table(inspector, table):
+    """True si `table` existe (en modo --sql se asume que no)."""
     return inspector is not None and inspector.has_table(table)
 
 
