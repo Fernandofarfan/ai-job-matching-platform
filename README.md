@@ -405,6 +405,8 @@ GEMINI_API_KEY=tu_api_key_aqui
 # === Seguridad ===
 SECRET_KEY=            # obligatoria en producción: python -c "import secrets; print(secrets.token_hex(32))"
 APP_PASSWORD=          # activa el login; vacía = sin login (solo local). Obligatoria en Cloud Run
+CV_ENCRYPTION_KEY=     # cifra los CVs en uploads/ (Fernet). Sin ella no se pueden leer los ya cifrados
+CV_RETENTION_DAYS=0    # >0: Celery borra cada día CVs, perfiles y documentos más viejos que N días
 EXTENSION_TOKEN=       # token que se configura en la extensión de Chrome cuando hay login
 SESSION_COOKIE_SECURE=0  # 1 detrás de HTTPS
 CORS_ALLOWED_ORIGINS=  # orígenes WebSocket permitidos, separados por coma (vacío = mismo origen)

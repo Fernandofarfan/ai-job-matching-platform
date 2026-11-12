@@ -178,6 +178,20 @@
         </div>
       </div>
     </div>
+
+    <!-- Privacidad -->
+    <div class="card border-0 shadow-sm mt-4">
+      <div class="card-body p-4">
+        <h4 class="fw-bold mb-2">Privacidad</h4>
+        <p class="text-muted small mb-3">Podés borrar en cualquier momento tus perfiles, los CVs subidos y los documentos generados (Ley 25.326).</p>
+        <form method="POST" action="/delete_profile" onsubmit="return confirm('¿Borrar todos tus perfiles, CVs y documentos generados? No se puede deshacer.');">
+          {% if csrf_token is defined %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+          <button type="submit" class="btn btn-outline-danger btn-sm" id="deleteAllDataBtn">
+            <i class="bi bi-shield-x me-1" aria-hidden="true"></i> Borrar mis datos
+          </button>
+        </form>
+      </div>
+    </div>
   </div>
 </div>
 

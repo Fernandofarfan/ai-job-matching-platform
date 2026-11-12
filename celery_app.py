@@ -29,6 +29,7 @@ celery = Celery(
         "tasks.scraping_tasks",
         "tasks.ai_tasks",
         "tasks.notification_tasks",
+        "tasks.privacy_tasks",
     ],
 )
 
@@ -78,6 +79,11 @@ celery.conf.beat_schedule = {
     "run-job-alerts": {
         "task": "tasks.notification_tasks.run_job_alerts",
         "schedule": float(os.getenv("ALERTS_INTERVAL_HOURS", "6")) * 3600,
+    },
+    # Cifra CVs viejos y aplica CV_RETENTION_DAYS
+    "enforce-cv-retention": {
+        "task": "tasks.privacy_tasks.enforce_cv_retention",
+        "schedule": 86400,
     },
     # Limpiar archivos tmp antiguos cada semana
     "cleanup-old-temp-files": {

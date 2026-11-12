@@ -8,6 +8,7 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Agregado
+- Privacidad de CVs: con `CV_ENCRYPTION_KEY` los CVs de `uploads/` se guardan cifrados (Fernet) y los parsers leen una copia temporal descifrada. Una tarea diaria de Celery cifra los CVs viejos y, con `CV_RETENTION_DAYS`, borra los CVs vencidos, sus perfiles y los documentos generados. Botón "Borrar mis datos" en `/profile` (Ley 25.326), que ahora borra los perfiles de todos los roles.
 - Tests de integración (`tests_integration/`, job de CI `integration`) contra MySQL 8 y Redis reales, y E2E con Playwright de login, subida de CV y tracker. Se corren con `INTEGRATION=1 python -m pytest tests_integration`.
 - Matching semántico opcional (`MATCHING_BACKEND=embeddings`): la similitud de texto CV-oferta usa embeddings de Gemini (`gemini-embedding-001`) con caché en memoria y cuenta en el tope mensual de tokens. Si la IA falla o no está configurada, sigue con TF-IDF.
 - Alertas de empleo (`/alerts`): búsquedas guardadas en Computrabajo y Bumeran que Celery Beat revisa cada `ALERTS_INTERVAL_HOURS` y avisan por email o Telegram solo con ofertas nuevas. La misma oferta en dos portales se avisa una vez (huella de título + empresa en `seen_jobs`) y se puede exigir un match mínimo con el CV. Migración Alembic `0002_job_alerts`.
@@ -25,6 +26,7 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 - Se quitaron de `base.html` `css/main.css` y `js/main.js`, que no existen y daban 404 en todas las páginas.
 
 ### Cambiado
+- `/delete_profile` ("Borrar mis datos") solo acepta POST con CSRF; antes un GET borraba todo.
 - `app.py` pasó de ~3.080 a ~820 líneas: las rutas se movieron a `web/` (un módulo por área) sin cambiar URLs, endpoints, login, CSRF ni rate limit.
 - UI: todo en español (panel de métricas, asistente Copilot) y se eliminaron las plantillas sin uso `view_jobs.html` y `view_file_original.html` (UTF-16, ~18k líneas).
 - Accesibilidad: enlace "Saltar al contenido", landmark `<main>`, `aria-label` en la navegación, el botón de menú, los botones de cerrar y en los 32 campos de formulario sin etiqueta asociada.

@@ -3,6 +3,7 @@
 No usan los mocks de tests/conftest.py. Se saltean salvo con INTEGRATION=1; en CI
 corren en el job `integration` con servicios mysql:8.0 y redis:7.
 """
+import base64
 import os
 import secrets
 import socket
@@ -15,6 +16,7 @@ import pytest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 APP_PASSWORD = secrets.token_urlsafe(16)
+CV_ENCRYPTION_KEY = base64.urlsafe_b64encode(secrets.token_bytes(32)).decode()
 
 
 def pytest_collection_modifyitems(config, items):
@@ -54,6 +56,7 @@ def live_server(migrated_db, tmp_path_factory):
         'APP_PASSWORD': APP_PASSWORD,
         'SECRET_KEY': secrets.token_hex(32),
         'SCRAPER_BACKEND': 'thread',
+        'CV_ENCRYPTION_KEY': CV_ENCRYPTION_KEY,
     }
     log = open(tmp_path_factory.mktemp('server') / 'uvicorn.log', 'w+')
     proc = subprocess.Popen(

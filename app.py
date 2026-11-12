@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session, send_from_directory, make_response
 from flask_limiter import Limiter
 import rate_limit
+import cv_storage
 import profile_store
 from flask_wtf.csrf import CSRFProtect
 import auth
@@ -246,25 +247,19 @@ def delete_user_profile_by_role(role_type):
         return False
     resume_filename = removed.get('resume_filename')
     if resume_filename:
-        resume_path = os.path.join('uploads', resume_filename)
-        if os.path.exists(resume_path):
-            try:
-                os.remove(resume_path)
-            except OSError as e:
-                logger.warning(f"Could not delete resume file {resume_path}: {e}")
+        cv_storage.delete(resume_filename)
     logger.info(f"Deleted profile for role: {role_type}")
     return True
 
 def delete_user_profile():
+    """Borra todos los datos personales: perfiles de todos los roles, CVs y documentos generados."""
     profile_path = os.path.join('profiles', 'user_profile.json')
     try:
         if os.path.exists(profile_path):
             os.remove(profile_path)
-        
-        upload_files = glob.glob(os.path.join('uploads', '*'))
-        for file in upload_files:
-            os.remove(file)
-        
+        for role_type in list(profile_store.get_all_profiles()):
+            profile_store.delete_profile(role_type)
+        cv_storage.delete_all()
         return True
     except Exception as e:
         logger.error(f"Error deleting profile: {e}")
@@ -278,10 +273,10 @@ def get_resume_text_from_profile():
         resume_filename = user_profile.get('resume_filename') if user_profile else None
         if not resume_filename:
             return None
-        resume_path = os.path.join('uploads', resume_filename)
-        if not os.path.exists(resume_path):
+        if not cv_storage.exists(resume_filename):
             return None
-        return resume_parser.extract_text_from_file(resume_path)
+        with cv_storage.plaintext_path(resume_filename) as resume_path:
+            return resume_parser.extract_text_from_file(resume_path)
     except Exception as e:
         logger.error(f"Error reading resume from profile: {e}")
         return None
