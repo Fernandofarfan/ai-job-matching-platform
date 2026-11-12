@@ -199,3 +199,20 @@ def test_recent_claim_is_not_recovered(_accounts_sqlite, monkeypatch):
     assert accounts.claim_weekly_digest(on, None, now)
     assert accounts.recover_weekly_digest(on, now - timedelta(minutes=60)) is False
     assert accounts.get_user(on)['weekly_digest_sent_at'] == now
+
+
+def test_empty_week_confirms_claim_without_microseconds(monkeypatch, _accounts_sqlite):
+    """Sin novedades el chequeo queda confirmado (no se recupera); el timestamp va sin microsegundos (MySQL)."""
+    monkeypatch.setenv('ALLOW_SIGNUP', 'true')
+    monkeypatch.setenv('LOGIN_REQUIRED', 'true')
+    on, _ = _users(_accounts_sqlite)
+    accounts.mark_weekly_digest(on, datetime.now() - timedelta(days=8))
+    db = mock.Mock()
+    db.get_all_tracked_jobs.return_value = []
+    monkeypatch.setattr('db_config.db_manager', db, raising=False)
+    monkeypatch.setattr(job_alerts, 'seen_since', lambda since, until=None: (0, []))
+    monkeypatch.setattr(nt, 'email_configured', lambda: True)
+    with accounts.as_user(on):
+        assert nt._send_weekly_digest()['reason'] == 'sin novedades'
+        assert accounts.recover_weekly_digest(on, datetime.now() + timedelta(days=1)) is False
+    assert accounts.get_user(on)['weekly_digest_sent_at'].microsecond == 0

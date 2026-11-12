@@ -122,3 +122,26 @@ def test_webhook_route(client, webhook_key, _accounts_sqlite):
     assert email_delivery.is_suppressed('x@example.com')
     headers['X-Twilio-Email-Event-Webhook-Signature'] = _signed(webhook_key, b'otro', ts)
     assert client.post('/webhooks/sendgrid', data=payload, headers=headers).status_code == 403
+
+
+def test_temporary_smtp_login_failure_is_retried(smtp_env):
+    patcher, server = _smtp([{}])
+    server.login.side_effect = [smtplib.SMTPAuthenticationError(454, b'try later'), None]
+    with patcher:
+        assert email_delivery.send('a@example.com', 'Hola', 'x') is True
+    assert server.login.call_count == 2
+
+
+def test_webhook_rejects_oversized_body_and_reports_db_failure(client, webhook_key, monkeypatch, _accounts_sqlite):
+    from routers import webhooks
+    monkeypatch.setattr(webhooks, 'MAX_BODY', 64)
+    assert client.post('/webhooks/sendgrid', data=b'[' + b' ' * 100 + b']',
+                       headers={'Content-Type': 'application/json'}).status_code == 413
+    monkeypatch.setattr(webhooks, 'MAX_BODY', 1024 * 1024)
+    payload = json.dumps([{'email': 'y@example.com', 'event': 'bounce', 'type': 'bounce'}]).encode()
+    ts = str(int(time.time()))
+    headers = {'X-Twilio-Email-Event-Webhook-Signature': _signed(webhook_key, payload, ts),
+               'X-Twilio-Email-Event-Webhook-Timestamp': ts, 'Content-Type': 'application/json'}
+    monkeypatch.setattr(email_delivery, 'suppress', lambda email, reason: False)
+    # SendGrid reintenta los webhooks que no reciben 2xx
+    assert client.post('/webhooks/sendgrid', data=payload, headers=headers).status_code == 503
