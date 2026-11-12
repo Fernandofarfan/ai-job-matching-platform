@@ -1,4 +1,5 @@
 """Errores de producción a Sentry: solo con SENTRY_DSN y sin datos personales."""
+import sys
 from unittest import mock
 
 from fastapi.testclient import TestClient
@@ -79,3 +80,48 @@ def test_server_error_is_reported(monkeypatch):
     assert resp.status_code == 500
     assert resp.json() == {'error': 'Error interno'}
     assert [str(e) for e in captured] == ['falló']
+
+
+def test_api_route_errors_are_reported(monkeypatch):
+    """Las rutas de /api con TrackerRoute contestan el 500 ellas mismas: igual tienen que llegar a Sentry."""
+    from fastapi import APIRouter, FastAPI
+
+    from routers.tracker import TrackerRoute
+    router = APIRouter(route_class=TrackerRoute)
+
+    @router.get('/api/boom')
+    def boom():
+        raise RuntimeError('falló en la API')
+
+    app = FastAPI()
+    app.include_router(router)
+    captured = []
+    monkeypatch.setattr(error_reporting, 'capture', captured.append)
+    resp = TestClient(app).get('/api/boom')
+    assert resp.status_code == 500
+    assert resp.json() == {'success': False, 'error': 'Error interno del servidor'}
+    assert [str(e) for e in captured] == ['falló en la API']
+
+
+def test_before_send_keeps_identified_account():
+    """Sin ContextVar (el 500 lo arma la capa más externa) queda solo el id que dejó `identify`."""
+    event = {'user': {'id': '9', 'email': 'ana@example.com', 'ip_address': '1.2.3.4'}}
+    assert error_reporting.before_send(event)['user'] == {'id': '9'}
+
+
+def test_identify_sets_the_request_scope(monkeypatch):
+    scope = mock.Mock()
+    sdk = mock.Mock(get_isolation_scope=mock.Mock(return_value=scope))
+    monkeypatch.setitem(sys.modules, 'sentry_sdk', sdk)
+    monkeypatch.setattr(error_reporting, '_enabled', True)
+    error_reporting.identify(5)
+    error_reporting.identify(None)
+    assert scope.set_user.call_args_list == [mock.call({'id': '5'}), mock.call(None)]
+
+
+def test_login_middleware_identifies_the_account(monkeypatch):
+    import main
+    seen = []
+    monkeypatch.setattr(error_reporting, 'identify', seen.append)
+    TestClient(main.app).get('/api/health')
+    assert seen == [None]

@@ -46,6 +46,9 @@ def before_send(event, hint=None):
         uid = accounts.current_user_id()
     except Exception:
         uid = None
+    if uid is None:
+        # el 500 lo maneja una capa que no ve el ContextVar del middleware: queda el id de `identify`
+        uid = (event.get('user') or {}).get('id')
     event['user'] = {'id': str(uid)} if uid is not None else {}
     return event
 
@@ -84,6 +87,17 @@ def setup(component: str) -> bool:
     sentry_sdk.set_tag('component', component)
     _enabled = True
     return True
+
+
+def identify(user_id) -> None:
+    """Deja el id de la cuenta en el scope del pedido (sobrevive a los middlewares que corren en otra tarea)."""
+    if not _enabled:
+        return
+    try:
+        import sentry_sdk
+        sentry_sdk.get_isolation_scope().set_user({'id': str(user_id)} if user_id is not None else None)
+    except Exception as e:
+        logger.warning(f'No se pudo fijar la cuenta en Sentry: {e}')
 
 
 def capture(exc: BaseException) -> None:
