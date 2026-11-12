@@ -1,0 +1,3 @@
+# Valores de prueba ya reemplazados por secrets.token_* en tests_integration/conftest.py
+52059e5cfecf3b408240c03a36ae30493e662951:tests_integration/conftest.py:generic-api-key:16
+52059e5cfecf3b408240c03a36ae30493e662951:tests_integration/conftest.py:generic-api-key:51
