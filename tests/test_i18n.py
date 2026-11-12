@@ -79,9 +79,16 @@ def test_language_switch_and_pages(client, one_account):
     assert 'Sign in' in page and 'Forgot your password?' in page
 
 
+def test_language_switch_returns_to_login_and_register(client):
+    for target in ('/register', '/login?next=%2Ftracker'):
+        response = client.get('/lang/pt', query_string={'next': target})
+        assert response.headers['Location'].endswith(target)
+
+
 def test_language_switch_rejects_external_next(client):
-    response = client.get('/lang/en?next=//evil.example')
-    assert 'evil.example' not in response.headers['Location']
+    for target in ('//evil.example', 'https://evil.example', '/\\evil.example'):
+        response = client.get('/lang/en', query_string={'next': target})
+        assert 'evil.example' not in response.headers['Location']
 
 
 def test_flash_messages_are_translated(client, one_account):

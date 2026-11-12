@@ -115,8 +115,12 @@ def require_login():
 limiter.init_app(app)
 
 
+def _is_local_path(target):
+    return bool(target) and target.startswith('/') and not target.startswith('//') and '\\' not in target
+
+
 def _safe_next(target):
-    is_local = target and target.startswith('/') and not target.startswith('//') and '\\' not in target
+    is_local = _is_local_path(target)
     loops = is_local and target.split('?')[0].rstrip('/') in ('/login', '/logout', '/register')
     return target if is_local and not loops else url_for('index')
 
@@ -228,7 +232,8 @@ def inject_auth():
 @app.route('/lang/<code>')
 def set_language(code):
     """Guarda el idioma elegido en una cookie y vuelve a la página donde estaba."""
-    response = redirect(_safe_next(request.args.get('next', '')))
+    target = request.args.get('next', '')
+    response = redirect(target if _is_local_path(target) else url_for('index'))
     if code in i18n.LANGUAGES:
         response.set_cookie(i18n.COOKIE, code, max_age=365 * 24 * 3600, samesite='Lax',
                             secure=request.is_secure, httponly=True)
