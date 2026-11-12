@@ -242,11 +242,13 @@ def delete_job(job_id: int, db=Depends(get_db)):
 @router.post('/save-from-extension')
 def save_from_extension(request: Request, data: dict = Body(...), session: dict = Depends(flask_session),
                         flask_app=Depends(get_flask_app), db=Depends(get_db)):
-    """Extensión de Chrome: sin CSRF (viene de otro origen); con login exige sesión o EXTENSION_TOKEN."""
+    """Extensión de Chrome: sin CSRF (viene de otro origen); con login exige sesión o el token de la cuenta."""
     if auth.auth_enabled() and not auth.is_session_valid(session, flask_app.secret_key):
-        if not auth.check_extension_token(request.headers.get('X-Extension-Token', '')):
+        token = request.headers.get('X-Extension-Token', '')
+        uid = auth.extension_token_user(token)
+        if uid is None and not auth.legacy_extension_token(token):
             raise ApiError(401, 'Token de extensión inválido')
-        accounts.set_current_user(auth.extension_user_id())
+        accounts.set_current_user(uid)
     if not data:
         raise ApiError(400, 'No data received')
     job_data = {

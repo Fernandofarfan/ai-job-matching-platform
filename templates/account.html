@@ -33,6 +33,67 @@
       </form>
     </div>
   </div>
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-body p-4">
+      <h2 class="h5 fw-bold">Integraciones</h2>
+
+      <h3 class="h6 fw-bold mt-3">Telegram</h3>
+      {% if telegram_bot %}
+      <p class="text-muted small">Escribile <code>/start</code> al bot de la instancia y pegá tu chat ID (te lo da <code>@userinfobot</code>).</p>
+      <form method="POST" action="{{ url_for('save_telegram') }}" class="d-flex gap-2 mb-2">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label for="chat_id" class="visually-hidden">Chat ID de Telegram</label>
+        <input type="text" class="form-control" id="chat_id" name="chat_id" inputmode="numeric" value="{{ integ.telegram_chat_id or '' }}" placeholder="123456789">
+        <button type="submit" class="btn btn-outline-primary">Guardar</button>
+      </form>
+      {% if integ.telegram_chat_id %}
+      <form method="POST" action="{{ url_for('test_telegram') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-link btn-sm p-0">Mandar mensaje de prueba</button>
+      </form>
+      {% endif %}
+      {% else %}
+      <p class="text-muted small">El administrador no configuró <code>TELEGRAM_BOT_TOKEN</code>.</p>
+      {% endif %}
+
+      <h3 class="h6 fw-bold mt-4">Extensión de Chrome</h3>
+      {% if new_token %}
+      <div class="alert alert-warning" role="alert">
+        Copiá este token en la extensión ahora: no se vuelve a mostrar.
+        <input type="text" class="form-control mt-2" id="new-token" value="{{ new_token }}" readonly aria-label="Token de la extensión">
+      </div>
+      {% endif %}
+      <p class="text-muted small">{% if integ.extension_token %}La extensión tiene un token activo para esta cuenta.{% else %}Generá un token para que la extensión guarde ofertas en tu tracker.{% endif %}</p>
+      <div class="d-flex gap-2">
+        <form method="POST" action="{{ url_for('new_extension_token') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn btn-outline-primary btn-sm">{% if integ.extension_token %}Generar uno nuevo{% else %}Generar token{% endif %}</button>
+        </form>
+        {% if integ.extension_token %}
+        <form method="POST" action="{{ url_for('revoke_extension_token') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn btn-outline-secondary btn-sm">Revocar</button>
+        </form>
+        {% endif %}
+      </div>
+
+      <h3 class="h6 fw-bold mt-4">Gmail</h3>
+      {% if integ.gmail %}
+      <p class="text-muted small">Conectado: las invitaciones a entrevistas actualizan tu tracker.</p>
+      <form method="POST" action="{{ url_for('gmail_disconnect') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-outline-secondary btn-sm">Desconectar Gmail</button>
+      </form>
+      {% elif gmail_available %}
+      <form method="POST" action="{{ url_for('gmail_connect') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-outline-primary btn-sm">Conectar Gmail</button>
+      </form>
+      {% else %}
+      <p class="text-muted small">El administrador no configuró el cliente OAuth de Google.</p>
+      {% endif %}
+    </div>
+  </div>
   <div class="card border-danger shadow-sm">
     <div class="card-body p-4">
       <h2 class="h5 fw-bold text-danger">Borrar la cuenta</h2>

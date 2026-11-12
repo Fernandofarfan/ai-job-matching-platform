@@ -251,11 +251,27 @@ def _recipient() -> str:
     return user["email"] if user else NOTIFICATION_EMAIL
 
 
-def _telegram_allowed() -> bool:
-    """El chat de TELEGRAM_CHAT_ID es del dueño de la instancia: solo recibe avisos de la primera cuenta."""
+def _telegram_chat():
+    """Chat de la cuenta actual; TELEGRAM_CHAT_ID es del dueño de la instancia (primera cuenta o sin cuentas)."""
     import accounts
     uid = accounts.current_user_id()
-    return uid is None or uid == accounts.first_user_id()
+    if uid is None:
+        return os.getenv("TELEGRAM_CHAT_ID") or None
+    try:
+        import integrations
+        own = integrations.telegram_chat_id(uid)
+        if own:
+            return own
+        return (os.getenv("TELEGRAM_CHAT_ID") or None) if uid == accounts.first_user_id() else None
+    except Exception as e:
+        logger.error(f"No se pudo leer el chat de Telegram de la cuenta: {type(e).__name__}")
+        return None
+
+
+def _telegram_allowed() -> bool:
+    """La cuenta actual tiene un chat de Telegram donde recibir avisos (sin cuentas, el de la instancia)."""
+    import accounts
+    return accounts.current_user_id() is None or _telegram_chat() is not None
 
 
 def _for_each_user(func):
@@ -271,7 +287,7 @@ def _for_each_user(func):
 @celery.task(name="tasks.notification_tasks.check_and_send_followup_reminders")
 def check_and_send_followup_reminders():
     """Periódica: un aviso por usuario (email y/o Telegram) con los seguimientos que vencen hoy."""
-    if not (email_configured() or telegram_configured()):
+    if not (email_configured() or telegram_configured() or os.getenv("TELEGRAM_BOT_TOKEN")):
         return {"sent": 0, "reason": "Sin canal configurado (SMTP o Telegram)"}
     per_user = _for_each_user(_send_followup_reminders)
     if len(per_user) == 1:
@@ -305,8 +321,8 @@ def _send_followup_reminders():
 
 # ── Alertas de empleo (búsquedas guardadas) ──────────────────────────────────
 def telegram_configured() -> bool:
-    """True si hay bot y chat de Telegram configurados."""
-    return bool(os.getenv("TELEGRAM_BOT_TOKEN") and os.getenv("TELEGRAM_CHAT_ID"))
+    """True si hay bot de Telegram y la cuenta actual tiene chat."""
+    return bool(os.getenv("TELEGRAM_BOT_TOKEN") and _telegram_chat())
 
 
 def email_configured() -> bool:
@@ -337,15 +353,16 @@ def _telegram_chunks(text: str, size: int = TELEGRAM_MAX_CHARS) -> list:
 def send_telegram(text: str) -> bool:
     """Envía un mensaje HTML al chat configurado vía Bot API (en partes si supera el límite)."""
     if not telegram_configured():
-        logger.warning("Telegram no configurado. Configurá TELEGRAM_BOT_TOKEN y TELEGRAM_CHAT_ID en .env")
+        logger.warning("Telegram no configurado: falta TELEGRAM_BOT_TOKEN o el chat de la cuenta")
         return False
+    chat_id = _telegram_chat()
     import requests
     try:
         for chunk in _telegram_chunks(text):
             resp = requests.post(
                 f"https://api.telegram.org/bot{os.getenv('TELEGRAM_BOT_TOKEN')}/sendMessage",
                 json={
-                    "chat_id": os.getenv("TELEGRAM_CHAT_ID"), "text": chunk,
+                    "chat_id": chat_id, "text": chunk,
                     "parse_mode": "HTML", "disable_web_page_preview": True,
                 },
                 timeout=10,

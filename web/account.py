@@ -7,6 +7,7 @@ from flask import flash, make_response, redirect, render_template, request, sess
 
 import accounts
 import auth
+import integrations
 from app import _clear_offline_data, app, delete_user_profile, limiter
 
 logger = logging.getLogger(__name__)
@@ -110,8 +111,116 @@ def account():
     """Datos de la cuenta, cambio de contraseña y borrado."""
     if not _account_enabled():
         return redirect(url_for('index'))
-    user = accounts.get_user(accounts.current_user_id())
-    return render_template('account.html', user=user, min_password=accounts.MIN_PASSWORD)
+    return _render_account()
+
+
+def _render_account(new_token=None):
+    """Página de cuenta; `new_token` es el token de la extensión recién generado (se muestra una vez)."""
+    user_id = accounts.current_user_id()
+    response = make_response(render_template(
+        'account.html', user=accounts.get_user(user_id), min_password=accounts.MIN_PASSWORD,
+        integ=integrations.status(user_id), telegram_bot=bool(os.getenv('TELEGRAM_BOT_TOKEN')),
+        gmail_available=os.path.exists(_gmail_client_file()), new_token=new_token))
+    if new_token:
+        response.headers['Cache-Control'] = 'no-store'
+    return response
+
+
+@app.route('/account/telegram', methods=['POST'])
+def save_telegram():
+    """Guarda el chat de Telegram de la cuenta (vacío lo desconecta)."""
+    try:
+        integrations.set_telegram_chat(accounts.current_user_id(), request.form.get('chat_id', ''))
+    except integrations.IntegrationError as e:
+        flash(str(e), 'danger')
+    else:
+        flash('Chat de Telegram guardado', 'success')
+    return redirect(url_for('account'))
+
+
+@app.route('/account/telegram/test', methods=['POST'])
+@limiter.limit('5 per minute')
+def test_telegram():
+    """Manda un mensaje de prueba al chat de la cuenta."""
+    from tasks.notification_tasks import send_telegram
+    if send_telegram('✅ EmpleoIA: tus avisos van a llegar a este chat'):
+        flash('Mensaje de prueba enviado', 'success')
+    else:
+        flash('No se pudo mandar: revisá el chat ID y que le hayas escrito /start al bot', 'danger')
+    return redirect(url_for('account'))
+
+
+@app.route('/account/extension_token', methods=['POST'])
+@limiter.limit('5 per minute')
+def new_extension_token():
+    """Genera el token de la extensión de Chrome para esta cuenta (reemplaza al anterior)."""
+    return _render_account(new_token=integrations.new_extension_token(accounts.current_user_id()))
+
+
+@app.route('/account/extension_token/revoke', methods=['POST'])
+def revoke_extension_token():
+    """Revoca el token de la extensión."""
+    integrations.revoke_extension_token(accounts.current_user_id())
+    flash('Token de la extensión revocado', 'success')
+    return redirect(url_for('account'))
+
+
+def _gmail_client_file() -> str:
+    """Cliente OAuth "aplicación web" de Google (descargado de la consola de GCP)."""
+    return os.getenv('GMAIL_OAUTH_CLIENT_FILE', 'credentials.json')
+
+
+def _gmail_flow(state=None):
+    """Flujo OAuth web para conectar Gmail, o None si falta el cliente o la URL pública."""
+    from tasks.gmail_tracker import SCOPES
+    redirect_uri = _public_url('gmail_callback')
+    if not redirect_uri or not os.path.exists(_gmail_client_file()):
+        return None
+    from google_auth_oauthlib.flow import Flow
+    return Flow.from_client_secrets_file(_gmail_client_file(), scopes=SCOPES, state=state, redirect_uri=redirect_uri)
+
+
+@app.route('/account/gmail/connect', methods=['POST'])
+def gmail_connect():
+    """Manda a Google para autorizar la lectura de Gmail de esta cuenta."""
+    flow = _gmail_flow()
+    if flow is None:
+        flash('Gmail no está disponible: falta el cliente OAuth o PUBLIC_BASE_URL', 'danger')
+        return redirect(url_for('account'))
+    url, state = flow.authorization_url(access_type='offline', prompt='consent')
+    session['gmail_oauth'] = {'state': state, 'verifier': getattr(flow, 'code_verifier', None)}
+    return redirect(url)
+
+
+@app.route('/account/gmail/callback')
+def gmail_callback():
+    """Vuelta de Google: guarda el token de Gmail de la cuenta."""
+    pending = session.pop('gmail_oauth', None) or {}
+    state = request.args.get('state', '')
+    if not pending.get('state') or state != pending['state'] or not request.args.get('code'):
+        flash('No se pudo conectar Gmail: volvé a intentarlo', 'danger')
+        return redirect(url_for('account'))
+    flow = _gmail_flow(state)
+    if flow is None:
+        return redirect(url_for('account'))
+    flow.code_verifier = pending.get('verifier')
+    try:
+        flow.fetch_token(code=request.args['code'])
+    except Exception as e:
+        logger.error(f'Google rechazó el código de Gmail: {type(e).__name__}')
+        flash('No se pudo conectar Gmail: volvé a intentarlo', 'danger')
+        return redirect(url_for('account'))
+    integrations.save_gmail_token(accounts.current_user_id(), flow.credentials.to_json())
+    flash('Gmail conectado: las invitaciones a entrevistas van a actualizar tu tracker', 'success')
+    return redirect(url_for('account'))
+
+
+@app.route('/account/gmail/disconnect', methods=['POST'])
+def gmail_disconnect():
+    """Desconecta Gmail de la cuenta."""
+    integrations.clear_gmail(accounts.current_user_id())
+    flash('Gmail desconectado', 'success')
+    return redirect(url_for('account'))
 
 
 @app.route('/account/resend_verification', methods=['POST'])

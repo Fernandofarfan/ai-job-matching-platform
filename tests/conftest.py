@@ -218,6 +218,7 @@ def _accounts_sqlite():
     from sqlalchemy.pool import StaticPool
     import accounts
     engine = create_engine('sqlite://', poolclass=StaticPool, connect_args={'check_same_thread': False})
+    import integrations  # noqa: F401  (registra su tabla en Base)
     accounts.Base.metadata.create_all(engine)
     accounts.configure(sessionmaker(bind=engine))
     yield engine

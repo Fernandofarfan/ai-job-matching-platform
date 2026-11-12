@@ -1,3 +1,4 @@
+import json
 import os
 import logging
 from googleapiclient.discovery import build
@@ -40,16 +41,49 @@ def get_gmail_service():
 
     return build('gmail', 'v1', credentials=creds)
 
+def service_from_token(token_json: str, on_refresh=None):
+    """Servicio de Gmail con el token OAuth de una cuenta (lo renueva si venció); None si ya no sirve."""
+    creds = Credentials.from_authorized_user_info(json.loads(token_json), SCOPES)
+    if not creds.valid:
+        if not (creds.expired and creds.refresh_token):
+            return None
+        creds.refresh(Request())
+        if on_refresh:
+            on_refresh(creds.to_json())
+    return build('gmail', 'v1', credentials=creds)
+
+
 @celery.task(name="tasks.gmail_tracker.check_interview_emails")
 def check_interview_emails():
     """
-    Se ejecuta frecuentemente (via celery-beat) para buscar en el Gmail 
-    respuestas o invitaciones a entrevistas y matchear con los trabajos del 'Tracker'.
+    Se ejecuta frecuentemente (via celery-beat): revisa el Gmail de cada cuenta que lo conectó
+    y actualiza su tracker. token.json (instalación vieja) es la casilla de la primera cuenta.
     """
-    service = get_gmail_service()
-    if not service:
+    import accounts
+    import integrations
+    results = {}
+    for uid in integrations.gmail_user_ids():
+        with accounts.as_user(uid):
+            try:
+                service = service_from_token(integrations.gmail_token(uid),
+                                             lambda token, uid=uid: integrations.save_gmail_token(uid, token))
+            except Exception as e:
+                logger.error(f"Token de Gmail inválido para la cuenta {uid}: {type(e).__name__}")
+                service = None
+            results[uid] = _process_mailbox(service) if service else "Token de Gmail vencido: volvé a conectar Gmail"
+    first = accounts.first_user_id()
+    if first not in results:
+        service = get_gmail_service()
+        if service:
+            with accounts.as_user(first):
+                results[first] = _process_mailbox(service)
+    if not results:
         return "Gmail verification skipped (No credentials.json)"
+    return next(iter(results.values())) if len(results) == 1 else results
 
+
+def _process_mailbox(service):
+    """Busca invitaciones sin leer en la casilla y pasa a entrevista las postulaciones de la cuenta actual."""
     # Buscamos emails que tengan la palabra 'interview', 'entrevista' de los últimos días
     query = 'subject:(interview OR entrevista OR feedback) is:unread'
     try:
@@ -60,10 +94,7 @@ def check_interview_emails():
             return "No hay nuevos correos de entrevistas."
 
         updates_made = 0
-        import accounts
         from db_config import db_manager
-        # token.json es la casilla del dueño de la instancia: sus entrevistas van al tracker de la primera cuenta
-        accounts.set_current_user(accounts.first_user_id())
         tracked_jobs = db_manager.get_all_tracked_jobs()
 
         for message in messages:

@@ -246,3 +246,81 @@ def test_reset_link_on_ipv6_loopback(registered, outbox):
     """[::1] es local: recibe el enlace aunque no haya PUBLIC_BASE_URL."""
     registered.post('/forgot_password', data={'email': 'ana@example.com'}, headers={'Host': '[::1]:5000'})
     assert len(outbox) == 1
+
+
+def test_extension_token_is_per_account(registered, monkeypatch):
+    """Cada cuenta genera su token; el de una no guarda en la otra y revocarlo lo invalida."""
+    import auth
+    import integrations
+    monkeypatch.setenv('ALLOW_SIGNUP', 'true')
+    ana = accounts.find_user_id('ana@example.com')
+    beto = accounts.register('beto@example.com', PASSWORD)
+    token_ana, token_beto = integrations.new_extension_token(ana), integrations.new_extension_token(beto)
+    assert auth.extension_token_user(token_ana) == ana
+    assert auth.extension_token_user(token_beto) == beto
+    integrations.revoke_extension_token(beto)
+    assert auth.extension_token_user(token_beto) is None
+    assert auth.extension_token_user('') is None
+
+
+def test_legacy_extension_token_goes_to_first_account(registered, monkeypatch):
+    """EXTENSION_TOKEN del .env sigue guardando en la primera cuenta."""
+    import auth
+    monkeypatch.setenv('EXTENSION_TOKEN', 'viejo-token')
+    assert auth.extension_token_user('viejo-token') == accounts.find_user_id('ana@example.com')
+
+
+def test_telegram_chat_is_per_account(registered, monkeypatch):
+    """TELEGRAM_CHAT_ID es de la primera cuenta; otra cuenta usa solo su propio chat."""
+    import integrations
+    from tasks import notification_tasks as nt
+    monkeypatch.setenv('ALLOW_SIGNUP', 'true')
+    monkeypatch.setenv('TELEGRAM_CHAT_ID', '111')
+    ana = accounts.find_user_id('ana@example.com')
+    beto = accounts.register('beto@example.com', PASSWORD)
+    with accounts.as_user(ana):
+        assert nt._telegram_chat() == '111'
+    with accounts.as_user(beto):
+        assert nt._telegram_chat() is None
+        integrations.set_telegram_chat(beto, '222')
+        assert nt._telegram_chat() == '222'
+    with pytest.raises(integrations.IntegrationError):
+        integrations.set_telegram_chat(beto, 'abc')
+
+
+def test_gmail_token_encrypted(registered, monkeypatch):
+    """Con CV_ENCRYPTION_KEY el token de Gmail queda cifrado en la base y se lee en claro."""
+    from cryptography.fernet import Fernet
+    import integrations
+    monkeypatch.setenv('CV_ENCRYPTION_KEY', Fernet.generate_key().decode())
+    ana = accounts.find_user_id('ana@example.com')
+    integrations.save_gmail_token(ana, '{"token": "x"}')
+    assert '"token"' not in integrations._row(ana).gmail_token
+    assert integrations.gmail_token(ana) == '{"token": "x"}'
+    assert integrations.gmail_user_ids() == [ana]
+    integrations.clear_gmail(ana)
+    assert integrations.gmail_user_ids() == []
+
+
+def test_account_page_integrations(registered, monkeypatch):
+    """Desde "Mi cuenta" se guarda el chat y el token nuevo se muestra una sola vez."""
+    import integrations
+    monkeypatch.setenv('TELEGRAM_BOT_TOKEN', 'bot')
+    _login(registered)
+    registered.post('/account/telegram', data={'chat_id': '333'})
+    ana = accounts.find_user_id('ana@example.com')
+    assert integrations.telegram_chat_id(ana) == '333'
+    page = registered.post('/account/extension_token')
+    assert page.headers['Cache-Control'] == 'no-store'
+    token = page.get_data(as_text=True).split('id="new-token" value="')[1].split('"')[0]
+    assert integrations.user_for_extension_token(token) == ana
+    assert token not in registered.get('/account').get_data(as_text=True)
+
+
+def test_gmail_callback_rejects_bad_state(registered):
+    """La vuelta de Google sin el state guardado en la sesión no conecta nada."""
+    _login(registered)
+    response = registered.get('/account/gmail/callback?state=x&code=y')
+    assert response.status_code == 302
+    import integrations
+    assert integrations.gmail_user_ids() == []
