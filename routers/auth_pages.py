@@ -157,11 +157,10 @@ def _register(request: Request, form: Optional[TextForm]) -> Response:
                 flash(request, 'Las contraseñas no coinciden', 'danger')
             else:
                 try:
-                    user_id = accounts.register(form.get('email', ''), password)
+                    user_id = accounts.register(form.get('email', ''), password, terms_accepted=True)
                 except accounts.AccountError as e:
                     flash(request, str(e), 'danger')
                 else:
-                    accounts.accept_terms(user_id)
                     audit(request, user_id, 'register')
                     user = accounts.get_user(user_id) or {}
                     sent = not user['email_verified'] and send_verification(request, user)
@@ -356,12 +355,11 @@ def google_callback(request: Request):
     if user_id is None:
         try:
             # contraseña al azar: quien entra con Google puede crear una con "¿Olvidaste tu contraseña?"
-            user_id = accounts.register(email, secrets.token_urlsafe(32))
+            # el login avisa que continuar con Google acepta los Términos y la Privacidad
+            user_id = accounts.register(email, secrets.token_urlsafe(32), terms_accepted=True)
         except accounts.AccountError as e:
             flash(request, str(e), 'warning')
             return redirect(request, url_for(request, 'login'))
-        # el login avisa que continuar con Google acepta los Términos y la Privacidad
-        accounts.accept_terms(user_id)
         audit(request, user_id, 'register')
     user = accounts.get_user(user_id)
     if user is None:
