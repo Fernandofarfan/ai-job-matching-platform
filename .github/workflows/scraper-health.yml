@@ -25,11 +25,15 @@ jobs:
       - name: Instalar dependencias de los scrapers
         run: pip install selenium beautifulsoup4 lxml pandas python-dotenv requests
 
+      # Los scrapers abren Chrome con ventana: en el runner no hay pantalla, se usa una virtual
+      - name: Instalar Xvfb
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq xvfb
+
       - name: Correr el monitor
         id: monitor
         run: |
           set +e
-          python scripts/scraper_health.py > result.json
+          xvfb-run -a python scripts/scraper_health.py > result.json
           echo "exit_code=$?" >> "$GITHUB_OUTPUT"
           cat result.json
 
