@@ -240,8 +240,8 @@ pip install -r requirements.txt
 python -m spacy download en_core_web_sm
 
 # 5. Configurar base de datos MySQL
-mysql -u root -p < setup_database.sql
-alembic upgrade head   # tablas versionadas (user_profiles)
+mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS job_tracker CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
+alembic upgrade head   # crea y actualiza todas las tablas
 
 # 6. Configurar variables de entorno
 cp .env.example .env
@@ -401,7 +401,7 @@ EmpleoIA/
 │
 ├── 📄 requirements.txt       # Dependencias Python
 ├── 📄 docker-compose.yml     # 🆕 Stack completo con Redis + Celery
-├── 📄 setup_database.sql     # Script de BD
+├── 📄 db_schema.py           # Metadata de los modelos y chequeo de drift contra la base
 ├── 📄 .env.example           # Plantilla de configuración
 └── 📄 README.md              # Este archivo
 ```

@@ -6,6 +6,13 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar] - Todo el esquema de la base en Alembic
+
+- Alembic crea y actualiza todas las tablas: `0000_core_tables` crea las que antes creaba `setup_database.sql` y `0015_core_schema` lleva cada tabla a la forma de los modelos, venga la base del script viejo o de `create_all`. Se eliminaron `setup_database.sql` e `init_db.py`.
+- La app ya no corre `create_all` al arrancar: hay que correr `alembic upgrade head` antes (Docker Compose lo hace con el servicio `migrate`; en Cloud Run, el job `empleoia-migrate-<env>`).
+- Los modelos de `connection_requests`, `networking_exclusions` y `processed_files` suman `user_id` y los únicos por cuenta que ya tenía la base; `connection_requests.status` acepta `declined`.
+- Nuevo test de drift (`tests_integration/test_schema.py`): en el CI compara la base migrada con los modelos, partiendo de una base vacía y de una creada con el script viejo. Falla si un modelo cambia sin su migración.
+
 ## [Sin publicar] - Caché de IA compartida y modelo barato para tareas simples
 
 - La caché de respuestas de Gemini (temperatura ≤ 0.5, `AI_CACHE_TTL`) se guarda también en Redis cuando `RATELIMIT_STORAGE_URI` es `redis://`: una respuesta generada en una instancia de Cloud Run o en el worker sirve para las demás. Si Redis falla, sigue la caché en memoria.

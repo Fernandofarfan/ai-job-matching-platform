@@ -21,7 +21,7 @@ COLUMNS = {
 
 
 def _missing_columns():
-    """Columnas que faltan; en bases sin `applications` (la crea setup_database.sql) no hay nada que hacer."""
+    """Columnas que faltan; sin `applications` no hay nada que hacer."""
     if context.is_offline_mode():
         return list(COLUMNS)
     inspector = sa.inspect(op.get_bind())

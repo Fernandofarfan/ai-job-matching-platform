@@ -196,10 +196,9 @@ jobs:
           python -m playwright install --with-deps chromium
           sudo apt-get install -y -qq xvfb
 
-      - name: Esquema base (setup_database.sql) y migraciones
+      - name: Esquema completo con Alembic
         run: |
           mkdir -p uploads results logs profiles
-          python init_db.py
           python -m alembic upgrade head
 
       - name: Tests de integración, E2E y accesibilidad (axe)

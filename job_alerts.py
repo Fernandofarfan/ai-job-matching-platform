@@ -86,11 +86,10 @@ def configure(session_factory):
 
 
 def _sessions():
-    """Fábrica de sesiones de MySQL; crea las tablas si todavía no corrió Alembic."""
+    """Fábrica de sesiones de MySQL (las tablas las crea Alembic)."""
     global _session_factory
     if _session_factory is None:
-        from models import SessionLocal, engine
-        Base.metadata.create_all(bind=engine, checkfirst=True)
+        from models import SessionLocal
         _session_factory = SessionLocal
     return _session_factory
 

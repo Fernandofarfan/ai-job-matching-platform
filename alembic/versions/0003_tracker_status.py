@@ -17,7 +17,7 @@ _LEGACY = "'applied','interviewing','rejected','accepted'"
 
 
 def _has_applications():
-    """`applications` la crea setup_database.sql; en bases sin esa tabla no hay nada que migrar."""
+    """Sin `applications` (bases anteriores a 0000_core_tables) no hay nada que migrar."""
     return context.is_offline_mode() or sa.inspect(op.get_bind()).has_table('applications')
 
 
