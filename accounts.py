@@ -191,8 +191,11 @@ def normalize_email(email: str) -> str:
     return (email or '').strip().lower()
 
 
-def register(email: str, password: str) -> int:
-    """Crea la cuenta y devuelve su id; la primera cuenta se queda con los datos previos (user_id NULL)."""
+def register(email: str, password: str, terms_accepted: bool = False) -> int:
+    """Crea la cuenta y devuelve su id; la primera cuenta se queda con los datos previos (user_id NULL).
+
+    terms_accepted guarda la aceptación de los Términos en el mismo commit que crea la cuenta.
+    """
     email = normalize_email(email)
     if not EMAIL_RE.match(email) or len(email) > 255:
         raise AccountError('Email inválido')
@@ -208,7 +211,8 @@ def register(email: str, password: str) -> int:
             raise AccountError('El registro de cuentas nuevas está cerrado')
         # la primera cuenta es la del administrador: no espera el email de verificación
         user = User(email=email, password_hash=generate_password_hash(password),
-                    email_verified_at=datetime.now() if first else None)
+                    email_verified_at=datetime.now() if first else None,
+                    terms_accepted_at=datetime.now() if terms_accepted else None)
         session.add(user)
         try:
             session.commit()

@@ -66,6 +66,7 @@ except ImportError:
 
 
 # empieza como los demás errores de Gemini (document_generators.GEMINI_ERROR_PREFIXES)
+GEMINI_ERROR_PREFIX = "Error al contactar Gemini"
 AI_CONSENT_ERROR = "Error al contactar Gemini: falta tu permiso para usar la IA (activalo en Mi cuenta)"
 
 
@@ -297,6 +298,8 @@ Respondé en JSON sin bloques de código:
 }}"""
 
     raw = _call_gemini(prompt, temperature=0.5)
+    if raw.startswith(GEMINI_ERROR_PREFIX):
+        return {"error": raw}  # sin puntaje: no es una evaluación
     raw = re.sub(r'```(?:json)?\s*', '', raw).strip()
     try:
         return json.loads(raw)

@@ -91,3 +91,8 @@ def test_export_includes_consent_dates(accounts_db):
     with zipfile.ZipFile(io.BytesIO(data_export.build(user_id))) as zf:
         account = json.loads(zf.read('cuenta.json'))
     assert account['terminos_aceptados'] and account['permiso_ia'] is None
+
+
+def test_interview_evaluation_without_consent_has_no_grade():
+    with mock.patch.object(ai_engine, '_call_gemini', return_value=ai_engine.AI_CONSENT_ERROR):
+        assert ai_engine.evaluate_interview_answer('q', 'a', 'Dev') == {'error': ai_engine.AI_CONSENT_ERROR}
