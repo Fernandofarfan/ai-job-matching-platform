@@ -6,6 +6,13 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar] - Acciones e imagen base fijadas por hash
+
+- Todas las GitHub Actions se usan por SHA de commit, con la versión en un comentario (`actions/checkout@11d5960…  # v4.4.0`). Una etiqueta como `@v4` la puede mover quien controle la acción, y el CI correría ese código con acceso a los secretos.
+- La imagen base del `Dockerfile` se fija por digest (`@sha256:…`).
+- Dependabot ya actualiza los dos (`github-actions` y `docker`) y mantiene el comentario de versión.
+- `tests/test_supply_chain.py` falla si se agrega una acción o un `FROM` sin hash.
+
 ## [Sin publicar] - Indeed en el monitor de scrapers
 
 - `scripts/scraper_health.py` revisa también Indeed: cuenta las tarjetas de la primera página del listado público (`indeedScraper.listing`), sin abrir descripciones ni guardar CSV. Ubicación con `SCRAPER_HEALTH_INDEED_LOCATION` (por defecto `Remote`).
