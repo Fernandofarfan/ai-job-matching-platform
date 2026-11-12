@@ -64,6 +64,15 @@ def test_status_follows_the_steps(alerts_sqlite, results_root):
     assert done['finished'] and done['next'] is None and done['completed'] == 3
 
 
+def test_search_without_results_counts(alerts_sqlite, results_root):
+    """Una búsqueda que no encontró ofertas no deja CSV, pero completa el paso."""
+    uid = accounts.register('ana@example.com', PASSWORD, terms_accepted=True)
+    _cv(uid)
+    with accounts.as_user(uid):
+        onboarding.mark_searched()
+    assert onboarding.status(uid)['next']['key'] == 'alert'
+
+
 def test_status_is_per_account(alerts_sqlite, results_root):
     ana = accounts.register('ana@example.com', PASSWORD, terms_accepted=True)
     bob = accounts.register('bob@example.com', PASSWORD, terms_accepted=True)

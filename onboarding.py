@@ -22,6 +22,15 @@ STEPS = (
 )
 
 
+SEARCH_MARKER = '.searched'  # una búsqueda sin ofertas no deja CSV, pero el paso igual cuenta
+
+
+def mark_searched() -> None:
+    """Anota que la cuenta actual ya buscó aunque no haya encontrado ofertas."""
+    with open(os.path.join(accounts.results_dir(), SEARCH_MARKER), 'a', encoding='utf-8'):
+        pass
+
+
 def _results_dir(user_id: Optional[int]) -> str:
     """Carpeta de CSV de la cuenta, sin crearla (accounts.results_dir() la crea)."""
     return accounts.RESULTS_ROOT if user_id is None else os.path.join(accounts.RESULTS_ROOT, f'u{user_id}')
@@ -35,7 +44,8 @@ def _done(user_id: Optional[int]) -> dict[str, bool]:
             done['cv'] = bool(profile_store.get_all_profiles())
         except Exception as e:
             logger.warning(f'Primer uso: no se pudieron leer los perfiles de {user_id}: {e}')
-        done['search'] = bool(glob.glob(os.path.join(_results_dir(user_id), '*.csv')))
+        folder = _results_dir(user_id)
+        done['search'] = bool(glob.glob(os.path.join(folder, '*.csv'))) or os.path.exists(os.path.join(folder, SEARCH_MARKER))
         try:
             done['alert'] = bool(job_alerts.list_searches())
         except Exception as e:
