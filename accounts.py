@@ -46,6 +46,7 @@ def configure(session_factory):
 
 
 def _sessions():
+    """Fábrica de sesiones configurada (o la de models.py)."""
     if _session_factory is not None:
         return _session_factory
     from models import SessionLocal
@@ -53,6 +54,7 @@ def _sessions():
 
 
 def current_user_id() -> Optional[int]:
+    """Id de la cuenta del pedido o tarea actual (None sin login)."""
     return _current.get()
 
 
@@ -62,6 +64,7 @@ def set_current_user(user_id: Optional[int]):
 
 
 def reset_current_user(token):
+    """Restaura el usuario anterior con el token de `set_current_user`."""
     _current.reset(token)
 
 
@@ -83,30 +86,40 @@ def thread(target, args=(), **kwargs) -> threading.Thread:
 
 def signup_open() -> bool:
     """Registro abierto con ALLOW_SIGNUP=true, o siempre mientras no haya ninguna cuenta."""
-    return os.getenv('ALLOW_SIGNUP', 'false').strip().lower() == 'true' or count_users() == 0
+    return _signup_allowed() or count_users() == 0
+
+
+def _signup_allowed() -> bool:
+    """ALLOW_SIGNUP=true habilita cuentas después de la primera."""
+    return os.getenv('ALLOW_SIGNUP', 'false').strip().lower() == 'true'
 
 
 def count_users() -> int:
+    """Cantidad de cuentas registradas."""
     with _sessions()() as session:
         return _count(session)
 
 
 def _count(session) -> int:
+    """Cantidad de cuentas dentro de una sesión abierta."""
     from sqlalchemy import func
     return session.execute(select(func.count(User.id))).scalar_one()
 
 
 def user_ids() -> list:
+    """Ids de todas las cuentas, de la más vieja a la más nueva."""
     with _sessions()() as session:
         return list(session.execute(select(User.id).order_by(User.id)).scalars())
 
 
 def first_user_id() -> Optional[int]:
+    """Id de la primera cuenta (dueña de Telegram, Gmail y la extensión)."""
     ids = user_ids()
     return ids[0] if ids else None
 
 
 def get_user(user_id) -> Optional[dict]:
+    """Cuenta por id como dict, o None."""
     if not user_id:
         return None
     with _sessions()() as session:
@@ -115,6 +128,7 @@ def get_user(user_id) -> Optional[dict]:
 
 
 def normalize_email(email: str) -> str:
+    """Email sin espacios y en minúsculas."""
     return (email or '').strip().lower()
 
 
@@ -130,6 +144,10 @@ def register(email: str, password: str) -> int:
         first = _count(session) == 0
         if first and admin and email != admin:
             raise AccountError('La primera cuenta tiene que usar el email de ADMIN_EMAIL')
+        if first and not admin and os.getenv('K_SERVICE'):
+            raise AccountError('Definí ADMIN_EMAIL antes de crear la primera cuenta')
+        if not first and not _signup_allowed():
+            raise AccountError('El registro de cuentas nuevas está cerrado')
         user = User(email=email, password_hash=generate_password_hash(password))
         session.add(user)
         try:
