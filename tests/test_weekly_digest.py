@@ -165,3 +165,37 @@ def test_claim_lets_only_one_overlapping_run_send(monkeypatch, _accounts_sqlite)
     assert accounts.get_user(on)['weekly_digest_sent_at'] == now
     later = now + timedelta(days=7)
     assert accounts.claim_weekly_digest(on, now, later) and not accounts.claim_weekly_digest(on, now, later)
+
+
+def test_digest_claimed_by_dead_worker_is_sent_again(monkeypatch, _accounts_sqlite):
+    """Si el worker muere entre tomar el resumen y mandarlo, una hora después se manda igual."""
+    monkeypatch.setenv('ALLOW_SIGNUP', 'true')
+    monkeypatch.setenv('LOGIN_REQUIRED', 'true')
+    on, _ = _users(_accounts_sqlite)
+    previous = datetime.now() - timedelta(days=8)
+    accounts.mark_weekly_digest(on, previous)
+    db = mock.Mock()
+    db.get_all_tracked_jobs.return_value = [_job(applied_date=datetime.now() - timedelta(days=30))]
+    monkeypatch.setattr('db_config.db_manager', db, raising=False)
+    monkeypatch.setattr(job_alerts, 'seen_since', lambda since, until=None: (0, []))
+    monkeypatch.setattr(nt, 'email_configured', lambda: True)
+    # el worker tomó el resumen hace 2 horas y se cortó sin mandarlo ni devolverlo
+    assert accounts.claim_weekly_digest(on, previous, datetime.now() - timedelta(hours=2))
+    send = mock.Mock(return_value=True)
+    monkeypatch.setattr(nt, '_send_email', send)
+    with accounts.as_user(on):
+        assert nt._send_weekly_digest() == {'sent': 1}
+        # confirmado: no se recupera de nuevo ni se repite
+        assert accounts.recover_weekly_digest(on, datetime.now() + timedelta(days=1)) is False
+        assert nt._send_weekly_digest()['sent'] == 0
+    assert send.call_count == 1
+
+
+def test_recent_claim_is_not_recovered(_accounts_sqlite, monkeypatch):
+    """Un resumen tomado hace poco puede estar mandándose: no se toca."""
+    monkeypatch.setenv('ALLOW_SIGNUP', 'true')
+    on, _ = _users(_accounts_sqlite)
+    now = datetime.now()
+    assert accounts.claim_weekly_digest(on, None, now)
+    assert accounts.recover_weekly_digest(on, now - timedelta(minutes=60)) is False
+    assert accounts.get_user(on)['weekly_digest_sent_at'] == now

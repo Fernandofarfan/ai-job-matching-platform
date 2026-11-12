@@ -4,9 +4,6 @@ Envía alertas de follow-up, nuevos trabajos relevantes y resúmenes semanales.
 """
 import os
 import logging
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
 from datetime import datetime, date, timedelta
 
 from celery_app import celery
@@ -14,39 +11,15 @@ from celery_app import celery
 logger = logging.getLogger(__name__)
 
 # ── Configuración SMTP ────────────────────────────────────────────────────────
-SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
-SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
 SMTP_USER = os.getenv("SMTP_USER", "")
 SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
 NOTIFICATION_EMAIL = os.getenv("NOTIFICATION_EMAIL", SMTP_USER)
 
 
 def _send_email(to: str, subject: str, html_body: str) -> bool:
-    """Envía un email HTML vía SMTP."""
-    if not SMTP_USER or not SMTP_PASSWORD:
-        logger.warning("SMTP no configurado. Configurá SMTP_USER y SMTP_PASSWORD en .env")
-        return False
-
-    try:
-        msg = MIMEMultipart("alternative")
-        msg["Subject"] = subject
-        msg["From"] = f"EmpleoIA <{SMTP_USER}>"
-        msg["To"] = to
-
-        msg.attach(MIMEText(html_body, "html", "utf-8"))
-
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
-            server.ehlo()
-            server.starttls()
-            server.login(SMTP_USER, SMTP_PASSWORD)
-            server.sendmail(SMTP_USER, to, msg.as_string())
-
-        logger.info(f"Email enviado a {to}: {subject}")
-        return True
-
-    except Exception as e:
-        logger.error(f"Error enviando email: {e}")
-        return False
+    """Envía un email HTML por el proveedor configurado (email_delivery.py: reintentos y rebotes)."""
+    import email_delivery
+    return email_delivery.send(to, subject, html_body)
 
 
 def _get_email_template(title: str, body: str, cta_url: str = "", cta_text: str = "") -> str:
@@ -258,6 +231,14 @@ def send_weekly_digests():
     return {"sent": sum(r.get("sent", 0) for r in per_user.values()), "users": len(per_user)}
 
 
+def _claim_minutes() -> int:
+    """Minutos tras los que un resumen tomado y sin confirmar se da por perdido (`WEEKLY_DIGEST_CLAIM_MINUTES`)."""
+    try:
+        return max(5, int(os.getenv("WEEKLY_DIGEST_CLAIM_MINUTES", "60")))
+    except ValueError:
+        return 60
+
+
 def _send_weekly_digest():
     """Resumen semanal de la cuenta actual."""
     import accounts
@@ -266,6 +247,8 @@ def _send_weekly_digest():
     if uid is None:
         # sin login no hay cuenta donde anotar el último envío: se mandaría cada hora
         return {"sent": 0, "reason": "sin cuenta"}
+    if accounts.recover_weekly_digest(uid, datetime.now() - timedelta(minutes=_claim_minutes())):
+        logger.warning("Resumen semanal sin confirmar (el worker se cortó): se vuelve a mandar")
     user = accounts.get_user(uid)
     if user is None or not user["weekly_digest"]:
         return {"sent": 0, "reason": "apagado"}
@@ -291,7 +274,9 @@ def _send_weekly_digest():
     if weekly_digest_empty(data):
         return {"sent": 0, "reason": "sin novedades"}
     sent = _send_email(_recipient(), "📈 EmpleoIA: tu resumen de la semana", weekly_digest_html(data))
-    if not sent:
+    if sent:
+        accounts.confirm_weekly_digest(uid, now)
+    else:
         accounts.mark_weekly_digest(uid, previous)
     return {"sent": int(bool(sent))}
 
@@ -445,8 +430,9 @@ def telegram_configured() -> bool:
 
 
 def email_configured() -> bool:
-    """True si el SMTP tiene credenciales y destinatario."""
-    return bool(SMTP_USER and SMTP_PASSWORD and NOTIFICATION_EMAIL)
+    """True si el proveedor de email tiene credenciales (SMTP o SendGrid)."""
+    import email_delivery
+    return email_delivery.configured()
 
 
 TELEGRAM_MAX_CHARS = 4096

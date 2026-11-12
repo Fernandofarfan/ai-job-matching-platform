@@ -45,6 +45,9 @@ class User(Base):
     # cuándo apagó el resumen semanal por email (None = lo recibe)
     weekly_digest_off_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     weekly_digest_sent_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # Resumen tomado y todavía sin confirmar: si el worker muere antes de mandarlo, se vuelve al anterior
+    weekly_digest_claimed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    weekly_digest_claimed_from: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
 class AccountError(ValueError):
@@ -403,7 +406,8 @@ def claim_weekly_digest(user_id: int, previous: Optional[datetime], when: dateti
     last = User.weekly_digest_sent_at
     with _sessions()() as session:
         result = session.execute(update(User).where(User.id == user_id, last.is_(None) if previous is None
-                                                    else last == previous).values(weekly_digest_sent_at=when))
+                                                    else last == previous).values(
+            weekly_digest_sent_at=when, weekly_digest_claimed_at=when, weekly_digest_claimed_from=previous))
         session.commit()
         return bool(getattr(result, 'rowcount', 0))
 
@@ -414,7 +418,30 @@ def mark_weekly_digest(user_id: int, when: Optional[datetime]):
         user = session.get(User, user_id)
         if user is not None:
             user.weekly_digest_sent_at = when
+            user.weekly_digest_claimed_at = user.weekly_digest_claimed_from = None
             session.commit()
+
+
+def confirm_weekly_digest(user_id: int, when: datetime):
+    """El resumen tomado en `when` ya salió: deja de poder recuperarse."""
+    with _sessions()() as session:
+        session.execute(update(User).where(User.id == user_id, User.weekly_digest_claimed_at == when).values(
+            weekly_digest_claimed_at=None, weekly_digest_claimed_from=None))
+        session.commit()
+
+
+def recover_weekly_digest(user_id: int, older_than: datetime) -> bool:
+    """Un resumen tomado antes de `older_than` y nunca confirmado (el worker murió) vuelve a estar pendiente."""
+    with _sessions()() as session:
+        user = session.get(User, user_id)
+        claimed = user.weekly_digest_claimed_at if user is not None else None
+        if claimed is None or claimed >= older_than:
+            return False
+        result = session.execute(update(User).where(User.id == user_id, User.weekly_digest_claimed_at == claimed)
+                                 .values(weekly_digest_sent_at=User.weekly_digest_claimed_from,
+                                         weekly_digest_claimed_at=None, weekly_digest_claimed_from=None))
+        session.commit()
+        return bool(getattr(result, 'rowcount', 0))
 
 
 def ai_consent_missing() -> bool:

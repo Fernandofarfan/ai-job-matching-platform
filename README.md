@@ -112,6 +112,7 @@
 ### 📧 **Notificaciones por Email (NEW)**
 - Recordatorios de seguimiento (email o Telegram) para postulaciones con fecha vencida
 - Digest de nuevas ofertas encontradas
+- Emails por SMTP o SendGrid (`EMAIL_PROVIDER`), con reintentos ante fallas temporales y sin volver a mandar a direcciones que rebotaron o denunciaron spam (webhook firmado `POST /webhooks/sendgrid`)
 - Resumen semanal por email (worker con Celery beat y SMTP): ofertas nuevas de las alertas, postulaciones sin respuesta hace `FOLLOWUP_DAYS` días o más, y seguimientos o cierres de los próximos 7 días. No se manda si no hay novedades; cada cuenta lo apaga en Mi cuenta
 - Template HTML premium en dark mode
 - **Portales:** Computrabajo, Bumeran, ZonaJobs (misma plataforma que Bumeran) y GetOnBoard (API pública, sin navegador) en la búsqueda universal, las alertas y el monitor diario.
