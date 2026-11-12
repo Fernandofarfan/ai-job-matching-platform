@@ -26,5 +26,8 @@ async def sendgrid_events(request: Request):
         events = json.loads(body)
     except ValueError:
         return JSONResponse({'error': 'JSON inválido'}, status_code=400)
-    suppressed = await run_in_threadpool(email_delivery.handle_sendgrid_events, events)
+    try:
+        suppressed = await run_in_threadpool(email_delivery.handle_sendgrid_events, events)
+    except email_delivery.SuppressionError:
+        return JSONResponse({'error': 'No se pudieron guardar los rebotes'}, status_code=503)
     return JSONResponse({'success': True, 'suppressed': suppressed})

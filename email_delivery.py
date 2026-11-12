@@ -86,8 +86,8 @@ def is_suppressed(email: str) -> bool:
         return False
 
 
-def suppress(email: str, reason: str):
-    """Agrega la dirección a la lista de rebotes (si ya estaba, no hace nada)."""
+def suppress(email: str, reason: str) -> bool:
+    """Agrega la dirección a la lista de rebotes (si ya estaba, no hace nada); False si la base falló."""
     try:
         with accounts._sessions()() as session:
             session.add(EmailSuppression(email_hash=_hash(email), reason=reason[:50]))
@@ -97,6 +97,12 @@ def suppress(email: str, reason: str):
         pass
     except Exception as e:
         logger.error(f'No se pudo suprimir el email: {type(e).__name__}')
+        return False
+    return True
+
+
+class SuppressionError(Exception):
+    """No se pudo guardar un rebote: el webhook responde error y SendGrid lo reintenta."""
 
 
 def unsuppress(email: str) -> bool:
@@ -219,8 +225,9 @@ def verify_sendgrid_signature(payload: bytes, signature: str, timestamp: str, no
 
 
 def handle_sendgrid_events(events) -> int:
-    """Suprime las direcciones con rebote, denuncia de spam o `dropped` por esas causas; devuelve cuántas."""
-    count = 0
+    """Suprime las direcciones con rebote, denuncia de spam o `dropped` por esas causas; devuelve cuántas.
+    Levanta SuppressionError si alguna no se pudo guardar."""
+    count = failed = 0
     for event in events if isinstance(events, list) else []:
         if not isinstance(event, dict) or not isinstance(event.get('email'), str):
             continue
@@ -229,6 +236,10 @@ def handle_sendgrid_events(events) -> int:
         if kind == 'bounce' and event.get('type') == 'blocked':
             continue  # bloqueo temporal del servidor de destino
         if kind in SUPPRESS_EVENTS or (kind == 'dropped' and reason.startswith(SUPPRESS_DROP_REASONS)):
-            suppress(event['email'], f'sendgrid_{kind}')
-            count += 1
+            if suppress(event['email'], f'sendgrid_{kind}'):
+                count += 1
+            else:
+                failed += 1
+    if failed:
+        raise SuppressionError(f'{failed} rebotes sin guardar')
     return count
