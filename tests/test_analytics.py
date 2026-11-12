@@ -156,3 +156,14 @@ def test_history_makes_rejected_and_days_exact():
     ]
     assert portal_stats(jobs, history)[0]['applied'] == 1
     assert avg_days_to_apply(jobs, history) == 3.0
+
+
+def test_days_to_apply_uses_creation_when_created_as_applied():
+    """Una postulación cargada ya postulada usa su fecha de alta aunque después pase a entrevista."""
+    from web.analytics import avg_days_to_apply
+    jobs = [{'id': 1, 'status': 'interviewing', 'created_at': '2026-01-01', 'applied_date': '2026-01-01'}]
+    history = [
+        {'application_id': 1, 'old_status': None, 'new_status': 'applied', 'changed_at': '2026-01-01'},
+        {'application_id': 1, 'old_status': 'applied', 'new_status': 'interviewing', 'changed_at': '2026-01-10'},
+    ]
+    assert avg_days_to_apply(jobs, history) == 0
