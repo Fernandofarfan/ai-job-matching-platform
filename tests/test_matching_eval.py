@@ -39,6 +39,7 @@ def test_dataset_covers_three_languages():
 
 
 def test_company_age_is_not_required_experience():
+    """Los años de la empresa no se toman como experiencia pedida."""
     from resume_parser import jobMatcher
     m = jobMatcher()
     assert m._extract_required_experience('Empresa con 30 años de experiencia en el mercado. Buscamos dev.') == 0

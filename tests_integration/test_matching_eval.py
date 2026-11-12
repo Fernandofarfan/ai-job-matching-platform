@@ -23,6 +23,7 @@ def test_script_exit_code(monkeypatch, capsys):
 
 
 def test_compare_without_gemini_key(monkeypatch, capsys):
+    """Sin GEMINI_API_KEY, --compare mide TF-IDF y avisa que no mide embeddings."""
     monkeypatch.delenv('GEMINI_API_KEY', raising=False)
     monkeypatch.setenv('MATCHING_BACKEND', 'tfidf')
     from scripts import eval_matching
@@ -34,6 +35,7 @@ def test_compare_without_gemini_key(monkeypatch, capsys):
 
 
 def test_compare_honors_json_and_threshold(monkeypatch, capsys):
+    """--compare respeta --json y --min-ndcg."""
     monkeypatch.delenv('GEMINI_API_KEY', raising=False)
     from scripts import eval_matching
     assert eval_matching.main(['--compare', '--json', '--min-ndcg', '1.01']) == 1
@@ -42,6 +44,7 @@ def test_compare_honors_json_and_threshold(monkeypatch, capsys):
 
 
 def test_compare_does_not_report_tfidf_as_embeddings(monkeypatch, capsys):
+    """Si embeddings cae a TF-IDF, --compare no lo informa como embeddings."""
     import embeddings
     monkeypatch.setattr(embeddings, 'enabled', lambda: True)
     monkeypatch.setattr(embeddings, 'embed', lambda texts: None)
