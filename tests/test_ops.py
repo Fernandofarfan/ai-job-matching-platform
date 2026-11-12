@@ -30,3 +30,16 @@ def test_ai_endpoints_are_rate_limited(client, app):
     assert 429 in codes
     assert all(client.get('/api/health').status_code == 200 for _ in range(35))
     limiter_obj.reset()
+
+
+def test_api_upload_too_large_returns_json_413(client, app):
+    """En rutas /api/ un request demasiado grande devuelve 413 en JSON."""
+    previous = app.config['MAX_CONTENT_LENGTH']
+    app.config['MAX_CONTENT_LENGTH'] = 10
+    try:
+        response = client.post('/api/salary/analyze-csv', data={'file': (io.BytesIO(b'x' * 100), 'a.csv')},
+                               content_type='multipart/form-data')
+        assert response.status_code == 413
+        assert 'error' in response.get_json()
+    finally:
+        app.config['MAX_CONTENT_LENGTH'] = previous

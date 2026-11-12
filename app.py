@@ -3021,6 +3021,8 @@ def health():
 
 @app.errorhandler(413)
 def file_too_large(e):
+    if request.path.startswith('/api/'):
+        return jsonify({'error': f"El archivo supera el máximo de {app.config['MAX_CONTENT_LENGTH'] // (1024 * 1024)} MB"}), 413
     flash(f"El archivo supera el máximo de {app.config['MAX_CONTENT_LENGTH'] // (1024 * 1024)} MB", 'danger')
     return redirect(url_for('profile'))
 
