@@ -79,7 +79,7 @@ def reset_password(token):
             flash('Las contraseñas no coinciden', 'danger')
         else:
             try:
-                accounts.set_password(user['id'], password)
+                accounts.set_password(user['id'], password, expected_hash=user['password_hash'])
             except accounts.AccountError as e:
                 flash(str(e), 'danger')
             else:

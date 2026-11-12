@@ -261,15 +261,21 @@ def find_user_id(email: str) -> Optional[int]:
         return session.execute(select(User.id).where(User.email == normalize_email(email))).scalar_one_or_none()
 
 
-def set_password(user_id: int, password: str):
-    """Reemplaza la contraseña (invalida las sesiones abiertas y los enlaces de recuperación)."""
+def set_password(user_id: int, password: str, expected_hash: Optional[str] = None):
+    """Reemplaza la contraseña (invalida las sesiones abiertas y los enlaces de recuperación).
+
+    Con `expected_hash`, solo si la contraseña sigue siendo esa: dos usos simultáneos del mismo enlace no ganan ambos.
+    """
+    from sqlalchemy import update
     _check_password(password)
+    query = update(User).where(User.id == user_id).values(password_hash=generate_password_hash(password))
+    if expected_hash is not None:
+        query = query.where(User.password_hash == expected_hash)
     with _sessions()() as session:
-        user = session.get(User, user_id)
-        if user is None:
-            raise AccountError('La cuenta no existe')
-        user.password_hash = generate_password_hash(password)
+        changed = session.execute(query).rowcount
         session.commit()
+    if not changed:
+        raise AccountError('La cuenta no existe o la contraseña ya se cambió')
 
 
 def change_password(user_id: int, current: str, new: str):
