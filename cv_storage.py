@@ -17,8 +17,13 @@ from cryptography.fernet import Fernet, InvalidToken
 logger = logging.getLogger(__name__)
 
 UPLOADS_DIR = 'uploads'
-GENERATED_DIRS = (os.path.join('temp', 'resumes'), os.path.join('temp', 'cover_letters'))
 _FERNET_PREFIX = b'gAAAAA'
+
+
+def generated_dirs():
+    """CVs adaptados y cartas; GENERATED_DIR es la carpeta compartida entre web y worker."""
+    root = os.getenv('GENERATED_DIR', 'temp')
+    return (os.path.join(root, 'resumes'), os.path.join(root, 'cover_letters'))
 
 
 def _fernet() -> Optional[Fernet]:
@@ -104,7 +109,7 @@ def delete(filename: str) -> bool:
 def delete_all() -> int:
     """Borra todos los CVs y los documentos generados a partir de ellos."""
     removed = 0
-    for directory in (UPLOADS_DIR, *GENERATED_DIRS):
+    for directory in (UPLOADS_DIR, *generated_dirs()):
         for path in glob.glob(os.path.join(directory, '*')):
             if os.path.isfile(path):
                 os.remove(path)
@@ -125,7 +130,7 @@ def purge_generated(days: int, now: Optional[float] = None) -> int:
     """Borra CVs adaptados y cartas generados hace más de `days` días."""
     cutoff = (now or time.time()) - days * 86400
     removed = 0
-    for directory in GENERATED_DIRS:
+    for directory in generated_dirs():
         for path in glob.glob(os.path.join(directory, '*')):
             if os.path.isfile(path) and os.path.getmtime(path) < cutoff:
                 try:

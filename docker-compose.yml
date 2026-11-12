@@ -21,6 +21,7 @@ services:
       - DB_NAME=job_tracker
       - REDIS_URL=redis://redis:6379/0
       - SCRAPER_BACKEND=celery
+      - AI_BACKEND=celery
       - SECRET_KEY=${SECRET_KEY:-}
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
       - SMTP_HOST=${SMTP_HOST:-smtp.gmail.com}

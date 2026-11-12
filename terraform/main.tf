@@ -32,6 +32,8 @@ locals {
       SESSION_COOKIE_SECURE = "1"
       CV_RETENTION_DAYS     = tostring(var.cv_retention_days)
       SCRAPER_BACKEND       = var.enable_worker ? "celery" : "thread"
+      AI_BACKEND            = var.enable_worker ? "celery" : "sync"
+      GENERATED_DIR         = "${local.results_mount}/generated"
       LOG_LEVEL             = "INFO"
     },
     var.enable_redis ? { REDIS_URL = local.redis_url, RATELIMIT_STORAGE_URI = local.redis_url } : {},

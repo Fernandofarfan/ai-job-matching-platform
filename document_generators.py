@@ -2,6 +2,7 @@
 import logging
 import os
 from datetime import datetime
+from typing import Optional
 
 from ai_engine import _call_gemini
 
@@ -9,6 +10,11 @@ logger = logging.getLogger(__name__)
 
 # _call_gemini devuelve estos mensajes en lugar de lanzar excepciones
 GEMINI_ERROR_PREFIXES = ("⚠️ Gemini no está configurado", "Error al contactar Gemini")
+
+
+def _generated_dir(kind: str) -> str:
+    """GENERATED_DIR es la carpeta compartida entre la web y el worker de Celery."""
+    return os.path.join(os.getenv("GENERATED_DIR", "temp"), kind)
 
 
 def _safe_filename(prefix: str, job_title: str, company: str, ext: str) -> str:
@@ -74,8 +80,8 @@ No inventes datos de contacto. Devolvé SOLO el texto de la carta, sin markdown.
         return _generate(prompt)
 
     def save_cover_letter(self, letter_text: str, job_title: str, company: str,
-                          output_dir: str = os.path.join("temp", "cover_letters")) -> str:
-        return _save_docx(letter_text, output_dir, _safe_filename("cover_letter", job_title, company, "docx"))
+                          output_dir: Optional[str] = None) -> str:
+        return _save_docx(letter_text, output_dir or _generated_dir("cover_letters"), _safe_filename("cover_letter", job_title, company, "docx"))
 
 
 class ResumeOptimizer:
@@ -96,5 +102,5 @@ Secciones: RESUMEN PROFESIONAL, HABILIDADES TÉCNICAS, EXPERIENCIA, PROYECTOS (s
         return _generate(prompt)
 
     def save_resume(self, resume_text: str, job_title: str, company: str,
-                    output_dir: str = os.path.join("temp", "resumes")) -> str:
-        return _save_docx(resume_text, output_dir, _safe_filename("resume", job_title, company, "docx"))
+                    output_dir: Optional[str] = None) -> str:
+        return _save_docx(resume_text, output_dir or _generated_dir("resumes"), _safe_filename("resume", job_title, company, "docx"))

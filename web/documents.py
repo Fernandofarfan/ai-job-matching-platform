@@ -1,9 +1,8 @@
 """Cartas de presentación y optimización de CV."""
 import os
-import pandas as pd
-import time
 import ats_score
-from document_generators import CoverLetterGenerator, ResumeOptimizer
+import document_batch
+from document_generators import ResumeOptimizer
 from flask import flash, jsonify, redirect, render_template, request, url_for
 
 from app import (  # noqa: F401
@@ -30,83 +29,38 @@ def batch_cover_letters():
         flash('Error loading page', 'danger')
         return redirect(url_for('index'))
 
+def _start_batch(kind):
+    """Genera el lote en el pedido o lo encola en Celery (AI_BACKEND=celery) y devuelve el id."""
+    data = request.get_json(silent=True) or {}
+    try:
+        if document_batch.use_celery():
+            return jsonify({'success': True, 'task_id': document_batch.enqueue(
+                kind, data.get('filename'), data.get('num_jobs', 5))}), 202
+        return jsonify(document_batch.run(kind, data.get('filename'), data.get('num_jobs', 5),
+                                          get_resume_text_from_profile()))
+    except document_batch.BatchError as e:
+        return jsonify({'success': False, 'error': str(e)}), e.status
+    except Exception as e:
+        logger.error(f"Error en el lote de {kind}: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': 'Error interno del servidor'}), 500
+
+
 @app.route('/api/batch_cover_letters', methods=['POST'])
 def api_batch_cover_letters():
+    return _start_batch('cover_letters')
+
+
+@app.route('/api/documents/tasks/<task_id>')
+def api_document_task(task_id):
+    """Progreso y resultado de un lote encolado en Celery."""
     try:
-        data = request.json
-        filename = data.get('filename')
-        num_jobs = int(data.get('num_jobs', 5))
-        
-        if not filename:
-            return jsonify({'success': False, 'error': 'Filename is required'}), 400
-        
-        resume_text = get_resume_text_from_profile()
-        if not resume_text:
-            return jsonify({'success': False, 'error': 'Please upload your resume first'}), 400
-        
-        file_path = os.path.join('results', filename)
-        if not os.path.exists(file_path):
-            return jsonify({'success': False, 'error': 'File not found'}), 404
-        
-        df = pd.read_csv(file_path, encoding='latin-1')
-        
-        description_col = None
-        for col in ['Job_Description', 'Description', 'job_description', 'description']:
-            if col in df.columns:
-                description_col = col
-                break
-        
-        if not description_col:
-            return jsonify({'success': False, 'error': 'No job description column found'}), 400
-        
-        generator = CoverLetterGenerator()
-        results = []
-        
-        jobs_to_process = df.head(num_jobs)
-        
-        for index, row in jobs_to_process.iterrows():
-            try:
-                job_title = row.get('Title', 'Unknown Position')
-                company = row.get('Company', 'Unknown Company')
-                job_description = str(row.get(description_col, ''))
-                
-                if not job_description or job_description == 'nan':
-                    continue
-                
-                cover_letter = generator.generate_cover_letter(resume_text, job_description, job_title, company)
-                saved_filename = generator.save_cover_letter(cover_letter, job_title, company)
-                
-                results.append({
-                    'job_title': job_title,
-                    'company': company,
-                    'filename': saved_filename,
-                    'status': 'success'
-                })
-                
-                time.sleep(2)
-                
-            except Exception as e:
-                logger.error(f"Error generating cover letter for job {index}: {e}")
-                results.append({
-                    'job_title': row.get('Title', 'Unknown'),
-                    'company': row.get('Company', 'Unknown'),
-                    'filename': None,
-                    'status': 'failed',
-                    'error': str(e)
-                })
-        
-        successful = sum(1 for r in results if r['status'] == 'success')
-        
-        return jsonify({
-            'success': True,
-            'results': results,
-            'total': len(results),
-            'successful': successful
-        })
-        
+        state = document_batch.status(task_id)
     except Exception as e:
-        logger.error(f"Error in batch cover letter generation: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+        logger.warning(f"No se pudo consultar la tarea {task_id}: {e}")
+        return jsonify({'success': False, 'error': 'No se pudo consultar la tarea'}), 503
+    if state is None:
+        return jsonify({'success': False, 'error': 'Tarea desconocida'}), 404
+    return jsonify(state)
 
 @app.route('/optimize_resume')
 def optimize_resume_page():
@@ -205,79 +159,7 @@ def batch_optimize_page():
 
 @app.route('/api/batch_optimize', methods=['POST'])
 def api_batch_optimize():
-    try:
-        data = request.json
-        filename = data.get('filename')
-        num_jobs = int(data.get('num_jobs', 5))
-        
-        if not filename:
-            return jsonify({'success': False, 'error': 'Filename is required'}), 400
-        
-        resume_text = get_resume_text_from_profile()
-        if not resume_text:
-            return jsonify({'success': False, 'error': 'Please upload your resume first'}), 400
-        
-        file_path = os.path.join('results', filename)
-        if not os.path.exists(file_path):
-            return jsonify({'success': False, 'error': 'File not found'}), 404
-        
-        df = pd.read_csv(file_path, encoding='latin-1')
-        
-        description_col = None
-        for col in ['Job_Description', 'Description', 'job_description', 'description']:
-            if col in df.columns:
-                description_col = col
-                break
-        
-        if not description_col:
-            return jsonify({'success': False, 'error': 'No job description column found'}), 400
-        
-        optimizer = ResumeOptimizer()
-        results = []
-        
-        jobs_to_process = df.head(num_jobs)
-        
-        for index, row in jobs_to_process.iterrows():
-            try:
-                job_title = row.get('Title', 'Unknown Position')
-                company = row.get('Company', 'Unknown Company')
-                job_description = str(row.get(description_col, ''))
-                
-                if not job_description or job_description == 'nan':
-                    continue
-                
-                optimized_resume = optimizer.optimize_resume(resume_text, job_description, job_title, company)
-                saved_filename = optimizer.save_resume(optimized_resume, job_title, company)
-                
-                results.append({
-                    'job_title': job_title,
-                    'company': company,
-                    'filename': saved_filename,
-                    'status': 'success'
-                })
-                
-                time.sleep(2)
-                
-            except Exception as e:
-                logger.error(f"Error optimizing for job {index}: {e}")
-                results.append({
-                    'job_title': row.get('Title', 'Unknown'),
-                    'company': row.get('Company', 'Unknown'),
-                    'filename': None,
-                    'status': 'failed',
-                    'error': str(e)
-                })
-        
-        return jsonify({
-            'success': True,
-            'results': results,
-            'total': len(results),
-            'successful': len([r for r in results if r['status'] == 'success'])
-        })
-        
-    except Exception as e:
-        logger.error(f"Error in batch optimization: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+    return _start_batch('resumes')
 
 # ─────────────────────────────────────────────────────────────
 # NUEVAS RUTAS: Analytics, Tracker Stats, Error Handlers
