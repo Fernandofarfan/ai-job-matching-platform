@@ -161,7 +161,8 @@ def get_user(user_id) -> Optional[dict]:
                 'email_verified': user.email_verified_at is not None, 'disabled': user.disabled_at is not None,
                 'terms_accepted': user.terms_accepted_at is not None, 'ai_consent': user.ai_consent_at is not None,
                 'weekly_digest': user.weekly_digest_off_at is None,
-                'weekly_digest_since': user.weekly_digest_sent_at or user.created_at}
+                'weekly_digest_since': user.weekly_digest_sent_at or user.created_at,
+                'weekly_digest_sent_at': user.weekly_digest_sent_at}
 
 
 def is_admin(user_id) -> bool:
