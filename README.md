@@ -110,10 +110,13 @@
 - Exportación a PDF
 
 ### 📧 **Notificaciones por Email (NEW)**
-- Recordatorios de follow-up para postulaciones con fecha vencida
+- Recordatorios de seguimiento (email o Telegram) para postulaciones con fecha vencida
 - Digest de nuevas ofertas encontradas
 - Resumen semanal de actividad (postulaciones, entrevistas, tasa de respuesta)
 - Template HTML premium en dark mode
+- **Portales:** Computrabajo, Bumeran, ZonaJobs (misma plataforma que Bumeran) y GetOnBoard (API pública, sin navegador) en la búsqueda universal, las alertas y el monitor diario.
+- **Puntaje ATS** (`/optimize_resume` → "Calcular puntaje ATS", o `POST /api/ats_score`): puntaje de 0 a 100 sin IA con contacto, secciones, extensión, logros medibles, fechas y palabras clave de la oferta que faltan en el CV.
+- **Recordatorios del tracker:** cada postulación acepta fecha de seguimiento, fecha límite y notas. Celery Beat manda un solo aviso diario por email o Telegram con los seguimientos vencidos; sin fecha, avisa `FOLLOWUP_DAYS` días después de postular. Cada recordatorio se manda una vez.
 - **Alertas de empleo** (`/alerts`): guardá una búsqueda y recibí por email o Telegram solo las ofertas nuevas, sin duplicados entre portales y con match mínimo opcional contra tu CV. Configurá `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` y `ALERTS_INTERVAL_HOURS` en `.env`.
 
 ### ⚡ **Rendimiento y Modo Offline (PWA)**

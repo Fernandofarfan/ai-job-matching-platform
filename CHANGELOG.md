@@ -8,6 +8,9 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Agregado
+- Portales ZonaJobs (reutiliza el parser de Bumeran) y GetOnBoard (API JSON pública) en búsqueda universal, alertas y monitor de scrapers. El parser de Bumeran ya no toma "Apto discapacidad" como empresa.
+- Puntaje ATS sin IA (`ats_score.py`): página en `/optimize_resume` y `POST /api/ats_score`.
+- Recordatorios del tracker: fecha de seguimiento, fecha límite y notas editables (`PUT /api/tracker/job/<id>/reminder`), aviso diario único por email o Telegram que no se repite (`last_reminder_at`, migración `0004_tracker_reminders`) y `FOLLOWUP_DAYS` para postulaciones sin fecha.
 - Infraestructura GCP reescrita (`terraform/`): la configuración anterior no pasaba `terraform validate`. Ahora hay staging y prod con estado separado en GCS, Cloud SQL con backups diarios, PITR e IP privada vía Private Services Access, worker de Celery en Cloud Run worker pool, job de migraciones de Alembic, bucket privado para los CVs, cuenta de servicio con acceso solo a sus secretos y egress `PRIVATE_RANGES_ONLY` (con `ALL_TRAFFIC` y sin Cloud NAT no había salida a internet). Workflows `Terraform` (fmt, validate, `terraform test`) y `Deploy a GCP` (staging en cada push a `main`, prod manual, plan en PRs).
 - Privacidad de CVs: con `CV_ENCRYPTION_KEY` los CVs de `uploads/` se guardan cifrados (Fernet) y los parsers leen una copia temporal descifrada. Una tarea diaria de Celery cifra los CVs viejos y, con `CV_RETENTION_DAYS`, borra los CVs vencidos, sus perfiles y los documentos generados. Botón "Borrar mis datos" en `/profile` (Ley 25.326), que ahora borra los perfiles de todos los roles.
 - Tests de integración (`tests_integration/`, job de CI `integration`) contra MySQL 8 y Redis reales, y E2E con Playwright de login, subida de CV y tracker. Se corren con `INTEGRATION=1 python -m pytest tests_integration`.
