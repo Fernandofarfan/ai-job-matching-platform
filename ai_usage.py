@@ -30,7 +30,7 @@ def _storage():
 
 
 def _redis():
-    """Cliente Redis si RATELIMIT_STORAGE_URI es redis://: la caché de respuestas se comparte entre instancias."""
+    """Cliente Redis si RATELIMIT_STORAGE_URI es redis://, para compartir la caché entre instancias."""
     uri = os.getenv('RATELIMIT_STORAGE_URI', '')
     if not uri.startswith(('redis://', 'rediss://')):
         return None
@@ -176,7 +176,7 @@ def _count_hit():
 
 
 def cache_get(model, prompt, temperature):
-    """Respuesta guardada para el mismo modelo, prompt y temperatura (en memoria o en Redis), o None."""
+    """Respuesta guardada para el mismo modelo, prompt y temperatura (memoria o Redis), o None."""
     ttl = _cache_ttl()
     if temperature > CACHE_MAX_TEMPERATURE or not ttl:
         return None
@@ -210,7 +210,7 @@ def cache_get(model, prompt, temperature):
 
 
 def cache_set(model, prompt, temperature, text):
-    """Guarda la respuesta en memoria y, con Redis, para las demás instancias (AI_CACHE_TTL segundos)."""
+    """Guarda la respuesta en memoria y, con Redis, para las demás instancias (AI_CACHE_TTL s)."""
     ttl = _cache_ttl()
     if temperature > CACHE_MAX_TEMPERATURE or not ttl:
         return
