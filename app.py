@@ -150,6 +150,7 @@ def register():
                 except accounts.AccountError as e:
                     flash(str(e), 'danger')
                 else:
+                    account.audit(user_id, 'register')
                     user = accounts.get_user(user_id)
                     sent = not user['email_verified'] and account.send_verification(user)
                     if auth.verification_required() and not user['email_verified']:
@@ -160,7 +161,6 @@ def register():
                                   'avisale al administrador', 'danger')
                         return redirect(url_for('login', next=next_url))
                     auth.start_session(session, app.secret_key, user_id)
-                    account.audit(user_id, 'register')
                     return redirect(_safe_next(next_url))
     except SQLAlchemyError as e:
         logger.error(f"Registro sin base de datos: {e}")

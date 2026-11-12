@@ -116,3 +116,13 @@ def test_db_error_does_not_break_login(client, ana, sent, monkeypatch):
     monkeypatch.setattr(security_events, 'is_new_device', mock.Mock(side_effect=RuntimeError('db')))
     monkeypatch.setattr(security_events, 'SecurityEvent', mock.Mock(side_effect=RuntimeError('db')))
     assert _login(client).status_code == 302
+
+
+def test_register_is_recorded_when_verification_is_required(client, accounts_db, monkeypatch):
+    """Con verificación obligatoria el registro redirige al login, pero igual queda el evento."""
+    monkeypatch.setenv('REQUIRE_EMAIL_VERIFICATION', 'true')
+    monkeypatch.setenv('ALLOW_SIGNUP', 'true')
+    accounts.register('admin@example.com', PASSWORD)
+    client.post('/register', data={'email': 'nuevo@example.com', 'password': PASSWORD, 'confirm': PASSWORD})
+    uid = accounts.find_user_id('nuevo@example.com')
+    assert [e['kind'] for e in security_events.recent(uid)] == ['register']
