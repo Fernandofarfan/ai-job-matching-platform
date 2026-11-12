@@ -115,8 +115,10 @@ def login():
                     flash('Tenés que confirmar tu email, pero no se pudo mandar el enlace: avisale al administrador', 'danger')
             elif user:
                 auth.start_session(session, app.secret_key, user['id'])
+                account.audit_login(user, 'login')
                 return redirect(_safe_next(next_url))
             else:
+                account.audit(accounts.find_user_id(request.form.get('email', '')), 'login_failed')
                 flash('Email o contraseña incorrectos', 'danger')
         signup = accounts.signup_open()
     except SQLAlchemyError as e:
@@ -158,6 +160,7 @@ def register():
                                   'avisale al administrador', 'danger')
                         return redirect(url_for('login', next=next_url))
                     auth.start_session(session, app.secret_key, user_id)
+                    account.audit(user_id, 'register')
                     return redirect(_safe_next(next_url))
     except SQLAlchemyError as e:
         logger.error(f"Registro sin base de datos: {e}")

@@ -186,7 +186,7 @@ def authenticate(email: str, password: str) -> Optional[int]:
 
 OWNED_TABLES = ('applications', 'application_status_history', 'user_profiles', 'saved_searches', 'seen_jobs',
                 'networking_exclusions', 'connection_requests', 'processed_files', 'user_integrations',
-                'push_subscriptions')
+                'push_subscriptions', 'security_events')
 
 
 RESULTS_ROOT = 'results'
@@ -238,14 +238,19 @@ def adopt_legacy_files():
         claim_legacy_files(uid)
 
 
+def _owned_tables(inspector) -> list:
+    """Tablas de OWNED_TABLES con columna user_id; se inspeccionan antes de escribir, porque en
+    SQLite la inspección comparte conexión y descartaría lo pendiente de la transacción."""
+    return [t for t in OWNED_TABLES
+            if inspector.has_table(t) and 'user_id' in {c['name'] for c in inspector.get_columns(t)}]
+
+
 def claim_orphans(user_id: int):
     """Asigna al usuario las filas creadas antes del multiusuario (user_id NULL)."""
     from sqlalchemy import inspect, text
     with _sessions()() as session:
-        inspector = inspect(session.get_bind())
-        for table in OWNED_TABLES:
-            if inspector.has_table(table) and 'user_id' in {c['name'] for c in inspector.get_columns(table)}:
-                session.execute(text(f'UPDATE {table} SET user_id = :uid WHERE user_id IS NULL'), {'uid': user_id})
+        for table in _owned_tables(inspect(session.get_bind())):
+            session.execute(text(f'UPDATE {table} SET user_id = :uid WHERE user_id IS NULL'), {'uid': user_id})
         session.commit()
     claim_legacy_files(user_id)
 
@@ -307,10 +312,8 @@ def delete_account(user_id: int):
     import shutil
     from sqlalchemy import delete, inspect, text
     with _sessions()() as session:
-        inspector = inspect(session.get_bind())
-        for table in OWNED_TABLES:
-            if inspector.has_table(table) and 'user_id' in {c['name'] for c in inspector.get_columns(table)}:
-                session.execute(text(f'DELETE FROM {table} WHERE user_id = :uid'), {'uid': user_id})
+        for table in _owned_tables(inspect(session.get_bind())):
+            session.execute(text(f'DELETE FROM {table} WHERE user_id = :uid'), {'uid': user_id})
         session.execute(delete(User).where(User.id == user_id))
         session.commit()
     shutil.rmtree(os.path.join(RESULTS_ROOT, f'u{user_id}'), ignore_errors=True)

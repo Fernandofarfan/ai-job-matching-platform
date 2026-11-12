@@ -6,12 +6,14 @@ from urllib.parse import urlsplit
 
 from datetime import date
 
+from markupsafe import escape
 from flask import flash, make_response, redirect, render_template, request, send_file, session, url_for
 
 import accounts
 import auth
 import data_export
 import integrations
+import security_events
 from app import _clear_offline_data, app, delete_user_profile, limiter
 
 logger = logging.getLogger(__name__)
@@ -42,6 +44,29 @@ def send_verification(user: dict) -> bool:
     return bool(link) and _deliver(user['email'], 'Confirmá tu email en EmpleoIA',
                                    '<p>Entrá al enlace para confirmar tu cuenta. Vence en 3 días.</p>',
                                    link, 'Confirmar email')
+
+
+def audit(user_id, kind: str) -> bool:
+    """Registra el evento con la IP y el navegador del pedido."""
+    return security_events.record(user_id, kind, request.remote_addr, request.headers.get('User-Agent'))
+
+
+def audit_login(user: dict, kind: str):
+    """Registra el login y, si es un navegador nuevo para la cuenta, avisa por email en segundo plano."""
+    agent = request.headers.get('User-Agent')
+    try:
+        new_device = security_events.login_alerts_enabled() and security_events.is_new_device(user['id'], agent)
+    except Exception as e:
+        logger.error(f'No se pudo comprobar el dispositivo del login: {e}')
+        new_device = False
+    audit(user['id'], kind)
+    link = _public_url('account') if new_device else None
+    if link:
+        body = ('<p>Se inició sesión en tu cuenta desde un navegador nuevo:</p>'
+                f'<p>{escape(agent or "navegador desconocido")}<br>IP {escape(request.remote_addr or "?")}</p>'
+                '<p>Si no fuiste vos, cambiá la contraseña ya.</p>')
+        accounts.thread(_deliver, (user['email'], 'Nuevo inicio de sesión en EmpleoIA', body, link,
+                                   'Revisar mi cuenta'), daemon=True).start()
 
 
 def _account_enabled():
@@ -90,6 +115,7 @@ def reset_password(token):
                 flash(str(e), 'danger')
             else:
                 accounts.mark_verified(user['id'])  # recibió el email: la dirección es suya
+                audit(user['id'], 'password_reset')
                 session.clear()
                 flash('Listo: ya podés entrar con la contraseña nueva', 'success')
                 return _clear_offline_data(redirect(url_for('login')))
@@ -106,6 +132,7 @@ def verify_email(token):
         flash('El enlace de verificación venció o no es válido', 'danger')
     else:
         accounts.mark_verified(user['id'])
+        audit(user['id'], 'email_verified')
         flash('Email confirmado', 'success')
     return redirect(url_for('account') if auth.is_session_valid(session, app.secret_key) else url_for('login'))
 
@@ -124,7 +151,8 @@ def _render_account(new_token=None):
     response = make_response(render_template(
         'account.html', user=accounts.get_user(user_id), min_password=accounts.MIN_PASSWORD,
         integ=integrations.status(user_id), telegram_bot=bool(os.getenv('TELEGRAM_BOT_TOKEN')),
-        gmail_available=os.path.exists(_gmail_client_file()), new_token=new_token))
+        gmail_available=os.path.exists(_gmail_client_file()), new_token=new_token,
+        events=security_events.recent(user_id)))
     if new_token:
         response.headers['Cache-Control'] = 'no-store'
     return response
@@ -138,6 +166,7 @@ def save_telegram():
     except integrations.IntegrationError as e:
         flash(str(e), 'danger')
     else:
+        audit(accounts.current_user_id(), 'telegram_changed')
         flash('Chat de Telegram guardado', 'success')
     return redirect(url_for('account'))
 
@@ -158,13 +187,16 @@ def test_telegram():
 @limiter.limit('5 per minute')
 def new_extension_token():
     """Genera el token de la extensión de Chrome para esta cuenta (reemplaza al anterior)."""
-    return _render_account(new_token=integrations.new_extension_token(accounts.current_user_id()))
+    token = integrations.new_extension_token(accounts.current_user_id())
+    audit(accounts.current_user_id(), 'extension_token_created')
+    return _render_account(new_token=token)
 
 
 @app.route('/account/extension_token/revoke', methods=['POST'])
 def revoke_extension_token():
     """Revoca el token de la extensión."""
     integrations.revoke_extension_token(accounts.current_user_id())
+    audit(accounts.current_user_id(), 'extension_token_revoked')
     flash('Token de la extensión revocado', 'success')
     return redirect(url_for('account'))
 
@@ -215,6 +247,7 @@ def gmail_callback():
         flash('No se pudo conectar Gmail: volvé a intentarlo', 'danger')
         return redirect(url_for('account'))
     integrations.save_gmail_token(accounts.current_user_id(), flow.credentials.to_json())
+    audit(accounts.current_user_id(), 'gmail_connected')
     flash('Gmail conectado: las invitaciones a entrevistas van a actualizar tu tracker', 'success')
     return redirect(url_for('account'))
 
@@ -223,6 +256,7 @@ def gmail_callback():
 def gmail_disconnect():
     """Desconecta Gmail de la cuenta."""
     integrations.clear_gmail(accounts.current_user_id())
+    audit(accounts.current_user_id(), 'gmail_disconnected')
     flash('Gmail desconectado', 'success')
     return redirect(url_for('account'))
 
@@ -255,6 +289,7 @@ def change_password():
         flash(str(e), 'danger')
         return redirect(url_for('account'))
     auth.start_session(session, app.secret_key, user_id)
+    audit(user_id, 'password_changed')
     flash('Contraseña cambiada; se cerraron las otras sesiones', 'success')
     return redirect(url_for('account'))
 
@@ -269,6 +304,7 @@ def export_data():
         return redirect(url_for('account'))
     try:
         data = data_export.build(user_id)
+        audit(user_id, 'data_exported')
     except Exception as e:
         logger.error(f'No se pudo exportar la cuenta {user_id}: {e}')
         flash('No se pudieron exportar tus datos; probá de nuevo', 'danger')

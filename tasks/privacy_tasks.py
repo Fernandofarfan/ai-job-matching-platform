@@ -15,6 +15,11 @@ def enforce_cv_retention():
 
     encrypted = cv_storage.encrypt_existing()
     try:
+        import security_events
+        security_events.purge()
+    except Exception as e:
+        logger.warning(f"No se pudieron borrar los eventos de seguridad viejos: {e}")
+    try:
         encrypted += profile_store.encrypt_existing()
     except Exception as e:
         logger.warning(f"No se pudieron cifrar los perfiles existentes: {e}")

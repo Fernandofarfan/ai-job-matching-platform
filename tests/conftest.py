@@ -132,6 +132,8 @@ def app():
 
     # Fuera del patch.dict para que app y los tests compartan el mismo módulo (y su JSON_PATH temporal)
     import profile_store  # noqa: F401
+    # Modelos sobre accounts.Base: reimportarlos duplicaría sus índices en la metadata
+    import integrations, push, security_events  # noqa: F401,E401
 
     with mock.patch.dict('sys.modules', {}):
         import db_config
@@ -219,6 +221,7 @@ def _accounts_sqlite():
     engine = create_engine('sqlite://', poolclass=StaticPool, connect_args={'check_same_thread': False})
     import integrations  # noqa: F401  (registra su tabla en Base)
     import push  # noqa: F401
+    import security_events  # noqa: F401
     accounts.Base.metadata.create_all(engine)
     accounts.configure(sessionmaker(bind=engine))
     yield engine
