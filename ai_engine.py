@@ -86,7 +86,8 @@ def _call_gemini(prompt: str, temperature: float = 0.7) -> str:
         )
         usage = getattr(response, 'usage_metadata', None)
         input_tokens = getattr(usage, 'prompt_token_count', 0) or 0
-        output_tokens = getattr(usage, 'candidates_token_count', 0) or 0
+        # Los tokens de razonamiento (thinking) se facturan como salida
+        output_tokens = (getattr(usage, 'candidates_token_count', 0) or 0) + (getattr(usage, 'thoughts_token_count', 0) or 0)
         ai_usage.record(input_tokens, output_tokens)
         logger.info(f"Gemini: {input_tokens} tokens de entrada, {output_tokens} de salida")
         text = response.text.strip()

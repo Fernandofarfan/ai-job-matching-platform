@@ -18,10 +18,12 @@ def _clean_usage(monkeypatch):
     ai_usage.reset()
 
 
-def _fake_gemini(monkeypatch, text='respuesta', input_tokens=100, output_tokens=50):
+def _fake_gemini(monkeypatch, text='respuesta', input_tokens=100, output_tokens=50, thoughts=None):
     response = SimpleNamespace(
         text=text,
-        usage_metadata=SimpleNamespace(prompt_token_count=input_tokens, candidates_token_count=output_tokens),
+        usage_metadata=SimpleNamespace(
+            prompt_token_count=input_tokens, candidates_token_count=output_tokens, thoughts_token_count=thoughts,
+        ),
     )
     client = mock.Mock()
     client.models.generate_content.return_value = response
@@ -39,6 +41,12 @@ def test_call_records_tokens_and_cost(monkeypatch):
     usage = ai_usage.summary()
     assert (usage['calls'], usage['input_tokens'], usage['output_tokens']) == (1, 100, 50)
     assert usage['estimated_cost_usd'] == pytest.approx(0.0002)
+
+
+def test_thinking_tokens_count_as_output(monkeypatch):
+    _fake_gemini(monkeypatch, output_tokens=50, thoughts=30)
+    ai_engine._call_gemini('pensá', temperature=0.8)
+    assert ai_usage.summary()['output_tokens'] == 80
 
 
 def test_low_temperature_responses_are_cached(monkeypatch):
