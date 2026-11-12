@@ -2,9 +2,11 @@
 import re
 
 import pandas as pd
+from dotenv import load_dotenv
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
+load_dotenv()  # MATCHING_BACKEND y GEMINI_API_KEY de .env, también para scripts/eval_matching.py
 
 MAX_REQUIRED_YEARS = 20  # más años que esto en una oferta no es un requisito para la persona
 

@@ -1,8 +1,10 @@
 """Búsquedas de Computrabajo y Bumeran en segundo plano (scraping_jobs.py)."""
+import os
 from unittest import mock
 
 import pytest
 
+import accounts
 import scraping_jobs
 
 
@@ -65,3 +67,4 @@ def test_universal_portal_failures_are_isolated(monkeypatch, tmp_path):
     monkeypatch.setattr(module, 'GetOnBoardScraper', broken)
     module.run_universal_job('python', '')
     assert state['status'] == 'completed' and state['progress'] == 100
+    assert os.path.exists(os.path.join(accounts.results_dir(), '.searched'))
