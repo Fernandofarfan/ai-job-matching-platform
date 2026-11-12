@@ -149,6 +149,7 @@ def test_accounts_isolate_data(mysql, monkeypatch, tmp_path):
     from sqlalchemy import text
     monkeypatch.setattr(profile_store, 'JSON_PATH', str(tmp_path / 'profiles.json'))
     tag = uuid.uuid4().hex[:8]
+    monkeypatch.setenv('ALLOW_SIGNUP', 'true')
     ana = accounts.register(f'ana-{tag}@example.com', 'clave-larga-1')
     beto = accounts.register(f'beto-{tag}@example.com', 'clave-larga-2')
     db = DatabaseManager()

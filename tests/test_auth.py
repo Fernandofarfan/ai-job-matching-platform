@@ -123,3 +123,23 @@ def test_login_next_to_login_does_not_loop(registered):
     _login(registered)
     assert registered.get('/login?next=/login').headers['Location'] == '/'
     assert registered.get('/login?next=/register').headers['Location'] == '/'
+
+
+def test_register_rejects_second_account_when_signup_closed(accounts_db, monkeypatch):
+    """Aunque se saltee el chequeo de la vista, accounts.register respeta ALLOW_SIGNUP."""
+    import pytest
+    import accounts
+    monkeypatch.delenv('ALLOW_SIGNUP', raising=False)
+    accounts.register('a@example.com', 'x' * 10)
+    with pytest.raises(accounts.AccountError):
+        accounts.register('b@example.com', 'x' * 10)
+
+
+def test_first_account_requires_admin_email_on_cloud_run(accounts_db, monkeypatch):
+    """En Cloud Run no se puede crear la primera cuenta sin ADMIN_EMAIL."""
+    import pytest
+    import accounts
+    monkeypatch.setenv('K_SERVICE', 'app')
+    monkeypatch.delenv('ADMIN_EMAIL', raising=False)
+    with pytest.raises(accounts.AccountError):
+        accounts.register('a@example.com', 'x' * 10)

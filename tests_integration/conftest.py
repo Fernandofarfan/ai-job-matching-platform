@@ -33,8 +33,10 @@ def pytest_collection_modifyitems(config, items):
 @pytest.fixture(scope='session')
 def credentials(migrated_db):
     """(email, contraseña) de una cuenta creada para los E2E."""
+    from unittest import mock
     import accounts
-    accounts.register(E2E_EMAIL, E2E_PASSWORD)
+    with mock.patch.dict(os.environ, {'ALLOW_SIGNUP': 'true'}):
+        accounts.register(E2E_EMAIL, E2E_PASSWORD)
     return E2E_EMAIL, E2E_PASSWORD
 
 
