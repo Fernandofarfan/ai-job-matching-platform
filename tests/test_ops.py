@@ -37,8 +37,7 @@ def test_api_upload_too_large_returns_json_413(client, app):
     previous = app.config['MAX_CONTENT_LENGTH']
     app.config['MAX_CONTENT_LENGTH'] = 10
     try:
-        response = client.post('/api/salary/analyze-csv', data={'file': (io.BytesIO(b'x' * 100), 'a.csv')},
-                               content_type='multipart/form-data')
+        response = client.post('/api/tracker/save-from-extension', json={'title': 'x' * 100})
         assert response.status_code == 413
         assert 'error' in response.get_json()
     finally:
