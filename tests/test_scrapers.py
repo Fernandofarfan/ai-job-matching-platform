@@ -41,29 +41,45 @@ def test_bumeran_listing():
 
 
 def test_get_with_retries_recovers_after_failures():
-    driver = mock.Mock()
-    driver.get.side_effect = [TimeoutError('lento'), TimeoutError('lento'), None]
+    page = mock.Mock()
+    page.goto.side_effect = [TimeoutError('lento'), TimeoutError('lento'), None]
     sleeps = []
-    get_with_retries(driver, 'https://x', attempts=3, sleep=sleeps.append)
-    assert driver.get.call_count == 3
+    get_with_retries(page, 'https://x', attempts=3, sleep=sleeps.append)
+    assert page.goto.call_count == 3
     assert sleeps == [2.0, 4.0]
 
 
 def test_get_with_retries_raises_after_last_attempt():
-    driver = mock.Mock()
-    driver.get.side_effect = TimeoutError('caído')
+    page = mock.Mock()
+    page.goto.side_effect = TimeoutError('caído')
     with pytest.raises(TimeoutError):
-        get_with_retries(driver, 'https://x', attempts=2, sleep=lambda s: None)
-    assert driver.get.call_count == 2
+        get_with_retries(page, 'https://x', attempts=2, sleep=lambda s: None)
+    assert page.goto.call_count == 2
 
 
-def test_configure_driver_failure_closes_browser_and_raises():
-    from scrapers.common import configure_driver
-    driver = mock.Mock()
-    driver.set_page_load_timeout.side_effect = RuntimeError('sesión inválida')
+def test_browser_failure_closes_what_was_opened(monkeypatch):
+    from scrapers.common import Browser
+    monkeypatch.delenv('PLAYWRIGHT_WS_ENDPOINT', raising=False)
+    playwright = mock.Mock()
+    playwright.chromium.launch.return_value.new_context.side_effect = RuntimeError('sin memoria')
     with pytest.raises(RuntimeError):
-        configure_driver(driver)
-    driver.quit.assert_called_once()
+        Browser(playwright_factory=lambda: mock.Mock(start=lambda: playwright))
+    playwright.chromium.launch.return_value.close.assert_called_once()
+    playwright.stop.assert_called_once()
+
+
+def test_browser_uses_remote_endpoint_and_proxy(monkeypatch):
+    from scrapers.common import Browser
+    playwright = mock.Mock()
+    factory = lambda: mock.Mock(start=lambda: playwright)  # noqa: E731
+    monkeypatch.setenv('PLAYWRIGHT_WS_ENDPOINT', 'ws://chrome:3000')
+    Browser(playwright_factory=factory).close()
+    playwright.chromium.connect.assert_called_once_with('ws://chrome:3000')
+    monkeypatch.delenv('PLAYWRIGHT_WS_ENDPOINT')
+    monkeypatch.setenv('PROXY_SERVER', 'http://proxy:8080')
+    Browser(playwright_factory=factory)
+    assert playwright.chromium.launch.call_args.kwargs['proxy'] == {'server': 'http://proxy:8080'}
+    assert playwright.chromium.launch.call_args.kwargs['headless'] is True
 
 
 def test_bumeran_skips_badges_as_company():
@@ -153,12 +169,14 @@ def test_indeed_text_helpers_on_saved_description():
 
 
 def test_linkedin_text_helpers():
-    from scrapers.linkedin_scraper import linkedinClass
-    scraper = _without_browser(linkedinClass)
-    assert scraper._extract_years_of_experience('Requires 8+ years of experience in Go') == '8+ years'
-    assert scraper._extract_years_of_experience('2-3 years of experience with SQL') == '2-3 years'
-    assert scraper._extract_years_of_experience('Great team') == 'Not specified'
-    assert scraper._categorize_experience_with_limit('8+ years') == 'SKIP_HIGH_EXPERIENCE'
-    assert scraper._categorize_experience_with_limit('2-3 years') == 'Early Career (2-3 years)'
-    assert scraper._has_citizenship_requirements('must be a us citizen with active clearance')
-    assert not scraper._has_citizenship_requirements('remote from latam')
+    from scrapers import linkedin_pw
+    assert linkedin_pw.extract_years_of_experience('Requires 8+ years of experience in Go') == '8+ years'
+    assert linkedin_pw.extract_years_of_experience('2-3 years of experience with SQL') == '2-3 years'
+    assert linkedin_pw.extract_years_of_experience('at least 4 years in data') == '4 years'
+    assert linkedin_pw.extract_years_of_experience('Great team') == 'Not specified'
+    assert linkedin_pw.categorize_experience_with_limit('8+ years') == 'SKIP_HIGH_EXPERIENCE'
+    assert linkedin_pw.categorize_experience_with_limit('2-3 years') == 'Early Career (2-3 years)'
+    assert linkedin_pw.categorize_experience_with_limit('1 years') == 'Entry Level (0-1 years)'
+    assert linkedin_pw.categorize_experience_with_limit('Not specified') == 'Not specified'
+    assert linkedin_pw.has_citizenship_requirements('must be a us citizen with active clearance')
+    assert not linkedin_pw.has_citizenship_requirements('remote from latam')
