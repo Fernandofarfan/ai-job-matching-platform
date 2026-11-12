@@ -296,7 +296,7 @@ def run_search(search_id, notify, make_scraper=None, profile=None):
             row.last_result = result
             session.commit()
     logger.info(f"Alerta '{search['name']}': {result}; avisos: {sent}")
-    return {'search_id': search_id, 'found': len(jobs), 'new': len(new), 'sent': sent}
+    return {'search_id': search_id, 'found': len(jobs), 'new': pending, 'sent': sent}
 
 
 def run_all(notify, make_scraper=None):
