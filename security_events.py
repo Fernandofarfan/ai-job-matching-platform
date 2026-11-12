@@ -46,6 +46,7 @@ class SecurityEvent(accounts.Base):  # type: ignore[misc,valid-type]
 
 
 def device_id(user_agent: Optional[str]) -> str:
+    """Huella corta del navegador (hash del user agent)."""
     return hashlib.sha256((user_agent or '').encode()).hexdigest()[:16]
 
 
@@ -79,12 +80,16 @@ def recent(user_id: Optional[int], limit: int = 20) -> list:
     """Últimos eventos de la cuenta, del más nuevo al más viejo."""
     if not user_id:
         return []
-    with accounts._sessions()() as session:
-        rows = session.execute(select(SecurityEvent).where(SecurityEvent.user_id == user_id)
-                               .order_by(SecurityEvent.created_at.desc(), SecurityEvent.id.desc())
-                               .limit(limit)).scalars()
-        return [{'kind': r.kind, 'label': LABELS.get(r.kind, r.kind), 'ip': r.ip,
-                 'user_agent': r.user_agent, 'created_at': r.created_at} for r in rows]
+    try:
+        with accounts._sessions()() as session:
+            rows = session.execute(select(SecurityEvent).where(SecurityEvent.user_id == user_id)
+                                   .order_by(SecurityEvent.created_at.desc(), SecurityEvent.id.desc())
+                                   .limit(limit)).scalars()
+            return [{'kind': r.kind, 'label': LABELS.get(r.kind, r.kind), 'ip': r.ip,
+                     'user_agent': r.user_agent, 'created_at': r.created_at} for r in rows]
+    except Exception as e:
+        logger.error(f'No se pudieron leer los eventos de la cuenta {user_id}: {e}')
+        return []
 
 
 def purge(days: Optional[int] = None) -> int:
@@ -100,4 +105,5 @@ def purge(days: Optional[int] = None) -> int:
 
 
 def login_alerts_enabled() -> bool:
+    """LOGIN_ALERTS=false apaga el aviso por email de login desde un navegador nuevo."""
     return os.getenv('LOGIN_ALERTS', 'true').strip().lower() != 'false'
