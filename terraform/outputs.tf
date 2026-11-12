@@ -32,3 +32,8 @@ output "results_bucket" {
   description = "Bucket privado montado en /app/results (CSV de búsquedas compartidos entre worker y web)"
   value       = google_storage_bucket.results.name
 }
+
+output "public_access" {
+  description = "true si la web acepta tráfico sin IAM de Google"
+  value       = var.public_access
+}

@@ -110,6 +110,11 @@ jobs:
         if: github.event_name != 'pull_request'
         run: |
           url="$(terraform output -raw web_url)"
+          if [ "$(terraform output -raw public_access)" != "true" ]; then
+            # Servicio privado: sin token de IAM Cloud Run responde 403; terraform apply ya esperó la revisión lista.
+            echo "Servicio privado: se omite el smoke test HTTP"
+            exit 0
+          fi
           for i in 1 2 3 4 5; do
             curl -fsS "$url/api/health" && exit 0
             sleep 10
