@@ -234,3 +234,18 @@ def test_mark_seen_tolerates_jobs_already_recorded(db):
     job_alerts.mark_seen([_job('Dev Python')])
     job_alerts.mark_seen([_job('Dev Python'), _job('QA')])
     assert job_alerts.find_new([_job('Dev Python'), _job('QA')]) == []
+
+
+def test_long_telegram_alert_is_split_between_jobs(monkeypatch):
+    """Un aviso que supera los 4096 caracteres de Telegram sale en varios mensajes completos."""
+    jobs = [_job('Dev ' + 'x' * 400, location='Buenos Aires ' * 20) for _ in range(15)]
+    text = notification_tasks.alert_telegram_text({'name': 'Py'}, jobs)
+    assert len(text) > 4096
+    chunks = notification_tasks._telegram_chunks(text)
+    assert len(chunks) > 1 and all(len(c) <= 4096 for c in chunks)
+    assert '\n'.join(chunks) == text
+    monkeypatch.setenv('TELEGRAM_BOT_TOKEN', 't')
+    monkeypatch.setenv('TELEGRAM_CHAT_ID', 'c')
+    with mock.patch('requests.post', return_value=mock.Mock(ok=True)) as post:
+        assert notification_tasks.send_telegram(text)
+    assert post.call_count == len(chunks)
