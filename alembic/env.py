@@ -23,10 +23,11 @@ def run_migrations_offline():
 
 def run_migrations_online():
     import models
+    import job_alerts
     import profile_store
     engine = create_engine(models.get_database_url())
     with engine.connect() as connection:
-        target_metadata = [models.Base.metadata, profile_store.Base.metadata]
+        target_metadata = [models.Base.metadata, profile_store.Base.metadata, job_alerts.Base.metadata]
         context.configure(connection=connection, target_metadata=target_metadata)
         with context.begin_transaction():
             context.run_migrations()
