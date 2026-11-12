@@ -30,7 +30,6 @@ async def dashboard_view(request: Request):
     """Vista principal del Dashboard de Funnel de Conversión."""
     return templates.TemplateResponse(request=request, name="dashboard.html")
 
-@router.get("/api/analytics/funnel")
 def _owned():
     """Filtro de las postulaciones de la cuenta actual."""
     import accounts
@@ -38,6 +37,7 @@ def _owned():
     return Application.user_id.is_(None) if uid is None else Application.user_id == uid
 
 
+@router.get("/api/analytics/funnel")
 async def get_funnel_stats():
     """Retorna las estadísticas del embudo de reclutamiento."""
     if not orm_manager:
