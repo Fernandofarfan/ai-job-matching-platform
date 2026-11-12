@@ -6,6 +6,16 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar] - Extensión de Chrome vinculada desde Mi cuenta
+
+- La extensión (1.2.0) se vincula con "Vincular con mi cuenta": abre `/account/extension/link?state=…`, se confirma
+  en la app y el service worker lee el token de esa página solo si el `state` es el que generó. No se copia ningún
+  token y el token nunca va en una URL.
+- El token se guarda solo en el dispositivo (`chrome.storage.local`); el que versiones anteriores dejaban en
+  `storage.sync` se mueve a `local` al actualizar. Mi cuenta muestra si está vinculada y permite desvincularla.
+- Se quita "Generar token" de Mi cuenta (lo reemplaza la vinculación) y se registra el evento `extension_linked`.
+- E2E con Chromium y la extensión cargada: vinculación, state ajeno, migración desde `sync` y botón del popup.
+
 ## [Sin publicar] - Primeros pasos y embudo de activación
 
 - La portada muestra "Primeros pasos" (subí tu CV → primera búsqueda → creá una alerta) con el avance y un botón al

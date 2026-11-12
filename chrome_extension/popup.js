@@ -14,6 +14,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('extract-btn').addEventListener('click', extractJob);
   document.getElementById('save-btn').addEventListener('click', saveJob);
   document.getElementById('connect-btn').addEventListener('click', connectServer);
+  document.getElementById('link-btn').addEventListener('click', linkAccount);
+  document.getElementById('unlink-btn').addEventListener('click', unlinkAccount);
 });
 
 // Fuera de localhost, Chrome exige permiso explícito para el origen del servidor (optional_host_permissions)
@@ -36,20 +38,48 @@ async function connectServer() {
   showMessage(granted ? '✅ Acceso permitido' : '❌ Sin permiso, la extensión no puede guardar en ese servidor', granted ? 'success' : 'error');
 }
 
+// Abre Mi cuenta para confirmar; el service worker guarda el token cuando carga la página de confirmación
+async function linkAccount() {
+  const origin = serverOrigin();
+  if (!origin) {
+    showMessage('⚠️ La URL del servidor no es válida', 'error');
+    return;
+  }
+  const granted = await chrome.permissions.request({ origins: [origin] }).catch(() => false);
+  if (!granted) {
+    showMessage('❌ Sin permiso, la extensión no puede vincularse con ese servidor', 'error');
+    return;
+  }
+  const state = EmpleoIALink.newState();
+  await chrome.storage.session.set({ linkState: state });
+  await chrome.tabs.create({ url: EmpleoIALink.linkUrl(getServerUrl(), state) });
+}
+
+async function unlinkAccount() {
+  await chrome.storage.local.remove('extensionToken');
+  await showLinkStatus();
+  showMessage('Extensión desvinculada de este dispositivo. Para revocarla en todos, usá Mi cuenta.', 'success');
+}
+
+async function showLinkStatus() {
+  const linked = Boolean(await EmpleoIALink.getToken(chrome.storage));
+  document.getElementById('link-status').textContent = linked
+    ? '✅ Vinculada con tu cuenta en este dispositivo'
+    : 'Sin vincular: solo hace falta si la app pide login';
+  document.getElementById('unlink-btn').hidden = !linked;
+}
+
 async function loadSettings() {
-  const data = await chrome.storage.sync.get(['serverUrl', 'extensionToken']);
+  await EmpleoIALink.migrateToken(chrome.storage);
+  const data = await chrome.storage.sync.get(['serverUrl']);
   const input = document.getElementById('server-url');
-  const tokenInput = document.getElementById('extension-token');
   if (data.serverUrl) {
     input.value = data.serverUrl;
   }
-  tokenInput.value = data.extensionToken || '';
   input.addEventListener('change', async () => {
     await chrome.storage.sync.set({ serverUrl: input.value.replace(/\/+$/, '') });
   });
-  tokenInput.addEventListener('change', async () => {
-    await chrome.storage.sync.set({ extensionToken: tokenInput.value });
-  });
+  await showLinkStatus();
 }
 
 function getServerUrl() {
@@ -149,7 +179,7 @@ async function saveJob() {
       headers: {
         'Content-Type': 'application/json',
         'X-Extension-Source': 'empleoia-chrome-extension',
-        'X-Extension-Token': document.getElementById('extension-token').value
+        'X-Extension-Token': await EmpleoIALink.getToken(chrome.storage)
       },
       body: JSON.stringify(payload)
     });

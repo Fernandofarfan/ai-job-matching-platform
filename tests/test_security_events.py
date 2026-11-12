@@ -132,4 +132,4 @@ def test_account_page_works_when_events_table_fails(client, ana, sent, monkeypat
     _login(client)
     monkeypatch.setattr(security_events, 'SecurityEvent', None)
     assert client.get('/account').status_code == 200
-    assert client.post('/account/extension_token').status_code == 200
+    assert client.post('/account/extension/link', data={'state': 'estado-de-la-extension-123'}).status_code == 200

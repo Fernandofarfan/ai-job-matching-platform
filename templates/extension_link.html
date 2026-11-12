@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-4" style="max-width: 560px;">
+  <h1 class="h3 fw-bold mb-3">{{ _('Vincular la extensión de Chrome') }}</h1>
+  {% if token %}
+  <div id="empleoia-extension-link" hidden data-state="{{ state }}" data-token="{{ token }}"></div>
+  <div class="alert alert-success" role="status">{{ _('Listo: la extensión quedó vinculada con tu cuenta en este dispositivo. Ya podés cerrar esta pestaña.') }}</div>
+  <p class="text-muted small">{{ _('Si la extensión no muestra "Vinculada", volvé a tocar "Vincular con mi cuenta" desde la extensión.') }}</p>
+  {% else %}
+  <p>{{ _('La extensión EmpleoIA Saver pide guardar ofertas en el tracker de esta cuenta. Confirmá solo si la abriste vos desde la extensión.') }}</p>
+  <p class="text-muted small">{{ _('Si ya tenías la extensión vinculada en otro dispositivo, ese deja de funcionar.') }}</p>
+  <form method="POST" action="{{ url_for('confirm_link_extension') }}" class="d-flex gap-2">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="state" value="{{ state }}">
+    <button type="submit" class="btn btn-primary">{{ _('Vincular') }}</button>
+    <a href="{{ url_for('account') }}" class="btn btn-outline-secondary">{{ _('Cancelar') }}</a>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

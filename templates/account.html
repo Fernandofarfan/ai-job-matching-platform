@@ -151,25 +151,13 @@
       {% endif %}
 
       <h3 class="h6 fw-bold mt-4">{{ _('Extensión de Chrome') }}</h3>
-      {% if new_token %}
-      <div class="alert alert-warning" role="alert">
-        {{ _('Copiá este token en la extensión ahora: no se vuelve a mostrar.') }}
-        <input type="text" class="form-control mt-2" id="new-token" value="{{ new_token }}" readonly aria-label="{{ _('Token de la extensión') }}">
-      </div>
+      <p class="text-muted small">{% if integ.extension_token %}{{ _('La extensión está vinculada con esta cuenta.') }}{% else %}{{ _('Para vincularla, abrí la extensión, entrá en ⚙️ y tocá "Vincular con mi cuenta": te trae acá para confirmar, sin copiar ningún token.') }}{% endif %}</p>
+      {% if integ.extension_token %}
+      <form method="POST" action="{{ url_for('revoke_extension_token') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-outline-secondary btn-sm">{{ _('Desvincular') }}</button>
+      </form>
       {% endif %}
-      <p class="text-muted small">{% if integ.extension_token %}{{ _('La extensión tiene un token activo para esta cuenta.') }}{% else %}{{ _('Generá un token para que la extensión guarde ofertas en tu tracker.') }}{% endif %}</p>
-      <div class="d-flex gap-2">
-        <form method="POST" action="{{ url_for('new_extension_token') }}">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <button type="submit" class="btn btn-outline-primary btn-sm">{% if integ.extension_token %}{{ _('Generar uno nuevo') }}{% else %}{{ _('Generar token') }}{% endif %}</button>
-        </form>
-        {% if integ.extension_token %}
-        <form method="POST" action="{{ url_for('revoke_extension_token') }}">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <button type="submit" class="btn btn-outline-secondary btn-sm">{{ _('Revocar') }}</button>
-        </form>
-        {% endif %}
-      </div>
 
       <h3 class="h6 fw-bold mt-4">{{ _('Notificaciones push') }}</h3>
       <div id="push-box">

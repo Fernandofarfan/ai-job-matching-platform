@@ -539,5 +539,15 @@
  "Pendiente:": "Pending:",
  "Primeros pasos": "Getting started",
  "Se registraron": "Signed up",
- "Subí tu CV": "Upload your resume"
+ "Subí tu CV": "Upload your resume",
+ "Desvincular": "Unlink",
+ "Extensión de Chrome vinculada": "Chrome extension linked",
+ "La extensión EmpleoIA Saver pide guardar ofertas en el tracker de esta cuenta. Confirmá solo si la abriste vos desde la extensión.": "The EmpleoIA Saver extension asks to save jobs to this account's tracker. Confirm only if you opened this from the extension yourself.",
+ "La extensión está vinculada con esta cuenta.": "The extension is linked to this account.",
+ "Listo: la extensión quedó vinculada con tu cuenta en este dispositivo. Ya podés cerrar esta pestaña.": "Done: the extension is linked to your account on this device. You can close this tab.",
+ "Para vincularla, abrí la extensión, entrá en ⚙️ y tocá \"Vincular con mi cuenta\": te trae acá para confirmar, sin copiar ningún token.": "To link it, open the extension, go to ⚙️ and tap \"Link to my account\": it brings you here to confirm, with no token to copy.",
+ "Si la extensión no muestra \"Vinculada\", volvé a tocar \"Vincular con mi cuenta\" desde la extensión.": "If the extension does not show \"Linked\", tap \"Link to my account\" in the extension again.",
+ "Si ya tenías la extensión vinculada en otro dispositivo, ese deja de funcionar.": "If the extension was already linked on another device, that one stops working.",
+ "Vincular": "Link",
+ "Vincular la extensión de Chrome": "Link the Chrome extension"
 }
