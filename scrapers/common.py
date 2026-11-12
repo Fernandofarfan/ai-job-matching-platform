@@ -25,16 +25,17 @@ class Browser:
         self.browser = None
         try:
             endpoint = os.getenv('PLAYWRIGHT_WS_ENDPOINT')
+            proxy = {'proxy': {'server': os.environ['PROXY_SERVER']}} if os.getenv('PROXY_SERVER') else {}
             if endpoint:
                 self.browser = self._playwright.chromium.connect(endpoint)
             else:
-                options = {'headless': os.getenv('SCRAPER_HEADLESS', 'true').lower() != 'false',
-                           'args': ['--disable-blink-features=AutomationControlled']}
-                if os.getenv('PROXY_SERVER'):
-                    options['proxy'] = {'server': os.environ['PROXY_SERVER']}
-                self.browser = self._playwright.chromium.launch(**options)
+                self.browser = self._playwright.chromium.launch(
+                    headless=os.getenv('SCRAPER_HEADLESS', 'true').lower() != 'false',
+                    args=['--disable-blink-features=AutomationControlled'], **proxy)
+            # En el navegador remoto el proxy va en el contexto (no se lanzó acá)
             context = self.browser.new_context(user_agent=USER_AGENT, locale='es-AR',
-                                               viewport={'width': 1920, 'height': 1080})
+                                               viewport={'width': 1920, 'height': 1080},
+                                               **(proxy if endpoint else {}))
             context.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
             self.page = context.new_page()
             self.page.set_default_navigation_timeout(PAGE_LOAD_TIMEOUT * 1000)

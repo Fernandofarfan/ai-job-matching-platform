@@ -75,8 +75,10 @@ def test_browser_uses_remote_endpoint_and_proxy(monkeypatch):
     monkeypatch.setenv('PLAYWRIGHT_WS_ENDPOINT', 'ws://chrome:3000')
     Browser(playwright_factory=factory).close()
     playwright.chromium.connect.assert_called_once_with('ws://chrome:3000')
-    monkeypatch.delenv('PLAYWRIGHT_WS_ENDPOINT')
     monkeypatch.setenv('PROXY_SERVER', 'http://proxy:8080')
+    Browser(playwright_factory=factory).close()
+    assert playwright.chromium.connect.return_value.new_context.call_args.kwargs['proxy'] == {'server': 'http://proxy:8080'}
+    monkeypatch.delenv('PLAYWRIGHT_WS_ENDPOINT')
     Browser(playwright_factory=factory)
     assert playwright.chromium.launch.call_args.kwargs['proxy'] == {'server': 'http://proxy:8080'}
     assert playwright.chromium.launch.call_args.kwargs['headless'] is True
@@ -174,6 +176,7 @@ def test_linkedin_text_helpers():
     assert linkedin_pw.extract_years_of_experience('2-3 years of experience with SQL') == '2-3 years'
     assert linkedin_pw.extract_years_of_experience('at least 4 years in data') == '4 years'
     assert linkedin_pw.extract_years_of_experience('Great team') == 'Not specified'
+    assert linkedin_pw.extract_years_of_experience('2 years of experience with SQL and 5+ years in Go') == '5+ years'
     assert linkedin_pw.categorize_experience_with_limit('8+ years') == 'SKIP_HIGH_EXPERIENCE'
     assert linkedin_pw.categorize_experience_with_limit('2-3 years') == 'Early Career (2-3 years)'
     assert linkedin_pw.categorize_experience_with_limit('1 years') == 'Entry Level (0-1 years)'
