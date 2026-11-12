@@ -35,7 +35,7 @@ jobs:
         run: |
           python scripts/eval_matching.py --compare --json > matching-compare.json
           cat matching-compare.json
-          python scripts/eval_matching.py --compare >> "$GITHUB_STEP_SUMMARY"
+          { echo '```json'; cat matching-compare.json; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
 
       - uses: actions/upload-artifact@v4
         with:
