@@ -151,6 +151,13 @@ def app():
     yield flask_app.app
 
 
+@pytest.fixture(autouse=True)
+def _no_login_by_default(monkeypatch):
+    """Los tests corren sin login salvo que definan APP_PASSWORD (ignora el .env local)."""
+    monkeypatch.delenv('APP_PASSWORD', raising=False)
+    monkeypatch.delenv('EXTENSION_TOKEN', raising=False)
+
+
 @pytest.fixture
 def client(app):
     """Cliente HTTP de prueba."""
