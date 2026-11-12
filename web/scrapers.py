@@ -522,6 +522,10 @@ def run_universal_job(position, location):
             'zonajobs': [],
             'getonboard': []
         }
+        # En el worker de Celery job_status es otro proceso: el estado por portal puede no existir.
+        portals = job_status.setdefault('universal_scraping', {}).setdefault('scrapers', {})
+        for name in scraper_results:
+            portals.setdefault(name, {'status': 'idle', 'progress': 0})
 
         # Get credentials from environment
         computrabajo_email = os.getenv('COMPUTRABAJO_EMAIL')
