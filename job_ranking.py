@@ -176,6 +176,7 @@ def learn_weight(examples, today=None):
     default = _weight()
 
     def auc_at(weight):
+        """AUC de las ofertas marcadas con el puntaje combinado con ese peso del ranking."""
         scores = [(interested, (1 - weight) * match + weight * pref) for interested, match, pref in held_out]
         return _auc([s for i, s in scores if i], [s for i, s in scores if not i])
     best = max(WEIGHTS, key=lambda w: (round(auc_at(w), 6), -abs(w - default)))
