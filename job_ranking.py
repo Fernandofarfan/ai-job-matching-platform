@@ -27,6 +27,7 @@ _cache: dict = {}
 
 
 def _weight():
+    """Peso del ranking personal frente al match del CV (0 a 1)."""
     try:
         return min(max(float(os.getenv('RANKING_WEIGHT', '0.3')), 0.0), 1.0)
     except ValueError:
@@ -34,6 +35,7 @@ def _weight():
 
 
 def _stale_days():
+    """Días tras los que una oferta guardada sin postular cuenta como descartada."""
     try:
         return max(int(os.getenv('RANKING_STALE_DAYS', '14')), 1)
     except ValueError:
@@ -41,11 +43,13 @@ def _stale_days():
 
 
 def _norm(text):
+    """Minúsculas, sin acentos y con espacios simples."""
     text = unicodedata.normalize('NFKD', str(text or '')).encode('ascii', 'ignore').decode().lower()
     return re.sub(r'\s+', ' ', text).strip()
 
 
 def _get(job, *keys):
+    """Primer valor no vacío entre las claves (tracker en minúscula, CSV capitalizado)."""
     for key in keys:
         value = job.get(key)
         if value is not None and str(value).strip() and str(value).lower() != 'nan':
@@ -70,6 +74,7 @@ def features(job):
 
 
 def _as_date(value):
+    """Fecha de un valor date/datetime/ISO; None si no se puede leer."""
     if isinstance(value, datetime):
         return value.date()
     if isinstance(value, date):
@@ -113,6 +118,7 @@ def train(applications, today=None):
 
 
 def _log_odds(model, feat):
+    """Log-odds suavizado (Laplace) de que el rasgo aparezca en ofertas que te interesan."""
     return math.log((model['pos'][feat] + 1) / (model['n_pos'] + 2)) - math.log((model['neg'][feat] + 1) / (model['n_neg'] + 2))
 
 
