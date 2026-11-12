@@ -8,7 +8,7 @@
 {% if db_error %}
 <div class="alert alert-danger" role="alert">La base de datos no responde: las alertas necesitan MySQL.</div>
 {% endif %}
-{% if not channels.email and not channels.telegram %}
+{% if not channels.email and not channels.telegram and not channels.push %}
 <div class="alert alert-warning" role="alert">
   No hay canales configurados. Definí <code>SMTP_USER</code>/<code>SMTP_PASSWORD</code> o <code>TELEGRAM_BOT_TOKEN</code>/<code>TELEGRAM_CHAT_ID</code> en <code>.env</code>; mientras tanto las ofertas nuevas se registran pero no se envían.
 </div>
@@ -51,6 +51,10 @@
             <div class="form-check form-check-inline">
               <input class="form-check-input" type="checkbox" name="channels" value="telegram" id="ch-telegram" {% if channels.telegram %}checked{% endif %}>
               <label class="form-check-label" for="ch-telegram">Telegram{% if not channels.telegram %} (sin configurar){% endif %}</label>
+            </div>
+            <div class="form-check form-check-inline">
+              <input class="form-check-input" type="checkbox" name="channels" value="push" id="ch-push" {% if channels.push %}checked{% endif %}>
+              <label class="form-check-label" for="ch-push">Notificación push{% if not channels.push %} (activala en Mi cuenta){% endif %}</label>
             </div>
           </fieldset>
           <div class="mb-3">

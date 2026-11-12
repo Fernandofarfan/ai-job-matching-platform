@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 Base = declarative_base()
 PORTALS = ('computrabajo', 'bumeran', 'zonajobs', 'getonboard')
-CHANNELS = ('email', 'telegram')
+CHANNELS = ('email', 'telegram', 'push')
 MAX_JOBS_PER_PORTAL = 30
 # Las que no entran en un aviso quedan sin marcar y salen en el siguiente
 MAX_JOBS_PER_ALERT = 15

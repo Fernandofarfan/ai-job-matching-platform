@@ -190,6 +190,7 @@ def api(app, tracker_db):
     from fastapi.testclient import TestClient
 
     from routers import ai, documents, insights, tracker
+    from routers import push as push_router
     flask_globals = app.view_functions['index'].__globals__['get_user_profile'].__globals__
     fastapi_app = FastAPI()
     fastapi_app.include_router(tracker.router)
@@ -197,6 +198,7 @@ def api(app, tracker_db):
     fastapi_app.include_router(ai.router)
     fastapi_app.include_router(ai.extras)
     fastapi_app.include_router(documents.router)
+    fastapi_app.include_router(push_router.router)
     fastapi_app.dependency_overrides[tracker.get_db] = lambda: tracker_db
     fastapi_app.dependency_overrides[tracker.get_flask_app] = lambda: app
     fastapi_app.dependency_overrides[ai.get_ai] = lambda: SimpleNamespace(
@@ -216,6 +218,7 @@ def _accounts_sqlite():
     import accounts
     engine = create_engine('sqlite://', poolclass=StaticPool, connect_args={'check_same_thread': False})
     import integrations  # noqa: F401  (registra su tabla en Base)
+    import push  # noqa: F401
     accounts.Base.metadata.create_all(engine)
     accounts.configure(sessionmaker(bind=engine))
     yield engine

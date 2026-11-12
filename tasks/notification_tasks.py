@@ -274,6 +274,12 @@ def _telegram_allowed() -> bool:
     return accounts.current_user_id() is None or _telegram_chat() is not None
 
 
+def accounts_current():
+    """Cuenta de la tarea actual (None sin cuentas)."""
+    import accounts
+    return accounts.current_user_id()
+
+
 def _for_each_user(func):
     """Corre func() una vez por cuenta (o una sola vez sin usuario si todavía no hay cuentas)."""
     import accounts
@@ -287,8 +293,9 @@ def _for_each_user(func):
 @celery.task(name="tasks.notification_tasks.check_and_send_followup_reminders")
 def check_and_send_followup_reminders():
     """Periódica: un aviso por usuario (email y/o Telegram) con los seguimientos que vencen hoy."""
-    if not (email_configured() or telegram_configured() or os.getenv("TELEGRAM_BOT_TOKEN")):
-        return {"sent": 0, "reason": "Sin canal configurado (SMTP o Telegram)"}
+    import push
+    if not (email_configured() or telegram_configured() or os.getenv("TELEGRAM_BOT_TOKEN") or push.configured()):
+        return {"sent": 0, "reason": "Sin canal configurado (SMTP, Telegram o push)"}
     per_user = _for_each_user(_send_followup_reminders)
     if len(per_user) == 1:
         return next(iter(per_user.values()))
@@ -312,6 +319,11 @@ def _send_followup_reminders():
                                      followup_email_html(due)))
     if _telegram_allowed():
         delivered.append(send_telegram(followup_telegram_text(due)))
+    import push
+    if push.available(accounts_current()):
+        delivered.append(push.send_to_current(f"{len(due)} seguimientos pendientes",
+                                              ", ".join(str(j.get("company") or j.get("title") or "") for j in due[:3]),
+                                              "/tracker"))
     if not any(delivered):
         return {"sent": 0, "due": len(due), "error": "Ningún canal entregó el aviso"}
     db_manager.mark_reminded([job["id"] for job in due])
@@ -427,6 +439,13 @@ def notify_alert(search: dict, jobs: list) -> dict:
         )
     if "telegram" in search["channels"] and _telegram_allowed():
         sent["telegram"] = send_telegram(alert_telegram_text(search, jobs))
+    if "push" in search["channels"]:
+        import push
+        first = jobs[0] if jobs else {}
+        title = str(first.get("Title") or first.get("title") or "")
+        sent["push"] = push.send_to_current(
+            f"{len(jobs)} ofertas nuevas: {search['name']}"[:120],
+            title + (f" y {len(jobs) - 1} más" if len(jobs) > 1 else ""), "/alerts")
     return sent
 
 
