@@ -39,7 +39,12 @@ async def rate_limit_ai(request: Request, call_next):
     """
     client_ip = rate_limit.client_ip(request.client.host if request.client else None,
                                      request.headers.get("x-forwarded-for"))
-    key = rate_limit.client_key(accounts.current_user_id(), client_ip)
+    user_id = accounts.current_user_id()
+    token = request.headers.get("x-extension-token")
+    if user_id is None and token:
+        # la extensión no manda cookie: su token identifica la cuenta (uno inválido cuenta por IP)
+        user_id = await run_in_threadpool(auth.extension_token_user, token)
+    key = rate_limit.client_key(user_id, client_ip)
     path = request.url.path
     if path.startswith("/api/") and path not in PUBLIC_API_PATHS and not rate_limit.hit_api_limit(key):
         return JSONResponse({"error": "Demasiadas solicitudes, probá de nuevo en un minuto"}, status_code=429)

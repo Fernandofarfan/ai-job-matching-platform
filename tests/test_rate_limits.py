@@ -95,3 +95,15 @@ def test_api_limit_is_per_account(api_limited):
     assert api.get('/api/tracker/jobs').status_code != 429
     who['id'] = None
     assert api.get('/api/health').status_code != 429
+
+
+def test_extension_token_counts_per_account(api_limited, monkeypatch):
+    """Sin cookie, el token de la extensión identifica la cuenta: dos cuentas en la misma IP no comparten límite."""
+    import auth
+    api, _ = api_limited
+    monkeypatch.setattr(auth, 'extension_token_user', lambda token: {'ta': 1, 'tb': 2}.get(token))
+    codes = [api.post('/api/tracker/save-from-extension', json={}, headers={'X-Extension-Token': 'ta'}).status_code
+             for _ in range(4)]
+    assert codes[-1] == 429
+    assert api.post('/api/tracker/save-from-extension', json={},
+                    headers={'X-Extension-Token': 'tb'}).status_code != 429
