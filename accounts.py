@@ -230,6 +230,13 @@ def claim_legacy_files(user_id: int):
         logging.getLogger(__name__).error(f'No se pudieron mover los archivos previos: {e}')
 
 
+def adopt_legacy_files():
+    """Instancias que ya tenían cuentas antes de separar archivos: los sueltos pasan a la primera cuenta."""
+    uid = first_user_id()
+    if uid is not None:
+        claim_legacy_files(uid)
+
+
 def claim_orphans(user_id: int):
     """Asigna al usuario las filas creadas antes del multiusuario (user_id NULL)."""
     from sqlalchemy import inspect, text

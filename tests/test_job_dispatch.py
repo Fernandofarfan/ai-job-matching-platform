@@ -137,3 +137,24 @@ def test_results_dir_is_per_account(tmp_path, monkeypatch):
         assert sorted(p.name for p in (tmp_path / accounts.results_dir()).iterdir()) == ['viejo.csv']
     with accounts.as_user(8):
         assert list((tmp_path / accounts.results_dir()).iterdir()) == []
+
+
+def test_generated_dirs_include_account_folders(tmp_path, monkeypatch):
+    """La retención también recorre los documentos generados de cada cuenta."""
+    import cv_storage
+    monkeypatch.setenv('GENERATED_DIR', str(tmp_path))
+    (tmp_path / 'u3' / 'resumes').mkdir(parents=True)
+    assert str(tmp_path / 'u3' / 'resumes') in cv_storage.generated_dirs()
+
+
+def test_adopt_legacy_files_moves_to_first_account(tmp_path, monkeypatch):
+    """Si ya había cuentas, los CSV sueltos de results/ pasan a la primera."""
+    import accounts
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / 'results').mkdir()
+    (tmp_path / 'results' / 'jobs.csv').write_text('a')
+    (tmp_path / 'results' / '.gitkeep').write_text('')
+    monkeypatch.setattr(accounts, 'first_user_id', lambda: 7)
+    accounts.adopt_legacy_files()
+    assert (tmp_path / 'results' / 'u7' / 'jobs.csv').exists()
+    assert (tmp_path / 'results' / '.gitkeep').exists()

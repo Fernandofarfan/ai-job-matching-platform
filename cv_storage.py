@@ -23,7 +23,10 @@ _FERNET_PREFIX = b'gAAAAA'
 def generated_dirs():
     """CVs adaptados y cartas; GENERATED_DIR es la carpeta compartida entre web y worker."""
     root = os.getenv('GENERATED_DIR', 'temp')
-    return (os.path.join(root, 'resumes'), os.path.join(root, 'cover_letters'))
+    kinds = ('resumes', 'cover_letters')
+    shared = tuple(os.path.join(root, kind) for kind in kinds)
+    per_account = tuple(sorted(d for kind in kinds for d in glob.glob(os.path.join(root, 'u*', kind))))
+    return shared + per_account
 
 
 def _fernet() -> Optional[Fernet]:

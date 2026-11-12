@@ -210,7 +210,11 @@ def avg_days_to_apply(jobs, history=None):
         changes = by_job.get(job.get('id'), [])
         saved = _as_date(job.get('created_at'))
         from_history = _applied_on(job, [c for c in changes if c.get('old_status') is not None])
-        if from_history:
+        created_applied = next((c for c in changes if c.get('old_status') is None and c.get('new_status') == 'applied'), None)
+        if created_applied:
+            # se cargó ya postulada: la fecha de postulación es la de alta, no la de un cambio posterior
+            applied = _as_date(job.get('applied_date')) or _as_date(created_applied.get('changed_at'))
+        elif from_history:
             applied = from_history
         elif job.get('status') in POSTED:
             # sin historial, una rechazada queda afuera: no se sabe si llegó a postularse

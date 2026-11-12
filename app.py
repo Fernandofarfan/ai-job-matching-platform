@@ -193,6 +193,11 @@ def limit_ai_requests():
 
 for folder in ['uploads', 'results', 'logs', 'profiles']:
     os.makedirs(folder, exist_ok=True)
+if auth.auth_enabled():
+    try:
+        accounts.adopt_legacy_files()
+    except Exception as e:
+        logger.warning(f'No se pudieron asignar los archivos previos a la primera cuenta: {e}')
 
 resume_parser = resumeParser()
 job_matcher = jobMatcher()
