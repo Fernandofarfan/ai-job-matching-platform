@@ -3,6 +3,10 @@
  * Extrae datos de la oferta de trabajo en la página actual.
  */
 
+// El menú contextual puede volver a inyectar este script: sin la guarda, redeclarar las funciones rompe
+if (!window.__empleoiaSaverLoaded) {
+window.__empleoiaSaverLoaded = true;
+
 /**
  * Detecta qué plataforma es la página actual
  */
@@ -12,6 +16,8 @@ function detectPlatform() {
   if (url.includes('indeed.com')) return 'indeed';
   if (url.includes('bumeran.com')) return 'bumeran';
   if (url.includes('computrabajo.com')) return 'computrabajo';
+  if (url.includes('zonajobs.com')) return 'bumeran';
+  if (url.includes('getonbrd.com')) return 'getonbrd';
   return 'unknown';
 }
 
@@ -63,6 +69,15 @@ const extractors = {
     return { title, company, location, salary, description, apply_url: window.location.href };
   },
 
+  getonbrd: () => {
+    const title = document.querySelector('h1 [itemprop="title"], h1')?.innerText?.trim() || '';
+    const company = document.querySelector('[itemprop="hiringOrganization"] [itemprop="name"], [itemprop="hiringOrganization"]')?.innerText?.trim() || '';
+    const location = document.querySelector('[itemprop="jobLocation"], .location')?.innerText?.trim() || '';
+    const salary = document.querySelector('[itemprop="baseSalary"]')?.innerText?.trim() || '';
+    const description = document.querySelector('[itemprop="description"], #job-body')?.innerText?.trim() || '';
+    return { title, company, location, salary, description, apply_url: window.location.href };
+  },
+
   unknown: () => {
     // Fallback genérico: intenta heurísticas básicas
     const headings = document.querySelectorAll('h1, h2');
@@ -73,6 +88,42 @@ const extractors = {
 };
 
 /**
+ * Completa los campos vacíos con el JobPosting de schema.org (JSON-LD), que casi todos los portales publican.
+ */
+function jobPostingFromJsonLd() {
+  for (const script of document.querySelectorAll('script[type="application/ld+json"]')) {
+    try {
+      const nodes = [].concat(JSON.parse(script.textContent));
+      for (const node of nodes.flatMap(n => (n && n['@graph']) || [n])) {
+        if (node && [].concat(node['@type']).includes('JobPosting')) return node;
+      }
+    } catch (e) { /* JSON-LD inválido: se ignora */ }
+  }
+  return null;
+}
+
+function textFromHtml(html) {
+  return new DOMParser().parseFromString(String(html || ''), 'text/html').body.textContent.trim();
+}
+
+function withJsonLd(data) {
+  const posting = jobPostingFromJsonLd();
+  if (!posting) return data;
+  const address = [].concat(posting.jobLocation || [])[0]?.address || {};
+  const fromLd = {
+    title: posting.title,
+    company: posting.hiringOrganization?.name,
+    location: [address.addressLocality, address.addressRegion, address.addressCountry?.name || address.addressCountry]
+      .filter(v => typeof v === 'string' && v).join(', '),
+    description: textFromHtml(posting.description),
+  };
+  for (const [key, value] of Object.entries(fromLd)) {
+    if (!data[key] && value) data[key] = String(value).trim();
+  }
+  return data;
+}
+
+/**
  * Mensaje listener: popup pide extraer datos
  */
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -81,7 +132,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     const extractor = extractors[platform] || extractors.unknown;
 
     try {
-      const data = extractor();
+      const data = withJsonLd(extractor());
       data.platform = platform;
       data.page_url = window.location.href;
       data.extracted_at = new Date().toISOString();
@@ -93,9 +144,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
   if (request.action === 'showSavedIndicator') {
     showSavedToast(request.jobTitle || 'Trabajo');
+    sendResponse({ success: true });
   }
 
-  return true; // Keep message channel open for async
+  // Las respuestas son síncronas: devolver true dejaba el canal abierto y el emisor fallaba sin respuesta
+  return false;
 });
 
 /**
@@ -107,14 +160,14 @@ function showSavedToast(jobTitle) {
 
   const toast = document.createElement('div');
   toast.id = 'empleoia-saved-toast';
+  // El título viene de la página: va como texto, nunca como HTML
   toast.innerHTML = `
     <div style="display:flex;align-items:center;gap:10px;">
-      <span style="font-size:1.3rem;">🤖</span>
-      <div>
-        <strong>¡Guardado en EmpleoIA!</strong><br>
-        <small style="opacity:0.85;">${jobTitle.slice(0, 50)}</small>
-      </div>
+      <span style="font-size:1.3rem;" aria-hidden="true">🤖</span>
+      <div><strong>¡Guardado en EmpleoIA!</strong><br><small style="opacity:0.85;"></small></div>
     </div>`;
+  toast.setAttribute('role', 'status');
+  toast.querySelector('small').textContent = String(jobTitle).slice(0, 50);
   
   toast.style.cssText = `
     position: fixed;
@@ -147,4 +200,5 @@ function showSavedToast(jobTitle) {
     toast.style.transition = 'opacity 0.3s ease';
     setTimeout(() => toast.remove(), 300);
   }, 3500);
+}
 }

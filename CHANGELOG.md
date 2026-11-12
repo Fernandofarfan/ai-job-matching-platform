@@ -8,6 +8,7 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Agregado
+- Extensión de Chrome lista para el Web Store: íconos y `content.css` que faltaban (Chrome no la cargaba), permiso `contextMenus` (el service worker fallaba al registrarse), botones del popup sin `onclick` inline (la CSP de MV3 los bloqueaba), soporte de ZonaJobs, GetOnBoard y `computrabajo.com.ar`, datos desde JSON-LD, permisos de host mínimos con acceso opcional al servidor configurado, `scripts/package_extension.py` y tests estáticos y E2E con la extensión cargada en Chromium.
 - Métricas Prometheus en `/metrics` (protegidas con `METRICS_TOKEN`): pedidos y latencia por ruta, tokens de Gemini, consumo mensual de IA y tareas esperando en cada cola de Celery. Trazas OpenTelemetry opcionales para la web, el worker y las llamadas HTTP salientes (`OTEL_EXPORTER_OTLP_ENDPOINT`). Ver `docs/observability.md`.
 - `AI_BACKEND=celery`: las cartas y los CVs adaptados en lote se generan en el worker (cola `ai_processing`) y la página muestra el progreso consultando `/api/documents/tasks/<id>`. Los documentos se guardan en `GENERATED_DIR`, que en GCP es el bucket de resultados compartido por la web y el worker.
 - Perfiles cifrados en MySQL y en el JSON de respaldo con `CV_ENCRYPTION_KEY` (incluye el texto extraído del CV). Los perfiles en texto plano se siguen leyendo y la tarea diaria de privacidad los cifra.

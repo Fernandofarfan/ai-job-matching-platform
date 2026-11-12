@@ -187,6 +187,7 @@ jobs:
           pip install -r requirements.txt pytest
           python -m spacy download en_core_web_sm || true
           python -m playwright install --with-deps chromium
+          sudo apt-get install -y -qq xvfb
 
       - name: Esquema base (setup_database.sql) y migraciones
         run: |
@@ -195,7 +196,15 @@ jobs:
           python -m alembic upgrade head
 
       - name: Tests de integración, E2E y accesibilidad (axe)
-        run: python -m pytest tests_integration -v --tb=short -p no:cacheprovider
+        run: xvfb-run -a python -m pytest tests_integration -v --tb=short -p no:cacheprovider
+
+      - name: Paquete de la extensión de Chrome
+        run: python scripts/package_extension.py --out dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chrome-extension
+          path: dist/empleoia-saver-*.zip
 
       - uses: actions/setup-node@v4
         with:

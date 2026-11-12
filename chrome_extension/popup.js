@@ -11,7 +11,30 @@ document.addEventListener('DOMContentLoaded', async () => {
   await checkCurrentPage();
   setupStatusSelector();
   setupSettingsToggle();
+  document.getElementById('extract-btn').addEventListener('click', extractJob);
+  document.getElementById('save-btn').addEventListener('click', saveJob);
+  document.getElementById('connect-btn').addEventListener('click', connectServer);
 });
+
+// Fuera de localhost, Chrome exige permiso explícito para el origen del servidor (optional_host_permissions)
+function serverOrigin() {
+  try {
+    const url = new URL(getServerUrl());
+    return ['http:', 'https:'].includes(url.protocol) ? `${url.origin}/*` : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+async function connectServer() {
+  const origin = serverOrigin();
+  if (!origin) {
+    showMessage('⚠️ La URL del servidor no es válida', 'error');
+    return;
+  }
+  const granted = await chrome.permissions.request({ origins: [origin] }).catch(() => false);
+  showMessage(granted ? '✅ Acceso permitido' : '❌ Sin permiso, la extensión no puede guardar en ese servidor', granted ? 'success' : 'error');
+}
 
 async function loadSettings() {
   const data = await chrome.storage.sync.get(['serverUrl', 'extensionToken']);
@@ -22,7 +45,7 @@ async function loadSettings() {
   }
   tokenInput.value = data.extensionToken || '';
   input.addEventListener('change', async () => {
-    await chrome.storage.sync.set({ serverUrl: input.value });
+    await chrome.storage.sync.set({ serverUrl: input.value.replace(/\/+$/, '') });
   });
   tokenInput.addEventListener('change', async () => {
     await chrome.storage.sync.set({ extensionToken: tokenInput.value });
@@ -30,7 +53,7 @@ async function loadSettings() {
 }
 
 function getServerUrl() {
-  return document.getElementById('server-url').value || 'http://localhost:5000';
+  return (document.getElementById('server-url').value || 'http://localhost:5000').replace(/\/+$/, '');
 }
 
 // ── Page Check ────────────────────────────────────────────────────────────
@@ -39,8 +62,8 @@ async function checkCurrentPage() {
   const url = tab.url || '';
 
   const supportedDomains = [
-    'linkedin.com/jobs', 'indeed.com/viewjob', 'ar.indeed.com',
-    'bumeran.com.ar', 'computrabajo.com'
+    'linkedin.com/jobs', 'indeed.com/viewjob', 'bumeran.com.ar', 'zonajobs.com.ar',
+    'computrabajo.com', 'getonbrd.com/jobs'
   ];
 
   const isSupported = supportedDomains.some(d => url.includes(d));
@@ -131,9 +154,12 @@ async function saveJob() {
       body: JSON.stringify(payload)
     });
 
-    const result = await response.json();
+    const result = await response.json().catch(() => ({}));
 
-    if (response.ok && result.success) {
+    if (response.ok && result.exists) {
+      showMessage('ℹ️ Este trabajo ya está en tu tracker', 'success');
+      saveBtn.textContent = '💾 Guardar en Job Tracker';
+    } else if (response.ok && result.success) {
       showMessage(`✅ ¡Guardado! "${(extractedJobData.title || '').slice(0, 40)}"`, 'success');
       saveBtn.textContent = '✅ Guardado';
       saveBtn.style.background = 'linear-gradient(135deg, #22c55e, #16a34a)';
@@ -145,18 +171,16 @@ async function saveJob() {
         jobTitle: extractedJobData.title || ''
       });
 
-    } else if (result.exists) {
-      showMessage('ℹ️ Este trabajo ya está en tu tracker', 'success');
     } else {
-      showMessage('❌ Error al guardar: ' + (result.message || 'Error desconocido'), 'error');
+      showMessage('❌ Error al guardar: ' + (result.message || result.error || `HTTP ${response.status}`), 'error');
       saveBtn.disabled = false;
       saveBtn.textContent = '💾 Guardar en Job Tracker';
     }
 
   } catch (error) {
-    const isConnectionError = error.message.includes('fetch') || error.message.includes('Failed');
+    const isConnectionError = error instanceof TypeError;
     if (isConnectionError) {
-      showMessage(`❌ No se pudo conectar a ${serverUrl}. ¿EmpleoIA está corriendo?`, 'error');
+      showMessage(`❌ No se pudo conectar a ${serverUrl}. ¿EmpleoIA está corriendo? Si no es localhost, tocá "Permitir acceso" en ⚙️.`, 'error');
     } else {
       showMessage('❌ Error: ' + error.message, 'error');
     }
@@ -181,7 +205,9 @@ function setupSettingsToggle() {
   const btn = document.getElementById('settings-toggle');
   const panel = document.getElementById('settings-panel');
   btn.addEventListener('click', () => {
-    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+    const open = panel.style.display === 'none';
+    panel.style.display = open ? 'block' : 'none';
+    btn.setAttribute('aria-expanded', String(open));
   });
 }
 

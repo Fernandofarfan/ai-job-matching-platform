@@ -263,16 +263,17 @@
     <span class="header-logo">🤖</span>
     <span class="header-title">EmpleoIA Saver</span>
     <span class="header-badge">v1.0</span>
-    <button class="settings-btn" id="settings-toggle" title="Configuración">⚙️</button>
+    <button class="settings-btn" id="settings-toggle" title="Configuración" aria-label="Configuración" aria-controls="settings-panel" aria-expanded="false">⚙️</button>
   </div>
 
   <div class="content">
 
     <!-- Settings panel (collapsible) -->
     <div class="server-panel" id="settings-panel" style="display:none;">
-      <label>URL del servidor EmpleoIA:</label>
+      <label for="server-url">URL del servidor EmpleoIA:</label>
       <input type="url" class="server-input" id="server-url"
              placeholder="http://localhost:5000" value="http://localhost:5000">
+      <button type="button" class="btn-extract" id="connect-btn">Permitir acceso a este servidor</button>
       <label for="extension-token">Token de la extensión (EXTENSION_TOKEN):</label>
       <input type="password" class="server-input" id="extension-token" placeholder="Solo si la app pide login">
     </div>
@@ -289,7 +290,9 @@
         <span class="site-chip">LinkedIn Jobs</span>
         <span class="site-chip">Indeed</span>
         <span class="site-chip">Bumeran</span>
+        <span class="site-chip">ZonaJobs</span>
         <span class="site-chip">Computrabajo</span>
+        <span class="site-chip">GetOnBoard</span>
       </div>
     </div>
 
@@ -311,10 +314,10 @@
       </div>
 
       <!-- Action buttons -->
-      <button class="btn-extract" id="extract-btn" onclick="extractJob()">
+      <button class="btn-extract" id="extract-btn">
         🔍 Extraer datos de esta página
       </button>
-      <button class="btn-save" id="save-btn" onclick="saveJob()" disabled>
+      <button class="btn-save" id="save-btn" disabled>
         💾 Guardar en Job Tracker
       </button>
     </div>

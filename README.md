@@ -480,9 +480,18 @@ La extensión **EmpleoIA Saver** permite guardar ofertas de trabajo con 1 click.
 
 - ✅ LinkedIn Jobs
 - ✅ Indeed (ar.indeed.com)
-- ✅ Bumeran (bumeran.com.ar)
-- ✅ Computrabajo (ar.computrabajo.com)
-- ✅ Click derecho → Guardar en EmpleoIA (cualquier página)
+- ✅ Bumeran y ZonaJobs
+- ✅ Computrabajo (ar.computrabajo.com y computrabajo.com.ar)
+- ✅ GetOnBoard (getonbrd.com)
+- ✅ Click derecho → Guardar en EmpleoIA (cualquier página; usa el JobPosting de schema.org si la página lo publica)
+
+### Servidor y token
+
+En ⚙️ cargá la URL de tu EmpleoIA y el `EXTENSION_TOKEN`. Para un servidor que no sea `localhost:5000` (por ejemplo Cloud Run), tocá **Permitir acceso a este servidor**: la extensión solo pide permiso para ese origen.
+
+### Publicar en el Chrome Web Store
+
+`python scripts/package_extension.py` valida el manifest y deja `dist/empleoia-saver-<versión>.zip`; el CI lo publica como artefacto `chrome-extension`. Los pasos y los textos para la ficha están en [docs/chrome-web-store.md](docs/chrome-web-store.md).
 
 ---
 
