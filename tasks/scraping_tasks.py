@@ -3,6 +3,7 @@ tasks/scraping_tasks.py — Tareas de scraping asíncronas vía Celery
 Reemplaza el uso de threading.Thread en app.py para scrapers robustos.
 """
 import accounts
+import scraper_stats
 import os
 import logging
 import random
@@ -237,11 +238,13 @@ def run_bumeran_scraper(self, credentials: dict, searches: list, filters: dict =
                     password=(credentials or {}).get("password"),
                 )
                 scraper.close()
+                scraper_stats.record("bumeran", jobs)
                 if jobs:
                     all_jobs.extend(jobs)
                 time.sleep(random.uniform(2, 3))
             except Exception as e:
                 logger.error(f"Bumeran scraping error: {e}")
+                scraper_stats.record("bumeran", None, e)
 
         filename = _save_jobs_csv(all_jobs, "bumeran_jobs", False) if all_jobs else None
         return {"status": "completed", "total_jobs": len(all_jobs), "filename": filename}
@@ -277,11 +280,13 @@ def run_computrabajo_scraper(self, credentials: dict, searches: list, filters: d
                     password=(credentials or {}).get("password"),
                 )
                 scraper.close()
+                scraper_stats.record("computrabajo", jobs)
                 if jobs:
                     all_jobs.extend(jobs)
                 time.sleep(random.uniform(2, 3))
             except Exception as e:
                 logger.error(f"Computrabajo scraping error: {e}")
+                scraper_stats.record("computrabajo", None, e)
 
         filename = _save_jobs_csv(all_jobs, "computrabajo_jobs", False) if all_jobs else None
         return {"status": "completed", "total_jobs": len(all_jobs), "filename": filename}

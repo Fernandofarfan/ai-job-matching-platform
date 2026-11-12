@@ -12,6 +12,7 @@ from datetime import datetime
 from sqlalchemy import JSON, Boolean, Column, DateTime, Float, Integer, String, UniqueConstraint, select
 
 import accounts
+import scraper_stats
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.exc import IntegrityError
 
@@ -273,11 +274,14 @@ def scrape(search, make_scraper=None):
         scraper = None
         try:
             scraper = make_scraper(portal)
-            jobs.extend(scraper.search_jobs(
+            found = scraper.search_jobs(
                 search['position'], search.get('location', ''), max_jobs=MAX_JOBS_PER_PORTAL,
-            ) or [])
+            ) or []
+            scraper_stats.record(portal, found)
+            jobs.extend(found)
         except Exception as e:
             logger.error(f"Alerta '{search['name']}': falló {portal}: {e}")
+            scraper_stats.record(portal, None, e)
         finally:
             if scraper is not None:
                 try:

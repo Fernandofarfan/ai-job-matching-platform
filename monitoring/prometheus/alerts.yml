@@ -61,3 +61,14 @@ groups:
         annotations:
           summary: Se agotó el tope mensual de tokens de IA
           description: Las funciones de IA quedan bloqueadas hasta el mes que viene o hasta subir AI_MONTHLY_TOKEN_LIMIT.
+
+      - alert: EmpleoIAPortalSinOfertas
+        # 3 o más búsquedas en un día y ninguna con ofertas: el portal cambió su HTML o bloquea al scraper
+        expr: |
+          sum by (portal) (increase(empleoia_scraper_runs_total{outcome=~"empty|error"}[24h])) >= 3
+            unless sum by (portal) (increase(empleoia_scraper_runs_total{outcome="ok"}[24h])) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.portal }} no devuelve ofertas"
+          description: "{{ $value | humanize }} búsquedas en 24 h sin ofertas: revisar el parser con scripts/scraper_health.py."

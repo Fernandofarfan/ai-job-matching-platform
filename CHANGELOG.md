@@ -6,6 +6,12 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar] - Aviso cuando un portal deja de devolver ofertas
+
+- Cada búsqueda anota su resultado por portal (`ok`, `empty`, `error`) en el storage compartido (`RATELIMIT_STORAGE_URI`), así cuentan también las del worker y las alertas de empleo. `/metrics` lo expone como `empleoia_scraper_runs_total{portal,outcome}`.
+- Alerta `EmpleoIAPortalSinOfertas`: un portal con 3 o más búsquedas en 24 h y ninguna con ofertas (cambió el HTML o bloquea al scraper). Con test de `promtool`.
+- Tests de los helpers de texto de Indeed y LinkedIn con una descripción guardada.
+
 ## [Sin publicar] - Términos, Privacidad y permiso para usar la IA
 
 - Páginas públicas `/terms` y `/privacy` en español, inglés y portugués, enlazadas desde el login, el registro y el pie de cada página. `LEGAL_OPERATOR_NAME` y `LEGAL_CONTACT_EMAIL` (por defecto `ADMIN_EMAIL`) completan los textos; revisalos con un abogado antes de abrir el registro.

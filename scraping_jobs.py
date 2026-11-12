@@ -8,6 +8,7 @@ from datetime import datetime
 import pandas as pd
 
 import accounts
+import scraper_stats
 from app import job_status
 from scrapers.bumeran_scraper import BumeranScraper
 from scrapers.computrabajo_scraper import ComputrabajoScraper
@@ -31,6 +32,7 @@ def run_computrabajo_job(searches, email, password):
 
             # Pass credentials to search_jobs
             jobs = scraper.search_jobs(position, location, max_jobs=50, email=email, password=password)
+            scraper_stats.record('computrabajo', jobs)
 
             if jobs:
                 all_jobs.extend(jobs)
@@ -58,6 +60,7 @@ def run_computrabajo_job(searches, email, password):
 
     except Exception as e:
         logger.error(f"Error in Computrabajo scraper: {e}")
+        scraper_stats.record('computrabajo', None, e)
         job_status['computrabajo_scraping']['status'] = 'failed'
         job_status['computrabajo_scraping']['message'] = f'Error: {str(e)[:100]}'
 
@@ -81,6 +84,7 @@ def run_bumeran_job(searches):
 
             # Pass credentials to search_jobs
             jobs = scraper.search_jobs(position, location, max_jobs=50, email=email, password=password)
+            scraper_stats.record('bumeran', jobs)
 
             if jobs:
                 all_jobs.extend(jobs)
@@ -108,6 +112,7 @@ def run_bumeran_job(searches):
 
     except Exception as e:
         logger.error(f"Error in Bumeran scraper: {e}")
+        scraper_stats.record('bumeran', None, e)
         job_status['bumeran_scraping']['status'] = 'failed'
         job_status['bumeran_scraping']['message'] = f'Error: {str(e)[:100]}'
 
@@ -158,6 +163,7 @@ def run_universal_job(position, location):
                 scraper = ComputrabajoScraper()
                 jobs = scraper.search_jobs(position, location, max_jobs=50, 
                                           email=computrabajo_email, password=computrabajo_password)
+                scraper_stats.record('computrabajo', jobs)
 
                 if jobs:
                     for job in jobs:
@@ -169,6 +175,7 @@ def run_universal_job(position, location):
                 job_status['universal_scraping']['scrapers']['computrabajo']['progress'] = 100
             except Exception as e:
                 logger.error(f"Error in Computrabajo scraper: {e}")
+                scraper_stats.record('computrabajo', None, e)
                 job_status['universal_scraping']['scrapers']['computrabajo']['status'] = 'failed'
 
         # Function to run Bumeran scraper
@@ -180,6 +187,7 @@ def run_universal_job(position, location):
                 scraper = BumeranScraper()
                 jobs = scraper.search_jobs(position, location, max_jobs=50,
                                          email=bumeran_email, password=bumeran_password)
+                scraper_stats.record('bumeran', jobs)
 
                 if jobs:
                     for job in jobs:
@@ -191,6 +199,7 @@ def run_universal_job(position, location):
                 job_status['universal_scraping']['scrapers']['bumeran']['progress'] = 100
             except Exception as e:
                 logger.error(f"Error in Bumeran scraper: {e}")
+                scraper_stats.record('bumeran', None, e)
                 job_status['universal_scraping']['scrapers']['bumeran']['status'] = 'failed'
 
         def run_without_login(name, label, make_scraper):
@@ -203,6 +212,7 @@ def run_universal_job(position, location):
                     jobs = scraper.search_jobs(position, location, max_jobs=50) or []
                 finally:
                     scraper.close()
+                scraper_stats.record(name, jobs)
                 for job in jobs:
                     job['Fuente'] = label
                 scraper_results[name] = jobs
@@ -210,6 +220,7 @@ def run_universal_job(position, location):
                 state['progress'] = 100
             except Exception as e:
                 logger.error(f"Error in {label} scraper: {e}")
+                scraper_stats.record(name, None, e)
                 state['status'] = 'failed'
 
         extra_threads = [

@@ -72,3 +72,22 @@ tests:
             exp_annotations:
               summary: Prometheus no recibe métricas de la web
               description: La web está caída, no responde /metrics o cambió METRICS_TOKEN.
+  - interval: 1h
+    input_series:
+      # Bumeran corre cada hora sin ofertas; Computrabajo trae ofertas en algunas corridas
+      - series: 'empleoia_scraper_runs_total{portal="bumeran",outcome="empty",instance="a"}'
+        values: '0+1x30'
+      - series: 'empleoia_scraper_runs_total{portal="bumeran",outcome="ok",instance="a"}'
+        values: '5x30'
+      - series: 'empleoia_scraper_runs_total{portal="computrabajo",outcome="empty",instance="a"}'
+        values: '0+1x30'
+      - series: 'empleoia_scraper_runs_total{portal="computrabajo",outcome="ok",instance="a"}'
+        values: '0+1x30'
+    alert_rule_test:
+      - eval_time: 26h
+        alertname: EmpleoIAPortalSinOfertas
+        exp_alerts:
+          - exp_labels: {severity: warning, portal: bumeran}
+            exp_annotations:
+              summary: "bumeran no devuelve ofertas"
+              description: "24 búsquedas en 24 h sin ofertas: revisar el parser con scripts/scraper_health.py."
