@@ -137,7 +137,8 @@ def test_popup_link_button_opens_account_with_state(extension_context):
     extension_id = worker.url.split('/')[2]
     popup = context.new_page()
     popup.goto(f'chrome-extension://{extension_id}/popup.html')
-    assert 'Sin vincular' in popup.locator('#link-status').inner_text()
+    # el estado lo carga el popup de forma asíncrona desde storage.local
+    popup.wait_for_function("document.getElementById('link-status').innerText.includes('Sin vincular')")
     # se registra la URL que abriría la pestaña: así no depende de que haya una app escuchando en el puerto
     popup.evaluate("() => { window.openedUrls = []; chrome.tabs.create = async (o) => { window.openedUrls.push(o.url); return {}; }; }")
     popup.click('#settings-toggle')
