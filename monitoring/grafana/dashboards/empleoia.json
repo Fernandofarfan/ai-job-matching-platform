@@ -511,7 +511,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "increase((max(empleoia_ai_month_calls))[1h:1m])",
+          "expr": "increase((max(empleoia_ai_month_calls) > 0)[1h:1m])",
           "legendFormat": "llamadas"
         }
       ],
@@ -522,7 +522,7 @@
         "overrides": []
       },
       "options": {},
-      "description": "Web y worker: sale del total del mes compartido en Redis (se toma el máximo entre instancias antes del increase). Las respuestas servidas desde la caché no cuentan."
+      "description": "Web y worker: sale del total del mes compartido en Redis (se toma el máximo entre instancias antes del increase). Las respuestas servidas desde la caché no cuentan. Las lecturas en 0 (Redis caído) se descartan para no contar el total del mes como llamadas nuevas."
     },
     {
       "id": 14,
