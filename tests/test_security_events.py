@@ -126,3 +126,11 @@ def test_register_is_recorded_when_verification_is_required(client, accounts_db,
     client.post('/register', data={'email': 'nuevo@example.com', 'password': PASSWORD, 'confirm': PASSWORD})
     uid = accounts.find_user_id('nuevo@example.com')
     assert [e['kind'] for e in security_events.recent(uid)] == ['register']
+
+
+def test_account_page_works_when_events_table_fails(client, ana, sent, monkeypatch):
+    """Si la tabla de eventos no responde, Mi cuenta igual se muestra (y el token nuevo se ve)."""
+    _login(client)
+    monkeypatch.setattr(security_events, 'SecurityEvent', None)
+    assert client.get('/account').status_code == 200
+    assert client.post('/account/extension_token').status_code == 200
