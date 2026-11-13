@@ -526,21 +526,24 @@ def clear_inactivity_notice(user_id: int, when: datetime) -> None:
         session.commit()
 
 
-def still_noticed(user_id: int, notice_at: datetime) -> bool:
-    """True si la cuenta sigue con el mismo aviso (no entró desde entonces: entrar lo anula)."""
-    with _sessions()() as session:
-        return session.execute(select(User.id).where(User.id == user_id, User.inactivity_notice_at == notice_at,
-                                                     User.inactivity_notice_sent.is_(True))).first() is not None
+def delete_account(user_id: int, notice_at: Optional[datetime] = None) -> bool:
+    """Borra la cuenta, todas sus filas y sus carpetas de resultados (los CVs los borra quien llama).
 
-
-def delete_account(user_id: int) -> None:
-    """Borra la cuenta, todas sus filas y sus carpetas de resultados (los CVs los borra quien llama)."""
+    Con `notice_at`, solo si la cuenta sigue con ese aviso de inactividad enviado: la fila queda bloqueada
+    hasta el commit, así un login que llega a la vez (que anula el aviso) espera y no se pierde. False si no borró.
+    """
     import shutil
     from sqlalchemy import delete, inspect, text
     with _sessions()() as session:
+        if notice_at is not None and session.execute(
+                select(User.id).where(User.id == user_id, User.inactivity_notice_at == notice_at,
+                                      User.inactivity_notice_sent.is_(True)).with_for_update()).first() is None:
+            session.rollback()
+            return False
         for table in _owned_tables(inspect(session.get_bind())):
             session.execute(text(f'DELETE FROM {table} WHERE user_id = :uid'), {'uid': user_id})
         session.execute(delete(User).where(User.id == user_id))
         session.commit()
     shutil.rmtree(os.path.join(RESULTS_ROOT, f'u{user_id}'), ignore_errors=True)
     shutil.rmtree(os.path.join(os.getenv('GENERATED_DIR', 'temp'), f'u{user_id}'), ignore_errors=True)
+    return True

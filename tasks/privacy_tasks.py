@@ -67,8 +67,8 @@ def _inactivity_days() -> tuple[int, int]:
 STALE_CLAIM = timedelta(hours=1)
 
 
-def _delete_inactive(user_id: int) -> bool:
-    """Borra los CVs y perfiles de la cuenta y después la cuenta, como "Borrar cuenta" en Mi cuenta."""
+def _delete_inactive(user_id: int, notice_at: datetime) -> bool:
+    """Borra la cuenta si sigue con el aviso `notice_at` (entrar lo anula) y después sus perfiles y CVs."""
     import accounts
     import cv_storage
     import profile_store
@@ -76,14 +76,19 @@ def _delete_inactive(user_id: int) -> bool:
     try:
         with accounts.as_user(user_id):
             resumes = {p.get("resume_filename") for p in profile_store.get_all_profiles().values()} - {None, ""}
-            profile_store.delete_all()
-            for name in resumes:
-                cv_storage.delete(name)
-        accounts.delete_account(user_id)
-        return True
+        if not accounts.delete_account(user_id, notice_at=notice_at):
+            return False
     except Exception as e:
         logger.error(f"No se pudo borrar la cuenta inactiva {user_id}: {e}")
         return False
+    try:
+        with accounts.as_user(user_id):
+            profile_store.delete_all()
+            for name in resumes:
+                cv_storage.delete(name)
+    except Exception as e:
+        logger.error(f"Cuenta inactiva {user_id} borrada, pero quedaron perfiles o CVs: {e}")
+    return True
 
 
 @celery.task(name="tasks.privacy_tasks.enforce_account_inactivity")
@@ -115,8 +120,7 @@ def enforce_account_inactivity() -> dict[str, Any]:
                     notified += accounts.confirm_inactivity_notice(user["id"], now)
                 else:
                     accounts.clear_inactivity_notice(user["id"], now)
-        elif (user["notice_sent"] and user["notice_at"] <= now - timedelta(days=notice)
-              and accounts.still_noticed(user["id"], user["notice_at"])):
-            deleted += _delete_inactive(user["id"])
+        elif user["notice_sent"] and user["notice_at"] <= now - timedelta(days=notice):
+            deleted += _delete_inactive(user["id"], user["notice_at"])
     logger.info(f"Cuentas inactivas ({days} días, aviso de {notice}): {notified} avisadas, {deleted} borradas")
     return {"notified": notified, "deleted": deleted}

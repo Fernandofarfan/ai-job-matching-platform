@@ -112,6 +112,22 @@ def test_recent_claim_is_left_to_its_worker(three_accounts):
     assert sent == ['u2@example.com']
 
 
+def test_login_right_before_deletion_keeps_the_account(three_accounts, monkeypatch):
+    """Si la cuenta entra entre la lista de inactivas y el borrado, el borrado ve el aviso anulado y no borra."""
+    (_, a, b), _ = three_accounts
+    privacy_tasks.enforce_account_inactivity.run()
+    _age_notices(30)
+    listed = accounts.inactive_accounts
+
+    def list_then_login(since):
+        users = listed(since)
+        user_sessions.create(a)
+        return users
+    monkeypatch.setattr(accounts, 'inactive_accounts', list_then_login)
+    assert privacy_tasks.enforce_account_inactivity.run()['deleted'] == 1
+    assert accounts.get_user(a) is not None and accounts.get_user(b) is None
+
+
 def test_deletes_cvs_and_profiles(three_accounts, monkeypatch):
     """Antes de borrar la cuenta borra sus perfiles y sus CVs."""
     import cv_storage
