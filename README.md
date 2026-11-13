@@ -196,8 +196,8 @@
 </td>
 <td align="center" width="20%">
 <img src="https://upload.wikimedia.org/wikipedia/commons/8/87/Sql_data_base_with_logo.png" width="60px" height="60px" alt="NLP" />
-<br><strong>spaCy NLP</strong>
-<br><sub>Parsing</sub>
+<br><strong>scikit-learn</strong>
+<br><sub>Matching TF-IDF</sub>
 </td>
 <td align="center" width="20%">
 <img src="https://lh3.googleusercontent.com/qnCkZuSQ0uqIwJoOCZS3l5ZLLcq2T8aPHEqYqCJ19BzxnA6qjhVscOuDoVG1cSo6qg6BxBnM0RKQwRvqWBRN9dkSPQ=s120" width="60px" height="60px" alt="Gemini" />
@@ -240,18 +240,15 @@ python -m venv .venv
 pip install --require-hashes -r requirements.txt   # Linux
 # pip install -r requirements.in                   # Windows/Mac
 
-# 4. Instalar modelo de spaCy (IMPORTANTE)
-python -m spacy download en_core_web_sm
-
-# 5. Configurar base de datos MySQL
+# 4. Configurar base de datos MySQL
 mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS job_tracker CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
 alembic upgrade head   # crea y actualiza todas las tablas
 
-# 6. Configurar variables de entorno
+# 5. Configurar variables de entorno
 cp .env.example .env
 # Editar .env con tus credenciales
 
-# 7. Ejecutar la aplicación (levanta main:app con uvicorn)
+# 6. Ejecutar la aplicación (levanta main:app con uvicorn)
 python app.py
 ```
 
@@ -274,7 +271,7 @@ python app.py
 ```bash
 # Copia y configura las variables de entorno
 cp .env.example .env
-# Editar .env con GEMINI_API_KEY y DB_PASSWORD
+# Editar .env con GEMINI_API_KEY, DB_PASSWORD y REDIS_PASSWORD (obligatoria; solo letras y números)
 
 # Levanta todo: web (FastAPI) + MySQL + Redis + Celery + Flower
 docker-compose up -d
@@ -464,7 +461,7 @@ AI_MONTHLY_TOKEN_LIMIT=0        # tope mensual de tokens de Gemini (0 = sin tope
 AI_USER_MONTHLY_TOKEN_LIMIT=0   # tope mensual por cuenta (0 = sin tope); cada cuenta ve su consumo en GET /api/ai/usage.
 MATCHING_BACKEND=tfidf          # embeddings = match CV-oferta por significado con Gemini (cuenta en el tope); tfidf = palabras en común.
 MATCHING_BACKEND_BY_LANGUAGE=   # backend según el idioma del CV (es, pt, en), por encima de MATCHING_BACKEND. Ej.: es=embeddings,pt=embeddings
-                                # Al llegar al tope, la carga de CV sigue funcionando con el parser local (regex + spaCy), sin IA
+                                # Al llegar al tope, la carga de CV sigue funcionando con el parser local (regex y catálogo de habilidades), sin IA
 AI_CACHE_TTL=3600               # caché de respuestas de IA deterministas (temperatura ≤ 0.5), compartida en Redis si RATELIMIT_STORAGE_URI es redis://; 0 la apaga
 GEMINI_LIGHT_MODEL=gemini-2.5-flash-lite  # modelo barato para extraer salarios y clasificar correos de Gmail; vacío = GEMINI_MODEL
 AI_PRICE_INPUT_PER_MTOK=        # USD por millón de tokens, para el costo estimado (opcional)
@@ -500,7 +497,7 @@ NOTIFICATION_EMAIL=tu_email@gmail.com
 ```
 
 > [!NOTE]
-> En `docker-compose.yml`, MySQL (`3307`), Redis (`6379`) y Flower (`5555`) solo se publican en `127.0.0.1`. Los CVs subidos deben ser PDF, DOCX o TXT y se guardan con un nombre sanitizado.
+> En `docker-compose.yml`, MySQL (`3307`), Redis (`6379`) y Flower (`5555`) solo se publican en `127.0.0.1`. Redis pide contraseña (`REDIS_PASSWORD`). La app corre en el contenedor con el usuario sin privilegios UID 1000; si `uploads/`, `results/`, `profiles/`, `temp/` o `logs/` quedaron de root por una versión anterior, corré `sudo chown -R 1000:1000 uploads results profiles temp logs`. Los logs de cada contenedor rotan a los 10 MB (3 archivos) y `logs/app.log` a los 5 MB. Los CVs subidos deben ser PDF, DOCX o TXT y se guardan con un nombre sanitizado.
 
 > [!IMPORTANT]
 > **Nunca subas el archivo `.env` al repositorio**. Está incluido en `.gitignore`.
@@ -690,7 +687,7 @@ Proyecto desarrollado desde cero para automatizar la búsqueda de empleo con tec
 - **Web Scraping**: [Playwright](https://playwright.dev/python/) en todos los portales (Indeed, LinkedIn, Computrabajo, Bumeran y ZonaJobs)
 - **Framework**: [FastAPI](https://fastapi.tiangolo.com/)
 - **Task Queue**: [Celery](https://docs.celeryq.dev/) + [Redis](https://redis.io/)
-- **NLP**: [spaCy](https://spacy.io/)
+- **Matching**: [scikit-learn](https://scikit-learn.org/) (TF-IDF) o embeddings de Gemini
 - **UI**: [Bootstrap 5](https://getbootstrap.com/)
 - **IA Generativa**: [Google Gemini](https://ai.google.dev/)
 - **Infraestructura**: [Terraform](https://www.terraform.io/) + [Google Cloud](https://cloud.google.com/)
