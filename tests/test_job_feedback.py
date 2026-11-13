@@ -116,7 +116,8 @@ def test_ranking_model_is_cached_per_account(monkeypatch):
 def test_api_job_feedback(client, monkeypatch):
     """La API guarda la marca, valida los datos y descarta el ranking cacheado."""
     saved, invalidated = [], []
-    monkeypatch.setattr(job_feedback, 'set_feedback', lambda job, value, score=None: saved.append((job, value, score)))
+    monkeypatch.setattr(job_feedback, 'set_feedback',
+                        lambda job, value, score=None, text=None: saved.append((job, value, score)))
     monkeypatch.setattr(job_ranking, 'invalidate', lambda: invalidated.append(True))
     body = {'job': {'title': 'Backend'}, 'interested': False, 'match_score': 42}
     response = client.post('/api/job_feedback', json=body)
@@ -135,3 +136,35 @@ def test_empty_csv_cells_match_the_displayed_offer(db):
     assert job_alerts.fingerprint(from_csv) == job_alerts.fingerprint(from_table)
     job_feedback.set_feedback(from_table, True)
     assert job_feedback.states([from_csv]) == [True]
+
+
+def test_job_text_is_kept_for_the_evaluation_dataset(db):
+    """La descripción se guarda recortada, sobrevive a un cambio de lado sin descripción y sale por cuenta."""
+    with accounts.as_user(1):
+        job_feedback.set_feedback(_job('Backend Python'), True, 80, 'Python y Django. ' * 400)
+        job_feedback.set_feedback(_job('Backend Python'), False)
+        job_feedback.set_feedback(_job('Sin texto'), True)
+    with accounts.as_user(2):
+        job_feedback.set_feedback(_job('Data'), True, None, 'SQL')
+    texts = job_feedback.labeled_texts()
+    assert sorted(texts) == [1, 2]
+    [(fp, interested, text)] = texts[1]
+    assert fp == job_alerts.fingerprint(_job('Backend Python')) and interested is False
+    assert len(text) == job_feedback.JOB_TEXT_LIMIT
+    assert texts[2] == [(job_alerts.fingerprint(_job('Data')), True, 'SQL')]
+
+
+def test_api_job_feedback_takes_the_description_from_the_results(client, monkeypatch, tmp_path):
+    """La tabla no muestra la descripción: la API la busca en el CSV de la cuenta; otro archivo no sirve."""
+    import pandas as pd
+    pd.DataFrame([{'Title': 'Backend', 'Company': 'Acme', 'Description': 'Python, FastAPI y MySQL'},
+                  {'Title': 'Otra', 'Company': 'Acme', 'Description': 'Ventas'}]).to_csv(tmp_path / 'r.csv', index=False)
+    monkeypatch.setattr(accounts, 'results_dir', lambda: str(tmp_path))
+    monkeypatch.setattr(job_ranking, 'invalidate', lambda: None)
+    saved = []
+    monkeypatch.setattr(job_feedback, 'set_feedback', lambda job, value, score=None, text=None: saved.append(text))
+    job = {'title': 'Backend', 'company': 'ACME'}
+    for file in ('r.csv', '../r.csv', 'r.txt', None, 3):
+        assert client.post('/api/job_feedback', json={'job': job, 'interested': True, 'file': file}).status_code == 200
+    client.post('/api/job_feedback', json={'job': job, 'interested': None, 'file': 'r.csv'})
+    assert saved == ['Python, FastAPI y MySQL', None, None, None, None, None]

@@ -38,7 +38,8 @@ async function sendFeedback(index, row, buttons, value) {
     const response = await fetch('/api/job_feedback', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ job: rowJob(row), interested: interested, match_score: info.match }),
+      body: JSON.stringify({ job: rowJob(row), interested: interested, match_score: info.match,
+                             file: VIEW_FILE.filename }),
     });
     const data = await response.json();
     if (!data.success) throw new Error(data.error);

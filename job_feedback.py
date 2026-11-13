@@ -7,7 +7,7 @@ descartadas y mide el matching contra lo que eligen los usuarios: qué tan segui
 import logging
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Float, Integer, String, UniqueConstraint, select
+from sqlalchemy import Boolean, DateTime, Float, Integer, String, Text, UniqueConstraint, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -15,6 +15,8 @@ import job_alerts
 from job_alerts import Base, fingerprint
 
 logger = logging.getLogger(__name__)
+
+JOB_TEXT_LIMIT = 4000
 
 
 class JobFeedback(Base):
@@ -31,6 +33,8 @@ class JobFeedback(Base):
     location: Mapped[str | None] = mapped_column(String(200))
     url: Mapped[str | None] = mapped_column(String(1000))
     match_score: Mapped[float | None] = mapped_column(Float)
+    # descripción de la oferta al marcarla: con el CV de la cuenta arma el dataset de evaluación del matching
+    job_text: Mapped[str | None] = mapped_column(Text)
     updated_at: Mapped[datetime | None] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now)
 
 
@@ -58,8 +62,10 @@ def _score(value):
     return score if 0 <= score <= 100 else None
 
 
-def set_feedback(job, interested, match_score=None):
-    """Guarda "me interesa" (True), "no me interesa" (False) o lo borra (None) para la cuenta actual."""
+def set_feedback(job, interested, match_score=None, job_text=None):
+    """Guarda "me interesa" (True), "no me interesa" (False) o lo borra (None) para la cuenta actual.
+
+    `job_text` (la descripción de la oferta) se guarda si viene; si no, queda la que ya estaba."""
     if not _text(job, 'title', 300):
         raise ValueError('La oferta no tiene título')
     fp = fingerprint(job)
@@ -80,6 +86,9 @@ def set_feedback(job, interested, match_score=None):
                     row.title, row.company = _text(job, 'title', 300), _text(job, 'company', 200)
                     row.location, row.url = _text(job, 'location', 200), _url(job)
                     row.match_score = _score(match_score)
+                    text = str(job_text or '').strip()[:JOB_TEXT_LIMIT]
+                    if text:
+                        row.job_text = text
                 session.commit()
                 return
         except IntegrityError:
@@ -142,3 +151,15 @@ def all_agreement():
     with job_alerts._sessions()() as session:
         rows = session.execute(select(JobFeedback.interested, JobFeedback.match_score)).all()
     return agreement([{'interested': i, 'match_score': s} for i, s in rows])
+
+
+def labeled_texts() -> dict[int, list[tuple[str, bool, str]]]:
+    """{user_id: [(huella, interested, job_text)]} de todas las cuentas, solo las marcas con descripción."""
+    query = (select(JobFeedback.user_id, JobFeedback.fingerprint, JobFeedback.interested, JobFeedback.job_text)
+             .where(JobFeedback.job_text.isnot(None), JobFeedback.user_id.isnot(None))
+             .order_by(JobFeedback.user_id, JobFeedback.id))
+    by_user: dict[int, list[tuple[str, bool, str]]] = {}
+    with job_alerts._sessions()() as session:
+        for user_id, fp, interested, job_text in session.execute(query):
+            by_user.setdefault(user_id, []).append((fp, interested, job_text))
+    return by_user

@@ -6,6 +6,16 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar] - Dataset de evaluación con las marcas de los usuarios
+
+- "Me interesa / no me interesa" guarda la descripción de la oferta (`job_feedback.job_text`, migración 0020),
+  que la API busca en el CSV de resultados de la cuenta.
+- `python scripts/eval_matching.py --feedback [--compare] [--min-each 3]`: cada cuenta con marcas suficientes
+  ordena las ofertas que marcó con su último CV y se mide NDCG@5, P@3 y MRR, en total y por idioma del CV.
+  El dataset se arma en memoria y el reporte solo trae promedios.
+- La política de privacidad menciona ese uso de las marcas.
+
+
 ## [Sin publicar] - JavaScript de las plantillas en archivos estáticos
 
 - Los 15 scripts en línea de 13 plantillas pasan a `static/js/` (`csrf.js`, `copilot.js`, `clear-sw-cache.js` y

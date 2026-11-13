@@ -4,6 +4,9 @@ Uso: python scripts/eval_matching.py [--min-ndcg 0.8] [--json] [--compare]
 Con MATCHING_BACKEND=embeddings (y GEMINI_API_KEY) mide el matching por embeddings.
 --compare mide TF-IDF y embeddings sobre el mismo dataset, en total y por idioma del CV, con la diferencia
 entre ambos (embeddings necesita GEMINI_API_KEY). En GitHub lo corre el workflow "Comparar matching".
+--feedback mide con las marcas "me interesa / no me interesa" de los usuarios en vez del dataset fijo (necesita
+la base): cada cuenta con al menos --min-each marcas de cada lado ordena las ofertas que marcó con su último CV.
+Solo muestra promedios, nunca filas por cuenta.
 Sale con código 1 si el NDCG@5 promedio queda por debajo de --min-ndcg.
 """
 import argparse
@@ -19,12 +22,31 @@ def main(argv=None):
     parser.add_argument('--min-ndcg', type=float, default=0.0)
     parser.add_argument('--json', action='store_true', help='imprimir el resultado como JSON')
     parser.add_argument('--compare', action='store_true', help='comparar TF-IDF con embeddings')
+    parser.add_argument('--feedback', action='store_true', help='medir con las marcas de los usuarios')
+    parser.add_argument('--min-each', type=int, default=3, help='con --feedback: marcas mínimas de cada lado')
     args = parser.parse_args(argv)
     import matching_eval
+    dataset = None
+    if args.feedback:
+        dataset = matching_eval.feedback_dataset(args.min_each)
+        if not dataset['profiles']:
+            print(json.dumps({'skipped': 'ninguna cuenta con marcas suficientes'}) if args.json
+                  else f'Ninguna cuenta tiene {args.min_each} marcas de cada lado con descripción y un CV.')
+            return 0
+        if not args.json:
+            print(f"{len(dataset['profiles'])} cuentas, {len(dataset['jobs'])} ofertas marcadas")
     if args.compare:
-        return compare(args.min_ndcg, args.json)
-    result = matching_eval.evaluate()
-    if args.json:
+        return compare(args.min_ndcg, args.json, dataset)
+    result = matching_eval.evaluate(dataset)
+    if args.feedback:
+        result = {'accounts': len(dataset['profiles']), 'mean': result['mean'], 'by_language': result['by_language']}
+        if args.json:
+            print(json.dumps(result, indent=2))
+        else:
+            print(f"{'idioma':<10} {'NDCG@5':>7} {'P@3':>5} {'MRR':>5}")
+            for lang, m in [('todos', result['mean']), *result['by_language'].items()]:
+                print(f"{lang:<10} {m['ndcg@5']:>7.3f} {m['precision@3']:>5.2f} {m['mrr']:>5.2f}")
+    elif args.json:
         print(json.dumps(result, indent=2))
     else:
         print(f"{'CV':<16} {'NDCG@5':>7} {'P@3':>5} {'MRR':>5}  top-3")
@@ -36,7 +58,7 @@ def main(argv=None):
     return 1 if result['mean']['ndcg@5'] < args.min_ndcg else 0
 
 
-def compare(min_ndcg=0.0, as_json=False):
+def compare(min_ndcg=0.0, as_json=False, dataset=None):
     """Promedios con cada backend de similitud de texto; sin GEMINI_API_KEY solo mide TF-IDF.
     Sale con 1 si algún backend medido queda por debajo de `min_ndcg`."""
     import embeddings
@@ -52,7 +74,7 @@ def compare(min_ndcg=0.0, as_json=False):
                 results[backend] = {'skipped': 'sin GEMINI_API_KEY: no se mide'}
                 continue
             if backend == 'tfidf':
-                result = matching_eval.evaluate()
+                result = matching_eval.evaluate(dataset)
                 results[backend] = {'mean': result['mean'], 'by_language': result['by_language']}
                 continue
             # si Gemini falla o se agota el tope, el matcher vuelve a TF-IDF en silencio: se cuentan esos casos
@@ -68,7 +90,7 @@ def compare(min_ndcg=0.0, as_json=False):
 
             embeddings.similarity = counted
             try:
-                result = matching_eval.evaluate()
+                result = matching_eval.evaluate(dataset)
             finally:
                 embeddings.similarity = original
             results[backend] = ({'skipped': f'{fallbacks} comparaciones cayeron a TF-IDF: no se mide'} if fallbacks
