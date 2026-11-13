@@ -14,14 +14,16 @@ depends_on = None
 
 
 def upgrade():
-    """Agrega `users.last_active_at` (con la última sesión de cada cuenta) y `users.inactivity_notice_at`."""
+    """Agrega `users.last_active_at` (con la última sesión de cada cuenta), `users.inactivity_notice_at` e `inactivity_notice_sent`."""
     op.add_column('users', sa.Column('last_active_at', sa.DateTime, nullable=True))
     op.add_column('users', sa.Column('inactivity_notice_at', sa.DateTime, nullable=True))
+    op.add_column('users', sa.Column('inactivity_notice_sent', sa.Boolean, nullable=False, server_default=sa.false()))
     op.execute('UPDATE users SET last_active_at = '
                '(SELECT MAX(s.last_seen_at) FROM user_sessions s WHERE s.user_id = users.id)')
 
 
 def downgrade():
     """Quita las dos columnas."""
+    op.drop_column('users', 'inactivity_notice_sent')
     op.drop_column('users', 'inactivity_notice_at')
     op.drop_column('users', 'last_active_at')

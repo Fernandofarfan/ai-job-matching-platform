@@ -63,6 +63,10 @@ def _inactivity_days() -> tuple[int, int]:
     return days, max(1, min(notice, days // 2))
 
 
+# Una reserva de aviso sin confirmar más vieja que esto es de un worker que se cortó antes de mandar el email.
+STALE_CLAIM = timedelta(hours=1)
+
+
 def _delete_inactive(user_id: int) -> bool:
     """Borra los CVs y perfiles de la cuenta y después la cuenta, como "Borrar cuenta" en Mi cuenta."""
     import accounts
@@ -102,14 +106,17 @@ def enforce_account_inactivity() -> dict[str, Any]:
     for user in accounts.inactive_accounts(now - timedelta(days=days - notice)):
         if user["id"] == first:
             continue
-        if user["notice_at"] is None:
-            # se marca antes de mandar: si dos workers corren a la vez, uno solo manda el email
-            if accounts.set_inactivity_notice(user["id"], now):
+        stale = not user["notice_sent"] and user["notice_at"] is not None and user["notice_at"] <= now - STALE_CLAIM
+        if user["notice_at"] is None or stale:
+            # se reserva antes de mandar: si dos workers corren a la vez, uno solo manda el email.
+            # Una reserva vieja sin confirmar es de un worker que se cortó: se vuelve a mandar.
+            if accounts.set_inactivity_notice(user["id"], now, previous=user["notice_at"] if stale else None):
                 if account_notify.send_inactivity_notice(user, now + timedelta(days=notice)):
-                    notified += 1
+                    notified += accounts.confirm_inactivity_notice(user["id"], now)
                 else:
                     accounts.clear_inactivity_notice(user["id"], now)
-        elif user["notice_at"] <= now - timedelta(days=notice) and accounts.still_noticed(user["id"], user["notice_at"]):
+        elif (user["notice_sent"] and user["notice_at"] <= now - timedelta(days=notice)
+              and accounts.still_noticed(user["id"], user["notice_at"])):
             deleted += _delete_inactive(user["id"])
     logger.info(f"Cuentas inactivas ({days} días, aviso de {notice}): {notified} avisadas, {deleted} borradas")
     return {"notified": notified, "deleted": deleted}

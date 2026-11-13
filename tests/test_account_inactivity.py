@@ -94,6 +94,24 @@ def test_no_email_no_deletion(three_accounts, monkeypatch):
     assert accounts.count_users() == 3
 
 
+def test_interrupted_notice_is_sent_again_not_deleted(three_accounts):
+    """Si el worker se cortó después de reservar el aviso y antes de mandarlo, se vuelve a mandar; no se borra."""
+    (_, a, b), sent = three_accounts
+    old = datetime.now().replace(microsecond=0) - timedelta(days=40)
+    for uid in (a, b):
+        assert accounts.set_inactivity_notice(uid, old)
+    assert privacy_tasks.enforce_account_inactivity.run() == {'notified': 2, 'deleted': 0}
+    assert sent == ['u1@example.com', 'u2@example.com'] and accounts.count_users() == 3
+
+
+def test_recent_claim_is_left_to_its_worker(three_accounts):
+    """Una reserva reciente sin confirmar es de otro worker que está mandando el email: no se duplica."""
+    (_, a, b), sent = three_accounts
+    assert accounts.set_inactivity_notice(a, datetime.now().replace(microsecond=0))
+    assert privacy_tasks.enforce_account_inactivity.run() == {'notified': 1, 'deleted': 0}
+    assert sent == ['u2@example.com']
+
+
 def test_deletes_cvs_and_profiles(three_accounts, monkeypatch):
     """Antes de borrar la cuenta borra sus perfiles y sus CVs."""
     import cv_storage
