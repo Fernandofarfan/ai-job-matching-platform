@@ -19,15 +19,12 @@ def launched(monkeypatch):
     return calls
 
 
-def test_indeed_needs_credentials_and_searches(client, launched):
+def test_indeed_needs_searches_but_no_account(client, launched):
+    """La búsqueda de Indeed es pública: arranca sin email ni contraseña, pero pide búsquedas con ubicación."""
     form = {'position[]': ['python'], 'location[]': ['CABA']}
-    assert client.post('/start_indeed_scraper', data=form).status_code == 302
+    assert client.post('/start_indeed_scraper', data={'position[]': ['python'], 'location[]': ['']}).status_code == 302
     assert launched == []
-    assert client.post('/start_indeed_scraper', data={'indeed_email': 'a@b.co', 'indeed_password': 'x',
-                                                      'position[]': ['python'], 'location[]': ['']}).status_code == 302
-    assert launched == []
-    client.post('/start_indeed_scraper', data={**form, 'indeed_email': 'a@b.co', 'indeed_password': 'x',
-                                               'remote_work': 'remote'})
+    client.post('/start_indeed_scraper', data={**form, 'remote_work': 'remote'})
     key, job, args = launched[0]
     assert (key, job) == ('indeed_scraping', 'run_indeed_scraper_with_matching')
     assert args[1] == [{'position': 'python', 'location': 'CABA'}] and args[2]['remote_work'] == 'remote'

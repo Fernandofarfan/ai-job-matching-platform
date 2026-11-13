@@ -56,7 +56,7 @@ def _start(request: Request, key: str, state: dict[str, Any], job: str, *args: A
 
 @router.post('/start_indeed_scraper', name='start_indeed_scraper')
 async def start_indeed_scraper(request: Request) -> Response:
-    """Búsqueda de Indeed con matching contra el CV."""
+    """Búsqueda de Indeed con matching contra el CV (la búsqueda es pública: no hace falta cuenta)."""
     form, error = await read_form(request)
     if error:
         return error
@@ -66,8 +66,6 @@ async def start_indeed_scraper(request: Request) -> Response:
     searches = _searches(form, need_location=True)
     filters = {name: form.get(name, '') for name in
                ('salary_range', 'remote_work', 'experience_level', 'education_level', 'date_posted')}
-    if not email or not password:
-        return _to_scraper(request, 'Please provide Indeed email and password', 'danger')
     if not searches:
         return _to_scraper(request, 'Please provide at least one valid search', 'danger')
     await run_in_threadpool(_start, request, 'indeed_scraping', {'status': 'idle', 'progress': 0,

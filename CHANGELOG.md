@@ -11,7 +11,8 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 - `INDEED_SAVE_WITHOUT_DESCRIPTION=true`: si Indeed pide login para ver una oferta, esa y las siguientes de la búsqueda
   se guardan con el resumen del listado, sin abrirlas y sin los filtros de experiencia y visa. Apagado por defecto:
   la búsqueda se corta y guarda lo encontrado, como antes.
-- `.env.example` ya no pide `INDEED_EMAIL`/`INDEED_PASSWORD`: la búsqueda de Indeed no usa cuenta.
+- La búsqueda de Indeed desde la web ya no exige `INDEED_EMAIL`/`INDEED_PASSWORD` (el formulario no los tiene y el
+  scraper no los usa desde Playwright): antes fallaba con "Please provide Indeed email and password" si no estaban en `.env`.
 
 ## [Sin publicar] - Borrado de cuentas inactivas con aviso previo
 
