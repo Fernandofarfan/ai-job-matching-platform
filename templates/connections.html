@@ -7,11 +7,11 @@
 <div class="container-fluid px-4 mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h2 class="fw-bold text-dark mb-1">Networking Automático</h2>
-            <p class="text-muted mb-0">Conecta con profesionales en empresas de interés</p>
+            <h2 class="fw-bold text-dark mb-1">{{ _('Networking Automático') }}</h2>
+            <p class="text-muted mb-0">{{ _('Conecta con profesionales en empresas de interés') }}</p>
         </div>
         <a href="/results" class="btn btn-outline-primary">
-            <i class="bi bi-building me-1"></i> Extraer más empresas
+            <i class="bi bi-building me-1"></i> {{ _('Extraer más empresas') }}
         </a>
     </div>
 
@@ -20,8 +20,8 @@
         <div class="col-md-5 col-lg-4">
             <div class="card h-100">
                 <div class="card-header pt-4 px-4 pb-2">
-                    <h5 class="fw-bold mb-0"><i class="bi bi-building me-2 text-primary"></i> Empresas Objetivo</h5>
-                    <p class="text-muted small mt-1 mb-0">Extraídas de tus ofertas guardadas</p>
+                    <h5 class="fw-bold mb-0"><i class="bi bi-building me-2 text-primary"></i> {{ _('Empresas Objetivo') }}</h5>
+                    <p class="text-muted small mt-1 mb-0">{{ _('Extraídas de tus ofertas guardadas') }}</p>
                 </div>
                 <div class="card-body p-0">
                     {% if empresas %}
@@ -40,8 +40,8 @@
                         <div class="mb-3 text-muted opacity-50">
                             <i class="bi bi-building-slash" style="font-size: 3rem;"></i>
                         </div>
-                        <p class="text-muted small mb-3">No hay empresas extraídas.</p>
-                        <a href="/results" class="btn btn-sm btn-primary">Ir a Resultados</a>
+                        <p class="text-muted small mb-3">{{ _('No hay empresas extraídas.') }}</p>
+                        <a href="/results" class="btn btn-sm btn-primary">{{ _('Ir a Resultados') }}</a>
                     </div>
                     {% endif %}
                 </div>
@@ -52,25 +52,25 @@
         <div class="col-md-7 col-lg-8">
             <div class="card h-100">
                 <div class="card-header pt-4 px-4 pb-2">
-                    <h5 class="fw-bold mb-0"><i class="bi bi-send me-2 text-danger"></i> Enviar Solicitudes</h5>
-                    <p class="text-muted small mt-1 mb-0">Configura y envía conexiones masivas en LinkedIn</p>
+                    <h5 class="fw-bold mb-0"><i class="bi bi-send me-2 text-danger"></i> {{ _('Enviar Solicitudes') }}</h5>
+                    <p class="text-muted small mt-1 mb-0">{{ _('Configura y envía conexiones masivas en LinkedIn') }}</p>
                 </div>
                 <div class="card-body p-4">
                     <!-- Status Box -->
                     <div class="status-box p-4 mb-4">
                         <div class="d-flex justify-content-between align-items-center mb-3">
-                            <span class="small fw-bold text-uppercase text-muted">Estado Actual</span>
+                            <span class="small fw-bold text-uppercase text-muted">{{ _('Estado Actual') }}</span>
                             <div class="d-flex align-items-center gap-2">
-                                <span id="connection-status" class="badge bg-secondary">Inactivo</span>
+                                <span id="connection-status" class="badge bg-secondary">{{ _('Inactivo') }}</span>
                                 <form action="/stop_connection_requests" method="post" class="d-inline" id="stop-form" style="display: none;">
                                     <button type="submit" class="btn btn-danger btn-sm py-0 px-2" style="font-size: 0.75rem;">
-                                        <i class="bi bi-stop-circle me-1"></i> Detener
+                                        <i class="bi bi-stop-circle me-1"></i> {{ _('Detener') }}
                                     </button>
                                 </form>
                             </div>
                         </div>
                         <div class="progress mb-2" style="height: 10px;">
-                            <div id="connection-progress" class="progress-bar" role="progressbar" aria-label="Progreso de las conexiones" aria-valuemin="0" aria-valuemax="100" style="width: 0%">
+                            <div id="connection-progress" class="progress-bar" role="progressbar" aria-label="{{ _('Progreso de las conexiones') }}" aria-valuemin="0" aria-valuemax="100" style="width: 0%">
                             </div>
                         </div>
                         <p id="connection-message" class="small text-muted mb-0 fst-italic text-truncate mt-2"></p>
@@ -80,82 +80,80 @@
                         
                         <ul class="nav nav-tabs mb-3" id="authTabs" role="tablist">
                             <li class="nav-item" role="presentation">
-                                <button class="nav-link active" id="creds-tab" data-bs-toggle="tab" data-bs-target="#creds" type="button" role="tab">Credenciales</button>
+                                <button class="nav-link active" id="creds-tab" data-bs-toggle="tab" data-bs-target="#creds" type="button" role="tab">{{ _('Credenciales') }}</button>
                             </li>
                             <li class="nav-item" role="presentation">
-                                <button class="nav-link" id="token-tab" data-bs-toggle="tab" data-bs-target="#token" type="button" role="tab">Token (Avanzado)</button>
+                                <button class="nav-link" id="token-tab" data-bs-toggle="tab" data-bs-target="#token" type="button" role="tab">{{ _('Token (Avanzado)') }}</button>
                             </li>
                         </ul>
                         
                         <div class="tab-content mb-4" id="authTabsContent">
                             <div class="tab-pane fade show active" id="creds" role="tabpanel">
                                 <div class="mb-3">
-                                    <label class="form-label small fw-bold text-muted">Email LinkedIn</label>
+                                    <label class="form-label small fw-bold text-muted">{{ _('Email LinkedIn') }}</label>
                                     <div class="input-group">
                                         <span class="input-group-text"><i class="bi bi-envelope"></i></span>
-                                        <input aria-label="Email LinkedIn" type="email" class="form-control" name="linkedin_email" placeholder="tu@email.com">
+                                        <input aria-label="{{ _('Email LinkedIn') }}" type="email" class="form-control" name="linkedin_email" placeholder="{{ _('tu@email.com') }}">
                                     </div>
                                 </div>
                                 <div class="mb-3">
-                                    <label class="form-label small fw-bold text-muted">Contraseña</label>
+                                    <label class="form-label small fw-bold text-muted">{{ _('Contraseña') }}</label>
                                     <div class="input-group">
                                         <span class="input-group-text"><i class="bi bi-lock"></i></span>
-                                        <input aria-label="Contraseña" type="password" class="form-control" name="linkedin_password" placeholder="••••••••">
+                                        <input aria-label="{{ _('Contraseña') }}" type="password" class="form-control" name="linkedin_password" placeholder="••••••••">
                                     </div>
                                 </div>
                             </div>
                             <div class="tab-pane fade" id="token" role="tabpanel">
                                 <div class="mb-3">
-                                    <label class="form-label small fw-bold text-muted">Token LinkedIn (li_at)</label>
+                                    <label class="form-label small fw-bold text-muted">{{ _('Token LinkedIn (li_at)') }}</label>
                                     <div class="input-group">
                                         <span class="input-group-text"><i class="bi bi-key"></i></span>
-                                        <input aria-label="Token LinkedIn (li_at)" type="password" class="form-control" name="linkedin_token" placeholder="Cookie li_at">
+                                        <input aria-label="{{ _('Token LinkedIn (li_at)') }}" type="password" class="form-control" name="linkedin_token" placeholder="{{ _('Cookie li_at') }}">
                                     </div>
-                                    <div class="form-text small mt-2">Úsalo si tienes problemas con la verificación en dos pasos (2FA).</div>
+                                    <div class="form-text small mt-2">{{ _('Úsalo si tienes problemas con la verificación en dos pasos (2FA).') }}</div>
                                 </div>
                             </div>
                         </div>
 
                         <div class="mb-4">
-                            <label class="form-label small fw-bold text-muted">Modo de Búsqueda</label>
+                            <label class="form-label small fw-bold text-muted">{{ _('Modo de Búsqueda') }}</label>
                             <div class="d-flex gap-3 mb-3">
                                 <div class="form-check">
                                     <input class="form-check-input" type="radio" name="search_mode" id="mode_companies" value="companies" checked data-onchange="toggleSearchMode">
                                     <label class="form-check-label" for="mode_companies">
-                                        Lista de Empresas
+                                        {{ _('Lista de Empresas') }}
                                     </label>
                                 </div>
                                 <div class="form-check">
                                     <input class="form-check-input" type="radio" name="search_mode" id="mode_general" value="general" data-onchange="toggleSearchMode">
                                     <label class="form-check-label" for="mode_general">
-                                        Búsqueda General (Reclutadores)
+                                        {{ _('Búsqueda General (Reclutadores)') }}
                                     </label>
                                 </div>
                             </div>
 
                             <div id="general_search_input" style="display: none;" class="mb-3">
-                                <label class="form-label small fw-bold text-muted">Término de Búsqueda</label>
+                                <label class="form-label small fw-bold text-muted">{{ _('Término de Búsqueda') }}</label>
                                 <div class="input-group">
                                     <span class="input-group-text"><i class="bi bi-search"></i></span>
-                                    <input aria-label="Término de Búsqueda" type="text" class="form-control" name="search_term" placeholder="Ej: IT Recruiter, Talent Acquisition, Headhunter">
+                                    <input aria-label="{{ _('Término de Búsqueda') }}" type="text" class="form-control" name="search_term" placeholder="{{ _('Ej: IT Recruiter, Talent Acquisition, Headhunter') }}">
                                 </div>
-                                <div class="form-text small mt-1">Buscará personas con este título en Argentina.</div>
+                                <div class="form-text small mt-1">{{ _('Buscará personas con este título en Argentina.') }}</div>
                             </div>
                         </div>
 
                         <div class="mb-4">
-                            <label for="message_template" class="form-label small fw-bold text-muted">Mensaje de
-                                Conexión</label>
+                            <label for="message_template" class="form-label small fw-bold text-muted">{{ _('Mensaje de Conexión') }}</label>
                             <textarea class="form-control" id="message_template" name="message_template" rows="4"
-                                style="resize: none;">¡Hola! Vi que trabajás en {company}. Soy ingeniero de software y me interesa saber más sobre tu experiencia. ¡Me encantaría conectar!</textarea>
+                                style="resize: none;">{{ _('¡Hola! Vi que trabajás en {company}. Soy ingeniero de software y me interesa saber más sobre tu experiencia. ¡Me encantaría conectar!') }}</textarea>
                             <div class="form-text small mt-2">
-                                <span class="badge bg-light text-dark border me-1">{company}</span> se reemplazará
-                                automáticamente por el nombre de la empresa.
+                                <span class="badge bg-light text-dark border me-1">{{ _('{company}') }}</span> {{ _('se reemplazará automáticamente por el nombre de la empresa.') }}
                             </div>
                         </div>
 
                         <div class="mb-4" id="company_list_container">
-                            <label class="form-label small fw-bold text-muted mb-3">Seleccionar Empresas</label>
+                            <label class="form-label small fw-bold text-muted mb-3">{{ _('Seleccionar Empresas') }}</label>
                             {% if empresas %}
                             <div class="border rounded p-3 bg-white" style="max-height: 250px; overflow-y: auto;">
                                 {% for company in empresas %}
@@ -168,7 +166,7 @@
                                         </label>
                                     </div>
                                     <button type="button" class="btn btn-link text-danger p-0 ms-2 opacity-50 hover-opacity-100" 
-                                            data-onclick="excludeCompany" data-args='{{ [company, "$el"]|tojson }}' title="Eliminar de la lista"
+                                            data-onclick="excludeCompany" data-args='{{ [company, "$el"]|tojson }}' title="{{ _('Eliminar de la lista') }}"
                                             style="text-decoration: none;">
                                         <i class="bi bi-trash"></i>
                                     </button>
@@ -178,8 +176,7 @@
                             {% else %}
                             <div
                                 class="alert alert-warning small mb-0 border-0 bg-warning bg-opacity-10 text-warning-emphasis">
-                                <i class="bi bi-exclamation-triangle me-2"></i> Primero debes extraer empresas desde la
-                                página de Resultados.
+                                <i class="bi bi-exclamation-triangle me-2"></i> {{ _('Primero debes extraer empresas desde la página de Resultados.') }}
                             </div>
                             {% endif %}
                         </div>
@@ -187,7 +184,7 @@
                         <div class="d-grid">
                             <button type="submit" class="btn btn-danger py-3" id="connection-submit-btn" {% if not
                                 empresas %}disabled{% endif %}>
-                                <i class="bi bi-people-fill me-2"></i> Iniciar Networking Automático
+                                <i class="bi bi-people-fill me-2"></i> {{ _('Iniciar Networking Automático') }}
                             </button>
                         </div>
                     </form>
@@ -199,5 +196,7 @@
 {% endblock %}
 
 {% block scripts %}
+<script type="application/json" data-i18n nonce="{{ csp_nonce() }}">{{ {'Inactivo': _('Inactivo'), 'Ejecutando': _('Ejecutando'), 'Completado': _('Completado'), 'Falló': _('Falló'), 'Detenido': _('Detenido'), '¿Querés sacar a %(company)s de la lista de networking?': _('¿Querés sacar a %(company)s de la lista de networking?'), 'No se pudo sacar la empresa:': _('No se pudo sacar la empresa:'), 'Error desconocido': _('Error desconocido'), 'Error de conexión': _('Error de conexión')}|tojson }}</script>
+<script src="{{ url_for('static', filename='js/i18n.js') }}"></script>
 <script src="{{ url_for('static', filename='js/pages/connections.js') }}"></script>
 {% endblock %}

@@ -17,9 +17,9 @@ document.addEventListener("DOMContentLoaded", async function() {
             new Chart(ctxFunnel, {
                 type: 'bar',
                 data: {
-                    labels: ['Oportunidades Encontradas', 'CVs Enviados', 'Llamadas/Entrevistas', 'Ofertas / Finalistas'],
+                    labels: [t('Oportunidades Encontradas'), t('CVs Enviados'), t('Llamadas/Entrevistas'), t('Ofertas / Finalistas')],
                     datasets: [{
-                        label: 'Volumen',
+                        label: t('Volumen'),
                         data: [data.funnel.found, data.funnel.applied, data.funnel.interviews, data.funnel.offers],
                         backgroundColor: [
                             'rgba(13, 110, 253, 0.5)',  // Primary
@@ -111,7 +111,7 @@ async function loadPortalStats() {
         }));
         if (data.avg_days_to_apply !== null && data.avg_days_to_apply !== undefined) {
             document.getElementById('avg-days-to-apply').textContent =
-                `Postulás en promedio ${data.avg_days_to_apply} días después de guardar una oferta`;
+                t('Postulás en promedio %(days)s días después de guardar una oferta').replace('%(days)s', data.avg_days_to_apply);
         }
         document.getElementById('portal-row').style.display = '';
     } catch (e) {

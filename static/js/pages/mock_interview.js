@@ -59,7 +59,7 @@ async function startInterview() {
     const description = document.getElementById('manual-description').value.trim();
 
     if (!title) {
-        showToast('⚠️ Ingresá el título del puesto para comenzar', 'warning');
+        showToast('⚠️ ' + t('Ingresá el título del puesto para comenzar'), 'warning');
         return;
     }
 
@@ -72,7 +72,7 @@ async function startInterview() {
 
     const btn = document.getElementById('start-interview-btn');
     btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Generando preguntas...';
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> ' + tHtml('Generando preguntas...');
 
     try {
         const response = await fetch('/api/ai/interview/generate', {
@@ -91,13 +91,13 @@ async function startInterview() {
             showInterviewPanel();
             loadQuestion(0);
         } else {
-            showToast('Error al generar preguntas: ' + (data.error || 'desconocido'), 'danger');
+            showToast(t('Error al generar preguntas:') + ' ' + (data.error || t('desconocido')), 'danger');
         }
     } catch (error) {
-        showToast('Error de conexión: ' + error.message, 'danger');
+        showToast(t('Error de conexión:') + ' ' + error.message, 'danger');
     } finally {
         btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-play-circle me-2"></i> Comenzar Entrevista';
+        btn.innerHTML = '<i class="bi bi-play-circle me-2"></i> ' + tHtml('Comenzar Entrevista');
     }
 }
 
@@ -114,14 +114,14 @@ function loadQuestion(index) {
 
     const total = interviewState.questions.length;
 
-    document.getElementById('question-badge').textContent = `Pregunta ${index + 1}/${total}`;
-    document.getElementById('question-type-badge').textContent = capitalize(q.tipo || 'técnica');
+    document.getElementById('question-badge').textContent = t('Pregunta %(n)s/%(total)s').replace('%(n)s', index + 1).replace('%(total)s', total);
+    document.getElementById('question-type-badge').textContent = capitalize(q.tipo || t('técnica'));
     document.getElementById('question-text').textContent = q.pregunta;
     document.getElementById('hint-text').textContent = q.pista_respuesta || '';
     document.getElementById('user-answer').value = '';
     document.getElementById('question-progress').style.width = `${((index + 1) / total) * 100}%`;
     document.getElementById('question-hint').classList.add('d-none');
-    document.getElementById('hint-btn').innerHTML = '<i class="bi bi-lightbulb me-1"></i> Ver pista';
+    document.getElementById('hint-btn').innerHTML = '<i class="bi bi-lightbulb me-1"></i> ' + tHtml('Ver pista');
 
     // Hide feedback if showing
     document.getElementById('feedback-modal').classList.add('d-none');
@@ -139,10 +139,10 @@ function toggleHint() {
     const btn = document.getElementById('hint-btn');
     if (hint.classList.contains('d-none')) {
         hint.classList.remove('d-none');
-        btn.innerHTML = '<i class="bi bi-lightbulb-fill me-1 text-warning"></i> Ocultar pista';
+        btn.innerHTML = '<i class="bi bi-lightbulb-fill me-1 text-warning"></i> ' + tHtml('Ocultar pista');
     } else {
         hint.classList.add('d-none');
-        btn.innerHTML = '<i class="bi bi-lightbulb me-1"></i> Ver pista';
+        btn.innerHTML = '<i class="bi bi-lightbulb me-1"></i> ' + tHtml('Ver pista');
     }
 }
 
@@ -175,13 +175,13 @@ async function submitAnswer() {
     const q = interviewState.questions[interviewState.currentIndex];
 
     if (!answer) {
-        showToast('⚠️ Escribí algo antes de enviar', 'warning');
+        showToast('⚠️ ' + t('Escribí algo antes de enviar'), 'warning');
         return;
     }
 
     const btn = document.getElementById('submit-answer-btn');
     btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Evaluando...';
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> ' + tHtml('Evaluando...');
 
     try {
         const response = await fetch('/api/ai/interview/evaluate', {
@@ -202,13 +202,13 @@ async function submitAnswer() {
             showFeedback(evaluation);
             addToHistory(interviewState.currentIndex, evaluation.puntaje);
         } else {
-            showToast('Error al evaluar: ' + (data.error || ''), 'danger');
+            showToast(t('Error al evaluar:') + ' ' + (data.error || ''), 'danger');
         }
     } catch (error) {
         showToast('Error: ' + error.message, 'danger');
     } finally {
         btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-send me-2"></i> Enviar y ver feedback';
+        btn.innerHTML = '<i class="bi bi-send me-2"></i> ' + tHtml('Enviar y ver feedback');
     }
 }
 
@@ -218,10 +218,10 @@ function showFeedback(eval_data) {
         '☆'.repeat(5 - Math.round(eval_data.puntaje / 2));
 
     const strengthsList = document.getElementById('feedback-strengths');
-    strengthsList.innerHTML = (eval_data.fortalezas || []).map(f => `<li>${f}</li>`).join('');
+    strengthsList.innerHTML = (eval_data.fortalezas || []).map(f => `<li>${escapeHtml(f)}</li>`).join('');
 
     const improvList = document.getElementById('feedback-improvements');
-    improvList.innerHTML = (eval_data.areas_mejora || []).map(a => `<li>${a}</li>`).join('');
+    improvList.innerHTML = (eval_data.areas_mejora || []).map(a => `<li>${escapeHtml(a)}</li>`).join('');
 
     document.getElementById('feedback-improved').textContent = eval_data.respuesta_mejorada || '';
     document.getElementById('feedback-advice').textContent = eval_data.consejo_clave || '';
@@ -236,7 +236,7 @@ function addToHistory(index, score) {
     item.className = 'history-item';
     item.innerHTML = `
         <div class="d-flex justify-content-between align-items-center p-2 border-bottom" style="border-color:rgba(255,255,255,0.05)!important;">
-            <small class="text-muted text-truncate pe-2" style="max-width:70%;">P${index + 1}: ${q.pregunta.substring(0, 50)}...</small>
+            <small class="text-muted text-truncate pe-2" style="max-width:70%;">P${index + 1}: ${escapeHtml(q.pregunta.substring(0, 50))}...</small>
             <span class="badge" style="background:${scoreColor};min-width:42px;">${score.toFixed(1)}</span>
         </div>`;
     if (history.querySelector('p')) history.innerHTML = '';
@@ -302,7 +302,7 @@ function drawScoreChart(score) {
 }
 
 function endInterview() {
-    if (!confirm('¿Terminás la entrevista? Se perderán las últimas respuestas sin enviar.')) return;
+    if (!confirm(t('¿Terminás la entrevista? Se perderán las últimas respuestas sin enviar.'))) return;
     if (interviewState.answers.length > 0) {
         showResults();
     } else {
@@ -315,7 +315,7 @@ function startNewInterview() {
     document.getElementById('results-panel').classList.add('d-none');
     document.getElementById('setup-panel').classList.remove('d-none');
     document.getElementById('interview-panel').classList.add('d-none');
-    document.getElementById('answers-history').innerHTML = '<p class="text-muted text-center py-3 px-3 mb-0"><small>Las respuestas evaluadas aparecerán aquí</small></p>';
+    document.getElementById('answers-history').innerHTML = '<p class="text-muted text-center py-3 px-3 mb-0"><small>' + tHtml('Las respuestas evaluadas aparecerán aquí') + '</small></p>';
     interviewState = { ...interviewState, questions: [], currentIndex: 0, answers: [], scores: [] };
 }
 
@@ -341,6 +341,10 @@ function downloadResults() {
 }
 
 // ── Utilities ─────────────────────────────────────────────────────────────
+function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+}
+
 function capitalize(str) { return str ? str.charAt(0).toUpperCase() + str.slice(1) : ''; }
 
 function showToast(message, type = 'info') {
@@ -382,7 +386,7 @@ if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
     recognition.onerror = function(event) {
         console.error("Speech Recognition Error", event.error);
         if (event.error === 'not-allowed') {
-            showToast('⚠️ Permiso de micrófono denegado', 'danger');
+            showToast('⚠️ ' + t('Permiso de micrófono denegado'), 'danger');
             toggleVoiceRecording(true);
         }
     };
@@ -396,7 +400,7 @@ if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
 
 function toggleVoiceRecording(forceStop = false) {
     if (!recognition) {
-        showToast('🎙️ Tu navegador no soporta reconocimiento de voz', 'warning');
+        showToast('🎙️ ' + t('Tu navegador no soporta reconocimiento de voz'), 'warning');
         return;
     }
 
@@ -404,15 +408,15 @@ function toggleVoiceRecording(forceStop = false) {
     if (isRecording || forceStop) {
         isRecording = false;
         recognition.stop();
-        btn.innerHTML = '<i class="bi bi-mic me-1"></i> Hablar';
+        btn.innerHTML = '<i class="bi bi-mic me-1"></i> ' + tHtml('Hablar');
         btn.classList.remove('btn-danger');
         btn.classList.add('btn-outline-danger');
     } else {
         isRecording = true;
         recognition.start();
-        btn.innerHTML = '<i class="bi bi-stop-circle me-1"></i> Detener grabación';
+        btn.innerHTML = '<i class="bi bi-stop-circle me-1"></i> ' + tHtml('Detener grabación');
         btn.classList.remove('btn-outline-danger');
         btn.classList.add('btn-danger');
-        showToast('🎙️ Grabando... Empezá a hablar', 'info');
+        showToast('🎙️ ' + t('Grabando... Empezá a hablar'), 'info');
     }
 }

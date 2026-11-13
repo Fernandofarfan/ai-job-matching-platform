@@ -6,7 +6,7 @@
   <div>
     <div class="d-flex align-items-center gap-3 mb-2">
       <h2 class="fw-bold mb-0">
-        <i class="bi bi-person-circle text-primary me-2"></i>Tu Perfil
+        <i class="bi bi-person-circle text-primary me-2"></i>{{ _('Tu Perfil') }}
       </h2>
       {% if role_type %}
       <span class="badge bg-gradient-primary px-3 py-2 fs-6">
@@ -22,12 +22,12 @@
   </div>
   <div class="d-flex gap-2">
     <a href="/profile" class="btn btn-outline-secondary">
-      <i class="bi bi-arrow-left me-1"></i> Volver
+      <i class="bi bi-arrow-left me-1"></i> {{ _('Volver') }}
     </a>
     {% if role_type %}
     <a href="/delete_profile/{{ role_type }}" class="btn btn-outline-danger"
       data-confirm="¿Estás seguro de eliminar este perfil?">
-      <i class="bi bi-trash me-1"></i> Eliminar
+      <i class="bi bi-trash me-1"></i> {{ _('Eliminar') }}
     </a>
     {% endif %}
   </div>
@@ -42,7 +42,7 @@
       </div>
       <div class="stat-content">
         <div class="stat-value">{{ profile.skills|length if profile.skills else 0 }}</div>
-        <div class="stat-label">Habilidades Técnicas</div>
+        <div class="stat-label">{{ _('Habilidades Técnicas') }}</div>
       </div>
     </div>
   </div>
@@ -53,7 +53,7 @@
       </div>
       <div class="stat-content">
         <div class="stat-value">{{ profile.experience_years }}</div>
-        <div class="stat-label">Años de Experiencia</div>
+        <div class="stat-label">{{ _('Años de Experiencia') }}</div>
       </div>
     </div>
   </div>
@@ -64,7 +64,7 @@
       </div>
       <div class="stat-content">
         <div class="stat-value">{{ profile.education|length if profile.education else 0 }}</div>
-        <div class="stat-label">Educación</div>
+        <div class="stat-label">{{ _('Educación') }}</div>
       </div>
     </div>
   </div>
@@ -78,11 +78,11 @@
       <div class="card-header bg-white border-0 pt-4 px-4 pb-3">
         <div class="d-flex align-items-center justify-content-between">
           <h5 class="fw-bold mb-0">
-            <i class="bi bi-code-slash text-primary me-2"></i>Habilidades Técnicas
+            <i class="bi bi-code-slash text-primary me-2"></i>{{ _('Habilidades Técnicas') }}
           </h5>
           {% if profile.skills %}
           <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25">
-            {{ profile.skills|length }} skills
+            {{ profile.skills|length }} {{ _('skills') }}
           </span>
           {% endif %}
         </div>
@@ -97,7 +97,7 @@
         {% else %}
         <div class="text-center py-4 text-muted">
           <i class="bi bi-info-circle fs-3 d-block mb-2 opacity-25"></i>
-          <p class="mb-0">No se detectaron habilidades técnicas en el CV</p>
+          <p class="mb-0">{{ _('No se detectaron habilidades técnicas en el CV') }}</p>
         </div>
         {% endif %}
       </div>
@@ -107,7 +107,7 @@
     <div class="card border-0 shadow-sm mb-4">
       <div class="card-header bg-white border-0 pt-4 px-4 pb-3">
         <h5 class="fw-bold mb-0">
-          <i class="bi bi-briefcase text-success me-2"></i>Experiencia
+          <i class="bi bi-briefcase text-success me-2"></i>{{ _('Experiencia') }}
         </h5>
       </div>
       <div class="card-body p-4">
@@ -119,23 +119,23 @@
             </div>
             <div class="ms-3">
               <div class="experience-years">{{ profile.experience_years }}</div>
-              <div class="experience-label">Años de Experiencia</div>
+              <div class="experience-label">{{ _('Años de Experiencia') }}</div>
             </div>
           </div>
 
           <!-- Experience Level Bar -->
           <div class="mb-3">
             <div class="d-flex justify-content-between mb-2">
-              <span class="small fw-medium">Nivel de Experiencia</span>
+              <span class="small fw-medium">{{ _('Nivel de Experiencia') }}</span>
               <span class="badge experience-level-badge">
                 {% if profile.experience_years >= 7 %}
-                <i class="bi bi-star-fill me-1"></i>Senior
+                <i class="bi bi-star-fill me-1"></i>{{ _('Senior') }}
                 {% elif profile.experience_years >= 3 %}
-                <i class="bi bi-star-half me-1"></i>Mid-Level
+                <i class="bi bi-star-half me-1"></i>{{ _('Mid-Level') }}
                 {% elif profile.experience_years >= 1 %}
-                <i class="bi bi-star me-1"></i>Junior
+                <i class="bi bi-star me-1"></i>{{ _('Junior') }}
                 {% else %}
-                Entry-Level
+                {{ _('Entry-Level') }}
                 {% endif %}
               </span>
             </div>
@@ -146,15 +146,15 @@
               </div>
             </div>
             <div class="d-flex justify-content-between mt-1">
-              <small class="text-muted">0 años</small>
-              <small class="text-muted">10+ años</small>
+              <small class="text-muted">{{ _('0 años') }}</small>
+              <small class="text-muted">{{ _('10+ años') }}</small>
             </div>
           </div>
         </div>
         {% else %}
         <div class="text-center py-4 text-muted">
           <i class="bi bi-info-circle fs-3 d-block mb-2 opacity-25"></i>
-          <p class="mb-0">No se detectaron años de experiencia específicos</p>
+          <p class="mb-0">{{ _('No se detectaron años de experiencia específicos') }}</p>
         </div>
         {% endif %}
       </div>
@@ -167,7 +167,7 @@
     <div class="card border-0 shadow-sm mb-4">
       <div class="card-header bg-white border-0 pt-4 px-4 pb-3">
         <h5 class="fw-bold mb-0">
-          <i class="bi bi-mortarboard text-info me-2"></i>Educación
+          <i class="bi bi-mortarboard text-info me-2"></i>{{ _('Educación') }}
         </h5>
       </div>
       <div class="card-body p-4">
@@ -183,7 +183,7 @@
         {% else %}
         <div class="text-center py-4 text-muted">
           <i class="bi bi-info-circle fs-3 d-block mb-2 opacity-25"></i>
-          <p class="mb-0">No se detectó información educativa</p>
+          <p class="mb-0">{{ _('No se detectó información educativa') }}</p>
         </div>
         {% endif %}
       </div>
@@ -194,7 +194,7 @@
       <div class="card-header bg-white border-0 pt-4 px-4 pb-3">
         <div class="d-flex align-items-center justify-content-between">
           <h5 class="fw-bold mb-0">
-            <i class="bi bi-file-text text-secondary me-2"></i>Vista Previa del CV
+            <i class="bi bi-file-text text-secondary me-2"></i>{{ _('Vista Previa del CV') }}
           </h5>
           <button class="btn btn-sm btn-outline-secondary" data-onclick="togglePreview">
             <i class="bi bi-arrows-angle-expand" id="expandIcon"></i>
@@ -210,7 +210,7 @@
         <div class="px-4 pb-3">
           <small class="text-muted">
             <i class="bi bi-info-circle me-1"></i>
-            Mostrando los primeros 1000 caracteres. El texto completo se usa para el matching.
+            {{ _('Mostrando los primeros 1000 caracteres. El texto completo se usa para el matching.') }}
           </small>
         </div>
         {% endif %}
@@ -228,16 +228,16 @@
     </div>
     <div class="flex-grow-1">
       <h6 class="fw-bold mb-1 text-success">
-        <i class="bi bi-stars me-1"></i>¡Perfil Listo para Matching!
+        <i class="bi bi-stars me-1"></i>{{ _('¡Perfil Listo para Matching!') }}
       </h6>
       <p class="mb-0 small text-success-emphasis">
-        Tu perfil ha sido analizado exitosamente. Ve a
-        <a href="/results" class="fw-bold text-success text-decoration-underline">Resultados</a>
-        para encontrar empleos que coincidan con tu perfil y obtener porcentajes de compatibilidad.
+        {{ _('Tu perfil ha sido analizado exitosamente. Ve a') }}
+        <a href="/results" class="fw-bold text-success text-decoration-underline">{{ _('Resultados') }}</a>
+        {{ _('para encontrar empleos que coincidan con tu perfil y obtener porcentajes de compatibilidad.') }}
       </p>
     </div>
     <a href="/results" class="btn btn-success ms-3">
-      Ver Empleos <i class="bi bi-arrow-right ms-1"></i>
+      {{ _('Ver Empleos') }} <i class="bi bi-arrow-right ms-1"></i>
     </a>
   </div>
 </div>

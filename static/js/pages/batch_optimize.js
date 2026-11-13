@@ -5,7 +5,7 @@ document.getElementById('start_optimization')?.addEventListener('click', functio
   const btn = this;
 
   if (!filename) {
-    alert('Por favor seleccioná un archivo de empleos');
+    alert(t('Por favor seleccioná un archivo de empleos'));
     return;
   }
 
@@ -24,13 +24,13 @@ document.getElementById('start_optimization')?.addEventListener('click', functio
   emptyState.style.display = 'none';
   progressBar.style.width = '10%';
   percentageEl.textContent = '10%';
-  messageEl.textContent = 'Analizando CV y ofertas...';
+  messageEl.textContent = t('Analizando CV y ofertas...');
 
   statusBadge.className = 'badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 animate-pulse';
-  statusBadge.textContent = 'Optimizando...';
+  statusBadge.textContent = t('Optimizando...');
 
   btn.disabled = true;
-  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Procesando...';
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> ' + tHtml('Procesando...');
 
   const showProgress = (pct, msg) => {
     progressBar.style.width = `${pct}%`;
@@ -39,11 +39,11 @@ document.getElementById('start_optimization')?.addEventListener('click', functio
   };
   runDocumentBatch('/api/batch_optimize', { filename: filename, num_jobs: numJobs }, showProgress)
     .then(data => {
-      showProgress(100, '¡Proceso finalizado!');
+      showProgress(100, t('¡Proceso finalizado!'));
       progressBar.classList.remove('progress-bar-striped', 'progress-bar-animated');
       progressBar.classList.add('bg-success');
       statusBadge.className = 'badge bg-success bg-opacity-10 text-success border border-success border-opacity-25';
-      statusBadge.textContent = 'Completado';
+      statusBadge.textContent = t('Completado');
       renderDocumentRows(resultsList, data.results);
       resultsDiv.style.display = 'block';
     })
@@ -55,6 +55,6 @@ document.getElementById('start_optimization')?.addEventListener('click', functio
     })
     .finally(() => {
       btn.disabled = false;
-      btn.innerHTML = '<i class="bi bi-magic me-2"></i> Optimizar CVs';
+      btn.innerHTML = '<i class="bi bi-magic me-2"></i> ' + tHtml('Optimizar CVs');
     });
 });

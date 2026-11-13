@@ -6,6 +6,13 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar] - Todas las páginas en inglés y portugués
+
+- Entrevista simulada, optimizar CV, optimizar en lote, cartas en lote, conexiones, panel de métricas, ver perfil y
+  confirmar borrado se muestran en el idioma de la cuenta, incluidos los mensajes de su JavaScript.
+- Fix: la entrevista simulada insertaba como HTML las fortalezas, mejoras y preguntas que devuelve la IA. Ahora se
+  escapan.
+
 ## [Sin publicar] - Dependencias actualizadas
 
 - `python-docx` 0.8.11 → 1.2.0, `pywebpush` 1.14.1 → 2.5.0, `webauthn` 2.7.1 → 3.0.1, `google-genai` 2.33.0 → 3.3.0,

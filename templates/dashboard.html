@@ -4,8 +4,8 @@
 <div class="container mt-4">
     <div class="row mb-4">
         <div class="col-12">
-            <h2 class="display-6"><i class="fas fa-chart-pie me-2"></i>Panel de métricas</h2>
-            <p class="text-muted">Métricas de adopción y rendimiento del Embudo de Conversión Automático</p>
+            <h2 class="display-6"><i class="fas fa-chart-pie me-2"></i>{{ _('Panel de métricas') }}</h2>
+            <p class="text-muted">{{ _('Métricas de adopción y rendimiento del Embudo de Conversión Automático') }}</p>
         </div>
     </div>
 
@@ -14,7 +14,7 @@
         <div class="col-md-3">
             <div class="card premium-card bg-dark text-light border-secondary">
                 <div class="card-body">
-                    <h5 class="card-title text-muted">Ofertas Encontradas</h5>
+                    <h5 class="card-title text-muted">{{ _('Ofertas Encontradas') }}</h5>
                     <h2 class="display-5 fw-bold text-primary" id="kpiFound">0</h2>
                 </div>
             </div>
@@ -22,7 +22,7 @@
         <div class="col-md-3">
             <div class="card premium-card bg-dark text-light border-secondary">
                 <div class="card-body">
-                    <h5 class="card-title text-muted">Aplicaciones (Auto/Man)</h5>
+                    <h5 class="card-title text-muted">{{ _('Aplicaciones (Auto/Man)') }}</h5>
                     <h2 class="display-5 fw-bold text-info" id="kpiApplied">0</h2>
                 </div>
             </div>
@@ -30,7 +30,7 @@
         <div class="col-md-3">
             <div class="card premium-card bg-dark text-light border-secondary">
                 <div class="card-body">
-                    <h5 class="card-title text-muted">Entrevistas Logradas</h5>
+                    <h5 class="card-title text-muted">{{ _('Entrevistas Logradas') }}</h5>
                     <h2 class="display-5 fw-bold text-warning" id="kpiInterviews">0</h2>
                 </div>
             </div>
@@ -38,7 +38,7 @@
         <div class="col-md-3">
             <div class="card premium-card bg-dark text-light border-secondary">
                 <div class="card-body">
-                    <h5 class="card-title text-muted">Ofertas / Avanzado</h5>
+                    <h5 class="card-title text-muted">{{ _('Ofertas / Avanzado') }}</h5>
                     <h2 class="display-5 fw-bold text-success" id="kpiOffers">0</h2>
                 </div>
             </div>
@@ -50,7 +50,7 @@
         <div class="col-md-8">
             <div class="card premium-card bg-dark text-light border-secondary mb-4">
                 <div class="card-header border-secondary bg-transparent">
-                    <h5 class="mb-0">Funnel de Conversión de Aplicaciones</h5>
+                    <h5 class="mb-0">{{ _('Funnel de Conversión de Aplicaciones') }}</h5>
                 </div>
                 <div class="card-body">
                     <canvas id="funnelChart" height="120"></canvas>
@@ -62,7 +62,7 @@
         <div class="col-md-4">
             <div class="card premium-card bg-dark text-light border-secondary mb-4">
                 <div class="card-header border-secondary bg-transparent">
-                    <h5 class="mb-0">Distribución de Estados</h5>
+                    <h5 class="mb-0">{{ _('Distribución de Estados') }}</h5>
                 </div>
                 <div class="card-body">
                     <canvas id="pieChart" height="240"></canvas>
@@ -76,19 +76,19 @@
         <div class="col-12">
             <div class="card premium-card bg-dark text-light border-secondary mb-4">
                 <div class="card-header border-secondary bg-transparent d-flex flex-wrap justify-content-between align-items-center gap-2">
-                    <h5 class="mb-0"><i class="bi bi-globe2 me-2" aria-hidden="true"></i>Rendimiento por portal</h5>
+                    <h5 class="mb-0"><i class="bi bi-globe2 me-2" aria-hidden="true"></i>{{ _('Rendimiento por portal') }}</h5>
                     <span id="avg-days-to-apply" class="text-muted small"></span>
                 </div>
                 <div class="card-body table-responsive">
                     <table class="table table-dark table-sm align-middle mb-0" id="portal-table">
-                        <caption class="visually-hidden">Ofertas guardadas, postulaciones y tasa de respuesta de cada portal</caption>
+                        <caption class="visually-hidden">{{ _('Ofertas guardadas, postulaciones y tasa de respuesta de cada portal') }}</caption>
                         <thead>
                             <tr>
-                                <th scope="col">Portal</th>
-                                <th scope="col" class="text-end">Guardadas</th>
-                                <th scope="col" class="text-end">Postulaciones</th>
-                                <th scope="col" class="text-end">Respuestas</th>
-                                <th scope="col" class="text-end">Tasa de respuesta</th>
+                                <th scope="col">{{ _('Portal') }}</th>
+                                <th scope="col" class="text-end">{{ _('Guardadas') }}</th>
+                                <th scope="col" class="text-end">{{ _('Postulaciones') }}</th>
+                                <th scope="col" class="text-end">{{ _('Respuestas') }}</th>
+                                <th scope="col" class="text-end">{{ _('Tasa de respuesta') }}</th>
                             </tr>
                         </thead>
                         <tbody></tbody>
@@ -114,5 +114,7 @@
 
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" integrity="sha384-9nhczxUqK87bcKHh20fSQcTGD4qq5GhayNYSYWqwBkINBhOfQLg/P5HG5lF1urn4" crossorigin="anonymous"></script>
+<script type="application/json" data-i18n nonce="{{ csp_nonce() }}">{{ {'Oportunidades Encontradas': _('Oportunidades Encontradas'), 'CVs Enviados': _('CVs Enviados'), 'Llamadas/Entrevistas': _('Llamadas/Entrevistas'), 'Ofertas / Finalistas': _('Ofertas / Finalistas'), 'Volumen': _('Volumen'), 'Postulás en promedio %(days)s días después de guardar una oferta': _('Postulás en promedio %(days)s días después de guardar una oferta')}|tojson }}</script>
+<script src="{{ url_for('static', filename='js/i18n.js') }}"></script>
 <script src="{{ url_for('static', filename='js/pages/dashboard.js') }}"></script>
 {% endblock %}

@@ -24,11 +24,11 @@ function updateConnectionStatusUI(jobData) {
     if (!jobData) return;
 
     const statusTranslations = {
-        'idle': 'Inactivo',
-        'running': 'Ejecutando',
-        'completed': 'Completado',
-        'failed': 'Falló',
-        'stopped': 'Detenido'
+        'idle': t('Inactivo'),
+        'running': t('Ejecutando'),
+        'completed': t('Completado'),
+        'failed': t('Falló'),
+        'stopped': t('Detenido')
     };
     const statusText = statusTranslations[jobData.status] || jobData.status;
 
@@ -84,7 +84,7 @@ function toggleSearchMode() {
 }
 
 function excludeCompany(companyName, btnElement) {
-    if (!confirm(`¿Estás seguro de que quieres eliminar a ${companyName} de la lista de networking?`)) {
+    if (!confirm(t('¿Querés sacar a %(company)s de la lista de networking?').replace('%(company)s', companyName))) {
         return;
     }
 
@@ -104,11 +104,11 @@ function excludeCompany(companyName, btnElement) {
             row.style.opacity = '0';
             setTimeout(() => row.remove(), 300);
         } else {
-            alert('Error al eliminar la empresa: ' + (data.error || 'Error desconocido'));
+            alert(t('No se pudo sacar la empresa:') + ' ' + (data.error || t('Error desconocido')));
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('Error de conexión');
+        alert(t('Error de conexión'));
     });
 }

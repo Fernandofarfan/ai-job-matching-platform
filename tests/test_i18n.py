@@ -105,6 +105,12 @@ def test_flash_messages_are_translated(client, one_account):
     ('/tracker', 'Application board'),
     ('/alerts', 'Job alerts'),
     ('/profile', 'Upload a new resume'),
+    ('/optimize_resume', 'Optimize resume for a job'),
+    ('/batch_optimize', 'Resume optimization with AI'),
+    ('/batch_cover_letters', 'Cover letter generator'),
+    ('/mock-interview', 'Practice interviews with AI'),
+    ('/connections', 'Automatic networking'),
+    ('/analytics', 'Metrics dashboard'),
 ])
 def test_app_pages_are_translated(client, one_account, path, english):
     client.post('/login', data={'email': 'ana@example.com', 'password': 'clave-larga-1'})
