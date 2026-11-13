@@ -6,6 +6,13 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar] - Prueba de carga en el CI
+
+- Job `loadtest` del CI: MySQL y Redis reales, una cuenta con 85 postulaciones y marcas (`loadtest/seed.py`) y Locust
+  con 20 usuarios durante 90 s. Falla si el p95 pasa de 800 ms o los errores del 1 %; los CSV quedan como artefacto.
+- `requirements-loadtest.txt` generado con hashes desde `requirements-loadtest.in`, igual que `requirements.txt`.
+
+
 ## [Sin publicar] - Backend de matching por idioma del CV
 
 - `MATCHING_BACKEND_BY_LANGUAGE` (ej. `es=embeddings,pt=embeddings`) elige el backend según el idioma del CV, por
