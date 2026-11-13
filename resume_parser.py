@@ -12,6 +12,8 @@ except (ImportError, Exception):
 import json
 from datetime import datetime
 
+import skill_catalog
+
 try:
     from google import genai
     _GENAI_AVAILABLE = True
@@ -37,38 +39,8 @@ class resumeParser:
             
         self.configure_genai()
         
-        self.technical_skills = {
-            'programming_languages': [
-                'python', 'java', 'javascript', 'typescript', 'c++', 'c#', 'php', 'ruby', 
-                'go', 'rust', 'kotlin', 'swift', 'scala', 'r', 'matlab', 'sql', 'html', 
-                'css', 'bash', 'powershell', 'perl', 'vba', 'pl/sql', 'plsql'
-            ],
-            'frameworks': [
-                'react', 'angular', 'vue', 'django', 'flask', 'spring', 'express', 
-                'laravel', 'rails', 'asp.net', 'bootstrap', 'jquery', 'node.js', 
-                'next.js', 'nuxt.js', 'svelte', 'fastapi'
-            ],
-            'databases': [
-                'mysql', 'postgresql', 'postgres', 'mongodb', 'redis', 'elasticsearch', 'sqlite', 
-                'oracle', 'sql server', 'cassandra', 'dynamodb', 'firebase', 'snowflake', 'redshift'
-            ],
-            'cloud_platforms': [
-                'aws', 'azure', 'google cloud', 'gcp', 'heroku', 'digitalocean', 
-                'linode', 'cloudflare', 'glue', 's3'
-            ],
-            'tools': [
-                'git', 'docker', 'kubernetes', 'jenkins', 'terraform', 'ansible', 
-                'vagrant', 'webpack', 'gulp', 'grunt', 'npm', 'yarn', 'maven', 
-                'gradle', 'jira', 'confluence', 'slack', 'trello', 'airflow', 'kafka',
-                'spark', 'apache spark', 'apache flink', 'flink', 'selenium'
-            ],
-            'data_science': [
-                'pandas', 'numpy', 'scikit-learn', 'sklearn', 'tensorflow', 'pytorch', 'keras', 
-                'matplotlib', 'seaborn', 'plotly', 'jupyter', 'tableau', 'power bi', 'powerbi',
-                'excel', 'regression', 'hypothesis testing', 'a/b testing', 'outlier detection'
-            ]
-        }
-        
+        self.technical_skills = {k: list(v) for k, v in skill_catalog.TECHNICAL_SKILLS.items()}
+
         self.all_technical_skills = []
         for category in self.technical_skills.values():
             self.all_technical_skills.extend(category)

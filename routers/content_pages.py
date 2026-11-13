@@ -4,6 +4,7 @@ Perfiles de CV en profile_pages.py; alertas y "me interesa" en alert_pages.py.
 
 Los nombres de ruta son los endpoints que usaba Flask, así las plantillas siguen armando las mismas URLs.
 """
+import ast
 import json
 import logging
 import os
@@ -60,6 +61,32 @@ def _match_of(job: dict):
     return None if value is None or pd.isna(value) else float(value)
 
 
+def _skill_list(value) -> list[str]:
+    """Lista de habilidades de una celda del CSV (pandas la guarda como "['python', 'sql']")."""
+    if isinstance(value, list):
+        return [str(v) for v in value]
+    if not isinstance(value, str) or not value.startswith('['):
+        return []
+    try:
+        parsed = ast.literal_eval(value)
+    except (ValueError, SyntaxError):
+        return []
+    return [str(v) for v in parsed] if isinstance(parsed, list) else []
+
+
+def _skills_cell(matched, missing) -> str:
+    """Insignias con las habilidades del CV que pide la oferta y las que pide y faltan; todo escapado."""
+    parts = [f'<span class="badge text-bg-success me-1">{escape(s)}</span>' for s in _skill_list(matched)]
+    gaps = [f'<span class="badge text-bg-light border me-1">{escape(s)}</span>' for s in _skill_list(missing)]
+    html = ''
+    if parts:
+        html += '<span class="visually-hidden">Tenés: </span>' + ''.join(parts)
+    if gaps:
+        html += ('<div class="mt-1"><span class="small text-muted me-1">Te falta:</span>'
+                 + ''.join(gaps) + '</div>')
+    return html
+
+
 def _job_table(file_path: str) -> dict:
     """Tabla HTML del CSV (primeras 100 filas), ordenada por match y por el ranking aprendido."""
     import job_ranking
@@ -81,8 +108,11 @@ def _job_table(file_path: str) -> dict:
         logger.warning(f'Sin "me interesa" guardados: {e}')
         marks = [None] * len(shown)
     feedback = [{'interested': mark, 'match': _match_of(job)} for mark, job in zip(marks, shown, strict=True)]
+    if 'matched_skills' in df.columns or 'missing_skills' in df.columns:
+        df['Habilidades'] = [_skills_cell(job.get('matched_skills'), job.get('missing_skills'))
+                             for job in df.to_dict('records')]
     df = df.rename(columns=COLUMNS)
-    display_columns = ['Título', 'Empresa', 'Ubicación', 'Enlace', 'URL', 'Apply_URL']
+    display_columns = ['Título', 'Empresa', 'Ubicación', 'Habilidades', 'Enlace', 'URL', 'Apply_URL']
     if 'preference' in df.columns:
         df = df.rename(columns={'preference': 'Afinidad'})
         display_columns.insert(0, 'Afinidad')
@@ -90,7 +120,7 @@ def _job_table(file_path: str) -> dict:
     display_df = df[display_columns].copy()
     # Los CSV traen texto de portales externos: todo se escapa antes de armar la tabla (escape=False)
     for col in display_df.columns:
-        if col != 'Enlace':
+        if col not in ('Enlace', 'Habilidades'):
             display_df[col] = display_df[col].apply(lambda v: '' if pd.isna(v) else escape(str(v)))
     if 'Enlace' in display_df.columns:
         display_df['Enlace'] = display_df['Enlace'].apply(

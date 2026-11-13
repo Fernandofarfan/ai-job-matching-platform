@@ -6,6 +6,14 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar] - Habilidades que coinciden y que faltan en cada oferta
+
+- La tabla de resultados tiene la columna "Habilidades": en verde, las del CV que pide la oferta; en gris, "Te falta",
+  hasta 8 habilidades que la oferta pide y el CV no tiene (ni como variante: Postgres cuenta como PostgreSQL).
+- `skill_catalog.py` reúne el vocabulario de habilidades del parser de CVs; el matching lo usa para leer las ofertas.
+  "R" y "Go" no se leen en ofertas, porque aparecen en "R&D" o "go to market".
+
+
 ## [Sin publicar] - Prueba de carga en el CI
 
 - Job `loadtest` del CI: MySQL y Redis reales, una cuenta con 85 postulaciones y marcas (`loadtest/seed.py`) y Locust
