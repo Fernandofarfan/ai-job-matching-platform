@@ -7,8 +7,7 @@ let selectedStatus = 'applying';
 
 // ── Init ───────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
-  await loadSettings();
-  await checkCurrentPage();
+  // Los botones responden desde el primer momento, sin esperar a que se lean los ajustes
   setupStatusSelector();
   setupSettingsToggle();
   document.getElementById('extract-btn').addEventListener('click', extractJob);
@@ -16,6 +15,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('connect-btn').addEventListener('click', connectServer);
   document.getElementById('link-btn').addEventListener('click', linkAccount);
   document.getElementById('unlink-btn').addEventListener('click', unlinkAccount);
+  await loadSettings();
+  await checkCurrentPage();
 });
 
 // Fuera de localhost, Chrome exige permiso explícito para el origen del servidor (optional_host_permissions)
