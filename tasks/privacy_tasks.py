@@ -81,13 +81,18 @@ def _delete_inactive(user_id: int, notice_at: datetime) -> bool:
     except Exception as e:
         logger.error(f"No se pudo borrar la cuenta inactiva {user_id}: {e}")
         return False
-    try:
-        with accounts.as_user(user_id):
-            profile_store.delete_all()
-            for name in resumes:
+    # la cuenta ya no existe y ninguna corrida va a volver a mirarla: cada CV se intenta aunque falle otro paso,
+    # y el que no se borra queda en el log con su nombre para borrarlo a mano.
+    with accounts.as_user(user_id):
+        for name in resumes:
+            try:
                 cv_storage.delete(name)
-    except Exception as e:
-        logger.error(f"Cuenta inactiva {user_id} borrada, pero quedaron perfiles o CVs: {e}")
+            except Exception as e:
+                logger.error(f"Cuenta inactiva {user_id} borrada, pero no se pudo borrar el CV {name}: {e}")
+        try:
+            profile_store.delete_all()
+        except Exception as e:
+            logger.error(f"Cuenta inactiva {user_id} borrada, pero quedaron perfiles: {e}")
     return True
 
 

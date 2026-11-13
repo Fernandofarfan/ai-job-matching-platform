@@ -129,7 +129,7 @@ def test_login_right_before_deletion_keeps_the_account(three_accounts, monkeypat
 
 
 def test_deletes_cvs_and_profiles(three_accounts, monkeypatch):
-    """Antes de borrar la cuenta borra sus perfiles y sus CVs."""
+    """Con la cuenta borra sus perfiles y sus CVs."""
     import cv_storage
     (_, a, b), _ = three_accounts
     profiles = {a: {'data': {'resume_filename': 'a.pdf'}}, b: {'dev': {'resume_filename': 'b.pdf'}}}
@@ -141,6 +141,24 @@ def test_deletes_cvs_and_profiles(three_accounts, monkeypatch):
     _age_notices(30)
     assert privacy_tasks.enforce_account_inactivity.run()['deleted'] == 2
     assert sorted(deleted) == ['a.pdf', 'b.pdf'] and profiles == {a: {}, b: {}}
+
+
+def test_cvs_are_deleted_even_if_profiles_fail(three_accounts, monkeypatch):
+    """Si falla borrar los perfiles, los CVs se borran igual: la cuenta ya no existe y nadie los volvería a buscar."""
+    import cv_storage
+    (_, a, b), _ = three_accounts
+    profiles = {a: {'data': {'resume_filename': 'a.pdf'}}, b: {'dev': {'resume_filename': 'b.pdf'}}}
+    deleted = []
+
+    def broken():
+        raise RuntimeError('perfiles caídos')
+    monkeypatch.setattr(profile_store, 'get_all_profiles', lambda: profiles[accounts.current_user_id()])
+    monkeypatch.setattr(profile_store, 'delete_all', broken)
+    monkeypatch.setattr(cv_storage, 'delete', lambda name: deleted.append(name) or True)
+    privacy_tasks.enforce_account_inactivity.run()
+    _age_notices(30)
+    assert privacy_tasks.enforce_account_inactivity.run()['deleted'] == 2
+    assert sorted(deleted) == ['a.pdf', 'b.pdf']
 
 
 def test_mysql_down_postpones(three_accounts, monkeypatch):
