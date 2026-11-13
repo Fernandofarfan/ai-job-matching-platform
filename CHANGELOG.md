@@ -11,7 +11,7 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 - `services.*`, `routers.*` y `tasks.*` tienen todas las funciones tipadas, genéricos con parámetros y no devuelven
   `Any` (override en `pyproject.toml`). En `tasks.*` no se exige `disallow_untyped_decorators`: Celery no trae tipos.
 - Las rutas que devuelven un dict o una `Response` declaran `response_model=None`, igual que las demás.
-- `service_from_token` devuelve `None` si la cuenta no tiene token de Gmail (antes fallaba al leerlo).
+- Sin cambios de comportamiento: los 662 tests unitarios y los 60 de integración pasan igual.
 
 
 ## [Sin publicar] - Habilidades que coinciden y que faltan en cada oferta
