@@ -2,13 +2,16 @@
 import re
 from pathlib import Path
 
-import yaml
-
 ROOT = Path(__file__).resolve().parent.parent
 
 
-def _compose():
-    return yaml.safe_load((ROOT / 'docker-compose.yml').read_text(encoding='utf-8'))
+def _services() -> dict[str, str]:
+    """Bloque de texto de cada servicio de docker-compose.yml (sin depender de PyYAML)."""
+    text = (ROOT / 'docker-compose.yml').read_text(encoding='utf-8')
+    body = re.split(r'(?m)^services:\n', text, maxsplit=1)[1]
+    body = re.split(r'(?m)^\S', body, maxsplit=1)[0]
+    parts = re.split(r'(?m)^  ([a-z_]+):\n', body)
+    return dict(zip(parts[1::2], parts[2::2], strict=True))
 
 
 def test_image_runs_as_non_root_user():
@@ -18,22 +21,20 @@ def test_image_runs_as_non_root_user():
 
 
 def test_redis_requires_password_and_every_client_uses_it():
-    services = _compose()['services']
-    assert '--requirepass' in ' '.join(services['redis']['command'])
-    assert 'REDISCLI_AUTH' in ' '.join(services['redis']['healthcheck']['test'])
-    urls = [e for s in services.values() for e in s.get('environment', [])
-            if isinstance(e, str) and e.split('=', 1)[0] in ('REDIS_URL', 'CELERY_BROKER_URL')]
-    assert urls and all('${REDIS_PASSWORD:?' in u for u in urls), urls
-    assert all('redis://' not in str(s.get('command', '')) for s in services.values())
+    services = _services()
+    assert '--requirepass' in services['redis']
+    assert 'REDISCLI_AUTH' in services['redis']
+    urls = re.findall(r'(?m)^\s+- (?:REDIS_URL|CELERY_BROKER_URL)=(\S+)', ''.join(services.values()))
+    assert len(urls) >= 4 and all(u.startswith('redis://:${REDIS_PASSWORD:?') for u in urls), urls
+    assert not [n for n, s in services.items() if re.search(r'(?m)^    command:.*redis://', s)]
 
 
 def test_every_container_rotates_its_logs():
-    services = _compose()['services']
-    missing = [name for name, s in services.items()
-               if s.get('logging', {}).get('options', {}).get('max-size') is None]
+    services = _services()
+    assert re.search(r'(?m)^x-logging: &default-logging\n(?:  .*\n)*?    max-size: ', (ROOT / 'docker-compose.yml').read_text(encoding='utf-8'))
+    missing = [name for name, s in services.items() if 'logging: *default-logging' not in s]
     assert not missing, missing
 
 
 def test_celery_beat_schedule_is_written_where_the_app_user_can_write():
-    beat = _compose()['services']['celery_beat']['command']
-    assert '--schedule temp/' in beat
+    assert '--schedule temp/' in _services()['celery_beat']
