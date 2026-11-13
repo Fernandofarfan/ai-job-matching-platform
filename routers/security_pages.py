@@ -1,4 +1,5 @@
 """Segundo factor (TOTP y códigos de recuperación) y passkeys de Mi cuenta, en FastAPI."""
+from typing import Any
 import logging
 
 from fastapi import APIRouter, Request
@@ -17,7 +18,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["account"], include_in_schema=False)
 
 
-def _setup_context(user_id: int) -> dict:
+def _setup_context(user_id: int) -> dict[str, Any]:
     """QR y secreto de una configuración empezada."""
     secret = two_factor.pending_secret(user_id)
     user = accounts.get_user(user_id)
@@ -28,10 +29,12 @@ def _setup_context(user_id: int) -> dict:
 
 
 @router.post("/account/2fa/setup", name="two_factor_setup")
-async def two_factor_setup(request: Request):
+async def two_factor_setup(request: Request) -> Response:
     """Genera el secreto y muestra el QR para escanear."""
     form, error = await _form(request, '5 per minute', 'two_factor_setup')
-    return error or await run_in_threadpool(_two_factor_setup, request, form)
+    if error:
+        return error
+    return await run_in_threadpool(_two_factor_setup, request, form)
 
 
 def _two_factor_setup(request: Request, form: TextForm) -> Response:
@@ -49,10 +52,12 @@ def _two_factor_setup(request: Request, form: TextForm) -> Response:
 
 
 @router.post("/account/2fa/enable", name="two_factor_enable")
-async def two_factor_enable(request: Request):
+async def two_factor_enable(request: Request) -> Response:
     """Activa el segundo factor con un código de la app y muestra los códigos de recuperación una vez."""
     form, error = await _form(request, '10 per minute', 'two_factor_enable')
-    return error or await run_in_threadpool(_two_factor_enable, request, form)
+    if error:
+        return error
+    return await run_in_threadpool(_two_factor_enable, request, form)
 
 
 def _two_factor_enable(request: Request, form: TextForm) -> Response:
@@ -80,10 +85,12 @@ def _confirm_identity(request: Request, user_id: int, form: TextForm) -> bool:
 
 
 @router.post("/account/2fa/disable", name="two_factor_disable")
-async def two_factor_disable(request: Request):
+async def two_factor_disable(request: Request) -> Response:
     """Desactiva el segundo factor."""
     form, error = await _form(request, '5 per minute', 'two_factor_disable')
-    return error or await run_in_threadpool(_two_factor_disable, request, form)
+    if error:
+        return error
+    return await run_in_threadpool(_two_factor_disable, request, form)
 
 
 def _two_factor_disable(request: Request, form: TextForm) -> Response:
@@ -97,10 +104,12 @@ def _two_factor_disable(request: Request, form: TextForm) -> Response:
 
 
 @router.post("/account/2fa/recovery", name="two_factor_recovery")
-async def two_factor_recovery(request: Request):
+async def two_factor_recovery(request: Request) -> Response:
     """Genera códigos de recuperación nuevos; los anteriores dejan de valer."""
     form, error = await _form(request, '5 per minute', 'two_factor_recovery')
-    return error or await run_in_threadpool(_two_factor_recovery, request, form)
+    if error:
+        return error
+    return await run_in_threadpool(_two_factor_recovery, request, form)
 
 
 def _two_factor_recovery(request: Request, form: TextForm) -> Response:
@@ -114,13 +123,15 @@ def _two_factor_recovery(request: Request, form: TextForm) -> Response:
 
 
 @router.post("/account/passkeys/options", name="passkey_options")
-async def passkey_options(request: Request):
+async def passkey_options(request: Request) -> Response:
     """Desafío para registrar una passkey; pide la contraseña, como el segundo factor."""
     data, error = await passkey_json(request, '5 per minute', 'passkey_options', limit_key(request))
-    return error or await run_in_threadpool(_passkey_options, request, data or {})
+    if error:
+        return error
+    return await run_in_threadpool(_passkey_options, request, data or {})
 
 
-def _passkey_options(request: Request, data: dict) -> Response:
+def _passkey_options(request: Request, data: dict[str, Any]) -> Response:
     """Comprueba la contraseña y devuelve las opciones de `navigator.credentials.create`."""
     user_id = _user_id()
     user = accounts.get_user(user_id)
@@ -133,13 +144,15 @@ def _passkey_options(request: Request, data: dict) -> Response:
 
 
 @router.post("/account/passkeys", name="passkey_register")
-async def passkey_register(request: Request):
+async def passkey_register(request: Request) -> Response:
     """Guarda la passkey que creó el navegador."""
     data, error = await passkey_json(request, '10 per minute', 'passkey_register', limit_key(request))
-    return error or await run_in_threadpool(_passkey_register, request, data or {})
+    if error:
+        return error
+    return await run_in_threadpool(_passkey_register, request, data or {})
 
 
-def _passkey_register(request: Request, data: dict) -> Response:
+def _passkey_register(request: Request, data: dict[str, Any]) -> Response:
     """Verifica la respuesta del navegador con el desafío de la sesión."""
     user_id = _user_id()
     challenge = passkeys.take_challenge(get_session(request), 'register', user_id)
@@ -156,10 +169,12 @@ def _passkey_register(request: Request, data: dict) -> Response:
 
 
 @router.post("/account/passkeys/{passkey_id}/delete", name="passkey_delete")
-async def passkey_delete(request: Request, passkey_id: int):
+async def passkey_delete(request: Request, passkey_id: int) -> Response:
     """Borra una passkey de la cuenta."""
     form, error = await _form(request, '10 per minute', 'passkey_delete')
-    return error or await run_in_threadpool(_passkey_delete, request, passkey_id)
+    if error:
+        return error
+    return await run_in_threadpool(_passkey_delete, request, passkey_id)
 
 
 def _passkey_delete(request: Request, passkey_id: int) -> Response:

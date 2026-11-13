@@ -1,13 +1,14 @@
 """API de IA (/api/ai/*), notificaciones y análisis salarial servida por FastAPI (antes web/ai_api.py).
 Comparte con routers/tracker.py la sesión, el login, el CSRF y el formato de error;
 el rate limit de IA lo aplica main.py sobre las rutas de `router`."""
+from collections.abc import Callable
 import accounts
 import logging
 import os
 from types import SimpleNamespace
 from typing import Any, Optional
 
-from fastapi import APIRouter, Body, Depends
+from fastapi import APIRouter, Body, Depends, Response
 from fastapi.responses import JSONResponse
 
 import ai_usage
@@ -23,7 +24,7 @@ NOT_CONFIGURED = 'Gemini no configurado. Agregá GEMINI_API_KEY al .env'
 JsonBody = Body(default_factory=dict)
 
 
-def get_ai():
+def get_ai() -> SimpleNamespace:
     """Motor de IA y notificador de app.py y helpers de perfil; se sobrescribe en tests."""
     import app
     from services import profiles
@@ -33,16 +34,16 @@ def get_ai():
                            profile=profiles.get_user_profile)
 
 
-def _require_ai(ai):
+def _require_ai(ai: SimpleNamespace) -> None:
     if not ai.available:
         raise ApiError(503, NOT_CONFIGURED)
 
 
-def _text(payload: dict, key: str) -> str:
+def _text(payload: dict[str, Any], key: str) -> str:
     return str(payload.get(key) or '').strip()
 
 
-def _call(label: str, fn, *args):
+def _call(label: str, fn: Callable[..., Any], *args: Any) -> Any:
     try:
         return fn(*args)
     except ApiError:
@@ -52,14 +53,14 @@ def _call(label: str, fn, *args):
         raise ApiError(500, INTERNAL_ERROR)
 
 
-@router.get('/usage')
-def usage():
+@router.get('/usage', response_model=None)
+def usage() -> dict[str, Any]:
     """Tokens de Gemini consumidos en el mes, tope configurado y costo estimado."""
     return {'success': True, 'usage': ai_usage.summary()}
 
 
-@router.post('/analyze-job')
-def analyze_job(payload: dict = JsonBody, ai=Depends(get_ai)):
+@router.post('/analyze-job', response_model=None)
+def analyze_job(payload: dict[str, Any] = JsonBody, ai: SimpleNamespace = Depends(get_ai)) -> dict[str, Any]:
     """Analiza una oferta con IA (cultura, skills, salario, match con el CV guardado)."""
     _require_ai(ai)
     description = _text(payload, 'job_description')
@@ -70,7 +71,7 @@ def analyze_job(payload: dict = JsonBody, ai=Depends(get_ai)):
     return {'success': True, 'analysis': analysis}
 
 
-def _copilot_context(ai, db) -> dict:
+def _copilot_context(ai: SimpleNamespace, db: Any) -> dict[str, Any]:
     """Rol y skills del perfil y conteos del tracker; si algo falla, el copiloto responde sin contexto."""
     context: dict[str, Any] = {}
     try:
@@ -89,8 +90,8 @@ def _copilot_context(ai, db) -> dict:
     return context
 
 
-@router.post('/copilot')
-def copilot(payload: dict = JsonBody, ai=Depends(get_ai), db=Depends(get_db)):
+@router.post('/copilot', response_model=None)
+def copilot(payload: dict[str, Any] = JsonBody, ai: SimpleNamespace = Depends(get_ai), db: Any = Depends(get_db)) -> Response | dict[str, Any]:
     """Chat con el copiloto; sin Gemini responde 200 con el aviso en `reply` (lo muestra el chat)."""
     if not ai.available:
         return {'success': False, 'reply': f'⚠️ {NOT_CONFIGURED}'}
@@ -107,8 +108,8 @@ def copilot(payload: dict = JsonBody, ai=Depends(get_ai), db=Depends(get_db)):
     return {'success': True, 'reply': reply}
 
 
-@router.post('/rewrite-bullet')
-def rewrite_bullet(payload: dict = JsonBody, ai=Depends(get_ai)):
+@router.post('/rewrite-bullet', response_model=None)
+def rewrite_bullet(payload: dict[str, Any] = JsonBody, ai: SimpleNamespace = Depends(get_ai)) -> dict[str, Any]:
     """Reescribe un bullet del CV para la oferta."""
     _require_ai(ai)
     bullet = _text(payload, 'bullet')
@@ -119,8 +120,8 @@ def rewrite_bullet(payload: dict = JsonBody, ai=Depends(get_ai)):
     return {'success': True, **result}
 
 
-@router.post('/interview/generate')
-def interview_generate(payload: dict = JsonBody, ai=Depends(get_ai)):
+@router.post('/interview/generate', response_model=None)
+def interview_generate(payload: dict[str, Any] = JsonBody, ai: SimpleNamespace = Depends(get_ai)) -> dict[str, Any]:
     """Preguntas de entrevista personalizadas con el CV guardado."""
     _require_ai(ai)
     title = _text(payload, 'job_title')
@@ -132,8 +133,8 @@ def interview_generate(payload: dict = JsonBody, ai=Depends(get_ai)):
     return {'success': True, 'questions': result.get('preguntas', []), 'consejo': result.get('consejo_general', '')}
 
 
-@router.post('/interview/evaluate')
-def interview_evaluate(payload: dict = JsonBody, ai=Depends(get_ai)):
+@router.post('/interview/evaluate', response_model=None)
+def interview_evaluate(payload: dict[str, Any] = JsonBody, ai: SimpleNamespace = Depends(get_ai)) -> dict[str, Any]:
     """Evalúa la respuesta a una pregunta de entrevista."""
     _require_ai(ai)
     question, answer = _text(payload, 'question'), _text(payload, 'answer')
@@ -146,7 +147,7 @@ def interview_evaluate(payload: dict = JsonBody, ai=Depends(get_ai)):
     return {'success': True, 'evaluation': evaluation}
 
 
-def _market_insights(params: dict, ai, db):
+def _market_insights(params: dict[str, Any], ai: SimpleNamespace, db: Any) -> dict[str, Any]:
     """Insights salariales de un rol, con caché en MySQL si el DatabaseManager la soporta."""
     _require_ai(ai)
     role = _text(params, 'role')
@@ -168,21 +169,21 @@ def _market_insights(params: dict, ai, db):
     return {'success': True, 'data': insights, 'from_cache': False}
 
 
-@router.get('/market-insights')
+@router.get('/market-insights', response_model=None)
 def market_insights_get(role: str = '', level: str = '', location: str = '',
-                        ai=Depends(get_ai), db=Depends(get_db)):
+                        ai: SimpleNamespace = Depends(get_ai), db: Any = Depends(get_db)) -> dict[str, Any]:
     """Insights del mercado salarial (parámetros en la query)."""
     return _market_insights({'role': role, 'level': level, 'location': location}, ai, db)
 
 
-@router.post('/market-insights')
-def market_insights_post(payload: dict = JsonBody, ai=Depends(get_ai), db=Depends(get_db)):
+@router.post('/market-insights', response_model=None)
+def market_insights_post(payload: dict[str, Any] = JsonBody, ai: SimpleNamespace = Depends(get_ai), db: Any = Depends(get_db)) -> dict[str, Any]:
     """Insights del mercado salarial (parámetros en el JSON)."""
     return _market_insights(payload, ai, db)
 
 
-@router.post('/learning-path')
-def learning_path(payload: dict = JsonBody, ai=Depends(get_ai)):
+@router.post('/learning-path', response_model=None)
+def learning_path(payload: dict[str, Any] = JsonBody, ai: SimpleNamespace = Depends(get_ai)) -> dict[str, Any]:
     """Plan de aprendizaje para las skills que faltan."""
     _require_ai(ai)
     missing = payload.get('missing_skills')
@@ -193,27 +194,27 @@ def learning_path(payload: dict = JsonBody, ai=Depends(get_ai)):
     return {'success': True, **plan}
 
 
-def _require_notifier(ai):
+def _require_notifier(ai: SimpleNamespace) -> Any:
     if not ai.notifier:
         raise ApiError(503, 'Notification manager not available')
     return ai.notifier
 
 
-@extras.get('/notifications/config')
-def notifications_config(ai=Depends(get_ai)):
+@extras.get('/notifications/config', response_model=None)
+def notifications_config(ai: SimpleNamespace = Depends(get_ai)) -> dict[str, Any]:
     """Configuración de notificaciones (sin contraseñas)."""
     return {'success': True, 'config': _require_notifier(ai).get_notification_config()}
 
 
-@extras.post('/notifications/test')
-def notifications_test(ai=Depends(get_ai)):
+@extras.post('/notifications/test', response_model=None)
+def notifications_test(ai: SimpleNamespace = Depends(get_ai)) -> dict[str, Any]:
     """Envía un email de prueba para verificar SMTP."""
     result = _call('Notification test error', _require_notifier(ai).test_email_config)
     return {'success': result['success'], 'message': result['message']}
 
 
-@extras.post('/notifications/trigger-digest')
-def notifications_trigger_digest(ai=Depends(get_ai), db=Depends(get_db)):
+@extras.post('/notifications/trigger-digest', response_model=None)
+def notifications_trigger_digest(ai: SimpleNamespace = Depends(get_ai), db: Any = Depends(get_db)) -> dict[str, Any]:
     """Fuerza el envío del digest de ofertas guardadas a NOTIFICATION_EMAIL."""
     notifier = _require_notifier(ai)
     email = os.getenv('NOTIFICATION_EMAIL', '')
@@ -238,12 +239,12 @@ def _results_csv(filename: Optional[str]) -> str:
     return path
 
 
-@extras.post('/salary/analyze-csv')
-def salary_analyze_csv(payload: dict = JsonBody):
+@extras.post('/salary/analyze-csv', response_model=None)
+def salary_analyze_csv(payload: dict[str, Any] = JsonBody) -> dict[str, Any]:
     """Distribución salarial y salarios por empresa de un CSV de results/."""
     path = _results_csv(payload.get('filename'))
 
-    def analyze():
+    def analyze() -> dict[str, Any]:
         import pandas as pd
 
         from market_analyzer import analyze_salary_distribution, get_salary_by_company

@@ -6,6 +6,14 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar] - mypy estricto, etapa 2
+
+- `services.*`, `routers.*` y `tasks.*` tienen todas las funciones tipadas, genéricos con parámetros y no devuelven
+  `Any` (override en `pyproject.toml`). En `tasks.*` no se exige `disallow_untyped_decorators`: Celery no trae tipos.
+- Las rutas que devuelven un dict o una `Response` declaran `response_model=None`, igual que las demás.
+- `service_from_token` devuelve `None` si la cuenta no tiene token de Gmail (antes fallaba al leerlo).
+
+
 ## [Sin publicar] - Habilidades que coinciden y que faltan en cada oferta
 
 - La tabla de resultados tiene la columna "Habilidades": en verde, las del CV que pide la oferta; en gris, "Te falta",

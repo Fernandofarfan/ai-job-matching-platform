@@ -1,4 +1,5 @@
 """Búsquedas de Indeed y LinkedIn con matching contra el CV (corren en un thread o en el worker, ver job_dispatch)."""
+from typing import Any, Optional
 import logging
 import os
 import random
@@ -17,7 +18,8 @@ from services.state import job_matcher, job_status, resume_parser
 logger = logging.getLogger(__name__)
 
 
-def run_indeed_scraper_with_matching(credentials, searches, filters=None):
+def run_indeed_scraper_with_matching(credentials: dict[str, Any], searches: list[dict[str, Any]],
+                                     filters: Optional[dict[str, Any]] = None) -> None:
     try:
         job_status['indeed_scraping']['status'] = 'running'
         job_status['indeed_scraping']['progress'] = 5
@@ -47,15 +49,15 @@ def run_indeed_scraper_with_matching(credentials, searches, filters=None):
             except Exception as e:
                 logger.error(f"Error extracting skills: {e}")
         
-        all_jobs = []
+        all_jobs: list[dict[str, Any]] = []
         scraper = None
         
         job_status['indeed_scraping']['progress'] = 10
         job_status['indeed_scraping']['message'] = _m('Preparando el navegador...')
         
         for i, search in enumerate(searches):
-            position = search.get('position')
-            location = search.get('location')
+            position = search.get('position') or ''
+            location = search.get('location') or ''
             
             search_progress_base = 20 + (i / len(searches)) * 60
             job_status['indeed_scraping']['progress'] = int(search_progress_base)
@@ -166,7 +168,8 @@ def run_indeed_scraper_with_matching(credentials, searches, filters=None):
                 pass
 
 
-def run_linkedin_scraper_with_matching(credentials, searches, filters=None):
+def run_linkedin_scraper_with_matching(credentials: dict[str, Any], searches: list[dict[str, Any]],
+                                     filters: Optional[dict[str, Any]] = None) -> None:
     if filters is None:
         filters = {}
     
@@ -260,8 +263,8 @@ def run_linkedin_scraper_with_matching(credentials, searches, filters=None):
         max_jobs_per_search = 50
         
         for i, search in enumerate(searches):
-            position = search.get('position')
-            location = search.get('location')
+            position = search.get('position') or ''
+            location = search.get('location') or ''
             
             search_progress_base = 20 + (i / len(searches)) * 60
             job_status['linkedin_scraping']['progress'] = int(search_progress_base)

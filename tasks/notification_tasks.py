@@ -2,6 +2,8 @@
 tasks/notification_tasks.py — Tareas de notificaciones vía Celery + Email
 Envía alertas de follow-up, nuevos trabajos relevantes y resúmenes semanales.
 """
+from collections.abc import Callable
+from typing import Any, Optional, TypeVar
 import os
 import logging
 from datetime import datetime, date, timedelta
@@ -26,7 +28,7 @@ def _send_email(to: str, subject: str, html_body: str) -> bool:
 
 
 @celery.task(name="tasks.notification_tasks.send_followup_reminder")
-def send_followup_reminder(job_data: dict, user_email: str):
+def send_followup_reminder(job_data: dict[str, Any], user_email: str) -> bool:
     """Envía un recordatorio de follow-up para un trabajo específico."""
     company = job_data.get("company", "la empresa")
     title = job_data.get("title", "el puesto")
@@ -57,7 +59,7 @@ def send_followup_reminder(job_data: dict, user_email: str):
 
 
 @celery.task(name="tasks.notification_tasks.send_new_jobs_digest")
-def send_new_jobs_digest(jobs: list, user_email: str):
+def send_new_jobs_digest(jobs: list[Any], user_email: str) -> bool:
     """Envía un resumen de nuevos trabajos encontrados."""
     if not jobs:
         return False
@@ -91,7 +93,7 @@ def send_new_jobs_digest(jobs: list, user_email: str):
 
 
 @celery.task(name="tasks.notification_tasks.send_weekly_summary")
-def send_weekly_summary(stats: dict, user_email: str):
+def send_weekly_summary(stats: dict[str, Any], user_email: str) -> bool:
     """Envía resumen semanal de actividad."""
     body = f"""
     <p>Tu resumen de actividad de esta semana 📊</p>
@@ -120,7 +122,7 @@ def send_weekly_summary(stats: dict, user_email: str):
 
 
 @celery.task(name="tasks.notification_tasks.send_weekly_digests")
-def send_weekly_digests():
+def send_weekly_digests() -> dict[str, Any]:
     """Periódica (cada hora): un email por cuenta activa que no apagó el resumen, cuyo último resumen tiene
     7 días y que tiene algo para contar."""
     if not email_configured():
@@ -137,7 +139,7 @@ def _claim_minutes() -> int:
         return 60
 
 
-def _send_weekly_digest():
+def _send_weekly_digest() -> dict[str, Any]:
     """Resumen semanal de la cuenta actual."""
     import accounts
     import job_alerts
@@ -188,7 +190,7 @@ def _recipient() -> str:
     return user["email"] if user else NOTIFICATION_EMAIL
 
 
-def _telegram_chat():
+def _telegram_chat() -> Optional[str]:
     """Chat de la cuenta actual; TELEGRAM_CHAT_ID es del dueño de la instancia (primera cuenta o sin cuentas)."""
     import accounts
     uid = accounts.current_user_id()
@@ -211,13 +213,16 @@ def _telegram_allowed() -> bool:
     return accounts.current_user_id() is None or _telegram_chat() is not None
 
 
-def accounts_current():
+def accounts_current() -> Optional[int]:
     """Cuenta de la tarea actual (None sin cuentas)."""
     import accounts
     return accounts.current_user_id()
 
 
-def _for_each_user(func):
+_T = TypeVar('_T')
+
+
+def _for_each_user(func: Callable[[], _T]) -> dict[Optional[int], _T]:
     """Corre func() una vez por cuenta (o una sola vez sin usuario si todavía no hay cuentas)."""
     import accounts
     results = {}
@@ -228,7 +233,7 @@ def _for_each_user(func):
 
 
 @celery.task(name="tasks.notification_tasks.check_and_send_followup_reminders")
-def check_and_send_followup_reminders():
+def check_and_send_followup_reminders() -> dict[str, Any]:
     """Periódica: un aviso por usuario (email y/o Telegram) con los seguimientos que vencen hoy."""
     import push
     if not (email_configured() or telegram_configured() or os.getenv("TELEGRAM_BOT_TOKEN") or push.configured()):
@@ -239,7 +244,7 @@ def check_and_send_followup_reminders():
     return {"sent": sum(r.get("sent", 0) for r in per_user.values()), "users": per_user}
 
 
-def _send_followup_reminders():
+def _send_followup_reminders() -> dict[str, Any]:
     """Seguimientos vencidos del usuario actual."""
     try:
         from db_config import db_manager
@@ -306,7 +311,7 @@ def send_telegram(text: str) -> bool:
         return False
 
 
-def notify_alert(search: dict, jobs: list) -> dict:
+def notify_alert(search: dict[str, Any], jobs: list[Any]) -> dict[str, Any]:
     """Avisa por cada canal de la búsqueda; devuelve {canal: enviado}."""
     sent = {}
     if "email" in search["channels"]:
@@ -327,16 +332,18 @@ def notify_alert(search: dict, jobs: list) -> dict:
 
 
 @celery.task(name="tasks.notification_tasks.run_job_alerts")
-def run_job_alerts():
+def run_job_alerts() -> dict[str, Any]:
     """Corre todas las búsquedas guardadas activas (Celery Beat)."""
     import job_alerts
-    return job_alerts.run_all(notify_alert)
+    summary: dict[str, Any] = job_alerts.run_all(notify_alert)
+    return summary
 
 
 @celery.task(name="tasks.notification_tasks.run_job_alert")
-def run_job_alert(search_id: int):
+def run_job_alert(search_id: int) -> dict[str, Any]:
     """Corre una búsqueda guardada ahora (botón "Buscar ahora")."""
     import accounts
     import job_alerts
     with accounts.as_user(job_alerts.search_owner(search_id)):
-        return job_alerts.run_search(search_id, notify_alert)
+        summary: dict[str, Any] = job_alerts.run_search(search_id, notify_alert)
+        return summary

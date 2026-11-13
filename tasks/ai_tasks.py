@@ -2,6 +2,7 @@
 tasks/ai_tasks.py — Tareas de IA asíncronas vía Celery
 Para procesamiento por lotes, análisis semántico masivo y exportaciones.
 """
+from typing import Any, Optional
 import os
 import glob
 import logging
@@ -12,32 +13,34 @@ logger = logging.getLogger(__name__)
 
 
 @celery.task(bind=True, name="tasks.ai_tasks.generate_documents_batch")
-def generate_documents_batch(self, kind: str, filename: str, num_jobs: int, user_id=None):
+def generate_documents_batch(self: Any, kind: str, filename: str, num_jobs: int,
+                             user_id: Optional[int] = None) -> dict[str, Any]:
     """Genera los documentos como `user_id` (lee su CSV y guarda en su carpeta)."""
     import accounts
     with accounts.as_user(user_id):
         return _generate_documents_batch(self, kind, filename, num_jobs)
 
 
-def _generate_documents_batch(self, kind: str, filename: str, num_jobs: int):
+def _generate_documents_batch(self: Any, kind: str, filename: str, num_jobs: int) -> dict[str, Any]:
     """Cartas o CVs adaptados para las primeras `num_jobs` ofertas de un CSV de results/."""
     import document_batch
     from services.profiles import get_resume_text_from_profile
 
-    def progress(done, total):
+    def progress(done: int, total: int) -> None:
         self.update_state(state="PROGRESS", meta={
             "progress": int(done / max(total, 1) * 100),
             "message": f"Documento {done} de {total}",
         })
 
     try:
-        return document_batch.run(kind, filename, num_jobs, get_resume_text_from_profile(), progress=progress)
+        result: dict[str, Any] = document_batch.run(kind, filename, num_jobs, get_resume_text_from_profile(), progress=progress)
+        return result
     except document_batch.BatchError as e:
         return {"success": False, "error": str(e)}
 
 
 @celery.task(name="tasks.ai_tasks.cleanup_old_temp_files")
-def cleanup_old_temp_files(days: int = 7):
+def cleanup_old_temp_files(days: int = 7) -> dict[str, Any]:
     """Limpia archivos temporales más viejos que N días."""
     import time as time_mod
 
@@ -76,7 +79,7 @@ def _env_flag(name: str) -> bool:
     return os.getenv(name, "false").strip().lower() in ("1", "true", "yes")
 
 
-def _is_linkedin_job(link) -> bool:
+def _is_linkedin_job(link: str) -> bool:
     from urllib.parse import urlparse
 
     try:
@@ -89,7 +92,7 @@ def _is_linkedin_job(link) -> bool:
 
 
 @celery.task(bind=True, name="tasks.ai_tasks.auto_apply_jobs")
-def auto_apply_jobs(self, resume_path: str, user_profile: dict, job_links: list):
+def auto_apply_jobs(self: Any, resume_path: str, user_profile: dict[str, Any], job_links: list[Any]) -> dict[str, Any]:
     """
     Experimental y apagado por defecto: completa postulaciones 'Easy Apply' de LinkedIn con Playwright.
 

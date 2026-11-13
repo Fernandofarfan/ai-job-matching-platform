@@ -1,3 +1,6 @@
+import functools
+from collections.abc import Callable
+from typing import Any, Optional
 import json
 import os
 import logging
@@ -15,7 +18,7 @@ TOKEN_FILE = 'token.json'
 # Una invitación no pisa postulaciones ya cerradas (aceptadas o rechazadas) ni las que ya están en entrevista
 OPEN_STATUSES = ('bookmarked', 'applying', 'applied')
 
-def get_gmail_service():
+def get_gmail_service() -> Any:
     """Confirgura y retorna la conexion (servicio) a Gmail API usando OAuth."""
     creds = None
     # token.json almacena el token de acceso del usuario
@@ -41,8 +44,10 @@ def get_gmail_service():
 
     return build('gmail', 'v1', credentials=creds)
 
-def service_from_token(token_json: str, on_refresh=None):
+def service_from_token(token_json: Optional[str], on_refresh: Optional[Callable[[str], None]] = None) -> Any:
     """Servicio de Gmail con el token OAuth de una cuenta (lo renueva si venció); None si ya no sirve."""
+    if not token_json:
+        return None
     creds = Credentials.from_authorized_user_info(json.loads(token_json), SCOPES)
     if not creds.valid:
         if not (creds.expired and creds.refresh_token):
@@ -54,7 +59,7 @@ def service_from_token(token_json: str, on_refresh=None):
 
 
 @celery.task(name="tasks.gmail_tracker.check_interview_emails")
-def check_interview_emails():
+def check_interview_emails() -> str | dict[int, str]:
     """
     Se ejecuta frecuentemente (via celery-beat): revisa el Gmail de cada cuenta que lo conectó
     y actualiza su tracker. token.json (instalación vieja) es la casilla de la primera cuenta.
@@ -66,7 +71,7 @@ def check_interview_emails():
         with accounts.as_user(uid):
             try:
                 service = service_from_token(integrations.gmail_token(uid),
-                                             lambda token, uid=uid: integrations.save_gmail_token(uid, token))
+                                             functools.partial(integrations.save_gmail_token, uid))
             except Exception as e:
                 logger.error(f"Token de Gmail inválido para la cuenta {uid}: {type(e).__name__}")
                 service = None
@@ -82,7 +87,7 @@ def check_interview_emails():
     return next(iter(results.values())) if len(results) == 1 else results
 
 
-def _process_mailbox(service):
+def _process_mailbox(service: Any) -> str:
     """Busca invitaciones sin leer en la casilla y pasa a entrevista las postulaciones de la cuenta actual."""
     # Buscamos emails que tengan la palabra 'interview', 'entrevista' de los últimos días
     query = 'subject:(interview OR entrevista OR feedback) is:unread'

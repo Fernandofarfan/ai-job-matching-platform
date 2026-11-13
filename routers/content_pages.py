@@ -4,13 +4,13 @@ Perfiles de CV en profile_pages.py; alertas y "me interesa" en alert_pages.py.
 
 Los nombres de ruta son los endpoints que usaba Flask, así las plantillas siguen armando las mismas URLs.
 """
+from typing import Any, Optional
 import ast
 import json
 import logging
 import os
 from collections.abc import Mapping
 from html import escape
-from typing import Optional
 
 import pandas as pd
 from fastapi import APIRouter, Request
@@ -30,7 +30,7 @@ router = APIRouter(tags=["content"], include_in_schema=False)
 DOCX = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 
 
-def _go(request: Request, endpoint: str, **values) -> Response:
+def _go(request: Request, endpoint: str, **values: Any) -> Response:
     """Redirección al endpoint con nombre (como redirect(url_for(...)) en Flask)."""
     return redirect(request, url_for(request, endpoint, **values))
 
@@ -55,13 +55,13 @@ COLUMNS = {'Title': 'Título', 'Company': 'Empresa', 'Location': 'Ubicación', '
            'Experience_Category': 'Categoría de Experiencia'}
 
 
-def _match_of(job: dict):
+def _match_of(job: dict[str, Any]) -> Optional[float]:
     """Match 0-100 de una fila del CSV, o None."""
     value = job.get('overall_match')
     return None if value is None or pd.isna(value) else float(value)
 
 
-def _skill_list(value) -> list[str]:
+def _skill_list(value: Any) -> list[str]:
     """Lista de habilidades de una celda del CSV (pandas la guarda como "['python', 'sql']")."""
     if isinstance(value, list):
         return [str(v) for v in value]
@@ -74,7 +74,7 @@ def _skill_list(value) -> list[str]:
     return [str(v) for v in parsed] if isinstance(parsed, list) else []
 
 
-def _skills_cell(matched, missing) -> str:
+def _skills_cell(matched: Any, missing: Any) -> str:
     """Insignias con las habilidades del CV que pide la oferta y las que pide y faltan; todo escapado."""
     parts = [f'<span class="badge text-bg-success me-1">{escape(s)}</span>' for s in _skill_list(matched)]
     gaps = [f'<span class="badge text-bg-light border me-1">{escape(s)}</span>' for s in _skill_list(missing)]
@@ -87,7 +87,7 @@ def _skills_cell(matched, missing) -> str:
     return html
 
 
-def _job_table(file_path: str) -> dict:
+def _job_table(file_path: str) -> dict[str, Any]:
     """Tabla HTML del CSV (primeras 100 filas), ordenada por match y por el ranking aprendido."""
     import job_ranking
     try:  # Los scrapers escriben UTF-8 (Bumeran con BOM); latin-1 queda para CSVs viejos
@@ -134,7 +134,7 @@ def _job_table(file_path: str) -> dict:
 
 
 @router.get('/view/{filename}', name='view_file')
-def view_file(request: Request, filename: str):
+def view_file(request: Request, filename: str) -> Response:
     """Tabla con las ofertas de un CSV de resultados de la cuenta."""
     path = _csv_path(filename)
     if path is None:
@@ -154,7 +154,7 @@ def _json_error(message: str, status: int) -> JSONResponse:
 
 
 @router.post('/api/save_applications', name='api_save_applications')
-async def api_save_applications(request: Request):
+async def api_save_applications(request: Request) -> Response:
     """Guarda en el tracker las ofertas marcadas como postuladas y deja las empresas para pedir conexiones."""
     if not await _body_within(request, upload_max_bytes(request)):
         return _json_error('Pedido demasiado grande', 413)
@@ -169,7 +169,7 @@ async def api_save_applications(request: Request):
         return _json_error('JSON inválido', 400)
     db = services_for(request).db
 
-    def save():
+    def save() -> tuple[list[Any], set[str]]:
         """Guarda las postulaciones y el archivo procesado; devuelve ids y empresas."""
         saved, companies = [], set()
         for job in applied_jobs.values():
@@ -189,7 +189,7 @@ async def api_save_applications(request: Request):
 
 
 @router.post('/exclude_company_from_networking', name='exclude_company_from_networking')
-async def exclude_company_from_networking(request: Request):
+async def exclude_company_from_networking(request: Request) -> Response:
     """Saca una empresa de la lista para pedir conexiones (sesión y base)."""
     form, error = await read_form(request)
     if error:
@@ -211,7 +211,7 @@ async def exclude_company_from_networking(request: Request):
 
 
 @router.get('/connections', name='connections')
-def connections(request: Request):
+def connections(request: Request) -> Response:
     """Página de conexiones con las empresas a las que te postulaste."""
     session = get_session(request)
     companies = session.get('applied_companies', [])
@@ -222,12 +222,12 @@ def connections(request: Request):
                   auto_start=request.query_params.get('auto_start') == 'true')
 
 
-@router.get('/debug/directories', name='debug_directories')
-def debug_directories(request: Request):
+@router.get('/debug/directories', name='debug_directories', response_model=None)
+def debug_directories(request: Request) -> Response | dict[str, Any]:
     """Estado de las carpetas de trabajo; solo con debug activo."""
     if not web_app_for(request).debug:
         return JSONResponse({'error': 'Not found'}, status_code=404)
-    directories: dict = {}
+    directories: dict[str, Any] = {}
     for path in ['uploads', 'results', 'logs', 'profiles', 'temp', 'temp/resumes']:
         try:
             os.makedirs(path, exist_ok=True)
@@ -238,14 +238,15 @@ def debug_directories(request: Request):
             'message': 'Directory status checked and created if needed'}
 
 
-@router.get('/status', name='status')
-def status(request: Request):
+@router.get('/status', name='status', response_model=None)
+def status(request: Request) -> dict[str, Any]:
     """Progreso de las búsquedas de la cuenta."""
     select_language(request)
-    return _translated(job_dispatch.refresh(services_for(request).job_status))
+    state: dict[str, Any] = _translated(job_dispatch.refresh(services_for(request).job_status))
+    return state
 
 
-def _translated(state):
+def _translated(state: Any) -> Any:
     """Copia del estado con los `message` en el idioma de la cuenta."""
     if isinstance(state, Mapping):
         return {key: (i18n.render_message(value) if key == 'message' else _translated(value))
@@ -254,7 +255,7 @@ def _translated(state):
 
 
 @router.get('/results/{filename}', name='download_file')
-def download_file(request: Request, filename: str):
+def download_file(request: Request, filename: str) -> Response:
     """Descarga un archivo de resultados de la cuenta (sin ocultos ni rutas)."""
     path = os.path.join(accounts.results_dir(), filename)
     if filename != os.path.basename(filename) or filename.startswith('.') or not os.path.isfile(path):
@@ -263,7 +264,7 @@ def download_file(request: Request, filename: str):
 
 
 @router.get('/download_csv/{filename}', name='download_csv_file')
-def download_csv_file(request: Request, filename: str):
+def download_csv_file(request: Request, filename: str) -> Response:
     """Descarga un CSV de resultados de la cuenta."""
     path = _csv_path(filename)
     if path is None:
@@ -272,7 +273,7 @@ def download_csv_file(request: Request, filename: str):
     return _attachment(path, filename)
 
 
-def _companies(file_path: str) -> list:
+def _companies(file_path: str) -> list[Any]:
     """Hasta 20 empresas del CSV, sin las grandes tecnológicas."""
     df = pd.read_csv(file_path, encoding='latin-1')
     companies = set()
@@ -285,7 +286,7 @@ def _companies(file_path: str) -> list:
 
 
 @router.get('/extract_companies/{filename}', name='extract_companies_from_file')
-def extract_companies_from_file(request: Request, filename: str):
+def extract_companies_from_file(request: Request, filename: str) -> Response:
     """Guarda en la sesión las empresas de un CSV y lleva a conexiones."""
     path = _csv_path(filename)
     if path is None:
@@ -303,7 +304,7 @@ def extract_companies_from_file(request: Request, filename: str):
 
 
 @router.get('/download_resume/{filename}', name='download_resume')
-def download_resume(request: Request, filename: str):
+def download_resume(request: Request, filename: str) -> Response:
     """Descarga un documento generado (carta o CV) de la cuenta."""
     import document_batch
     name = os.path.basename(filename)
@@ -316,7 +317,7 @@ def download_resume(request: Request, filename: str):
 
 
 @router.post('/delete_csv/{filename}', name='delete_csv')
-async def delete_csv(request: Request, filename: str):
+async def delete_csv(request: Request, filename: str) -> Response:
     """Borra un CSV de resultados de la cuenta (POST con CSRF: antes era un GET)."""
     _form, error = await read_form(request)
     if error:
@@ -333,7 +334,7 @@ async def delete_csv(request: Request, filename: str):
 # ─── Documentos ──────────────────────────────────────────────────────────────
 
 @router.get('/batch_cover_letters', name='batch_cover_letters')
-def batch_cover_letters(request: Request):
+def batch_cover_letters(request: Request) -> Response:
     """Página de cartas en lote con los CSV de la cuenta."""
     results_dir = accounts.results_dir()
     os.makedirs(results_dir, exist_ok=True)
@@ -342,19 +343,19 @@ def batch_cover_letters(request: Request):
 
 
 @router.get('/batch_optimize', name='batch_optimize_page')
-def batch_optimize_page(request: Request):
+def batch_optimize_page(request: Request) -> Response:
     """Página de CVs optimizados en lote."""
     return render(request, 'batch_optimize.html', job_files=services_for(request).profiles.get_recent_job_files())
 
 
 @router.get('/optimize_resume', name='optimize_resume_page')
-def optimize_resume_page(request: Request):
+def optimize_resume_page(request: Request) -> Response:
     """Formulario para optimizar el CV contra una oferta."""
     return render(request, 'optimize_resume.html')
 
 
 @router.post('/optimize_resume', name='optimize_resume')
-async def optimize_resume(request: Request):
+async def optimize_resume(request: Request) -> Response:
     """Optimiza el CV (pegado o del perfil) para la oferta con IA y lo guarda en .docx."""
     form, error = await read_form(request)
     if error:
@@ -369,7 +370,7 @@ async def optimize_resume(request: Request):
         flash(request, 'Pegá el texto de tu CV o subilo primero en Perfil', 'warning')
         return _go(request, 'optimize_resume_page')
 
-    def optimize():
+    def optimize() -> tuple[str, str]:
         """CV optimizado y nombre del .docx guardado."""
         optimizer = ResumeOptimizer()
         optimized = optimizer.optimize_resume(resume_text, job_description, job_title, company)
@@ -385,7 +386,7 @@ async def optimize_resume(request: Request):
 
 
 @router.post('/ats_score', name='ats_score_page')
-async def ats_score_page(request: Request):
+async def ats_score_page(request: Request) -> Response:
     """Puntaje ATS del CV (pegado o del perfil) contra la oferta, sin gastar IA."""
     form, error = await read_form(request)
     if error:

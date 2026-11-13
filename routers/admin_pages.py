@@ -1,6 +1,7 @@
 """Administración: lista de cuentas, bloqueo, quitar el segundo factor y borrado, en FastAPI."""
+from collections.abc import Callable
 import logging
-from typing import Optional
+from typing import Any, Optional
 
 from fastapi import APIRouter, Request
 from fastapi.responses import Response
@@ -27,7 +28,7 @@ def _admin_id() -> Optional[int]:
     return user_id if auth.auth_enabled() and user_id is not None and accounts.is_admin(user_id) else None
 
 
-def _target(request: Request, admin_id: int, user_id: int) -> Optional[dict]:
+def _target(request: Request, admin_id: int, user_id: int) -> Optional[dict[str, Any]]:
     """Cuenta sobre la que se actúa; None (con aviso) si es la propia o la administradora."""
     target = accounts.get_user(user_id)
     if target is None:
@@ -52,7 +53,7 @@ def _to_admin(request: Request) -> Response:
 
 
 @router.get("/admin", name="admin_panel")
-def admin_panel(request: Request):
+def admin_panel(request: Request) -> Response:
     """Lista de cuentas con estado, segundo factor, última actividad y consumo de IA del mes."""
     if _admin_id() is None:
         return _not_found(request)
@@ -79,7 +80,7 @@ def admin_panel(request: Request):
     return response
 
 
-async def _admin_action(request: Request, user_id: int, spec: str, namespace: str, action) -> Response:
+async def _admin_action(request: Request, user_id: int, spec: str, namespace: str, action: Callable[..., Any]) -> Response:
     """CSRF, 404 para quien no administra, límite y `action(request, admin_id, target, form)` fuera del event loop."""
     form, error = await read_form(request)
     if error:
@@ -101,21 +102,21 @@ async def _admin_action(request: Request, user_id: int, spec: str, namespace: st
     return await run_in_threadpool(run)
 
 
-def _block(request: Request, admin_id: int, target: dict, form: TextForm) -> None:
+def _block(request: Request, admin_id: int, target: dict[str, Any], form: TextForm) -> None:
     """Bloquea la cuenta: no entra, sus sesiones se cierran y no recibe avisos."""
     if accounts.set_disabled(target['id'], True):
         audit(request, target['id'], 'account_blocked')
         flash(request, f"{target['email']} quedó bloqueada", 'success')
 
 
-def _unblock(request: Request, admin_id: int, target: dict, form: TextForm) -> None:
+def _unblock(request: Request, admin_id: int, target: dict[str, Any], form: TextForm) -> None:
     """Desbloquea la cuenta."""
     if accounts.set_disabled(target['id'], False):
         audit(request, target['id'], 'account_unblocked')
         flash(request, f"{target['email']} quedó desbloqueada", 'success')
 
 
-def _reset_two_factor(request: Request, admin_id: int, target: dict, form: TextForm) -> None:
+def _reset_two_factor(request: Request, admin_id: int, target: dict[str, Any], form: TextForm) -> None:
     """Quita la verificación en dos pasos de quien perdió el teléfono y los códigos."""
     if _password_ok(request, admin_id, form):
         two_factor.disable(target['id'])
@@ -123,7 +124,7 @@ def _reset_two_factor(request: Request, admin_id: int, target: dict, form: TextF
         flash(request, f"{target['email']} ya puede entrar solo con la contraseña", 'success')
 
 
-def _delete(request: Request, admin_id: int, target: dict, form: TextForm) -> None:
+def _delete(request: Request, admin_id: int, target: dict[str, Any], form: TextForm) -> None:
     """Borra la cuenta y todos sus datos, igual que "Borrar mi cuenta"."""
     if not _password_ok(request, admin_id, form):
         return
@@ -143,24 +144,24 @@ def _delete(request: Request, admin_id: int, target: dict, form: TextForm) -> No
 
 
 @router.post("/admin/users/{user_id}/block", name="admin_block")
-async def admin_block(request: Request, user_id: int):
+async def admin_block(request: Request, user_id: int) -> Response:
     """Bloquea la cuenta."""
     return await _admin_action(request, user_id, '30 per minute', 'admin_block', _block)
 
 
 @router.post("/admin/users/{user_id}/unblock", name="admin_unblock")
-async def admin_unblock(request: Request, user_id: int):
+async def admin_unblock(request: Request, user_id: int) -> Response:
     """Desbloquea la cuenta."""
     return await _admin_action(request, user_id, '30 per minute', 'admin_unblock', _unblock)
 
 
 @router.post("/admin/users/{user_id}/2fa/reset", name="admin_reset_two_factor")
-async def admin_reset_two_factor(request: Request, user_id: int):
+async def admin_reset_two_factor(request: Request, user_id: int) -> Response:
     """Quita la verificación en dos pasos (pide la contraseña del administrador)."""
     return await _admin_action(request, user_id, '10 per minute', 'admin_reset_two_factor', _reset_two_factor)
 
 
 @router.post("/admin/users/{user_id}/delete", name="admin_delete")
-async def admin_delete(request: Request, user_id: int):
+async def admin_delete(request: Request, user_id: int) -> Response:
     """Borra la cuenta y sus datos (pide la contraseña del administrador)."""
     return await _admin_action(request, user_id, '10 per minute', 'admin_delete', _delete)

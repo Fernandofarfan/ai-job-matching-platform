@@ -13,7 +13,7 @@ class AppServices:
     """Dependencias de las páginas: base de datos, progreso de búsquedas, parser de CVs y módulos de servicios."""
 
     db: Any
-    job_status: MutableMapping
+    job_status: MutableMapping[str, Any]
     resume_parser: Any
     profiles: ModuleType
     probe_tasks: ModuleType

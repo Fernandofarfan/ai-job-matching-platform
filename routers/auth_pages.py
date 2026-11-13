@@ -8,7 +8,7 @@ import logging
 import os
 import secrets
 import time
-from typing import Optional
+from typing import Any, Optional, cast
 
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse, Response
@@ -33,9 +33,10 @@ LEGAL_UPDATED = '2026-11-12'
 PENDING_MAX_AGE = 300
 
 
-def _secret(request: Request):
+def _secret(request: Request) -> str:
     """SECRET_KEY de la web (firma la sesión y los enlaces)."""
-    return web_app_for(request).secret_key
+    secret: str = web_app_for(request).secret_key
+    return secret
 
 
 def _email_key(form: TextForm) -> str:
@@ -43,23 +44,23 @@ def _email_key(form: TextForm) -> str:
     return (form.get('email') or '').strip().lower()[:254]
 
 
-def audit(request: Request, user_id, kind: str) -> bool:
+def audit(request: Request, user_id: Optional[int], kind: str) -> bool:
     """Registra el evento de seguridad con la IP y el navegador del pedido."""
     return account_notify.audit(user_id, kind, *client_info(request))
 
 
-def _audit_login(request: Request, user: dict, kind: str) -> None:
+def _audit_login(request: Request, user: dict[str, Any], kind: str) -> None:
     """Registra el login y avisa por email si es un navegador nuevo."""
     account_notify.audit_login(user, kind, *client_info(request), lambda: public_url(request, 'account'))
 
 
-def send_verification(request: Request, user: dict) -> bool:
+def send_verification(request: Request, user: dict[str, Any]) -> bool:
     """Manda el enlace para confirmar el email de la cuenta."""
     token = auth.account_token(_secret(request), 'verify', user)
     return account_notify.send_verification(user, public_url(request, 'verify_email', token=token))
 
 
-async def _post(request: Request, limits: list) -> tuple[Optional[TextForm], Optional[Response]]:
+async def _post(request: Request, limits: list[Any]) -> tuple[Optional[TextForm], Optional[Response]]:
     """Formulario del POST (None en GET) con CSRF y límites [(spec, namespace, key_fn(form))]."""
     if request.method != 'POST':
         return None, None
@@ -72,7 +73,7 @@ async def _post(request: Request, limits: list) -> tuple[Optional[TextForm], Opt
     return form, None
 
 
-def begin_login(request: Request, user: dict, kind: str, next_url: str) -> Optional[Response]:
+def begin_login(request: Request, user: dict[str, Any], kind: str, next_url: str) -> Optional[Response]:
     """Con segundo factor activo deja el login pendiente y devuelve la redirección; si no, None."""
     if not two_factor.is_enabled(user['id']):
         return None
@@ -81,7 +82,7 @@ def begin_login(request: Request, user: dict, kind: str, next_url: str) -> Optio
     return redirect(request, url_for(request, 'login_two_factor'))
 
 
-def _finish_login(request: Request, user: dict, kind: str, next_url: str) -> Response:
+def _finish_login(request: Request, user: dict[str, Any], kind: str, next_url: str) -> Response:
     """Abre la sesión, registra el login y vuelve a `next_url` si es local."""
     auth.start_session(get_session(request), _secret(request), user['id'], *client_info(request))
     _audit_login(request, user, kind)
@@ -89,11 +90,13 @@ def _finish_login(request: Request, user: dict, kind: str, next_url: str) -> Res
 
 
 @router.api_route("/login", methods=["GET", "POST"], name="login")
-async def login(request: Request):
+async def login(request: Request) -> Response:
     """Email y contraseña; con segundo factor sigue en /login/2fa."""
     form, error = await _post(request, [('10 per minute', 'login', lambda f: client_ip(request)),
                                         ('20 per hour', 'login_email', _email_key)])
-    return error or await run_in_threadpool(_login, request, form)
+    if error:
+        return error
+    return await run_in_threadpool(_login, request, form)
 
 
 def _login(request: Request, form: Optional[TextForm]) -> Response:
@@ -134,10 +137,12 @@ def _login(request: Request, form: Optional[TextForm]) -> Response:
 
 
 @router.api_route("/register", methods=["GET", "POST"], name="register")
-async def register(request: Request):
+async def register(request: Request) -> Response:
     """Alta de cuenta: siempre para la primera; después solo con ALLOW_SIGNUP=true."""
     form, error = await _post(request, [('5 per minute', 'register', lambda f: client_ip(request))])
-    return error or await run_in_threadpool(_register, request, form)
+    if error:
+        return error
+    return await run_in_threadpool(_register, request, form)
 
 
 def _register(request: Request, form: Optional[TextForm]) -> Response:
@@ -184,7 +189,7 @@ def _register(request: Request, form: Optional[TextForm]) -> Response:
 
 
 @router.post("/logout", name="logout")
-async def logout(request: Request):
+async def logout(request: Request) -> Response:
     """Cierra la sesión y borra el caché offline del navegador."""
     _form, error = await read_form(request)
     if error:
@@ -196,11 +201,13 @@ async def logout(request: Request):
 
 
 @router.api_route("/forgot_password", methods=["GET", "POST"], name="forgot_password")
-async def forgot_password(request: Request):
+async def forgot_password(request: Request) -> Response:
     """Pide el email y manda el enlace de recuperación (la respuesta no dice si la cuenta existe)."""
     form, error = await _post(request, [('5 per minute', 'forgot', lambda f: client_ip(request)),
                                         ('5 per hour', 'forgot_email', _email_key)])
-    return error or await run_in_threadpool(_forgot_password, request, form)
+    if error:
+        return error
+    return await run_in_threadpool(_forgot_password, request, form)
 
 
 def _forgot_password(request: Request, form: Optional[TextForm]) -> Response:
@@ -219,10 +226,12 @@ def _forgot_password(request: Request, form: Optional[TextForm]) -> Response:
 
 
 @router.api_route("/reset_password/{token}", methods=["GET", "POST"], name="reset_password")
-async def reset_password(request: Request, token: str):
+async def reset_password(request: Request, token: str) -> Response:
     """Elige una contraseña nueva con el enlace del email; cierra las sesiones abiertas."""
     form, error = await _post(request, [('10 per minute', 'reset', lambda f: client_ip(request))])
-    return error or await run_in_threadpool(_reset_password, request, token, form)
+    if error:
+        return error
+    return await run_in_threadpool(_reset_password, request, token, form)
 
 
 def _reset_password(request: Request, token: str, form: Optional[TextForm]) -> Response:
@@ -257,7 +266,7 @@ def _reset_password(request: Request, token: str, form: Optional[TextForm]) -> R
 
 
 @router.get("/verify_email/{token}", name="verify_email")
-def verify_email(request: Request, token: str):
+def verify_email(request: Request, token: str) -> Response:
     """Confirma el email con el enlace que se mandó al registrarse."""
     user = auth.read_account_token(_secret(request), 'verify', token, auth.VERIFY_MAX_AGE)
     if user is None:
@@ -270,24 +279,26 @@ def verify_email(request: Request, token: str):
     return redirect(request, url_for(request, 'account' if logged_in else 'login'))
 
 
-def _pending(request: Request) -> Optional[dict]:
+def _pending(request: Request) -> Optional[dict[str, Any]]:
     """Login pendiente del segundo factor, si no venció."""
     session = get_session(request)
     pending = session.get('two_factor')
     if not pending or time.time() - pending.get('ts', 0) > PENDING_MAX_AGE:
         session.pop('two_factor', None)
         return None
-    return pending
+    return cast(dict[str, Any], pending)
 
 
 @router.api_route("/login/2fa", methods=["GET", "POST"], name="login_two_factor")
-async def login_two_factor(request: Request):
+async def login_two_factor(request: Request) -> Response:
     """Pide el código de la app autenticadora (o uno de recuperación) después de la contraseña."""
     # el límite por cuenta pendiente frena probar códigos desde muchas IPs
     form, error = await _post(request, [
         ('10 per minute', 'two_factor', lambda f: client_ip(request)),
         ('10 per 15 minutes', 'two_factor_pending', lambda f: str((_pending(request) or {}).get('uid')))])
-    return error or await run_in_threadpool(_login_two_factor, request, form)
+    if error:
+        return error
+    return await run_in_threadpool(_login_two_factor, request, form)
 
 
 def _login_two_factor(request: Request, form: Optional[TextForm]) -> Response:
@@ -325,7 +336,8 @@ def request_origin(request: Request) -> str:
     return passkeys.origin(f'{request.url.scheme}://{request.url.netloc}')
 
 
-async def passkey_json(request: Request, limit: str, namespace: str, key: str):
+async def passkey_json(request: Request, limit: str, namespace: str,
+                       key: str) -> tuple[Optional[dict[str, Any]], Optional[Response]]:
     """(cuerpo JSON, error): límite de tamaño, CSRF por header y límite de pedidos."""
     if not await _body_within(request, 64 * 1024):
         return None, JSONResponse({'error': 'Pedido demasiado grande'}, status_code=413)
@@ -343,7 +355,7 @@ async def passkey_json(request: Request, limit: str, namespace: str, key: str):
 
 
 @router.post("/login/passkey/options", name="passkey_login_options")
-async def passkey_login_options(request: Request):
+async def passkey_login_options(request: Request) -> Response:
     """Desafío para entrar con una passkey del dispositivo."""
     _, error = await passkey_json(request, '20 per minute', 'passkey_login', client_ip(request))
     if error:
@@ -360,13 +372,15 @@ def _passkey_login_options(request: Request) -> Response:
 
 
 @router.post("/login/passkey", name="passkey_login")
-async def passkey_login(request: Request):
+async def passkey_login(request: Request) -> Response:
     """Comprueba la firma de la passkey y abre la sesión (la passkey ya verificó al usuario: sin código)."""
     data, error = await passkey_json(request, '10 per minute', 'passkey_login_finish', client_ip(request))
-    return error or await run_in_threadpool(_passkey_login, request, data or {})
+    if error:
+        return error
+    return await run_in_threadpool(_passkey_login, request, data or {})
 
 
-def _passkey_login(request: Request, data: dict) -> Response:
+def _passkey_login(request: Request, data: dict[str, Any]) -> Response:
     """Valida la passkey y la cuenta, y responde a dónde ir."""
     challenge = passkeys.take_challenge(get_session(request), 'login')
     if challenge is None:
@@ -390,7 +404,7 @@ def _passkey_login(request: Request, data: dict) -> Response:
 
 
 @router.get("/login/google", name="google_login")
-def google_login(request: Request):
+def google_login(request: Request) -> Response:
     """Manda a Google a elegir la cuenta."""
     if not hit_limit(request, '10 per minute', 'google_login', limit_key(request)):
         return too_many_requests()
@@ -406,7 +420,7 @@ def google_login(request: Request):
 
 
 @router.get("/login/google/callback", name="google_callback")
-def google_callback(request: Request):
+def google_callback(request: Request) -> Response:
     """Vuelta de Google: entra a la cuenta de ese email (o la crea si el registro está abierto)."""
     if not hit_limit(request, '10 per minute', 'google_callback', limit_key(request)):
         return too_many_requests()
@@ -462,12 +476,12 @@ def _legal(request: Request, page: str) -> Response:
 
 
 @router.get("/terms", name="terms")
-def terms(request: Request):
+def terms(request: Request) -> Response:
     """Términos y condiciones."""
     return _legal(request, 'terms')
 
 
 @router.get("/privacy", name="privacy")
-def privacy(request: Request):
+def privacy(request: Request) -> Response:
     """Política de privacidad."""
     return _legal(request, 'privacy')

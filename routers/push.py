@@ -1,4 +1,5 @@
 """Suscripciones a notificaciones push del navegador (/api/push/*)."""
+from typing import Any
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
@@ -29,20 +30,20 @@ class Endpoint(BaseModel):
     endpoint: str = Field(min_length=1, max_length=push.MAX_ENDPOINT)
 
 
-def _require_configured():
+def _require_configured() -> None:
     if not push.configured():
         raise ApiError(503, 'Notificaciones push no configuradas (faltan VAPID_PUBLIC_KEY y VAPID_PRIVATE_KEY)')
 
 
-@router.get('/config')
-def config():
+@router.get('/config', response_model=None)
+def config() -> dict[str, Any]:
     """Clave pública VAPID y cuántos dispositivos tiene la cuenta."""
     return {'success': True, 'enabled': push.configured(), 'public_key': push.public_key(),
             'devices': push.device_count(accounts.current_user_id())}
 
 
-@router.post('/subscribe')
-def subscribe(sub: Subscription):
+@router.post('/subscribe', response_model=None)
+def subscribe(sub: Subscription) -> dict[str, Any]:
     """Suscribe este navegador a los avisos de la cuenta."""
     _require_configured()
     try:
@@ -52,14 +53,14 @@ def subscribe(sub: Subscription):
     return {'success': True}
 
 
-@router.post('/unsubscribe')
-def unsubscribe(body: Endpoint):
+@router.post('/unsubscribe', response_model=None)
+def unsubscribe(body: Endpoint) -> dict[str, Any]:
     """Da de baja este navegador."""
     return {'success': True, 'removed': push.unsubscribe(accounts.current_user_id(), body.endpoint)}
 
 
-@router.post('/test')
-def test(body: Endpoint):
+@router.post('/test', response_model=None)
+def test(body: Endpoint) -> dict[str, Any]:
     """Manda una notificación de prueba solo a este navegador (si está suscripto a la cuenta)."""
     _require_configured()
     sent = push.send(accounts.current_user_id(), 'EmpleoIA', 'Las notificaciones funcionan en este dispositivo',

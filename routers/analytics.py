@@ -1,4 +1,6 @@
-from fastapi import APIRouter, HTTPException, Request
+from sqlalchemy import ColumnElement
+from typing import Any
+from fastapi import APIRouter, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse
 
 from fastapi_web import render
@@ -13,20 +15,20 @@ router = APIRouter(tags=["analytics"])
 
 
 @router.get("/analytics", response_class=HTMLResponse)
-def dashboard_view(request: Request):
+def dashboard_view(request: Request) -> Response:
     """Vista principal del Dashboard de Funnel de Conversión."""
     return render(request, "dashboard.html")
 
 
-def _owned():
+def _owned() -> ColumnElement[bool]:
     """Filtro de las postulaciones de la cuenta actual."""
     import accounts
     uid = accounts.current_user_id()
     return Application.user_id.is_(None) if uid is None else Application.user_id == uid
 
 
-@router.get("/api/analytics/funnel")
-async def get_funnel_stats():
+@router.get("/api/analytics/funnel", response_model=None)
+async def get_funnel_stats() -> dict[str, Any]:
     """Retorna las estadísticas del embudo de reclutamiento."""
     if not orm_manager:
         raise HTTPException(status_code=500, detail="Database ORM Manager no disponible")

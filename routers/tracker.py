@@ -2,11 +2,13 @@
 
 Usa la sesión y el token CSRF de Flask: el navegador sigue mandando la misma cookie y el
 header X-CSRFToken que agrega base.html."""
+from collections.abc import Callable, Coroutine
+from starlette.types import Message
 import logging
 from datetime import date, datetime
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
-from fastapi import APIRouter, Body, Depends, Request
+from fastapi import APIRouter, Body, Depends, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
@@ -25,7 +27,7 @@ FOLLOWUP_STATUSES = ('applied', 'interviewing')
 class ApiError(Exception):
     """Error con la forma {'success': False, 'error': ...} que espera el frontend."""
 
-    def __init__(self, status_code: int, error: str, **extra: Any):
+    def __init__(self, status_code: int, error: str, **extra: Any) -> None:
         super().__init__(error)
         self.status_code = status_code
         self.payload = {'success': False, 'error': error, **extra}
@@ -47,7 +49,7 @@ class BodyTooLarge(Exception):
 
 def _body_limit(request: Request) -> Optional[int]:
     web_factory = request.app.dependency_overrides.get(get_web_app, get_web_app)
-    return web_factory().config.get('MAX_CONTENT_LENGTH')
+    return cast(Optional[int], web_factory().config.get('MAX_CONTENT_LENGTH'))
 
 
 def _limit_body(request: Request, limit: int) -> Request:
@@ -57,7 +59,7 @@ def _limit_body(request: Request, limit: int) -> Request:
         raise BodyTooLarge()
     receive, received = request.receive, 0
 
-    async def limited_receive():
+    async def limited_receive() -> Message:
         nonlocal received
         message = await receive()
         if message['type'] == 'http.request':
@@ -77,10 +79,10 @@ def _too_large(limit: int) -> JSONResponse:
 class TrackerRoute(APIRoute):
     """Errores en JSON con `success: False` (400 en validación) y sin filtrar detalles internos."""
 
-    def get_route_handler(self):
+    def get_route_handler(self) -> Callable[[Request], Coroutine[Any, Any, Response]]:
         handler = super().get_route_handler()
 
-        async def wrapped(request: Request):
+        async def wrapped(request: Request) -> Response:
             limit = _body_limit(request)
             try:
                 return await handler(_limit_body(request, limit) if limit else request)
@@ -103,26 +105,26 @@ class TrackerRoute(APIRoute):
         return wrapped
 
 
-def get_web_app():
+def get_web_app() -> Any:
     """Config de la web (dueña de la sesión y del CSRF, web_settings.WebApp); se sobrescribe en tests."""
     from app import app as web_app
     return web_app
 
 
-def get_db():
+def get_db() -> Any:
     """DatabaseManager de MySQL; se sobrescribe en tests."""
     from db_config import db_manager
     return db_manager
 
 
-def cookie_session(request: Request, web_app=Depends(get_web_app)) -> dict:
+def cookie_session(request: Request, web_app: Any = Depends(get_web_app)) -> dict[str, Any]:
     """Datos de la cookie de sesión ({} si falta o la firma no vale)."""
     cookie = request.cookies.get(web_app.config.get('SESSION_COOKIE_NAME', 'session'))
     return auth.load_session_cookie(web_app, cookie)
 
 
-def require_browser_session(request: Request, session: dict = Depends(cookie_session),
-                            web_app=Depends(get_web_app)) -> None:
+def require_browser_session(request: Request, session: dict[str, Any] = Depends(cookie_session),
+                            web_app: Any = Depends(get_web_app)) -> None:
     """Login y CSRF en los métodos que modifican datos, igual que en Flask."""
     if auth.auth_enabled() and not auth.is_session_valid(session, web_app.secret_key):
         raise ApiError(401, 'No autenticado')
@@ -144,7 +146,7 @@ class TrackerDates(BaseModel):
 
     @field_validator('follow_up', 'deadline', 'notes', mode='before')
     @classmethod
-    def _blank_is_none(cls, value):
+    def _blank_is_none(cls, value: Optional[str]) -> Optional[str]:
         return value or None
 
 
@@ -162,7 +164,7 @@ class StatusUpdate(BaseModel):
     status: str = Field(min_length=1)
 
 
-def with_iso_dates(job: dict) -> dict:
+def with_iso_dates(job: dict[str, Any]) -> dict[str, Any]:
     """Fechas en ISO (para <input type="date">) y si el seguimiento está vencido."""
     job = {k: v.isoformat() if isinstance(v, (date, datetime)) else v for k, v in job.items()}
     follow_up = job.get('follow_up')
@@ -171,7 +173,7 @@ def with_iso_dates(job: dict) -> dict:
     return job
 
 
-def _save_dates(db, job_id: int, dates: TrackerDates) -> Optional[str]:
+def _save_dates(db: Any, job_id: int, dates: TrackerDates) -> Optional[str]:
     """Guarda follow_up/deadline/notes; devuelve un mensaje de error o None."""
     if not db.update_tracker_dates(job_id, dates.follow_up, dates.deadline, dates.notes):
         return 'No se pudieron guardar las fechas'
@@ -182,15 +184,15 @@ router = APIRouter(prefix='/api/tracker', tags=['tracker'], route_class=TrackerR
 browser = [Depends(require_browser_session)]
 
 
-@router.get('/jobs', dependencies=browser)
-def list_jobs(db=Depends(get_db)):
+@router.get('/jobs', dependencies=browser, response_model=None)
+def list_jobs(db: Any = Depends(get_db)) -> dict[str, Any]:
     """Todas las postulaciones del tracker, con fechas en ISO."""
     jobs = [with_iso_dates(job) for job in db.get_all_tracked_jobs()]
     return {'success': True, 'jobs': jobs, 'count': len(jobs)}
 
 
-@router.post('/job', dependencies=browser)
-def add_job(job: NewJob, db=Depends(get_db)):
+@router.post('/job', dependencies=browser, response_model=None)
+def add_job(job: NewJob, db: Any = Depends(get_db)) -> Response | dict[str, Any]:
     """Crea la postulación (409 si ya existe) y guarda sus fechas; si fallan, avisa con `warning`."""
     result = db.add_job_to_tracker(job.model_dump())
     if isinstance(result, dict) and result.get('exists'):
@@ -207,8 +209,8 @@ def add_job(job: NewJob, db=Depends(get_db)):
     return {'success': True, 'job_id': result, 'warning': warning, 'message': 'Job added to tracker'}
 
 
-@router.get('/job/{job_id}', dependencies=browser)
-def get_job(job_id: int, db=Depends(get_db)):
+@router.get('/job/{job_id}', dependencies=browser, response_model=None)
+def get_job(job_id: int, db: Any = Depends(get_db)) -> dict[str, Any]:
     """Detalle de una postulación (404 si no existe)."""
     job = db.get_tracked_job_by_id(job_id)
     if not job:
@@ -216,16 +218,16 @@ def get_job(job_id: int, db=Depends(get_db)):
     return {'success': True, 'job': with_iso_dates(job)}
 
 
-@router.put('/job/{job_id}/status', dependencies=browser)
-def update_status(job_id: int, body: StatusUpdate, db=Depends(get_db)):
+@router.put('/job/{job_id}/status', dependencies=browser, response_model=None)
+def update_status(job_id: int, body: StatusUpdate, db: Any = Depends(get_db)) -> dict[str, Any]:
     """Cambia el estado (columna del Kanban)."""
     if not db.update_job_status(job_id, body.status):
         raise ApiError(500, 'Failed to update status')
     return {'success': True, 'message': f'Job status updated to {body.status}'}
 
 
-@router.put('/job/{job_id}/reminder', dependencies=browser)
-def update_reminder(job_id: int, dates: TrackerDates, db=Depends(get_db)):
+@router.put('/job/{job_id}/reminder', dependencies=browser, response_model=None)
+def update_reminder(job_id: int, dates: TrackerDates, db: Any = Depends(get_db)) -> dict[str, Any]:
     """Fecha de seguimiento (recordatorio), vencimiento y notas."""
     error = _save_dates(db, job_id, dates)
     if error:
@@ -233,17 +235,17 @@ def update_reminder(job_id: int, dates: TrackerDates, db=Depends(get_db)):
     return {'success': True}
 
 
-@router.delete('/job/{job_id}', dependencies=browser)
-def delete_job(job_id: int, db=Depends(get_db)):
+@router.delete('/job/{job_id}', dependencies=browser, response_model=None)
+def delete_job(job_id: int, db: Any = Depends(get_db)) -> dict[str, Any]:
     """Borra la postulación."""
     if not db.delete_tracked_job(job_id):
         raise ApiError(500, 'Failed to delete job')
     return {'success': True, 'message': 'Job deleted successfully'}
 
 
-@router.post('/save-from-extension')
-def save_from_extension(request: Request, data: dict = Body(...), session: dict = Depends(cookie_session),
-                        web_app=Depends(get_web_app), db=Depends(get_db)):
+@router.post('/save-from-extension', response_model=None)
+def save_from_extension(request: Request, data: dict[str, Any] = Body(...), session: dict[str, Any] = Depends(cookie_session),
+                        web_app: Any = Depends(get_web_app), db: Any = Depends(get_db)) -> dict[str, Any]:
     """Extensión de Chrome: sin CSRF (viene de otro origen); con login exige sesión o el token de la cuenta."""
     if auth.auth_enabled() and not auth.is_session_valid(session, web_app.secret_key):
         token = request.headers.get('X-Extension-Token', '')

@@ -1,4 +1,5 @@
 """Privacidad de CVs: cifrado de los archivos y perfiles viejos y retención (CV_RETENTION_DAYS)."""
+from typing import Any
 import logging
 import os
 
@@ -8,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 
 @celery.task(name="tasks.privacy_tasks.enforce_cv_retention")
-def enforce_cv_retention():
+def enforce_cv_retention() -> dict[str, Any]:
     """Cifra los CVs y perfiles en texto plano y borra los que superan CV_RETENTION_DAYS junto con su perfil."""
     import cv_storage
     import profile_store
