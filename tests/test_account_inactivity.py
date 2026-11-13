@@ -5,6 +5,7 @@ import pytest
 
 import account_notify
 import accounts
+import account_lifecycle
 import profile_store
 import user_sessions
 from tasks import privacy_tasks
@@ -79,7 +80,7 @@ def test_session_activity_counts(three_accounts):
                         .values(last_seen_at=datetime.now() - timedelta(minutes=10)))
         session.commit()
     assert user_sessions.is_active(a, sid)
-    inactive = [u['id'] for u in accounts.inactive_accounts(datetime.now() - timedelta(days=1))]
+    inactive = [u['id'] for u in account_lifecycle.inactive_accounts(datetime.now() - timedelta(days=1))]
     assert a not in inactive and len(inactive) == 2
 
 
@@ -99,7 +100,7 @@ def test_interrupted_notice_is_sent_again_not_deleted(three_accounts):
     (_, a, b), sent = three_accounts
     old = datetime.now().replace(microsecond=0) - timedelta(days=40)
     for uid in (a, b):
-        assert accounts.set_inactivity_notice(uid, old)
+        assert account_lifecycle.set_inactivity_notice(uid, old)
     assert privacy_tasks.enforce_account_inactivity.run() == {'notified': 2, 'deleted': 0}
     assert sent == ['u1@example.com', 'u2@example.com'] and accounts.count_users() == 3
 
@@ -107,7 +108,7 @@ def test_interrupted_notice_is_sent_again_not_deleted(three_accounts):
 def test_recent_claim_is_left_to_its_worker(three_accounts):
     """Una reserva reciente sin confirmar es de otro worker que está mandando el email: no se duplica."""
     (_, a, b), sent = three_accounts
-    assert accounts.set_inactivity_notice(a, datetime.now().replace(microsecond=0))
+    assert account_lifecycle.set_inactivity_notice(a, datetime.now().replace(microsecond=0))
     assert privacy_tasks.enforce_account_inactivity.run() == {'notified': 1, 'deleted': 0}
     assert sent == ['u2@example.com']
 
@@ -117,13 +118,13 @@ def test_login_right_before_deletion_keeps_the_account(three_accounts, monkeypat
     (_, a, b), _ = three_accounts
     privacy_tasks.enforce_account_inactivity.run()
     _age_notices(30)
-    listed = accounts.inactive_accounts
+    listed = account_lifecycle.inactive_accounts
 
     def list_then_login(since):
         users = listed(since)
         user_sessions.create(a)
         return users
-    monkeypatch.setattr(accounts, 'inactive_accounts', list_then_login)
+    monkeypatch.setattr(account_lifecycle, 'inactive_accounts', list_then_login)
     assert privacy_tasks.enforce_account_inactivity.run()['deleted'] == 1
     assert accounts.get_user(a) is not None and accounts.get_user(b) is None
 

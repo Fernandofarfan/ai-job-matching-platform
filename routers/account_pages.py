@@ -17,6 +17,8 @@ from fastapi.responses import Response
 from starlette.concurrency import run_in_threadpool
 
 import accounts
+
+import account_lifecycle
 import auth
 import data_export
 import integrations
@@ -307,7 +309,7 @@ async def weekly_digest(request: Request) -> Response:
     user_id = _user_id()
     enabled = form.get('enabled') == '1'
     try:
-        await run_in_threadpool(accounts.set_weekly_digest, user_id, enabled)
+        await run_in_threadpool(account_lifecycle.set_weekly_digest, user_id, enabled)
     except Exception as e:
         logger.error(f'No se pudo guardar el resumen semanal de la cuenta {user_id}: {e}')
         flash(request, 'No se pudo guardar el cambio: probá de nuevo', 'danger')
@@ -455,7 +457,7 @@ def _delete_account(request: Request, form: TextForm) -> Response:
         flash(request, 'No se pudieron borrar tus CVs: la cuenta no se borró', 'danger')
         return _to_account(request)
     try:
-        accounts.delete_account(user_id)
+        account_lifecycle.delete_account(user_id)
     except Exception as e:
         logger.error(f'No se pudo borrar la cuenta {user_id}: {e}')
         flash(request, 'No se pudo borrar la cuenta; probá de nuevo', 'danger')

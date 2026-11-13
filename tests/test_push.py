@@ -7,6 +7,8 @@ from unittest import mock
 import pytest
 
 import accounts
+
+import account_lifecycle
 import push
 
 FCM = 'https://fcm.googleapis.com/fcm/send/abc'
@@ -134,5 +136,5 @@ def test_account_deletion_removes_subscriptions(vapid):
     """Borrar la cuenta borra sus dispositivos."""
     uid = accounts.register('ana@example.com', 'clave-larga-1')
     push.subscribe(uid, FCM, 'k', 'a')
-    accounts.delete_account(uid)
+    account_lifecycle.delete_account(uid)
     assert push.device_count(uid) == 0

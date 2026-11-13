@@ -8,6 +8,8 @@ from fastapi.responses import Response
 from starlette.concurrency import run_in_threadpool
 
 import accounts
+
+import account_lifecycle
 import onboarding
 import ai_usage
 import auth
@@ -134,7 +136,7 @@ def _delete(request: Request, admin_id: int, target: dict[str, Any], form: TextF
         flash(request, 'No se pudieron borrar los CVs: la cuenta no se borró', 'danger')
         return
     try:
-        accounts.delete_account(target['id'])
+        account_lifecycle.delete_account(target['id'])
     except Exception as e:
         logger.error(f"No se pudo borrar la cuenta {target['id']}: {e}")
         flash(request, 'No se pudo borrar la cuenta; probá de nuevo', 'danger')

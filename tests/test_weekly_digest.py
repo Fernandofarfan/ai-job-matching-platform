@@ -7,6 +7,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
+import account_lifecycle
 import accounts
 import job_alerts
 from tasks import notification_tasks as nt
@@ -75,7 +76,7 @@ def test_seen_since_counts_only_recent_and_own(alerts_db):
 def _users(_accounts_sqlite):
     on = accounts.register('on@example.com', PASSWORD)
     off = accounts.register('off@example.com', PASSWORD)
-    accounts.set_weekly_digest(off, False)
+    account_lifecycle.set_weekly_digest(off, False)
     return on, off
 
 
@@ -95,7 +96,7 @@ def test_task_sends_only_to_accounts_with_news_and_digest_on(monkeypatch, _accou
     assert nt.send_weekly_digests() == {'sent': 0, 'users': 2}
     last = datetime.now() - timedelta(days=7, minutes=5)
     for uid in (on, off):
-        accounts.mark_weekly_digest(uid, last)
+        account_lifecycle.mark_weekly_digest(uid, last)
     assert nt.send_weekly_digests() == {'sent': 1, 'users': 2}
     assert send.call_args[0][0] == 'on@example.com'
     assert seen_since.call_args[0][0] == last
@@ -107,7 +108,7 @@ def test_task_retries_failed_send_and_skips_without_account(monkeypatch, _accoun
     monkeypatch.setenv('ALLOW_SIGNUP', 'true')
     monkeypatch.setenv('LOGIN_REQUIRED', 'true')
     on, _ = _users(_accounts_sqlite)
-    accounts.mark_weekly_digest(on, datetime.now() - timedelta(days=8))
+    account_lifecycle.mark_weekly_digest(on, datetime.now() - timedelta(days=8))
     db = mock.Mock()
     db.get_all_tracked_jobs.return_value = [_job(applied_date=datetime.now() - timedelta(days=30))]
     monkeypatch.setattr('db_config.db_manager', db, raising=False)
@@ -160,11 +161,11 @@ def test_claim_lets_only_one_overlapping_run_send(monkeypatch, _accounts_sqlite)
     monkeypatch.setenv('ALLOW_SIGNUP', 'true')
     on, _ = _users(_accounts_sqlite)
     now = datetime.now()
-    assert accounts.claim_weekly_digest(on, None, now)
-    assert not accounts.claim_weekly_digest(on, None, now)
+    assert account_lifecycle.claim_weekly_digest(on, None, now)
+    assert not account_lifecycle.claim_weekly_digest(on, None, now)
     assert accounts.get_user(on)['weekly_digest_sent_at'] == now
     later = now + timedelta(days=7)
-    assert accounts.claim_weekly_digest(on, now, later) and not accounts.claim_weekly_digest(on, now, later)
+    assert account_lifecycle.claim_weekly_digest(on, now, later) and not account_lifecycle.claim_weekly_digest(on, now, later)
 
 
 def test_digest_claimed_by_dead_worker_is_sent_again(monkeypatch, _accounts_sqlite):
@@ -173,20 +174,20 @@ def test_digest_claimed_by_dead_worker_is_sent_again(monkeypatch, _accounts_sqli
     monkeypatch.setenv('LOGIN_REQUIRED', 'true')
     on, _ = _users(_accounts_sqlite)
     previous = datetime.now() - timedelta(days=8)
-    accounts.mark_weekly_digest(on, previous)
+    account_lifecycle.mark_weekly_digest(on, previous)
     db = mock.Mock()
     db.get_all_tracked_jobs.return_value = [_job(applied_date=datetime.now() - timedelta(days=30))]
     monkeypatch.setattr('db_config.db_manager', db, raising=False)
     monkeypatch.setattr(job_alerts, 'seen_since', lambda since, until=None: (0, []))
     monkeypatch.setattr(nt, 'email_configured', lambda: True)
     # el worker tomó el resumen hace 2 horas y se cortó sin mandarlo ni devolverlo
-    assert accounts.claim_weekly_digest(on, previous, datetime.now() - timedelta(hours=2))
+    assert account_lifecycle.claim_weekly_digest(on, previous, datetime.now() - timedelta(hours=2))
     send = mock.Mock(return_value=True)
     monkeypatch.setattr(nt, '_send_email', send)
     with accounts.as_user(on):
         assert nt._send_weekly_digest() == {'sent': 1}
         # confirmado: no se recupera de nuevo ni se repite
-        assert accounts.recover_weekly_digest(on, datetime.now() + timedelta(days=1)) is False
+        assert account_lifecycle.recover_weekly_digest(on, datetime.now() + timedelta(days=1)) is False
         assert nt._send_weekly_digest()['sent'] == 0
     assert send.call_count == 1
 
@@ -196,8 +197,8 @@ def test_recent_claim_is_not_recovered(_accounts_sqlite, monkeypatch):
     monkeypatch.setenv('ALLOW_SIGNUP', 'true')
     on, _ = _users(_accounts_sqlite)
     now = datetime.now()
-    assert accounts.claim_weekly_digest(on, None, now)
-    assert accounts.recover_weekly_digest(on, now - timedelta(minutes=60)) is False
+    assert account_lifecycle.claim_weekly_digest(on, None, now)
+    assert account_lifecycle.recover_weekly_digest(on, now - timedelta(minutes=60)) is False
     assert accounts.get_user(on)['weekly_digest_sent_at'] == now
 
 
@@ -206,7 +207,7 @@ def test_empty_week_confirms_claim_without_microseconds(monkeypatch, _accounts_s
     monkeypatch.setenv('ALLOW_SIGNUP', 'true')
     monkeypatch.setenv('LOGIN_REQUIRED', 'true')
     on, _ = _users(_accounts_sqlite)
-    accounts.mark_weekly_digest(on, datetime.now() - timedelta(days=8))
+    account_lifecycle.mark_weekly_digest(on, datetime.now() - timedelta(days=8))
     db = mock.Mock()
     db.get_all_tracked_jobs.return_value = []
     monkeypatch.setattr('db_config.db_manager', db, raising=False)
@@ -214,5 +215,5 @@ def test_empty_week_confirms_claim_without_microseconds(monkeypatch, _accounts_s
     monkeypatch.setattr(nt, 'email_configured', lambda: True)
     with accounts.as_user(on):
         assert nt._send_weekly_digest()['reason'] == 'sin novedades'
-        assert accounts.recover_weekly_digest(on, datetime.now() + timedelta(days=1)) is False
+        assert account_lifecycle.recover_weekly_digest(on, datetime.now() + timedelta(days=1)) is False
     assert accounts.get_user(on)['weekly_digest_sent_at'].microsecond == 0

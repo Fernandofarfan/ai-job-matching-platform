@@ -142,12 +142,13 @@ def _claim_minutes() -> int:
 def _send_weekly_digest() -> dict[str, Any]:
     """Resumen semanal de la cuenta actual."""
     import accounts
+    import account_lifecycle
     import job_alerts
     uid = accounts.current_user_id()
     if uid is None:
         # sin login no hay cuenta donde anotar el último envío: se mandaría cada hora
         return {"sent": 0, "reason": "sin cuenta"}
-    if accounts.recover_weekly_digest(uid, datetime.now() - timedelta(minutes=_claim_minutes())):
+    if account_lifecycle.recover_weekly_digest(uid, datetime.now() - timedelta(minutes=_claim_minutes())):
         logger.warning("Resumen semanal sin confirmar (el worker se cortó): se vuelve a mandar")
     user = accounts.get_user(uid)
     if user is None or not user["weekly_digest"]:
@@ -158,7 +159,7 @@ def _send_weekly_digest() -> dict[str, Any]:
     if now - since < timedelta(days=WEEKLY_DAYS):
         return {"sent": 0, "reason": "todavía no"}
     previous = user["weekly_digest_sent_at"]
-    if not accounts.claim_weekly_digest(uid, previous, now):
+    if not account_lifecycle.claim_weekly_digest(uid, previous, now):
         return {"sent": 0, "reason": "otra ejecución lo está mandando"}
     try:
         from db_config import db_manager
@@ -169,17 +170,17 @@ def _send_weekly_digest() -> dict[str, Any]:
         new_total, new_offers = job_alerts.seen_since(offers_since, until=now)
     except Exception as e:
         logger.error(f"No se pudo armar el resumen semanal: {type(e).__name__}: {e}")
-        accounts.mark_weekly_digest(uid, previous)
+        account_lifecycle.mark_weekly_digest(uid, previous)
         return {"sent": 0, "error": type(e).__name__}
     data = weekly_digest_data(jobs, new_total, new_offers, now.date())
     if weekly_digest_empty(data):
-        accounts.confirm_weekly_digest(uid, now)
+        account_lifecycle.confirm_weekly_digest(uid, now)
         return {"sent": 0, "reason": "sin novedades"}
     sent = _send_email(_recipient(), "📈 EmpleoIA: tu resumen de la semana", weekly_digest_html(data))
     if sent:
-        accounts.confirm_weekly_digest(uid, now)
+        account_lifecycle.confirm_weekly_digest(uid, now)
     else:
-        accounts.mark_weekly_digest(uid, previous)
+        account_lifecycle.mark_weekly_digest(uid, previous)
     return {"sent": int(bool(sent))}
 
 
