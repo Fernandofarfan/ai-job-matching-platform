@@ -96,7 +96,7 @@ def enforce_account_inactivity() -> dict[str, Any]:
     if not profile_store.primary_available():
         logger.warning("Borrado de cuentas inactivas postergado: MySQL no responde")
         return {"notified": 0, "deleted": 0}
-    now = datetime.now()
+    now = datetime.now().replace(microsecond=0)  # MySQL guarda DATETIME sin microsegundos; si no, == nunca coincide
     first = accounts.first_user_id()
     notified = deleted = 0
     for user in accounts.inactive_accounts(now - timedelta(days=days - notice)):
