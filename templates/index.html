@@ -12,16 +12,16 @@
                 <i class="bi bi-stars me-1"></i> {{ _('Potenciado con IA') }}
             </span>
             <h1 class="display-3 fw-bold mb-3 text-dark">
-                {{ _('Tu Próximo Trabajo,') }} <span class="text-primary"
-                    style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">{{ _('Encontrado.') }}</span>
+                {{ _('Tu Próximo Trabajo,') }} <span class="st-93eaa0 text-primary"
+                   >{{ _('Encontrado.') }}</span>
             </h1>
             <p class="lead text-muted mb-4 px-lg-5">
                 {{ _('Automatizá tu búsqueda laboral en Indeed, LinkedIn, Computrabajo y Bumeran.') }}
                 {{ _('Optimizá tu CV con IA y conectá con reclutadores en segundos.') }}
             </p>
             <div class="d-flex justify-content-center gap-3">
-                <a href="/scraper" class="btn btn-primary btn-lg px-4 py-2 shadow-sm"
-                    style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none;">
+                <a href="/scraper" class="st-4fbcd3 btn btn-primary btn-lg px-4 py-2 shadow-sm"
+                   >
                     <i class="bi bi-search me-2"></i> {{ _('Buscar Empleos') }}
                 </a>
                 <a href="/profile" class="btn btn-outline-secondary btn-lg px-4 py-2">
@@ -41,7 +41,7 @@
         </div>
         <div class="progress mb-3" role="progressbar" aria-label="{{ _('Primeros pasos') }}"
              aria-valuenow="{{ onboarding.completed }}" aria-valuemin="0" aria-valuemax="{{ onboarding.total }}">
-            <div class="progress-bar" style="width: {{ (100 * onboarding.completed / onboarding.total)|round|int }}%"></div>
+            <div class="progress-bar" data-progress-width="{{ (100 * onboarding.completed / onboarding.total)|round|int }}"></div>
         </div>
         <ol class="list-unstyled mb-3">
             {% for step in onboarding.steps %}

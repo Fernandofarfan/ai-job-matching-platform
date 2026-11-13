@@ -235,10 +235,11 @@ function addToHistory(index, score) {
     const item = document.createElement('div');
     item.className = 'history-item';
     item.innerHTML = `
-        <div class="d-flex justify-content-between align-items-center p-2 border-bottom" style="border-color:rgba(255,255,255,0.05)!important;">
-            <small class="text-muted text-truncate pe-2" style="max-width:70%;">P${index + 1}: ${escapeHtml(q.pregunta.substring(0, 50))}...</small>
-            <span class="badge" style="background:${scoreColor};min-width:42px;">${score.toFixed(1)}</span>
+        <div class="d-flex justify-content-between align-items-center p-2 border-bottom history-row">
+            <small class="text-muted text-truncate pe-2 history-question">P${index + 1}: ${escapeHtml(q.pregunta.substring(0, 50))}...</small>
+            <span class="badge history-score">${score.toFixed(1)}</span>
         </div>`;
+    item.querySelector('.history-score').style.background = scoreColor;
     if (history.querySelector('p')) history.innerHTML = '';
     history.appendChild(item);
 }

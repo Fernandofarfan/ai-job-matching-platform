@@ -38,7 +38,7 @@
                     {% else %}
                     <div class="p-5 text-center">
                         <div class="mb-3 text-muted opacity-50">
-                            <i class="bi bi-building-slash" style="font-size: 3rem;"></i>
+                            <i class="st-75fbf8 bi bi-building-slash"></i>
                         </div>
                         <p class="text-muted small mb-3">{{ _('No hay empresas extraídas.') }}</p>
                         <a href="/results" class="btn btn-sm btn-primary">{{ _('Ir a Resultados') }}</a>
@@ -62,15 +62,15 @@
                             <span class="small fw-bold text-uppercase text-muted">{{ _('Estado Actual') }}</span>
                             <div class="d-flex align-items-center gap-2">
                                 <span id="connection-status" class="badge bg-secondary">{{ _('Inactivo') }}</span>
-                                <form action="/stop_connection_requests" method="post" class="d-inline" id="stop-form" style="display: none;">
-                                    <button type="submit" class="btn btn-danger btn-sm py-0 px-2" style="font-size: 0.75rem;">
+                                <form action="/stop_connection_requests" method="post" class="st-9c7663 d-inline" id="stop-form">
+                                    <button type="submit" class="st-199b58 btn btn-danger btn-sm py-0 px-2">
                                         <i class="bi bi-stop-circle me-1"></i> {{ _('Detener') }}
                                     </button>
                                 </form>
                             </div>
                         </div>
-                        <div class="progress mb-2" style="height: 10px;">
-                            <div id="connection-progress" class="progress-bar" role="progressbar" aria-label="{{ _('Progreso de las conexiones') }}" aria-valuemin="0" aria-valuemax="100" style="width: 0%">
+                        <div class="st-b20ad8 progress mb-2">
+                            <div id="connection-progress" class="st-759002 progress-bar" role="progressbar" aria-label="{{ _('Progreso de las conexiones') }}" aria-valuemin="0" aria-valuemax="100">
                             </div>
                         </div>
                         <p id="connection-message" class="small text-muted mb-0 fst-italic text-truncate mt-2"></p>
@@ -133,7 +133,7 @@
                                 </div>
                             </div>
 
-                            <div id="general_search_input" style="display: none;" class="mb-3">
+                            <div id="general_search_input" class="st-9c7663 mb-3">
                                 <label class="form-label small fw-bold text-muted">{{ _('Término de Búsqueda') }}</label>
                                 <div class="input-group">
                                     <span class="input-group-text"><i class="bi bi-search"></i></span>
@@ -145,8 +145,8 @@
 
                         <div class="mb-4">
                             <label for="message_template" class="form-label small fw-bold text-muted">{{ _('Mensaje de Conexión') }}</label>
-                            <textarea class="form-control" id="message_template" name="message_template" rows="4"
-                                style="resize: none;">{{ _('¡Hola! Vi que trabajás en {company}. Soy ingeniero de software y me interesa saber más sobre tu experiencia. ¡Me encantaría conectar!') }}</textarea>
+                            <textarea class="st-10b01b form-control" id="message_template" name="message_template" rows="4"
+                               >{{ _('¡Hola! Vi que trabajás en {company}. Soy ingeniero de software y me interesa saber más sobre tu experiencia. ¡Me encantaría conectar!') }}</textarea>
                             <div class="form-text small mt-2">
                                 <span class="badge bg-light text-dark border me-1">{{ _('{company}') }}</span> {{ _('se reemplazará automáticamente por el nombre de la empresa.') }}
                             </div>
@@ -155,7 +155,7 @@
                         <div class="mb-4" id="company_list_container">
                             <label class="form-label small fw-bold text-muted mb-3">{{ _('Seleccionar Empresas') }}</label>
                             {% if empresas %}
-                            <div class="border rounded p-3 bg-white" style="max-height: 250px; overflow-y: auto;">
+                            <div class="st-619c97 border rounded p-3 bg-white">
                                 {% for company in empresas %}
                                 <div class="form-check mb-2 d-flex justify-content-between align-items-center group-hover">
                                     <div>
@@ -165,9 +165,9 @@
                                             {{ company }}
                                         </label>
                                     </div>
-                                    <button type="button" class="btn btn-link text-danger p-0 ms-2 opacity-50 hover-opacity-100" 
+                                    <button type="button" class="st-c6ab9b btn btn-link text-danger p-0 ms-2 opacity-50 hover-opacity-100" 
                                             data-onclick="excludeCompany" data-args='{{ [company, "$el"]|tojson }}' title="{{ _('Eliminar de la lista') }}"
-                                            style="text-decoration: none;">
+                                           >
                                         <i class="bi bi-trash"></i>
                                     </button>
                                 </div>

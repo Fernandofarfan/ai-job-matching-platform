@@ -28,7 +28,7 @@
   <div class="row">
     <!-- Filter Sidebar -->
     <div class="col-lg-2 mb-3">
-      <div class="card border-0 shadow-sm p-3" style="position: sticky; top: 1rem;">
+      <div class="st-1edf6f card border-0 shadow-sm p-3">
         <h6 class="fw-bold mb-3 text-dark"><i class="bi bi-funnel me-2 text-primary"></i>Filtros</h6>
 
         <div class="mb-3">
@@ -115,7 +115,7 @@
 
 <link rel="stylesheet" href="{{ url_for('static', filename='css/view_file_premium.css') }}">
 
-<style>
+<style nonce="{{ csp_nonce() }}">
   .table-success {
     background-color: rgba(25, 135, 84, 0.1) !important;
   }

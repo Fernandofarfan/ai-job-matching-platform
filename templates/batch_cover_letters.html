@@ -50,7 +50,7 @@
                 <span class="tone-icon">🏢</span>
                 <div>
                   <div class="fw-semibold small">{{ _('Profesional / Corporativo') }}</div>
-                  <div class="text-muted" style="font-size: 0.75rem;">{{ _('Formal, estructurado, logros cuantificables') }}</div>
+                  <div class="st-199b58 text-muted">{{ _('Formal, estructurado, logros cuantificables') }}</div>
                 </div>
               </div>
             </label>
@@ -60,7 +60,7 @@
                 <span class="tone-icon">🚀</span>
                 <div>
                   <div class="fw-semibold small">{{ _('Startup / Tech') }}</div>
-                  <div class="text-muted" style="font-size: 0.75rem;">{{ _('Dinámico, directo, enfocado en impacto') }}</div>
+                  <div class="st-199b58 text-muted">{{ _('Dinámico, directo, enfocado en impacto') }}</div>
                 </div>
               </div>
             </label>
@@ -70,7 +70,7 @@
                 <span class="tone-icon">🎨</span>
                 <div>
                   <div class="fw-semibold small">{{ _('Creativo / Emprendedor') }}</div>
-                  <div class="text-muted" style="font-size: 0.75rem;">{{ _('Memorable, narrativo, personal') }}</div>
+                  <div class="st-199b58 text-muted">{{ _('Memorable, narrativo, personal') }}</div>
                 </div>
               </div>
             </label>
@@ -102,19 +102,19 @@
       </div>
       <div class="card-body p-4">
         <!-- Progress Section -->
-        <div id="generation_status" style="display: none;">
+        <div class="st-9c7663" id="generation_status">
           <div class="mb-2 d-flex justify-content-between small">
             <span id="generation_message" class="text-muted">{{ _('Iniciando...') }}</span>
             <span id="progress-percentage" class="fw-bold text-primary">0%</span>
           </div>
-          <div class="progress mb-4" style="height: 8px;">
-            <div id="generation_progress" class="progress-bar progress-bar-striped progress-bar-animated"
-              role="progressbar" style="width: 0%"></div>
+          <div class="st-d5f690 progress mb-4">
+            <div id="generation_progress" class="st-759002 progress-bar progress-bar-striped progress-bar-animated"
+              role="progressbar"></div>
           </div>
         </div>
 
         <!-- Results List -->
-        <div id="generation_results" style="display: none;">
+        <div class="st-9c7663" id="generation_results">
           <div class="table-responsive" tabindex="0">
             <table class="table table-hover align-middle mb-0">
               <thead class="bg-light">
@@ -135,7 +135,7 @@
         <!-- Empty State -->
         <div id="empty-state" class="text-center py-5">
           <div class="mb-3 text-muted opacity-25">
-            <i class="bi bi-envelope-open" style="font-size: 3rem;"></i>
+            <i class="st-75fbf8 bi bi-envelope-open"></i>
           </div>
           <p class="text-muted small">{{ _('Los resultados aparecerán aquí una vez inicie el proceso.') }}</p>
         </div>
@@ -150,7 +150,7 @@
 <script type="application/json" data-i18n nonce="{{ csp_nonce() }}">{{ {'Error desconocido': _('Error desconocido'), 'En cola...': _('En cola...'), 'Generando...': _('Generando...'), 'Éxito': _('Éxito'), 'Descargar': _('Descargar'), 'Fallido': _('Fallido'), 'Por favor seleccioná un archivo de empleos': _('Por favor seleccioná un archivo de empleos'), 'Analizando CV y generando cartas (tono: %(tone)s)...': _('Analizando CV y generando cartas (tono: %(tone)s)...'), 'Procesando...': _('Procesando...'), '¡Proceso finalizado!': _('¡Proceso finalizado!'), 'Completado': _('Completado'), 'Generar Cartas con IA': _('Generar Cartas con IA'), 'Carta': _('Carta'), 'Vista previa': _('Vista previa')}|tojson }}</script>
 <script src="{{ url_for('static', filename='js/i18n.js') }}"></script>
 <script src="{{ url_for('static', filename='js/document_batch.js') }}"></script>
-<style>
+<style nonce="{{ csp_nonce() }}">
   .tone-option {
     display: block;
     padding: 0.7rem 1rem;
@@ -175,7 +175,7 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ _('Cerrar') }}"></button>
       </div>
       <div class="modal-body">
-        <pre id="previewModalBody" style="white-space: pre-wrap; font-family: 'Inter', sans-serif; font-size: 0.9rem; line-height: 1.7;"></pre>
+        <pre class="st-a38fd6" id="previewModalBody"></pre>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ _('Cerrar') }}</button>

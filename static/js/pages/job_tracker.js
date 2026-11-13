@@ -105,7 +105,7 @@ function createJobCard(job) {
   ${job.follow_up_due ? `<div class="badge bg-warning text-dark mb-2"><i class="bi bi-alarm me-1" aria-hidden="true"></i> ${tHtml("Hacer seguimiento")}</div>` : ''}
   ${!job.follow_up_due && job.follow_up ? `<div class="text-muted mb-2 small"><i class="bi bi-alarm me-1" aria-hidden="true"></i> ${tHtml("Seguimiento:")} ${escapeHtml(job.follow_up)}</div>` : ''}
   <div class="job-card-footer">
-    <span class="text-warning small" style="letter-spacing: -2px;">${stars}</span>
+    <span class="text-warning small tracker-stars">${stars}</span>
     <span class="small">${appliedDate}</span>
   </div>
 `;
