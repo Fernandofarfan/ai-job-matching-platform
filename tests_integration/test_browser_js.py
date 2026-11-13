@@ -468,3 +468,16 @@ def test_document_rows_render_text_not_html(app, page):
     assert rows.nth(1).locator('td').nth(3).inner_text() == 'Sin cuota'
     assert rows.nth(2).locator('td').nth(3).inner_text() == 'Fallido'
     assert rows.nth(0).locator('.badge').inner_text() == 'Éxito'
+
+
+# ── todos los archivos ────────────────────────────────────────
+
+@pytest.mark.parametrize('name', sorted(os.path.relpath(os.path.join(d, f), os.path.join(ROOT, 'static', 'js'))
+                                        for d, _, files in os.walk(os.path.join(ROOT, 'static', 'js'))
+                                        for f in files if f.endswith('.js')))
+def test_static_js_parses(app, page, name):
+    """Un error de sintaxis en cualquier archivo de static/js, incluidos los que no tienen tests propios, falla acá."""
+    app.page('/', '', [])
+    page.goto('/')
+    source = open(os.path.join(ROOT, 'static', 'js', name), encoding='utf-8').read()
+    assert page.evaluate('(src) => { try { new Function(src); return null; } catch (e) { return String(e); } }', source) is None
