@@ -6,6 +6,14 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar] - Tests de los scrapers y de los errores de la base
+
+- Computrabajo, Bumeran y LinkedIn se prueban en Chromium con login, varias páginas, enlace de postulación y CSV.
+  Las URLs se interceptan, así que ningún test sale a internet.
+- Fix: Computrabajo con login solo leía la primera página. Después de visitar cada oferta buscaba "Siguiente" en la
+  página de la oferta y no en el listado.
+- `db_config.py`: cada consulta devuelve su valor de error si la base falla.
+
 ## [Sin publicar] - Terraform con el provider de Google 8.x
 
 - Provider `hashicorp/google` de `~> 6.50` a `~> 8.11`. Ninguno de los cambios incompatibles de 7.0 y 8.0 toca los recursos del proyecto.

@@ -158,6 +158,7 @@ class ComputrabajoScraper:
             while len(jobs) < max_jobs:
                 logger.info(f"Extracting jobs from page {page}...")
                 
+                listing_url = self.page.url
                 # Extract jobs from current page
                 page_jobs = self._extract_jobs_from_page()
                 
@@ -185,6 +186,9 @@ class ComputrabajoScraper:
                 if len(jobs) >= max_jobs:
                     break
                 
+                # Con login se visitó cada oferta: hay que volver al listado para encontrar "Siguiente"
+                if email and password:
+                    get_with_retries(self.page, listing_url)
                 # Try to go to next page
                 if not self._go_to_next_page():
                     logger.info("No more pages available")
