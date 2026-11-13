@@ -168,3 +168,13 @@ def test_server_error_keeps_security_headers(app):
         assert 'detalle-secreto' not in response.text
         assert "frame-ancestors 'none'" in response.headers['content-security-policy']
         assert response.headers['x-frame-options'] == 'DENY'
+
+
+def test_precached_pages_have_their_scripts_precached():
+    """El service worker guarda /tracker y /analytics para abrirlos offline: también tiene que guardar sus scripts."""
+    sw = (TEMPLATES.parent / 'static' / 'sw.js').read_text(encoding='utf-8')
+    precached = set(re.findall(r"'(/static/js/[^']+)'", sw.split('];')[0]))
+    needed = {f'/static/{name}' for page in ('base.html', 'job_tracker.html', 'dashboard.html')
+              for name in re.findall(r"url_for\('static', filename='(js/[^']+)'\)",
+                                     (TEMPLATES / page).read_text(encoding='utf-8'))}
+    assert needed - precached == set()
