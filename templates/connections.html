@@ -62,7 +62,7 @@
                             <span class="small fw-bold text-uppercase text-muted">{{ _('Estado Actual') }}</span>
                             <div class="d-flex align-items-center gap-2">
                                 <span id="connection-status" class="badge bg-secondary">{{ _('Inactivo') }}</span>
-                                <form action="/stop_connection_requests" method="post" class="st-9c7663 d-inline" id="stop-form">
+                                <form action="/stop_connection_requests" method="post" class="js-hidden d-inline" id="stop-form">
                                     <button type="submit" class="st-199b58 btn btn-danger btn-sm py-0 px-2">
                                         <i class="bi bi-stop-circle me-1"></i> {{ _('Detener') }}
                                     </button>
@@ -133,7 +133,7 @@
                                 </div>
                             </div>
 
-                            <div id="general_search_input" class="st-9c7663 mb-3">
+                            <div id="general_search_input" class="js-hidden mb-3">
                                 <label class="form-label small fw-bold text-muted">{{ _('Término de Búsqueda') }}</label>
                                 <div class="input-group">
                                     <span class="input-group-text"><i class="bi bi-search"></i></span>

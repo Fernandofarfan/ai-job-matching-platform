@@ -28,7 +28,7 @@ function loadFunnelStats() {
         setConv('fm-conv-negotiating', s.negotiating || 0);
         setConv('fm-conv-accepted', s.accepted || 0);
       }
-      document.getElementById('funnel-metrics').style.display = '';
+      document.getElementById('funnel-metrics').classList.remove('js-hidden');
     })
     .catch(() => {});
 }

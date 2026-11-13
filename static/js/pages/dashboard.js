@@ -113,7 +113,7 @@ async function loadPortalStats() {
             document.getElementById('avg-days-to-apply').textContent =
                 t('Postulás en promedio %(days)s días después de guardar una oferta').replace('%(days)s', data.avg_days_to_apply);
         }
-        document.getElementById('portal-row').style.display = '';
+        document.getElementById('portal-row').classList.remove('js-hidden');
     } catch (e) {
         console.error("Error cargando el rendimiento por portal:", e);
     }
