@@ -440,6 +440,8 @@ PUBLIC_BASE_URL=               # URL pública de la app para los enlaces de los 
 LOGIN_REQUIRED=true    # false = sin login (solo local)
 CV_ENCRYPTION_KEY=     # cifra los CVs en uploads/ y los perfiles (texto del CV incluido) en MySQL (Fernet). Sin ella no se pueden leer los ya cifrados
 CV_RETENTION_DAYS=0    # >0: Celery borra cada día CVs, perfiles y documentos más viejos que N días
+ACCOUNT_INACTIVITY_DAYS=0  # >0: borra las cuentas sin entrar hace N días (salvo la primera), con sus CVs y datos
+ACCOUNT_INACTIVITY_NOTICE_DAYS=30  # el email de aviso sale estos días antes (como mucho N/2); entrar lo anula
 EXTENSION_TOKEN=       # (viejo) token de la extensión para la primera cuenta; cada cuenta genera el suyo en Mi cuenta
 GOOGLE_OAUTH_CLIENT_ID=      # "Entrar con Google" (cliente OAuth web; redirect: PUBLIC_BASE_URL + /login/google/callback)
 GOOGLE_OAUTH_CLIENT_SECRET=

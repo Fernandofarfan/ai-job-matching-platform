@@ -11,7 +11,7 @@ from contextlib import contextmanager
 from datetime import datetime
 from typing import Any, Callable, Iterable, Iterator, Optional, cast
 
-from sqlalchemy import CursorResult, DateTime, Integer, Result, String, select, update
+from sqlalchemy import CursorResult, DateTime, Integer, Result, String, func, select, update
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -48,6 +48,9 @@ class User(Base):
     # Resumen tomado y todavía sin confirmar: si el worker muere antes de mandarlo, se vuelve al anterior
     weekly_digest_claimed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     weekly_digest_claimed_from: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # último login o uso de la web (las sesiones se borran a los 62 días; esto queda) y aviso de borrado por inactividad
+    last_active_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    inactivity_notice_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
 class AccountError(ValueError):
@@ -465,6 +468,50 @@ def ai_consent_missing() -> bool:
     except SQLAlchemyError as e:
         logger.error(f'No se pudo leer el permiso de IA de la cuenta {user_id}: {e}')
         return True
+
+
+def mark_active(user_id: int, session: Optional[Session] = None) -> None:
+    """Anota que la cuenta usó la web y anula el aviso de borrado por inactividad."""
+    query = update(User).where(User.id == user_id).values(last_active_at=datetime.now(), inactivity_notice_at=None)
+    if session is not None:
+        session.execute(query)
+        return
+    with _sessions()() as own:
+        own.execute(query)
+        own.commit()
+
+
+def inactive_accounts(since: datetime) -> list[dict[str, Any]]:
+    """Cuentas sin actividad desde `since` (las nunca usadas cuentan desde el alta), con la fecha del aviso."""
+    last = func.coalesce(User.last_active_at, User.created_at)
+    with _sessions()() as session:
+        rows = session.execute(select(User.id, User.email, User.inactivity_notice_at)
+                               .where(last < since).order_by(User.id))
+        return [{'id': uid, 'email': email, 'notice_at': notice} for uid, email, notice in rows]
+
+
+def set_inactivity_notice(user_id: int, when: datetime) -> bool:
+    """Guarda cuándo se avisó del borrado; False si la cuenta volvió a entrar o ya tenía aviso."""
+    with _sessions()() as session:
+        result = session.execute(update(User).where(User.id == user_id, User.inactivity_notice_at.is_(None))
+                                 .values(inactivity_notice_at=when))
+        session.commit()
+        return bool(rowcount(result))
+
+
+def clear_inactivity_notice(user_id: int, when: datetime) -> None:
+    """Deshace el aviso guardado en `when` (el email no salió): se vuelve a intentar en la próxima corrida."""
+    with _sessions()() as session:
+        session.execute(update(User).where(User.id == user_id, User.inactivity_notice_at == when)
+                        .values(inactivity_notice_at=None))
+        session.commit()
+
+
+def still_noticed(user_id: int, notice_at: datetime) -> bool:
+    """True si la cuenta sigue con el mismo aviso (no entró desde entonces: entrar lo anula)."""
+    with _sessions()() as session:
+        return session.execute(select(User.id).where(User.id == user_id,
+                                                     User.inactivity_notice_at == notice_at)).first() is not None
 
 
 def delete_account(user_id: int) -> None:
