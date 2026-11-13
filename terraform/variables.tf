@@ -30,6 +30,12 @@ variable "db_password" {
   sensitive   = true
 }
 
+variable "secret_key" {
+  description = "SECRET_KEY de la app (firma de cookies de sesión). Generá con: python -c \"import secrets; print(secrets.token_hex(32))\""
+  type        = string
+  sensitive   = true
+}
+
 variable "gemini_api_key" {
   description = "API Key de Google Gemini"
   type        = string
@@ -40,17 +46,4 @@ variable "enable_redis" {
   description = "Si se debe crear una instancia de Redis (Memorystore). Desactivar para ahorrar costos en dev."
   type        = bool
   default     = true
-}
-
-variable "smtp_user" {
-  description = "Email SMTP para notificaciones"
-  type        = string
-  default     = ""
-}
-
-variable "smtp_password" {
-  description = "Contraseña SMTP para notificaciones"
-  type        = string
-  sensitive   = true
-  default     = ""
 }

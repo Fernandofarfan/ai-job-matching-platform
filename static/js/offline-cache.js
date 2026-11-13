@@ -161,7 +161,9 @@ async function registerServiceWorker() {
   }
 
   try {
-    const reg = await navigator.serviceWorker.register('/static/sw.js', { scope: '/' });
+    // /sw.js se sirve desde la raíz con el header Service-Worker-Allowed: /
+    // (desde /static/sw.js el navegador rechazaría el scope '/')
+    const reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
     console.log('[SW] Registered:', reg.scope);
 
     reg.addEventListener('updatefound', () => {

@@ -10,7 +10,7 @@ env:
   PYTHON_VERSION: "3.11"
 
 jobs:
-  # ─── Linting ──────────────────────────────────────────────
+  # ─── Linting (repo completo) ──────────────────────────────
   lint:
     name: Lint (flake8)
     runs-on: ubuntu-latest
@@ -27,19 +27,28 @@ jobs:
       - name: Install flake8
         run: pip install flake8
 
-      - name: Run flake8
+      - name: Run flake8 (repo completo — errores críticos)
         run: |
-          # Errores críticos: sintaxis y módulos no definidos
-          flake8 app.py db_config.py resume_parser.py utils.py \
+          flake8 . \
             --max-line-length=120 \
-            --select=E1,E9,F4,F8,W \
-            --exclude=.venv,__pycache__,.git \
+            --select=E9,F63,F7,F82 \
+            --exclude=.venv,__pycache__,.git,alembic \
             --count --statistics
-        continue-on-error: false
+
+  # ─── Docker build (valida imagen + entrypoint de migraciones) ──
+  docker:
+    name: Docker build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build -t empleoia-ci:latest .
 
   # ─── Tests ────────────────────────────────────────────────
   test:
-    name: Tests (pytest)
+    name: Tests (pytest + coverage)
     runs-on: ubuntu-latest
     needs: lint
 
@@ -53,30 +62,10 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: 'pip'
 
-      - name: Install dependencies
+      - name: Install dependencies (requirements-dev.txt)
         run: |
           python -m pip install --upgrade pip
-          pip install \
-            Flask==2.3.3 \
-            Werkzeug==2.3.7 \
-            flask-socketio==5.3.6 \
-            eventlet==0.35.2 \
-            pandas \
-            numpy \
-            python-dotenv==1.0.0 \
-            mysql-connector-python \
-            openpyxl \
-            reportlab \
-            pytest \
-            pytest-flask \
-            PyPDF2 \
-            python-docx \
-            scikit-learn \
-            spacy \
-            nltk
-
-      - name: Download spacy model (small, for CI)
-        run: python -m spacy download es_core_news_sm || true
+          pip install -r requirements-dev.txt
 
       - name: Create required directories
         run: mkdir -p uploads results logs profiles temp/test_tasks
@@ -92,32 +81,34 @@ jobs:
           DB_POOL_SIZE=1
           SECRET_KEY=test-secret-key-ci-12345
           GEMINI_API_KEY=fake-key-for-testing
+          DATABASE_URL=sqlite:///temp/test_ci.db
           EOF
 
-      - name: Run tests
+      - name: Run tests (suite completa + cobertura de routers/core)
         run: |
-          python -m pytest tests/ \
-            -v \
-            --tb=short \
-            --ignore=tests/test_resume_parser.py \
-            -x
+          python -m pytest tests/ -v --tb=short \
+            --cov=routers --cov=core --cov=ai_engine --cov=ai_tools \
+            --cov-report=term-missing --cov-report=xml
 
-      - name: Run resume parser tests (best-effort)
-        run: |
-          python -m pytest tests/test_resume_parser.py -v --tb=short || true
-        continue-on-error: true
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage.xml
 
   # ─── Resumen de estado ────────────────────────────────────
   summary:
     name: CI Summary
     runs-on: ubuntu-latest
-    needs: [lint, test]
+    needs: [lint, test, docker]
     if: always()
     steps:
       - name: Print CI Result
         run: |
           echo "================================================="
           echo "EmpleoIA CI/CD Pipeline Completed"
-          echo "Lint:  ${{ needs.lint.result }}"
-          echo "Tests: ${{ needs.test.result }}"
+          echo "Lint:   ${{ needs.lint.result }}"
+          echo "Tests:  ${{ needs.test.result }}"
+          echo "Docker: ${{ needs.docker.result }}"
           echo "================================================="

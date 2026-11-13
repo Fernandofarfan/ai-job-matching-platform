@@ -163,15 +163,19 @@
           let html = '';
           data.results.forEach(result => {
             const isSuccess = result.status === 'success';
+            const safeTitle = escHtml(result.job_title);
+            const safeCompany = escHtml(result.company);
+            const safeError = escHtml((result.error || '').substring(0, 20));
+            const safeFile = encodeURIComponent(result.filename || '');
             html += '<tr>';
-            html += `<td class="ps-3 fw-medium">${result.job_title}</td>`;
-            html += `<td class="text-muted">${result.company}</td>`;
+            html += `<td class="ps-3 fw-medium">${safeTitle}</td>`;
+            html += `<td class="text-muted">${safeCompany}</td>`;
             html += `<td class="text-center"><span class="badge ${isSuccess ? 'bg-success' : 'bg-danger'} bg-opacity-10 ${isSuccess ? 'text-success' : 'text-danger'} border ${isSuccess ? 'border-success' : 'border-danger'} border-opacity-25">${isSuccess ? 'Éxito' : 'Error'}</span></td>`;
 
             if (result.filename) {
-              html += `<td class="pe-3 text-end"><a href="/download_resume/${result.filename}" class="btn btn-sm btn-primary"><i class="bi bi-download me-1"></i> Descargar</a></td>`;
+              html += `<td class="pe-3 text-end"><a href="/download_resume/${safeFile}" class="btn btn-sm btn-primary"><i class="bi bi-download me-1"></i> Descargar</a></td>`;
             } else {
-              html += `<td class="pe-3 text-end text-muted small">${result.error ? result.error.substring(0, 20) + '...' : 'Fallido'}</td>`;
+              html += `<td class="pe-3 text-end text-muted small">${safeError ? safeError + '...' : 'Fallido'}</td>`;
             }
             html += '</tr>';
           });

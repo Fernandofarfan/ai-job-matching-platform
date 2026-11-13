@@ -112,33 +112,11 @@ function showSavedToast(jobTitle) {
       <span style="font-size:1.3rem;">🤖</span>
       <div>
         <strong>¡Guardado en EmpleoIA!</strong><br>
-        <small style="opacity:0.85;">${jobTitle.slice(0, 50)}</small>
+        <small>${jobTitle.slice(0, 50)}</small>
       </div>
     </div>`;
-  
-  toast.style.cssText = `
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    z-index: 999999;
-    background: linear-gradient(135deg, #667eea, #764ba2);
-    color: white;
-    padding: 14px 20px;
-    border-radius: 12px;
-    box-shadow: 0 8px 32px rgba(102, 126, 234, 0.5);
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    font-size: 14px;
-    animation: empleoia-slideIn 0.3s ease;
-    min-width: 260px;
-  `;
 
-  const style = document.createElement('style');
-  style.textContent = `
-    @keyframes empleoia-slideIn {
-      from { transform: translateX(110%); opacity: 0; }
-      to { transform: translateX(0); opacity: 1; }
-    }`;
-  document.head.appendChild(style);
+  // Estilos en content.css (declarado en manifest.json)
   document.body.appendChild(toast);
 
   setTimeout(() => {

@@ -125,9 +125,14 @@ async function saveJob() {
       body: JSON.stringify(payload)
     });
 
-    const result = await response.json();
+    const result = await response.json().catch(() => ({}));
 
-    if (response.ok && result.success) {
+    if (response.ok && result.success && result.exists) {
+      // El backend responde success:true + exists:true para duplicados
+      showMessage('ℹ️ Este trabajo ya está en tu tracker', 'success');
+      saveBtn.textContent = 'ℹ️ Ya guardado';
+      saveBtn.disabled = false;
+    } else if (response.ok && result.success) {
       showMessage(`✅ ¡Guardado! "${(extractedJobData.title || '').slice(0, 40)}"`, 'success');
       saveBtn.textContent = '✅ Guardado';
       saveBtn.style.background = 'linear-gradient(135deg, #22c55e, #16a34a)';
@@ -139,10 +144,10 @@ async function saveJob() {
         jobTitle: extractedJobData.title || ''
       });
 
-    } else if (result.exists) {
-      showMessage('ℹ️ Este trabajo ya está en tu tracker', 'success');
     } else {
-      showMessage('❌ Error al guardar: ' + (result.message || 'Error desconocido'), 'error');
+      // El backend devuelve {success:false, error: "..."}
+      const msg = result.error || result.message || `HTTP ${response.status}`;
+      showMessage('❌ Error al guardar: ' + msg, 'error');
       saveBtn.disabled = false;
       saveBtn.textContent = '💾 Guardar en Job Tracker';
     }

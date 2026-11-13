@@ -47,16 +47,22 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
         const { serverUrl } = await chrome.storage.sync.get('serverUrl');
         const url = serverUrl || 'http://localhost:5000';
 
-        await fetch(`${url}/api/tracker/save-from-extension`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...response.data, status: 'bookmarked' }),
-        });
+      const res = await fetch(`${url}/api/tracker/save-from-extension`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...response.data, status: 'bookmarked' }),
+      });
+      const result = await res.json().catch(() => ({}));
 
+      if (res.ok && result.success && !result.exists) {
         chrome.tabs.sendMessage(tab.id, {
           action: 'showSavedIndicator',
           jobTitle: response.data.title || 'Trabajo',
         });
+      } else {
+        // No mostrar "guardado" si falló o ya existía
+        console.warn('EmpleoIA save no exitoso:', res.status, result);
+      }
       }
     } catch (e) {
       console.error('Context menu save error:', e);

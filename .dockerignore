@@ -1,0 +1,48 @@
+# Git y metadatos
+.git
+.gitignore
+.github
+.gitattributes
+
+# Secrets — nunca copiar a la imagen
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__
+*.py[cod]
+*.egg-info
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.venv
+venv
+
+# Logs y datos locales
+logs/
+*.log
+temp/
+
+# Datos de ejecución (se montan como volúmenes en compose)
+uploads/
+results/
+profiles/
+!uploads/.gitkeep
+!results/.gitkeep
+!profiles/.gitkeep
+
+# Tests y docs no necesarios en la imagen
+tests/
+docs/
+*.md
+LICENSE
+CHANGELOG.md
+CONTRIBUTING.md
+
+# IDE / Dev
+.vscode/
+.idea/
+.devcontainer/
+.terraform/
+*.tfstate*

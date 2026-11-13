@@ -13,5 +13,5 @@
     }
   },
   "forwardPorts": [5000, 5555, 6379, 3306],
-  "postCreateCommand": "pip install -r requirements.txt && python -m spacy download en_core_web_sm"
+  "postCreateCommand": "pip install -r requirements.txt && python -m spacy download es_core_news_sm"
 }

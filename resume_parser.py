@@ -3,7 +3,7 @@ import re
 import os
 import pandas as pd
 import docx
-import PyPDF2
+from pypdf import PdfReader
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 try:
@@ -17,12 +17,12 @@ import json
 from datetime import datetime
 
 try:
-    import google.generativeai as genai
+    from google import genai
     _GENAI_AVAILABLE = True
 except (ImportError, Exception) as e:
     genai = None
     _GENAI_AVAILABLE = False
-    print(f"Warning: google.generativeai not available: {e}")
+    print(f"Warning: google-genai not available: {e}")
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -30,15 +30,18 @@ load_dotenv()
 class resumeParser:
     def __init__(self):
         
-        try:
-            if _SPACY_AVAILABLE:
-                self.nlp = spacy.load("en_core_web_sm")
-            else:
-                self.nlp = None
-        except OSError:
-            print("Warning: spaCy model not found. Install with: python -m spacy download en_core_web_sm")
-            self.nlp = None
-            
+        self.nlp = None
+        if _SPACY_AVAILABLE:
+            # Modelo en español primero (plataforma en español), fallback a inglés
+            for _model in ("es_core_news_sm", "en_core_web_sm"):
+                try:
+                    self.nlp = spacy.load(_model)
+                    break
+                except OSError:
+                    continue
+            if self.nlp is None:
+                print("Warning: spaCy model not found. Install with: python -m spacy download es_core_news_sm")
+        
         self.configure_genai()
         
         self.technical_skills = {
@@ -78,26 +81,24 @@ class resumeParser:
             self.all_technical_skills.extend(category)
 
     def configure_genai(self):
-        if not getattr(self, '__module__', None) and not globals().get('_GENAI_AVAILABLE', False):
-            self.use_ai = False
+        self.client = None
+        self.model_name = os.getenv("GEMINI_MODEL", "gemini-2.5-flash-lite")
+        self.use_ai = False
+
+        if not _GENAI_AVAILABLE or genai is None:
             print("Warning: AI API not available (import failed). Using regex-based parsing.")
             return
 
         api_key = os.getenv("GEMINI_API_KEY")  # Internal: Google Gemini
         if api_key:
             try:
-                if 'genai' in globals() and genai is not None:
-                    genai.configure(api_key=api_key)
-                    self.model = genai.GenerativeModel('gemini-2.5-flash-lite')
-                    self.use_ai = True
-                    print("✅ AI parser configured successfully")
-                else:
-                    self.use_ai = False
+                self.client = genai.Client(api_key=api_key)
+                self.use_ai = True
+                print("✅ AI parser configured successfully")
             except Exception as e:
                 print(f"Error configuring AI parser: {e}")
                 self.use_ai = False
         else:
-            self.use_ai = False
             print("Warning: AI API key not found. Using regex-based parsing.")
 
     def extract_text_from_file(self, file_path):
@@ -108,7 +109,7 @@ class resumeParser:
         try:
             if file_extension == '.pdf':
                 with open(file_path, 'rb') as file:
-                    pdf_reader = PyPDF2.PdfReader(file)
+                    pdf_reader = PdfReader(file)
                     for page in pdf_reader.pages:
                         text += page.extract_text() + "\n"
             
@@ -422,8 +423,11 @@ class resumeParser:
         """
         
         try:
-            response = self.model.generate_content(prompt)
-            json_str = response.text.strip()
+            response = self.client.models.generate_content(
+                model=self.model_name,
+                contents=prompt,
+            )
+            json_str = (response.text or "").strip()
             # Clean up potential markdown code blocks
             if json_str.startswith("```json"):
                 json_str = json_str[7:]
@@ -531,16 +535,16 @@ class jobMatcher:
     def calculate_text_similarity(self, profile_text, job_description):
        
         try:
-           
+            if not profile_text or not job_description:
+                return 0.0
             texts = [profile_text, job_description]
             
-           
             tfidf_matrix = self.vectorizer.fit_transform(texts)
-            
             
             similarity = cosine_similarity(tfidf_matrix[0:1], tfidf_matrix[1:2])[0][0]
             
-            return similarity * 100  
+            # float() garantiza numérico (y convierte cualquier mock/artefacto en error → 0.0)
+            return float(similarity) * 100
         except Exception as e:
             print(f"Error calculating text similarity: {str(e)}")
             return 0.0
@@ -557,7 +561,10 @@ class jobMatcher:
         
         skill_score = self.calculate_skill_match(profile['skills'], job_description)
         experience_score = self.calculate_experience_match(profile['experience_years'], job_description)
-        text_similarity_score = self.calculate_text_similarity(profile['raw_text'], job_description)
+        text_similarity_score = self.calculate_text_similarity(
+            profile.get('raw_text', '') or ' '.join(profile.get('skills', [])),
+            job_description
+        )
         
        
         overall_score = (

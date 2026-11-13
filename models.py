@@ -18,6 +18,10 @@ Base = declarative_base()
 
 # ── Database URL ──────────────────────────────────────────────────────────────
 def get_database_url() -> str:
+    # Override explícito (usado por tests con SQLite, por ejemplo)
+    explicit = os.getenv("DATABASE_URL")
+    if explicit:
+        return explicit
     host = os.getenv("DB_HOST", "127.0.0.1")
     user = os.getenv("DB_USER", "root")
     password = os.getenv("DB_PASSWORD", "")
@@ -125,7 +129,8 @@ class ConnectionRequest(Base):
     contact_profile_url = Column(Text)
     sent_date = Column(DateTime, default=datetime.now)
     status = Column(
-        Enum("sent", "accepted", "pending", "withdrawn", name="conn_status"),
+        Enum("sent", "accepted", "pending", "withdrawn", "declined",
+             name="conn_status"),
         default="sent"
     )
     application_ids = Column(String(500))  # CSV of application IDs
@@ -206,11 +211,36 @@ class UserSettings(Base):
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
 
+class User(Base):
+    """Usuarios de la aplicación (login con sesiones)."""
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    username = Column(String(100), nullable=False, unique=True, index=True)
+    password_hash = Column(String(255), nullable=False)
+    created_at = Column(DateTime, default=datetime.now)
+    last_login = Column(DateTime, nullable=True)
+
+    def to_dict(self) -> dict:
+        return {"id": self.id, "username": self.username,
+                "created_at": self.created_at, "last_login": self.last_login}
+
+
 # ── Utility functions ─────────────────────────────────────────────────────────
 
 def create_all_tables():
     """Crea todas las tablas si no existen."""
     Base.metadata.create_all(bind=engine)
+
+
+def ensure_tables():
+    """Crea tablas de forma idempotente (seguro para llamar en cada uso)."""
+    try:
+        Base.metadata.create_all(bind=engine, checkfirst=True)
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(
+            f"No se pudieron crear tablas (¿MySQL disponible?): {e}")
 
 
 def drop_all_tables():
@@ -222,18 +252,45 @@ def drop_all_tables():
 
 class SQLAlchemyManager:
     """
-    Wrapper de SQLAlchemy que provee la misma interfaz que DatabaseManager
-    para mantener compatibilidad hacia atrás con app.py mientras se migra gradualmente.
+    Wrapper de SQLAlchemy que provee la misma interfaz que el viejo
+    DatabaseManager (SQL raw) de db_config.py.
     """
 
+    _tables_ready = False
+
     def __init__(self):
-        create_all_tables()
+        # No crear tablas en import (permitir boot sin MySQL);
+        # se crean de forma perezosa en el primer uso.
+        pass
+
+    def _ensure_tables(self):
+        if not SQLAlchemyManager._tables_ready:
+            try:
+                create_all_tables()
+                SQLAlchemyManager._tables_ready = True
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).warning(
+                    f"No se pudieron crear tablas (¿MySQL disponible?): {e}")
+
+    def ping(self) -> bool:
+        """Verifica conectividad con la base (para /api/health)."""
+        from sqlalchemy import text
+        with SessionLocal() as session:
+            session.execute(text("SELECT 1"))
+        return True
+
+    def get_connection(self):
+        """Compatibilidad: devuelve una sesión abierta (cerrar al terminar)."""
+        self._ensure_tables()
+        return SessionLocal()
 
     def get_session(self) -> Session:
+        self._ensure_tables()
         return SessionLocal()
 
     def get_applications(self, filters: dict = None) -> list:
-        with SessionLocal() as session:
+        with self.get_session() as session:
             query = session.query(Application)
             if filters:
                 if filters.get("status"):
@@ -247,7 +304,7 @@ class SQLAlchemyManager:
             return [row.to_dict() for row in query.order_by(Application.applied_date.desc()).all()]
 
     def add_job_to_tracker(self, job_data: dict):
-        with SessionLocal() as session:
+        with self.get_session() as session:
             existing = session.query(Application).filter_by(
                 title=job_data.get("title"),
                 company=job_data.get("company")
@@ -265,8 +322,8 @@ class SQLAlchemyManager:
             return app.id
 
     def update_job_status(self, job_id: int, new_status: str) -> bool:
-        with SessionLocal() as session:
-            app = session.query(Application).get(job_id)
+        with self.get_session() as session:
+            app = session.get(Application, job_id)
             if not app:
                 return False
             app.status = new_status
@@ -277,18 +334,18 @@ class SQLAlchemyManager:
             return True
 
     def get_all_tracked_jobs(self) -> list:
-        with SessionLocal() as session:
+        with self.get_session() as session:
             jobs = session.query(Application).order_by(Application.applied_date.desc()).all()
             return [j.to_dict() for j in jobs]
 
     def get_tracked_job_by_id(self, job_id: int) -> dict:
-        with SessionLocal() as session:
-            job = session.query(Application).get(job_id)
+        with self.get_session() as session:
+            job = session.get(Application, job_id)
             return job.to_dict() if job else None
 
     def delete_tracked_job(self, job_id: int) -> bool:
-        with SessionLocal() as session:
-            job = session.query(Application).get(job_id)
+        with self.get_session() as session:
+            job = session.get(Application, job_id)
             if not job:
                 return False
             session.delete(job)
@@ -298,8 +355,55 @@ class SQLAlchemyManager:
     def save_application(self, job_data: dict):
         return self.add_job_to_tracker(job_data)
 
+    def create_job_tracker_table(self) -> bool:
+        """Compatibilidad: las tablas las crea _ensure_tables()."""
+        self._ensure_tables()
+        return True
+
+    def create_networking_exclusions_table(self) -> bool:
+        self._ensure_tables()
+        return True
+
+    def exclude_company(self, company_name: str) -> bool:
+        try:
+            with self.get_session() as session:
+                existing = session.query(NetworkingExclusion).filter_by(
+                    company_name=company_name).first()
+                if existing:
+                    return True
+                session.add(NetworkingExclusion(company_name=company_name))
+                session.commit()
+                return True
+        except Exception:
+            return False
+
+    def save_processed_file(self, filename: str, total_jobs: int, jobs_applied: int) -> bool:
+        try:
+            with self.get_session() as session:
+                existing = session.query(ProcessedFile).filter_by(filename=filename).first()
+                if existing:
+                    existing.total_jobs = total_jobs
+                    existing.jobs_applied = jobs_applied
+                else:
+                    session.add(ProcessedFile(
+                        filename=filename, total_jobs=total_jobs,
+                        jobs_applied=jobs_applied))
+                session.commit()
+                return True
+        except Exception:
+            return False
+
+    def save_connection_request(self, company: str, application_ids=None) -> int:
+        with self.get_session() as session:
+            ids_csv = ",".join(str(i) for i in application_ids) if application_ids else None
+            row = ConnectionRequest(company=company, application_ids=ids_csv)
+            session.add(row)
+            session.commit()
+            session.refresh(row)
+            return row.id
+
     def get_companies_for_connections(self) -> list:
-        with SessionLocal() as session:
+        with self.get_session() as session:
             exclusions = {e.company_name for e in session.query(NetworkingExclusion).all()}
             from sqlalchemy import func
             rows = (
@@ -315,7 +419,7 @@ class SQLAlchemyManager:
     def save_market_insight(self, role: str, level: str, location: str, data: dict) -> int:
         import json
         from datetime import timedelta
-        with SessionLocal() as session:
+        with self.get_session() as session:
             insight = MarketInsight(
                 role=role,
                 experience_level=level,
@@ -334,7 +438,7 @@ class SQLAlchemyManager:
             return insight.id
 
     def get_cached_market_insight(self, role: str, level: str, location: str) -> dict:
-        with SessionLocal() as session:
+        with self.get_session() as session:
             insight = (
                 session.query(MarketInsight)
                 .filter(

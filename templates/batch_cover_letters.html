@@ -219,19 +219,23 @@
           let html = '';
           data.results.forEach(result => {
             const ok = result.status === 'success';
+            const safeTitle = escHtml(result.job_title);
+            const safeCompany = escHtml(result.company);
+            const safeError = escHtml((result.error || '').substring(0, 40));
+            const safeFile = encodeURIComponent(result.filename || '');
             html += '<tr>';
-            html += `<td class="ps-3 fw-medium">${result.job_title}</td>`;
-            html += `<td class="text-muted">${result.company}</td>`;
+            html += `<td class="ps-3 fw-medium">${safeTitle}</td>`;
+            html += `<td class="text-muted">${safeCompany}</td>`;
             html += `<td class="text-center"><span class="badge ${ok ? 'bg-success' : 'bg-danger'} bg-opacity-10 ${ok ? 'text-success' : 'text-danger'} border ${ok ? 'border-success' : 'border-danger'} border-opacity-25">${ok ? 'Éxito' : 'Error'}</span></td>`;
             if (ok && result.filename) {
               html += `<td class="pe-3 text-end d-flex gap-2 justify-content-end">`;
               if (result.preview) {
-                html += `<button class="btn btn-sm btn-outline-secondary" onclick="showPreview(this)" data-preview="${encodeURIComponent(result.preview)}" data-job="${result.job_title}"><i class="bi bi-eye me-1"></i>Preview</button>`;
+                html += `<button class="btn btn-sm btn-outline-secondary" onclick="showPreview(this)" data-preview="${encodeURIComponent(result.preview)}" data-job="${safeTitle}"><i class="bi bi-eye me-1"></i>Preview</button>`;
               }
-              html += `<a href="/download_resume/${result.filename}" class="btn btn-sm btn-primary"><i class="bi bi-download me-1"></i>Descargar</a>`;
+              html += `<a href="/download_resume/${safeFile}" class="btn btn-sm btn-primary"><i class="bi bi-download me-1"></i>Descargar</a>`;
               html += `</td>`;
             } else {
-              html += `<td class="pe-3 text-end text-muted small">${result.error ? result.error.substring(0, 40) + '...' : 'Fallido'}</td>`;
+              html += `<td class="pe-3 text-end text-muted small">${safeError ? safeError + '...' : 'Fallido'}</td>`;
             }
             html += '</tr>';
           });

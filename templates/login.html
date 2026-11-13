@@ -1,0 +1,40 @@
+<!-- templates/login.html -->
+{% extends "base.html" %}
+{% block content %}
+<div class="row justify-content-center mt-5">
+  <div class="col-md-5 col-lg-4">
+    <div class="card border-0 shadow-sm">
+      <div class="card-body p-4">
+        <div class="text-center mb-4">
+          <div class="text-gradient fw-bold fs-3">EmpleoIA</div>
+          <p class="text-muted small mb-0">Iniciá sesión para continuar</p>
+        </div>
+
+        <!-- Los flashes los muestra base.html (get_flashed_messages) -->
+
+        <form method="POST" action="/login">
+          <div class="mb-3">
+            <label for="username" class="form-label small fw-bold text-muted">Usuario</label>
+            <input type="text" class="form-control" id="username" name="username"
+                   autocomplete="username" required autofocus>
+          </div>
+          <div class="mb-4">
+            <label for="password" class="form-label small fw-bold text-muted">Contraseña</label>
+            <input type="password" class="form-control" id="password" name="password"
+                   autocomplete="current-password" required>
+          </div>
+          <div class="d-grid">
+            <button type="submit" class="btn btn-primary py-2">
+              <i class="bi bi-box-arrow-in-right me-2"></i> Ingresar
+            </button>
+          </div>
+        </form>
+
+        <div class="text-center mt-3 small">
+          <a href="/register">Crear la primera cuenta</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

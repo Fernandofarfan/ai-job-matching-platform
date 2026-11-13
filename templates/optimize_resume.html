@@ -1,0 +1,93 @@
+<!-- templates/optimize_resume.html -->
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h2 class="fw-bold text-dark mb-1">Optimización de CV con IA</h2>
+    <p class="text-muted mb-0">Adaptá tu currículum a una oferta específica en un solo paso</p>
+  </div>
+  <a href="/batch_optimize" class="btn btn-outline-primary">
+    <i class="bi bi-collection me-2"></i> Optimización por lotes
+  </a>
+</div>
+
+<!-- Los flashes los muestra base.html (get_flashed_messages) -->
+
+<div class="row g-4">
+  <!-- Form Column -->
+  <div class="col-lg-5">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header bg-white border-0 pt-4 px-4 pb-0">
+        <h5 class="fw-bold mb-0"><i class="bi bi-bullseye me-2 text-primary"></i> Oferta objetivo</h5>
+      </div>
+      <div class="card-body p-4">
+        <form method="POST" action="/optimize_resume">
+          <div class="mb-3">
+            <label for="job_title" class="form-label small fw-bold text-muted">Puesto</label>
+            <input type="text" class="form-control" id="job_title" name="job_title"
+                   value="{{ job_title or '' }}" placeholder="Ej: Data Analyst">
+          </div>
+
+          <div class="mb-3">
+            <label for="company" class="form-label small fw-bold text-muted">Empresa</label>
+            <input type="text" class="form-control" id="company" name="company"
+                   value="{{ company or '' }}" placeholder="Ej: Mercado Libre">
+          </div>
+
+          <div class="mb-3">
+            <label for="job_description" class="form-label small fw-bold text-muted">
+              Descripción de la oferta <span class="text-danger">*</span>
+            </label>
+            <textarea class="form-control" id="job_description" name="job_description" rows="8"
+                      placeholder="Pegá acá la descripción completa de la oferta...">{{ job_description or '' }}</textarea>
+            <div class="form-text small">Usá tu CV del perfil si no dejás texto de CV.</div>
+          </div>
+
+          <div class="mb-4">
+            <label for="resume_text" class="form-label small fw-bold text-muted">Tu CV (opcional)</label>
+            <textarea class="form-control" id="resume_text" name="resume_text" rows="6"
+                      placeholder="Dejar vacío para usar el CV de tu perfil...">{{ resume_text or '' }}</textarea>
+          </div>
+
+          <div class="d-grid">
+            <button type="submit" class="btn btn-primary py-2">
+              <i class="bi bi-magic me-2"></i> Optimizar mi CV
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Result Column -->
+  <div class="col-lg-7">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header bg-white border-0 pt-4 px-4 pb-0 d-flex justify-content-between align-items-center">
+        <h5 class="fw-bold mb-0"><i class="bi bi-file-earmark-check me-2 text-success"></i> Resultado</h5>
+        {% if filename %}
+        <a href="/download_resume/{{ filename }}" class="btn btn-sm btn-success">
+          <i class="bi bi-download me-1"></i> Descargar
+        </a>
+        {% endif %}
+      </div>
+      <div class="card-body p-4">
+        {% if optimized_resume %}
+        <div class="mb-3 small text-muted">
+          <i class="bi bi-briefcase me-1"></i> {{ job_title or 'Puesto' }}
+          {% if company %} · <i class="bi bi-building me-1"></i>{{ company }}{% endif %}
+        </div>
+        <pre class="bg-light border rounded p-3 small"
+             style="white-space: pre-wrap; max-height: 560px; overflow-y: auto;">{{ optimized_resume }}</pre>
+        {% else %}
+        <div class="text-center py-5">
+          <div class="mb-3 text-muted opacity-25">
+            <i class="bi bi-file-earmark-person" style="font-size: 3rem;"></i>
+          </div>
+          <p class="text-muted small">Completá la oferta objetivo y optimizá tu CV para ver el resultado acá.</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

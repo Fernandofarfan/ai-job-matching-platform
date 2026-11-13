@@ -533,10 +533,12 @@ function showFeedback(eval_data) {
         '☆'.repeat(5 - Math.round(eval_data.puntaje / 2));
 
     const strengthsList = document.getElementById('feedback-strengths');
-    strengthsList.innerHTML = (eval_data.fortalezas || []).map(f => `<li>${f}</li>`).join('');
+    strengthsList.innerHTML = (eval_data.fortalezas || [])
+        .map(f => `<li>${typeof escHtml === 'function' ? escHtml(f) : f}</li>`).join('');
 
     const improvList = document.getElementById('feedback-improvements');
-    improvList.innerHTML = (eval_data.areas_mejora || []).map(a => `<li>${a}</li>`).join('');
+    improvList.innerHTML = (eval_data.areas_mejora || [])
+        .map(a => `<li>${typeof escHtml === 'function' ? escHtml(a) : a}</li>`).join('');
 
     document.getElementById('feedback-improved').textContent = eval_data.respuesta_mejorada || '';
     document.getElementById('feedback-advice').textContent = eval_data.consejo_clave || '';
@@ -551,7 +553,7 @@ function addToHistory(index, score) {
     item.className = 'history-item';
     item.innerHTML = `
         <div class="d-flex justify-content-between align-items-center p-2 border-bottom" style="border-color:rgba(255,255,255,0.05)!important;">
-            <small class="text-muted text-truncate pe-2" style="max-width:70%;">P${index + 1}: ${q.pregunta.substring(0, 50)}...</small>
+            <small class="text-muted text-truncate pe-2" style="max-width:70%;">P${index + 1}: ${(typeof escHtml === 'function' ? escHtml(q.pregunta) : q.pregunta).substring(0, 50)}...</small>
             <span class="badge" style="background:${scoreColor};min-width:42px;">${score.toFixed(1)}</span>
         </div>`;
     if (history.querySelector('p')) history.innerHTML = '';

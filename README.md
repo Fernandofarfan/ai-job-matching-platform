@@ -4,8 +4,8 @@
 
 ### *Plataforma Inteligente de Búsqueda de Empleo con IA*
 
-[![Python Version](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
-[![Flask](https://img.shields.io/badge/flask-2.3.3-green.svg)](https://flask.palletsprojects.com/)
+[![Python Version](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115-green.svg)](https://fastapi.tiangolo.com/)
 [![License](https://img.shields.io/badge/license-MIT-orange.svg)](LICENSE)
 [![Status](https://img.shields.io/badge/status-active-success.svg)]()
 [![Celery](https://img.shields.io/badge/celery-5.3+-brightgreen.svg)](https://docs.celeryq.dev/)
@@ -64,7 +64,7 @@
 
 ### 🚀 **Nueva Arquitectura y Escalabilidad (Fases 1-5 completadas)**
 - **Migración a Playwright**: El motor de scraping abandona Selenium y adopta `playwright` asincrónico para máxima velocidad y evitar detecciones.
-- **FastAPI Core**: Transición de Flask a FastAPI (`main.py`) activada para endpoints de IA asincrónicos, preparándose para soporte WebSocket nativo de alta concurrencia.
+- **FastAPI Core**: Aplicación 100% FastAPI (`main.py` + `routers/`) con sesiones, WebSocket nativo, rate limiting en endpoints de IA y autenticación con login.
 - **Entorno DevContainer**: Repositorio "Docker-first" con `.devcontainer` que soluciona conflictos de C++ y restricciones de Windows Defender para dependencias de IA.
 - **Web Speech API**: Interfaz de *Mock Interviews* actualizada con funcionalidad de voz-a-texto en la UI.
 - **Autonomías Externas**: Tracker automático para Gmail vía OAuth e introducción de auto-aplicación en LinkedIn.
@@ -140,12 +140,12 @@
 <tr>
 <td align="center" width="20%">
 <img src="https://www.python.org/static/community_logos/python-logo.png" width="60px" height="60px" alt="Python" />
-<br><strong>Python 3.12</strong>
+<br><strong>Python 3.11</strong>
 <br><sub>Backend</sub>
 </td>
 <td align="center" width="20%">
-<img src="https://flask.palletsprojects.com/en/2.3.x/_images/flask-logo.png" width="60px" height="60px" alt="Flask" />
-<br><strong>Flask 2.3</strong>
+<img src="https://fastapi.tiangolo.com/img/logo-margin/logo-teal.png" width="60px" height="60px" alt="FastAPI" />
+<br><strong>FastAPI</strong>
 <br><sub>Web Framework</sub>
 </td>
 <td align="center" width="20%">
@@ -199,7 +199,7 @@
 
 Antes de comenzar, asegurate de tener instalado:
 
-- ✅ **Python 3.12+** - [Descargar](https://www.python.org/downloads/)
+- ✅ **Python 3.11** - [Descargar](https://www.python.org/downloads/)
 - ✅ **MySQL 8.0+** - [Descargar](https://dev.mysql.com/downloads/)
 - ✅ **Google Chrome** - Para Selenium WebDriver
 - ✅ **Git** - Para clonar el repositorio
@@ -223,26 +223,34 @@ python -m venv .venv
 
 # 3. Instalar dependencias
 pip install -r requirements.txt
+# Para desarrollo (tests + lint):
+# pip install -r requirements-dev.txt
 
-# 4. Instalar modelo de spaCy (IMPORTANTE)
-python -m spacy download en_core_web_sm
+# 4. Instalar modelo de spaCy en español (IMPORTANTE)
+python -m spacy download es_core_news_sm
 
-# 5. Configurar base de datos MySQL
-mysql -u root -p < setup_database.sql
+# 5. Inicializar la base de datos (migraciones Alembic — única fuente de verdad)
+python init_db.py
+# equivalente: alembic upgrade head
 
 # 6. Configurar variables de entorno
 cp .env.example .env
-# Editar .env con tus credenciales
+# Editar .env con tus credenciales (SECRET_KEY y DB_PASSWORD son obligatorios)
 
-# 7. Ejecutar la aplicación
-python app.py
+# 7. Ejecutar la aplicación (entry point canónico)
+uvicorn main:app --port 5000
 ```
+
+> [!IMPORTANT]
+> Al abrir `http://localhost:5000` por primera vez te redirige a `/register`:
+> creás tu usuario y contraseña (bcrypt) y a partir de ahí todo requiere sesión.
+> Podés permitir más registros con `ALLOW_REGISTRATION=true` en `.env`.
 
 > [!TIP]
 > Para aprovechar el scraping asíncrono con Celery, también ejecutá en terminales separadas:
 > ```bash
 > # Terminal 2: Celery Worker
-> celery -A celery_app worker --loglevel=info -Q scraping,ai_processing
+> celery -A celery_app worker --loglevel=info -Q scraping,ai_processing,notifications
 >
 > # Terminal 3: Flower Dashboard (monitor de tareas)
 > celery -A celery_app flower --port=5555
@@ -256,7 +264,7 @@ python app.py
 cp .env.example .env
 # Editar .env con GEMINI_API_KEY y DB_PASSWORD
 
-# Levanta todo: Flask + MySQL + Redis + Celery + Flower
+# Levanta todo: FastAPI + MySQL + Redis + Celery + Flower
 docker-compose up -d
 
 # Ver logs
@@ -365,18 +373,22 @@ EmpleoIA/
 │   ├── main.tf
 │   └── variables.tf
 │
-├── 📄 app.py                 # Aplicación principal Flask (+ API routes)
-├── 📄 ai_engine.py           # 🆕 Motor de IA centralizado (Gemini)
-├── 📄 celery_app.py          # 🆕 Configuración de Celery
-├── 📄 models.py              # 🆕 Modelos SQLAlchemy ORM
-├── 📄 market_analyzer.py     # 🆕 Análisis salarial
-├── 📄 notifier.py            # 🆕 Notificaciones por email
+├── 🐍 main.py                # Entry point FastAPI (monta routers + middleware)
+├── 📁 core/                   # Estado, templates, seguridad compartidos
+├── 📁 routers/                # Rutas FastAPI (pages, tracker, scraping, ai, ...)
+├── 🤖 ai_engine.py           # Motor de IA centralizado (Gemini)
+├── 🛠️ ai_tools.py            # Cartas de presentación + optimización de CV
+├── ⚙️ celery_app.py          # Configuración de Celery
+├── 🗄️ models.py              # Modelos SQLAlchemy ORM + Alembic
+├── 📊 market_analyzer.py     # Análisis salarial
+├── 📧 notifier.py            # Notificaciones por email
 ├── 📄 resume_parser.py       # Parser de CVs
-├── 📄 db_config.py           # Configuración de MySQL
+├── 🔌 db_config.py           # Shim de compatibilidad (delega al ORM)
 │
-├── 📄 requirements.txt       # Dependencias Python
+├── 📄 requirements.txt       # Dependencias Python (runtime)
+├── 📄 requirements-dev.txt   # Dependencias de dev/test
 ├── 📄 docker-compose.yml     # 🆕 Stack completo con Redis + Celery
-├── 📄 setup_database.sql     # Script de BD
+├── 🗄️ alembic/               # Migraciones de BD (fuente de verdad del esquema)
 ├── 📄 .env.example           # Plantilla de configuración
 └── 📄 README.md              # Este archivo
 ```
@@ -466,7 +478,7 @@ terraform apply
 ```
 
 Recursos que se crean:
-- **Cloud Run**: Flask app con auto-scaling
+- **Cloud Run**: FastAPI app con auto-scaling
 - **Cloud SQL**: MySQL 8.0 en VPC privada
 - **Memorystore**: Redis para Celery
 - **Artifact Registry**: Para imágenes Docker
@@ -572,7 +584,7 @@ Proyecto desarrollado desde cero para automatizar la búsqueda de empleo con tec
 ### Tecnologías
 
 - **Web Scraping**: [Selenium](https://www.selenium.dev/) + [undetected-chromedriver](https://github.com/ultrafunkamsterdam/undetected-chromedriver)
-- **Framework**: [Flask](https://flask.palletsprojects.com/) + [Flask-SocketIO](https://flask-socketio.readthedocs.io/)
+- **Framework**: [FastAPI](https://fastapi.tiangolo.com/) + WebSocket nativo
 - **Task Queue**: [Celery](https://docs.celeryq.dev/) + [Redis](https://redis.io/)
 - **NLP**: [spaCy](https://spacy.io/)
 - **UI**: [Bootstrap 5](https://getbootstrap.com/)

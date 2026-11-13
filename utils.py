@@ -4,6 +4,7 @@ utils.py — Funciones de utilidad compartidas para EmpleoIA
 import os
 import glob
 import json
+import re
 import logging
 from datetime import datetime
 
@@ -102,6 +103,41 @@ def delete_user_profile_by_role(role_type: str) -> bool:
         return False
 
 
+def save_user_profile(profile: dict, filename: str) -> bool:
+    """Guarda el perfil legacy (archivo único user_profile.json)."""
+    profile_path = os.path.join('profiles', 'user_profile.json')
+    profile_data = profile.copy()
+    profile_data['resume_filename'] = filename
+    profile_data['upload_date'] = datetime.now().isoformat()
+
+    try:
+        os.makedirs('profiles', exist_ok=True)
+        with open(profile_path, 'w', encoding='utf-8') as f:
+            json.dump(profile_data, f, indent=2, ensure_ascii=False)
+        return True
+    except Exception as e:
+        logger.error(f"Error saving profile: {e}")
+        return False
+
+
+def delete_user_profile() -> bool:
+    """Elimina el perfil legacy y todos los CVs subidos."""
+    try:
+        profile_path = os.path.join('profiles', 'user_profile.json')
+        if os.path.exists(profile_path):
+            os.remove(profile_path)
+
+        for file in glob.glob(os.path.join('uploads', '*')):
+            try:
+                os.remove(file)
+            except OSError:
+                pass
+        return True
+    except Exception as e:
+        logger.error(f"Error deleting profile: {e}")
+        return False
+
+
 def get_resume_text_from_profile(resume_parser_instance) -> str | None:
     """Extrae el texto del primer CV disponible en los perfiles."""
     try:
@@ -153,8 +189,18 @@ def get_recent_job_files(results_dir: str = 'results', limit: int = 10) -> list[
 TASK_DIR = os.path.join('temp', 'test_tasks')
 os.makedirs(TASK_DIR, exist_ok=True)
 
+# Solo UUIDs: evita path traversal vía task_id (../../x)
+_TASK_ID_RE = re.compile(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-'
+                         r'[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$')
+
+
+def is_valid_task_id(task_id: str) -> bool:
+    return bool(task_id) and bool(_TASK_ID_RE.fullmatch(task_id))
+
 
 def _task_path(task_id: str) -> str:
+    if not is_valid_task_id(task_id):
+        raise ValueError(f"task_id inválido: {task_id!r}")
     return os.path.join(TASK_DIR, f"{task_id}.json")
 
 
@@ -170,7 +216,10 @@ def save_task_to_disk(task_id: str, test_tasks: dict) -> None:
 
 
 def load_task_from_disk(task_id: str) -> dict | None:
-    path = _task_path(task_id)
+    try:
+        path = _task_path(task_id)
+    except ValueError:
+        return None
     if not os.path.exists(path):
         return None
     try:

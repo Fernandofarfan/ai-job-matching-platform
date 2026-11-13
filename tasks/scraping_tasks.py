@@ -59,8 +59,8 @@ def run_indeed_scraper(self, credentials: dict, searches: list, filters: dict = 
     try:
         self.update_state(state="PROGRESS", meta={"progress": 5, "message": "Iniciando scraper de Indeed..."})
 
-        indeed_email = credentials.get("indeed_email")
-        indeed_password = credentials.get("indeed_password")
+        indeed_email = credentials.get("indeed_email") or os.getenv("INDEED_EMAIL")
+        indeed_password = credentials.get("indeed_password") or os.getenv("INDEED_PASSWORD")
 
         for i, search in enumerate(searches):
             position = search.get("position", "")
@@ -146,9 +146,10 @@ def run_linkedin_scraper(self, credentials: dict, searches: list, filters: dict 
     try:
         self.update_state(state="PROGRESS", meta={"progress": 5, "message": "Iniciando scraper de LinkedIn..."})
 
-        linkedin_email = credentials.get("linkedin_email")
-        linkedin_password = credentials.get("linkedin_password")
-        linkedin_token = credentials.get("linkedin_token")
+        linkedin_email = credentials.get("linkedin_email") or os.getenv("LINKEDIN_EMAIL")
+        linkedin_password = credentials.get("linkedin_password") or os.getenv("LINKEDIN_PASSWORD")
+        linkedin_token = (credentials.get("linkedin_token")
+                          or os.getenv("LI_AT_TOKEN") or os.getenv("LINKEDIN_TOKEN"))
 
         if linkedin_email and linkedin_password:
             scraper = linkedinClass(email=linkedin_email, password=linkedin_password)
@@ -238,7 +239,11 @@ def run_bumeran_scraper(self, credentials: dict, searches: list, filters: dict =
                 jobs = scraper.search_jobs(
                     position=search.get("position", ""),
                     location=search.get("location", ""),
-                    credentials=credentials
+                    max_jobs=50,
+                    email=credentials.get("email") or credentials.get("bumeran_email")
+                          or os.getenv("BUMERAN_EMAIL"),
+                    password=credentials.get("password") or credentials.get("bumeran_password")
+                             or os.getenv("BUMERAN_PASSWORD"),
                 )
                 if jobs:
                     all_jobs.extend(jobs)
@@ -276,7 +281,11 @@ def run_computrabajo_scraper(self, credentials: dict, searches: list, filters: d
                 jobs = scraper.search_jobs(
                     position=search.get("position", ""),
                     location=search.get("location", ""),
-                    credentials=credentials
+                    max_jobs=50,
+                    email=credentials.get("email") or credentials.get("computrabajo_email")
+                          or os.getenv("COMPUTRABAJO_EMAIL"),
+                    password=credentials.get("password") or credentials.get("computrabajo_password")
+                             or os.getenv("COMPUTRABAJO_PASSWORD"),
                 )
                 if jobs:
                     all_jobs.extend(jobs)

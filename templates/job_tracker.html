@@ -314,6 +314,27 @@
     setupDragAndDrop();
   }
 
+  // Escapa HTML para datos que llegan de la BD (evita XSS almacenado)
+  function esc(value) {
+    if (value === null || value === undefined) return '';
+    return String(value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  // Solo permite enlaces http(s) reales (bloquea javascript:, data:, etc.)
+  function safeUrl(url) {
+    try {
+      const u = new URL(String(url));
+      return (u.protocol === 'http:' || u.protocol === 'https:') ? u.href : '';
+    } catch {
+      return '';
+    }
+  }
+
   function createJobCard(job) {
     const card = document.createElement('div');
     card.className = 'job-card';
@@ -324,12 +345,12 @@
     const appliedDate = job.date_applied ? new Date(job.date_applied).toLocaleDateString() : 'Pendiente';
 
     card.innerHTML = `
-    <div class="job-card-title text-truncate">${job.title}</div>
+    <div class="job-card-title text-truncate">${esc(job.title)}</div>
     <div class="job-card-company">
-      <i class="bi bi-building me-2 text-muted"></i> ${job.company}
+      <i class="bi bi-building me-2 text-muted"></i> ${esc(job.company)}
     </div>
-    ${job.location ? `<div class="text-muted mb-1 small"><i class="bi bi-geo-alt me-1"></i> ${job.location}</div>` : ''}
-    ${job.salary && job.salary !== 'Not specified' ? `<div class="text-success mb-2 small fw-bold"><i class="bi bi-currency-dollar me-1"></i> ${job.salary}</div>` : ''}
+    ${job.location ? `<div class="text-muted mb-1 small"><i class="bi bi-geo-alt me-1"></i> ${esc(job.location)}</div>` : ''}
+    ${job.salary && job.salary !== 'Not specified' ? `<div class="text-success mb-2 small fw-bold"><i class="bi bi-currency-dollar me-1"></i> ${esc(job.salary)}</div>` : ''}
     <div class="job-card-footer">
       <span class="text-warning small" style="letter-spacing: -2px;">${stars}</span>
       <span class="small">${appliedDate}</span>
@@ -426,33 +447,34 @@
           const stars = '⭐'.repeat(job.excitement || 0);
 
           document.getElementById('jobDetailTitle').textContent = job.title;
+          const jobUrl = safeUrl(job.job_link);
           document.getElementById('jobDetailBody').innerHTML = `
           <div class="row g-4">
             <div class="col-md-6">
               <div class="mb-3">
                 <label class="small text-muted fw-bold text-uppercase">Empresa</label>
-                <div class="fs-5">${job.company}</div>
+                <div class="fs-5">${esc(job.company)}</div>
               </div>
               <div class="mb-3">
                 <label class="small text-muted fw-bold text-uppercase">Ubicación</label>
-                <div><i class="bi bi-geo-alt me-2"></i> ${job.location || 'No especificada'}</div>
+                <div><i class="bi bi-geo-alt me-2"></i> ${esc(job.location) || 'No especificada'}</div>
               </div>
               <div class="mb-3">
                 <label class="small text-muted fw-bold text-uppercase">Salario</label>
-                <div class="text-success fw-bold"><i class="bi bi-currency-dollar me-2"></i> ${job.salary || 'No especificado'}</div>
+                <div class="text-success fw-bold"><i class="bi bi-currency-dollar me-2"></i> ${esc(job.salary) || 'No especificado'}</div>
               </div>
               <div class="mb-3">
                 <label class="small text-muted fw-bold text-uppercase">Estado Actual</label>
-                <div><span class="badge bg-primary">${job.status}</span></div>
+                <div><span class="badge bg-primary">${esc(job.status)}</span></div>
               </div>
             </div>
             <div class="col-md-6">
               <div class="mb-3">
                 <label class="small text-muted fw-bold text-uppercase">Fechas</label>
                 <div class="small">
-                  <div class="mb-1">Guardado: ${new Date(job.date_saved).toLocaleDateString()}</div>
+                  <div class="mb-1">Guardado: ${job.date_saved ? new Date(job.date_saved).toLocaleDateString() : 'N/A'}</div>
                   <div class="mb-1">Aplicado: ${job.date_applied ? new Date(job.date_applied).toLocaleDateString() : 'Pendiente'}</div>
-                  <div>Deadline: ${job.deadline || 'N/A'}</div>
+                  <div>Deadline: ${esc(job.deadline) || 'N/A'}</div>
                 </div>
               </div>
               <div class="mb-3">
@@ -464,16 +486,17 @@
               <div class="p-3 bg-light rounded">
                 <label class="small text-muted fw-bold text-uppercase mb-2">Enlace</label>
                 <div class="text-truncate">
-                  <a href="${job.job_link}" target="_blank" class="text-decoration-none">
-                    <i class="bi bi-box-arrow-up-right me-2"></i> ${job.job_link}
-                  </a>
+                  ${jobUrl ? `
+                  <a href="${jobUrl}" target="_blank" rel="noopener noreferrer" class="text-decoration-none">
+                    <i class="bi bi-box-arrow-up-right me-2"></i> ${esc(job.job_link)}
+                  </a>` : '<span class="text-muted">Sin enlace válido</span>'}
                 </div>
               </div>
             </div>
             ${job.notes ? `
             <div class="col-12">
               <label class="small text-muted fw-bold text-uppercase">Notas</label>
-              <div class="p-3 border rounded bg-white">${job.notes}</div>
+              <div class="p-3 border rounded bg-white">${esc(job.notes)}</div>
             </div>` : ''}
           </div>
         `;

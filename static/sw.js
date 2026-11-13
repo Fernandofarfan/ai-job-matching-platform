@@ -4,14 +4,10 @@
  */
 
 const CACHE_NAME = 'empleoia-v1';
-const OFFLINE_URL = '/offline';
 
-// Assets que siempre queremos en caché
+// Assets que siempre queremos en caché (solo estáticos: las páginas están
+// autenticadas y NO se pre-cachean)
 const STATIC_ASSETS = [
-  '/',
-  '/tracker',
-  '/analytics',
-  '/results',
   '/static/css/main.css',
   '/static/css/analytics_premium.css',
   '/static/css/tracker_premium.css',
@@ -60,9 +56,8 @@ self.addEventListener('fetch', (event) => {
   // Solo manejar requests del mismo origen
   if (url.origin !== location.origin) return;
 
-  // Para APIs → Network-First con fallback a cache
+  // APIs → SIN caché: contienen datos autenticados (tracker, perfiles)
   if (url.pathname.startsWith('/api/')) {
-    event.respondWith(networkFirstStrategy(request));
     return;
   }
 
@@ -96,24 +91,6 @@ async function cacheFirstStrategy(request) {
     return response;
   } catch {
     return new Response('Asset no disponible offline', { status: 503 });
-  }
-}
-
-async function networkFirstStrategy(request) {
-  try {
-    const response = await fetch(request);
-    if (response.ok) {
-      const cache = await caches.open(CACHE_NAME);
-      cache.put(request, response.clone());
-    }
-    return response;
-  } catch {
-    const cached = await caches.match(request);
-    if (cached) return cached;
-    return new Response(
-      JSON.stringify({ success: false, error: 'Sin conexión. Mostrando datos en caché.', offline: true }),
-      { status: 503, headers: { 'Content-Type': 'application/json' } }
-    );
   }
 }
 

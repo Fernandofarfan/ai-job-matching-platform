@@ -1,7 +1,6 @@
 """
-test_app_routes.py – Tests de rutas principales de la app Flask.
+test_app_routes.py – Tests de rutas principales de la app (FastAPI).
 """
-import json
 import pytest
 
 
@@ -39,7 +38,7 @@ class TestMainRoutes:
     def test_status_endpoint_returns_json(self, client):
         response = client.get('/status')
         assert response.status_code == 200
-        data = json.loads(response.data)
+        data = response.json()
         # Debe tener los keys de scraping
         assert 'indeed_scraping' in data
         assert 'linkedin_scraping' in data
@@ -51,7 +50,7 @@ class TestTrackerAPI:
     def test_get_tracker_jobs_returns_success(self, client):
         response = client.get('/api/tracker/jobs')
         assert response.status_code == 200
-        data = json.loads(response.data)
+        data = response.json()
         assert data['success'] is True
         assert 'jobs' in data
         assert isinstance(data['jobs'], list)
@@ -60,7 +59,7 @@ class TestTrackerAPI:
     def test_get_single_job_returns_correct_data(self, client):
         response = client.get('/api/tracker/job/1')
         assert response.status_code == 200
-        data = json.loads(response.data)
+        data = response.json()
         assert data['success'] is True
         assert data['job']['title'] == 'Data Analyst'
         assert data['job']['company'] == 'Acme Corp'
@@ -68,7 +67,7 @@ class TestTrackerAPI:
     def test_get_nonexistent_job_returns_404(self, client):
         response = client.get('/api/tracker/job/9999')
         assert response.status_code == 404
-        data = json.loads(response.data)
+        data = response.json()
         assert data['success'] is False
 
     def test_add_job_to_tracker(self, client):
@@ -78,57 +77,40 @@ class TestTrackerAPI:
             'location': 'Remoto',
             'status': 'bookmarked'
         }
-        response = client.post(
-            '/api/tracker/job',
-            data=json.dumps(payload),
-            content_type='application/json'
-        )
+        response = client.post('/api/tracker/job', json=payload)
         assert response.status_code == 200
-        data = json.loads(response.data)
+        data = response.json()
         assert data['success'] is True
         assert 'job_id' in data
 
     def test_add_job_missing_required_fields_returns_400(self, client):
         # Falta 'company'
-        payload = {'title': 'Some Job'}
-        response = client.post(
-            '/api/tracker/job',
-            data=json.dumps(payload),
-            content_type='application/json'
-        )
+        response = client.post('/api/tracker/job', json={'title': 'Some Job'})
         assert response.status_code == 400
-        data = json.loads(response.data)
+        data = response.json()
         assert data['success'] is False
 
     def test_update_job_status(self, client):
-        payload = {'status': 'interviewing'}
-        response = client.put(
-            '/api/tracker/job/1/status',
-            data=json.dumps(payload),
-            content_type='application/json'
-        )
+        response = client.put('/api/tracker/job/1/status',
+                              json={'status': 'interviewing'})
         assert response.status_code == 200
-        data = json.loads(response.data)
+        data = response.json()
         assert data['success'] is True
 
     def test_update_job_status_missing_status_returns_400(self, client):
-        response = client.put(
-            '/api/tracker/job/1/status',
-            data=json.dumps({}),
-            content_type='application/json'
-        )
+        response = client.put('/api/tracker/job/1/status', json={})
         assert response.status_code == 400
 
     def test_delete_tracked_job(self, client):
         response = client.delete('/api/tracker/job/3')
         assert response.status_code == 200
-        data = json.loads(response.data)
+        data = response.json()
         assert data['success'] is True
 
     def test_tracker_stats(self, client):
         response = client.get('/api/tracker/stats')
         assert response.status_code == 200
-        data = json.loads(response.data)
+        data = response.json()
         assert data['success'] is True
         assert 'stats' in data
         # Los jobs del mock tienen applied, interviewing, bookmarked
@@ -142,10 +124,11 @@ class TestProfileAPI:
     def test_api_all_profiles_returns_ok(self, client):
         response = client.get('/api/all_profiles')
         assert response.status_code == 200
-        data = json.loads(response.data)
+        data = response.json()
         assert data['success'] is True
 
     def test_upload_resume_no_file_redirects(self, client):
-        response = client.post('/upload_resume', data={})
-        # Debería redirigir o dar un error flash, no un 500
-        assert response.status_code in (302, 200, 400)
+        response = client.post('/upload_resume', data={}, follow_redirects=False)
+        # Sin archivo debe redirigir con flash a /profile (nunca 500)
+        assert response.status_code == 303
+        assert response.headers['location'] == '/profile'

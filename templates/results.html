@@ -66,9 +66,11 @@
               <h6 class="dropdown-header">Herramientas IA</h6>
             </li>
             <li>
-              <a class="dropdown-item" href="/extract_companies/{{ filename }}">
-                <i class="bi bi-building me-2 text-primary"></i>Extraer Empresas
-              </a>
+              <form action="/extract_companies/{{ filename }}" method="POST" class="d-inline">
+                <button type="submit" class="dropdown-item text-start border-0 bg-transparent w-100">
+                  <i class="bi bi-building me-2 text-primary"></i>Extraer Empresas
+                </button>
+              </form>
             </li>
             <li>
               <a class="dropdown-item" href="/batch_cover_letters">
@@ -84,10 +86,12 @@
               <hr class="dropdown-divider">
             </li>
             <li>
-              <a class="dropdown-item text-danger" href="/delete_csv/{{ filename }}"
-                onclick="return confirm('¿Estás seguro de eliminar este archivo?');">
-                <i class="bi bi-trash me-2"></i>Eliminar Archivo
-              </a>
+              <form action="/delete_csv/{{ filename }}" method="POST" class="d-inline"
+                    onsubmit="return confirm('¿Estás seguro de eliminar este archivo?');">
+                <button type="submit" class="dropdown-item text-danger border-0 bg-transparent w-100 text-start">
+                  <i class="bi bi-trash me-2"></i>Eliminar Archivo
+                </button>
+              </form>
             </li>
           </ul>
         </div>

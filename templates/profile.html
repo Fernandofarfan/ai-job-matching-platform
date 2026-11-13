@@ -428,7 +428,8 @@
         day: 'numeric'
       });
       const skillsCount = profile.skills ? profile.skills.length : 0;
-      const resumeFilename = profile.resume_filename || "Desconocido";
+      const resumeFilename = escHtml(profile.resume_filename || "Desconocido");
+      const safeRoleType = escHtml(roleType);
 
       const card = document.createElement('div');
       card.className = 'profile-card fade-in';
@@ -438,7 +439,7 @@
             <div class="rounded p-3 bg-light fs-1">${roleIcons[roleType] || "📄"}</div>
             <div class="flex-grow-1">
               <div class="d-flex align-items-center gap-2 mb-2">
-                <h5 class="fw-bold mb-0">${roleNames[roleType] || roleType}</h5>
+                <h5 class="fw-bold mb-0">${roleNames[roleType] || safeRoleType}</h5>
                 <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25">
                   <i class="bi bi-check-circle me-1"></i>Activo
                 </span>
@@ -454,7 +455,7 @@
                 <div class="small fw-bold text-muted mb-2">Habilidades detectadas:</div>
                 <div class="d-flex flex-wrap gap-1">
                   ${profile.skills.slice(0, 8).map(skill => `
-                    <span class="skill-badge">${skill}</span>
+                    <span class="skill-badge">${escHtml(skill)}</span>
                   `).join('')}
                   ${profile.skills.length > 8 ? `
                     <span class="badge bg-light text-dark border">+${profile.skills.length - 8} más</span>
@@ -465,10 +466,10 @@
             </div>
           </div>
           <div class="d-flex gap-2">
-            <a href="/view_profile/${roleType}" class="btn btn-sm btn-outline-primary" title="Ver Detalles">
+            <a href="/view_profile/${encodeURIComponent(roleType)}" class="btn btn-sm btn-outline-primary" title="Ver Detalles">
               <i class="bi bi-eye"></i>
             </a>
-            <a href="/delete_profile/${roleType}" class="btn btn-sm btn-outline-danger" 
+            <a href="/delete_profile/${encodeURIComponent(roleType)}" class="btn btn-sm btn-outline-danger" 
                title="Eliminar" onclick="return confirm('¿Eliminar este perfil?')">
               <i class="bi bi-trash"></i>
             </a>

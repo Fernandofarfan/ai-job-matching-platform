@@ -1,0 +1,46 @@
+<!-- templates/register.html -->
+{% extends "base.html" %}
+{% block content %}
+<div class="row justify-content-center mt-5">
+  <div class="col-md-5 col-lg-4">
+    <div class="card border-0 shadow-sm">
+      <div class="card-body p-4">
+        <div class="text-center mb-4">
+          <div class="text-gradient fw-bold fs-3">EmpleoIA</div>
+          <p class="text-muted small mb-0">Creá tu cuenta</p>
+        </div>
+
+        <!-- Los flashes los muestra base.html (get_flashed_messages) -->
+
+        <form method="POST" action="/register">
+          <div class="mb-3">
+            <label for="username" class="form-label small fw-bold text-muted">Usuario</label>
+            <input type="text" class="form-control" id="username" name="username"
+                   autocomplete="username" minlength="3" required autofocus>
+          </div>
+          <div class="mb-3">
+            <label for="password" class="form-label small fw-bold text-muted">Contraseña</label>
+            <input type="password" class="form-control" id="password" name="password"
+                   autocomplete="new-password" minlength="8" required>
+            <div class="form-text">Mínimo 8 caracteres.</div>
+          </div>
+          <div class="mb-4">
+            <label for="confirm" class="form-label small fw-bold text-muted">Repetir contraseña</label>
+            <input type="password" class="form-control" id="confirm" name="confirm"
+                   autocomplete="new-password" minlength="8" required>
+          </div>
+          <div class="d-grid">
+            <button type="submit" class="btn btn-primary py-2">
+              <i class="bi bi-person-plus me-2"></i> Crear cuenta
+            </button>
+          </div>
+        </form>
+
+        <div class="text-center mt-3 small">
+          <a href="/login">Ya tengo cuenta</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

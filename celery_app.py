@@ -18,6 +18,8 @@ celery = Celery(
         "tasks.scraping_tasks",
         "tasks.ai_tasks",
         "tasks.notification_tasks",
+        "tasks.connection_tasks",
+        "tasks.gmail_tracker",
     ],
 )
 
@@ -42,6 +44,7 @@ celery.conf.update(
         "tasks.scraping_tasks.*": {"queue": "scraping"},
         "tasks.ai_tasks.*": {"queue": "ai_processing"},
         "tasks.notification_tasks.*": {"queue": "notifications"},
+        "tasks.connection_tasks.*": {"queue": "scraping"},
     },
 
     # Rate limits para scraping (evitar bloqueos)

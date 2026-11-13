@@ -7,8 +7,79 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
+### 🔒 Auditoría de seguridad y solidez (ronda 2)
+**P0 corregidos:**
+- ✨ **Esquema BD unificado en Alembic**: eliminado `setup_database.sql` (ENUM viejo de 4 estados rompía el tracker en MySQL strict + faltaban 15 columnas y la tabla `users`); nueva migración idempotente `0002_align_legacy_schema` + `entrypoint.sh` que corre `alembic upgrade head` antes de uvicorn.
+- ✨ **Path traversal cerrado en 10+ rutas**: upload de CV (role_type/filename/extensiones/16MB), `filename` desde JSON en tools, descargas, export, `task_id` UUID-only (helper `is_safe_results_path` ahora usado).
+- ✨ **CSRF con comparación exacta** de Origin vs Host (antes bypaseable por sufijo) + `chrome-extension://` permitido SOLO en el endpoint de la extensión; escritura anónima vía curl ahora → 401.
+- ✨ **XSS almacenado cerrado**: `job_tracker.html` escapa title/company/notes y valida `job_link` con `safeUrl()`; `view_file` escapa celdas de CSV; copilot escapa respuestas de IA; batch_*, mock_interview y profile usan `escHtml()`.
+- ✨ **`SECRET_KEY` obligatoria en producción** (`ENV=production`) + Secret Manager en Terraform + probes a `/api/health`.
+- ✨ **gmail_tracker reparado**: shim `move_to_stage()` con mapeo de etapas + módulo registrado en Celery.
+
+**P1 corregidos:**
+- ✨ **Auth endurecida**: lockout 5 fallos/15 min, session fixation (`session.clear()` en login/registro), open redirect bloqueado (`\`, `//`, externos), cookies `Secure` vía `SESSION_SECURE`, WebSocket `/ws` valida Origin.
+- ✨ **Mutaciones por GET → POST**: `delete_profile`, `extract_companies`, `run_test_scraper`, `market-insights` (solo POST).
+- ✨ **Celery correcto**: task-ids persistidos en Redis (sobrevive restarts/multi-worker + detección de caducidad), fallback eager en `asyncio.to_thread` (no bloquea el loop), `run_test_scraper` en threadpool, notifier ahora chequea `ping()` real (antes: sin workers devolvía True y los emails nunca salían), credenciales del .env ya no viajan por la cola.
+- ✨ **Infra Docker**: Redis con `--requirepass`, Flower y MySQL solo en `127.0.0.1`, app como usuario no-root (`pwuser`), healthchecks en web/worker/beat, logs con rotación (10m×3), creds de scrapers agregadas al worker.
+- ✨ **Dependencias**: `PyPDF2` (CVE-2023-36464) → `pypdf`; `flower` agregado (README lo pedía); eliminados sin uso: `beautifulsoup4`, `lxml`, `requests`, `google-auth-httplib2`; split `requirements.txt` (runtime) / `requirements-dev.txt`.
+- ✨ **Contratos frontend arreglados**: extensión (lee `error`, maneja `exists`, background no miente con "guardado"), cartas con `tone`+`preview`, `auto_start=true` preselecciona empresas, flashes duplicados eliminados, `/api/health` y handler global sin filtrar errores internos.
+- ✨ **Login/registro rate-limited** y registro gating testeado.
+
+**Calidad:**
+- ✨ **Tests: 44 → 83** (auth, security/traversal/CSRF, Celery dispatch); frágiles corregidos (export exige 200 real).
+- ✨ **CI**: coverage de `routers/core` (43%) con reporte, job `docker build`, sin descargas innecesarias.
+- ✨ **Dead code eliminado**: `scrapers/linkedin_scraper.py` (2.031 líneas), `scripts/test_linkedin.py`, `templates/dashboard.html` + `/api/analytics/funnel`, `OFFLINE_URL`, `apiFetch`/`showToast` muertos.
+- ✨ **PWA reparada**: SW servido en `/sw.js` con `Service-Worker-Allowed: /` (el registro con scope '/' era rechazado); sin precache de páginas autenticadas ni cacheo de `/api/*`.
+- ✨ **Calidad**: `RotatingFileHandler` (5MB×3), 8 `except:` descualificados, Bootstrap `5.3.0-alpha1` → `5.3.3` con SRI, rate-limit con purga de IPs, `run_in_threadpool` para Gemini/spaCy/upload, `confirm_delete.html` unificado a base.html.
+- ✨ **Docs**: `.env.example` con todas las vars (`ALLOW_REGISTRATION`, `AI_RATE_LIMIT_PER_MINUTE`, `DATABASE_URL`, `GEMINI_MODEL`, `SESSION_SECURE`, `REDIS_PASSWORD`, `ENV`), sin vars muertas; README/CONTRIBUTING sin referencias Flask.
+
+### 🏗️ Migración completa a FastAPI (4.0.0-dev)
+- ✨ **100% FastAPI**: se eliminó Flask y `app.py` (3.024 líneas); las 72 rutas migraron a `routers/` (pages, tracker, profile, ai, tools, notifications, scraping, files, export, auth)
+- ✨ **Autenticación**: registro/login/logout con bcrypt + sesiones (Starlette SessionMiddleware); primera cuenta abierta, siguientes con `ALLOW_REGISTRATION=true`
+- ✨ **Protección CSRF**: validación de header `Origin` en POST/PUT/PATCH/DELETE + cookies `SameSite=Lax`
+- ✨ **Rate limiting** en `/api/ai/*` (ventana deslizante, configurable con `AI_RATE_LIMIT_PER_MINUTE`, default 30/min)
+- ✨ **Reintentos de Gemini**: backoff exponencial (3 intentos) en `ai_engine._call_gemini`
+- ✨ **Health check real**: `/api/health` verifica MySQL + Redis + Celery
+- ✨ **Error handlers globales**: 404/500/422 → `error.html` en HTML y JSON en `/api/*`
+- ✨ **Alembic**: migración inicial `0001_initial` + `models.ensure_tables()` perezoso
+- ✨ **Auto-Apply conectado**: `POST /api/auto-apply` despacha la tarea `tasks.ai_tasks.auto_apply_jobs` (antes huérfana) y expone su estado en `/status`
+
+### ⚡ Scraping asíncrono real
+- ✨ **Celery en scraping**: los 11 `threading.Thread` fueron reemplazados por `tasks/scraping_tasks.*` (con fallback eager sin broker)
+- ✨ **Connection requests** migradas a tarea Celery (`tasks/connection_tasks.py`) con flag de parada vía Redis
+- 🐛 Corregidas las tareas de Bumeran/Computrabajo que pasaban `credentials=` (firmas reales: `email=/password=`)
+
+### 🗄️ Base de datos
+- ✨ **SQLAlchemy ORM como única capa**: `db_config.py` (517 líneas de SQL raw) ahora es un shim que delega a `models.SQLAlchemyManager`
+- ✨ Modelo `User` para autenticación; `DATABASE_URL` permite override (SQLite en tests)
+- 🐛 Pool de MySQL ahora perezoso: la app arranca sin MySQL (solo falla al usarla)
+
+### 🐛 Correcciones de bugs
+- 🐛 `/optimize_resume` devolvía 500 (faltaba `optimize_resume.html`; además `simpleResumeOptimizer`/`CoverLetterGenerator` habían sido borrados — recreados en `ai_tools.py`)
+- 🐛 Copilot IA roto: FastAPI devolvía `response` y el frontend leía `reply`
+- 🐛 Análisis de oferta perdía el CV del perfil (la versión FastAPI no lo inyectaba)
+- 🐛 `/analytics` servía un template distinto al que validaban los tests
+- 🐛 Assets inexistentes creados: `main.css`, `main.js`, íconos PWA e íconos de la extensión Chrome + `content.css`
+- 🐛 `get_user_profile()` definida dos veces (la segunda pisaba a la primera)
+- 🐛 Boot: `logs/` se creaba después del `FileHandler` (crash sin la carpeta)
+- 🐛 Tests: `mock.patch.dict('sys.modules', {})` borraba numpy/pandas recién importados
+
+### 🔒 Seguridad
+- `SECRET_KEY` desde `.env` (fallback solo en dev), `debug=False`, host configurable
+- Eliminados `/debug/directories` y expuesto solo `/status`
+- `/delete_csv` ahora es POST + `secure_filename` + anti path-traversal
+- `.dockerignore` nuevo; docker-compose sin passwords por defecto ni Redis público
+- Rate limit + reintentos protegen la cuota de Gemini
+
+### 🧹 Limpieza
+- Eliminados: Flask, Werkzeug, flask-socketio, flask-wtf, eventlet, waitress, nltk, cryptography (con CVEs), APScheduler, pytest-flask
+- Migrado `google-generativeai` (EOL) → `google-genai` con modelo `gemini-2.5-flash`
+- Código muerto eliminado: `utils.py` duplicado (se reutiliza), `routers/views.py`, `routers/scraping.py` vacío, 2 templates huérfanos
+- spaCy: modelo `es_core_news_sm` (español) con fallback a inglés
+- CI: flake8 sobre todo el repo, `pip install -r requirements.txt`, suite completa sin `continue-on-error`
+
 ### Planeado
-- Auto-Apply: Postulación automática a trabajos "Easy Apply" de LinkedIn con Playwright
+- Auto-Apply: postulación Easy Apply vía `/api/auto-apply` (conectar UI en scraper.html)
 - Email Tracking: Detección de respuestas vía Gmail/Outlook API
 - API REST Pública con FastAPI y documentación OpenAPI/Swagger
 - Gamificación: Sistema de logros y estadísticas personales

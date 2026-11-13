@@ -1,6 +1,6 @@
 /**
  * terraform/main.tf — Infraestructura de EmpleoIA en Google Cloud Platform
- * Despliega: Cloud Run (Flask + Celery), Cloud SQL (MySQL), Redis (Memorystore)
+ * Despliega: Cloud Run (FastAPI + Celery), Cloud SQL (MySQL), Redis (Memorystore)
  */
 
 terraform {
@@ -158,7 +158,17 @@ resource "google_secret_manager_secret_version" "db_password_v1" {
   secret_data = var.db_password
 }
 
-# ── Cloud Run (Flask Web App) ─────────────────────────────────────────────────
+resource "google_secret_manager_secret" "secret_key" {
+  secret_id = "empleoia-secret-key"
+  replication { automatic {} }
+}
+
+resource "google_secret_manager_secret_version" "secret_key_v1" {
+  secret      = google_secret_manager_secret.secret_key.id
+  secret_data = var.secret_key
+}
+
+# ── Cloud Run (FastAPI Web App) ───────────────────────────────────────────────
 locals {
   redis_url = var.enable_redis && length(google_redis_instance.empleoia_redis) > 0 ? \
     "redis://${google_redis_instance.empleoia_redis[0].host}:${google_redis_instance.empleoia_redis[0].port}/0" : \
@@ -227,11 +237,29 @@ resource "google_cloud_run_v2_service" "empleoia_web" {
           }
         }
       }
+      # Obligatorio: sin SECRET_KEY la app falla al arrancar en producción
+      env {
+        name = "SECRET_KEY"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.secret_key.secret_id
+            version = "latest"
+          }
+        }
+      }
+      env {
+        name  = "ENV"
+        value = "production"
+      }
+      env {
+        name  = "SESSION_SECURE"
+        value = "true"
+      }
 
       ports { container_port = 5000 }
 
       startup_probe {
-        http_get { path = "/" }
+        http_get { path = "/api/health" }
         initial_delay_seconds = 15
         timeout_seconds       = 5
         period_seconds        = 10
@@ -239,7 +267,7 @@ resource "google_cloud_run_v2_service" "empleoia_web" {
       }
 
       liveness_probe {
-        http_get { path = "/" }
+        http_get { path = "/api/health" }
         period_seconds    = 30
         failure_threshold = 3
       }

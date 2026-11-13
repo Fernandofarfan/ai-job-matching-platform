@@ -202,7 +202,31 @@
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         pollConnectionStatus();
+        {% if auto_start %}
+        handleAutoStart();
+        {% endif %}
     });
+
+    {% if auto_start %}
+    // Flujo "postulé → enviar conexiones": preselecciona empresas y guía al usuario
+    function handleAutoStart() {
+        const boxes = document.querySelectorAll('input[name="company_selection"]');
+        if (!boxes.length) return;
+        boxes.forEach(function (box) { box.checked = true; });
+
+        const form = document.getElementById('connection-form');
+        if (!form) return;
+
+        const notice = document.createElement('div');
+        notice.className = 'alert alert-info alert-dismissible fade show';
+        notice.innerHTML = '🚀 <strong>Auto-inicio:</strong> preseleccionamos <strong>'
+            + boxes.length + '</strong> empresas. Completá tus credenciales de LinkedIn '
+            + 'y presioná <em>Iniciar conexiones</em>.'
+            + '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
+        form.parentNode.insertBefore(notice, form);
+        form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    {% endif %}
 
     function pollConnectionStatus() {
         fetch('/status')

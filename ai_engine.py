@@ -6,6 +6,7 @@ import os
 import json
 import logging
 import re
+import time
 from datetime import datetime
 from typing import Optional, List
 from dotenv import load_dotenv
@@ -44,13 +45,14 @@ class JobAnalysisSchema(BaseModel):
     resumen_ejecutivo: str = Field(default="")
     error: Optional[str] = None
 
-# ── Gemini client ─────────────────────────────────────────────────────────────
+# ── Gemini client (SDK google-genai — google-generativeai está EOL) ────────────
 try:
-    import google.generativeai as genai
+    from google import genai
+    from google.genai import types as genai_types
     _api_key = os.getenv("GEMINI_API_KEY", "")
     if _api_key:
-        genai.configure(api_key=_api_key)
-        _gemini_model = genai.GenerativeModel("gemini-1.5-flash")
+        _gemini_client = genai.Client(api_key=_api_key)
+        _gemini_model_name = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
         GEMINI_AVAILABLE = True
         logger.info("Gemini AI engine initialized ✓")
     else:
@@ -58,25 +60,37 @@ try:
         logger.warning("GEMINI_API_KEY not set — AI features disabled")
 except ImportError:
     GEMINI_AVAILABLE = False
-    logger.warning("google-generativeai not installed — AI features disabled")
+    logger.warning("google-genai not installed — AI features disabled")
 
 
-def _call_gemini(prompt: str, temperature: float = 0.7) -> str:
-    """Wrapper seguro para llamar a Gemini con manejo de errores."""
+def _call_gemini(prompt: str, temperature: float = 0.7, retries: int = 3) -> str:
+    """Wrapper seguro para llamar a Gemini con reintentos y backoff exponencial."""
     if not GEMINI_AVAILABLE:
         return "⚠️ Gemini no está configurado. Agregá GEMINI_API_KEY al archivo .env"
-    try:
-        response = _gemini_model.generate_content(
-            prompt,
-            generation_config=genai.types.GenerationConfig(
-                temperature=temperature,
-                max_output_tokens=2048,
+
+    last_error = None
+    for attempt in range(retries):
+        try:
+            response = _gemini_client.models.generate_content(
+                model=_gemini_model_name,
+                contents=prompt,
+                config=genai_types.GenerateContentConfig(
+                    temperature=temperature,
+                    max_output_tokens=2048,
+                ),
             )
-        )
-        return response.text.strip()
-    except Exception as e:
-        logger.error(f"Gemini API error: {e}")
-        return f"Error al contactar Gemini: {str(e)}"
+            return (response.text or "").strip()
+        except Exception as e:
+            last_error = e
+            wait = 1.5 ** attempt  # 1s, 2.25s, 3.4s
+            logger.warning(
+                f"Gemini intento {attempt + 1}/{retries} falló "
+                f"(esperando {wait:.1f}s): {e}")
+            if attempt < retries - 1:
+                time.sleep(wait)
+
+    logger.error(f"Gemini API error tras {retries} intentos: {last_error}")
+    return f"Error al contactar Gemini: {str(last_error)}"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -170,7 +184,7 @@ Descripción: {job_description[:2000]}
     raw = re.sub(r'```(?:json)?\s*', '', raw).strip()
     try:
         return json.loads(raw)
-    except:
+    except Exception:
         return {"tipo_cultura": "desconocido", "tono_comunicacion": "formal",
                 "recomendacion_tono_carta": "formal", "consejo_para_entrevista": raw}
 
@@ -204,7 +218,7 @@ Respondé en JSON sin bloques de código:
     raw = re.sub(r'```(?:json)?\s*', '', raw).strip()
     try:
         return json.loads(raw)
-    except:
+    except Exception:
         return {
             "original": bullet_point,
             "mejorado": raw,
@@ -242,7 +256,7 @@ Creá un plan de aprendizaje práctico. Respondé en JSON sin bloques de código
     raw = re.sub(r'```(?:json)?\s*', '', raw).strip()
     try:
         return json.loads(raw)
-    except:
+    except Exception:
         return {"plan": [], "consejo_general": raw}
 
 
@@ -280,7 +294,7 @@ Respondé en JSON sin bloques de código:
     raw = re.sub(r'```(?:json)?\s*', '', raw).strip()
     try:
         return json.loads(raw)
-    except:
+    except Exception:
         return {"preguntas": [], "consejo_general": raw}
 
 
@@ -306,7 +320,7 @@ Respondé en JSON sin bloques de código:
     raw = re.sub(r'```(?:json)?\s*', '', raw).strip()
     try:
         return json.loads(raw)
-    except:
+    except Exception:
         return {
             "puntaje": 5.0,
             "fortalezas": [],
@@ -382,7 +396,7 @@ Si no hay info salarial, usá inferencias del mercado latinoamericano 2025 para 
     raw = re.sub(r'```(?:json)?\s*', '', raw).strip()
     try:
         return json.loads(raw)
-    except:
+    except Exception:
         return {
             "salario_minimo": 0, "salario_maximo": 0,
             "moneda": "USD", "periodo": "mensual",
@@ -418,7 +432,7 @@ Respondé en JSON sin bloques de código:
         data = json.loads(raw)
         data["generated_at"] = datetime.now().isoformat()
         return data
-    except:
+    except Exception:
         return {
             "salario_promedio_usd": 0, "tendencia": "desconocida",
             "demanda": "desconocida", "nota_contexto": raw,
@@ -459,7 +473,7 @@ Respondé en JSON sin bloques de código:
     raw = re.sub(r'```(?:json)?\s*', '', raw).strip()
     try:
         return json.loads(raw)
-    except:
+    except Exception:
         return {
             "score_total": 0, "fortalezas": [], "debilidades": [],
             "recomendaciones": [raw], "veredicto": "Revisar manualmente"

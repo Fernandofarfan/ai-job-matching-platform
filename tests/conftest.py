@@ -1,15 +1,17 @@
 """
 conftest.py – Fixtures globales de pytest para EmpleoIA.
-Provee un cliente de prueba Flask con mock de DB y módulos pesados.
+Provee un cliente de prueba FastAPI (TestClient) con mock de DB y módulos pesados.
 """
 import os
 import sys
 import types
 import importlib
-import importlib.abc
 import importlib.machinery
 import unittest.mock as mock
 import pytest
+
+# Base de datos para tests: SQLite en memoria en disco (sin MySQL)
+os.environ.setdefault("DATABASE_URL", "sqlite:///temp/test.db")
 
 
 # ─── Custom ModuleType que devuelve MagicMock para cualquier atributo ───────────
@@ -33,10 +35,8 @@ def _mk(name):
 
 
 # ─── Lista exhaustiva de módulos a parchear ──────────────────────────────────
-# (debe hacerse ANTES de cualquier import de app.py o scrapers)
+# (debe hacerse ANTES de cualquier import de main.py o scrapers)
 _ALL_MOCKS = [
-    # Flask extensions
-    'flask_socketio',
     # Async
     'eventlet', 'eventlet.wsgi',
     # Selenium (todos los subpaths conocidos)
@@ -61,22 +61,22 @@ _ALL_MOCKS = [
     'apscheduler', 'APScheduler',
     'apscheduler.schedulers', 'apscheduler.schedulers.background',
     'apscheduler.triggers', 'apscheduler.triggers.cron', 'apscheduler.triggers.interval',
-    # Google AI
-    'google', 'google.generativeai', 'google.generativeai.types',
+    # Google AI (SDK google-genai)
+    'google', 'google.genai', 'google.genai.types',
+    'google.generativeai', 'google.generativeai.types',
     # Security
     'cryptography', 'cryptography.fernet', 'cryptography.hazmat',
     'cryptography.hazmat.primitives', 'cryptography.hazmat.backends',
     # Database (usar mock en CI, real app usa MySQL)
     'mysql', 'mysql.connector', 'mysql.connector.pooling', 'mysql.connector.errors',
     # Selenium remote (needed by indeed_scraper.py)
-    'selenium.webdriver.remote', 'selenium.webdriver.remote.webdriver',
     'selenium.webdriver.remote.webelement', 'selenium.webdriver.remote.command',
     'selenium.webdriver.remote.errorhandler', 'selenium.webdriver.remote.file_detector',
     'selenium.webdriver.remote.shadowroot', 'selenium.webdriver.remote.switch_to',
     # BeautifulSoup / parsing
     'bs4', 'beautifulsoup4', 'lxml', 'lxml.html',
     # Document parsing
-    'PyPDF2', 'docx', 'python_docx',
+    'PyPDF2', 'pypdf', 'docx', 'python_docx',
     # WSGI
     'waitress',
 ]
@@ -89,29 +89,23 @@ for _mod_name in _ALL_MOCKS:
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
-@pytest.fixture(scope='session')
-def app():
-    """
-    Crea la app Flask en modo testing.
-    Override de db_manager para evitar depender de MySQL durante CI.
-    """
-    # Parcheamos db_manager ANTES de importar app
-    import unittest.mock as mock
-
-    mock_jobs = [
+def _make_mock_jobs():
+    return [
         {
             'id': 1, 'title': 'Data Analyst', 'company': 'Acme Corp',
             'location': 'Buenos Aires', 'salary': '$ 200,000',
             'status': 'applied', 'excitement': 4,
             'date_saved': '2025-11-01 10:00:00', 'date_applied': '2025-11-02',
-            'deadline': None, 'follow_up': None, 'notes': 'Test job', 'job_link': 'https://example.com'
+            'deadline': None, 'follow_up': None, 'notes': 'Test job',
+            'job_link': 'https://example.com'
         },
         {
             'id': 2, 'title': 'Backend Developer', 'company': 'TechCo',
             'location': 'Remoto', 'salary': '$ 300,000',
             'status': 'interviewing', 'excitement': 5,
             'date_saved': '2025-11-03 09:00:00', 'date_applied': '2025-11-04',
-            'deadline': None, 'follow_up': None, 'notes': None, 'job_link': 'https://example2.com'
+            'deadline': None, 'follow_up': None, 'notes': None,
+            'job_link': 'https://example2.com'
         },
         {
             'id': 3, 'title': 'Frontend Developer', 'company': 'StartupX',
@@ -121,6 +115,16 @@ def app():
             'deadline': None, 'follow_up': None, 'notes': None, 'job_link': None
         },
     ]
+
+
+@pytest.fixture(scope='session')
+def app():
+    """
+    Crea la app FastAPI en modo testing.
+    Override de db_manager ANTES de importar main para que todos los routers
+    bindeen el mock (patrón idéntico al que usaba el viejo conftest de Flask).
+    """
+    mock_jobs = _make_mock_jobs()
 
     mock_db = mock.MagicMock()
     mock_db.get_all_tracked_jobs.return_value = mock_jobs
@@ -132,31 +136,46 @@ def app():
     mock_db.get_applications.return_value = mock_jobs
     mock_db.create_job_tracker_table.return_value = True
     mock_db.get_companies_for_connections.return_value = []
+    mock_db.exclude_company.return_value = True
+    mock_db.save_application.return_value = 1
+    mock_db.save_processed_file.return_value = True
 
-    with mock.patch.dict('sys.modules', {}):
-        import db_config
-        db_config.db_manager = mock_db
+    import db_config
+    db_config.db_manager = mock_db
 
-        import app as flask_app
-        flask_app.db_manager = mock_db
+    import main
+    # Reforzar por si algún módulo bindeó antes del patch
+    import core.state
+    core.state.db_manager = mock_db
 
-    flask_app.app.config.update({
-        'TESTING': True,
-        'SECRET_KEY': 'test-secret-key-12345',
-        'WTF_CSRF_ENABLED': False,
-    })
+    from fastapi.testclient import TestClient
+    client = TestClient(main.app, raise_server_exceptions=False)
 
-    yield flask_app.app
+    # Crear usuario de test e iniciar sesión (la app exige login)
+    from models import SessionLocal, User, Base, engine
+    Base.metadata.create_all(bind=engine)
+    with SessionLocal() as session:
+        existing = session.query(User).filter_by(username="tester").first()
+        if not existing:
+            from routers.auth import hash_password
+            session.add(User(username="tester", password_hash=hash_password("secret123")))
+            session.commit()
+
+    client.post("/login",
+                data={"username": "tester", "password": "secret123"},
+                follow_redirects=False)
+
+    return client
 
 
 @pytest.fixture
 def client(app):
     """Cliente HTTP de prueba."""
-    return app.test_client()
+    return app
 
 
 @pytest.fixture
 def mock_db(app):
     """Acceso directo al mock del DatabaseManager."""
-    import app as flask_app
-    return flask_app.db_manager
+    import db_config
+    return db_config.db_manager

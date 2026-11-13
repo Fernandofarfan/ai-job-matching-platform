@@ -186,13 +186,13 @@ Antes de enviar un PR, ejecutá los tests:
 
 ```bash
 # Ejecutar todos los tests
-python -m pytest
+python -m pytest tests/
 
 # Ejecutar tests específicos
-python -m pytest tests/test_scraper.py
+python -m pytest tests/test_security.py
 
 # Con coverage
-python -m pytest --cov=.
+python -m pytest tests/ --cov=routers --cov=core --cov-report=term-missing
 ```
 
 ## 📝 Documentación
@@ -213,7 +213,7 @@ Algunas áreas donde podés contribuir:
 #### Backend & Scrapers
 - **Rate Limiting Inteligente**: Implementar sistema de rate limiting adaptativo para APIs externas
 - **Caché de Resultados**: Sistema de caché para resultados de scraping y análisis inteligente
-- **Tests Unitarios**: Agregar tests para scrapers, parsers y rutas de Flask
+- **Tests Unitarios**: Agregar tests para scrapers, parsers y rutas de FastAPI
 - **Manejo de Errores**: Mejorar logging y recuperación de errores en scrapers
 - **Async Processing**: Implementar procesamiento asíncrono para scraping de múltiples plataformas
 
@@ -247,7 +247,7 @@ Algunas áreas donde podés contribuir:
 - **Traducción**: Soporte multiidioma (inglés, portugués)
 
 #### Refactoring
-- **Modularización**: Separar lógica de negocio de rutas de Flask
+- **Modularización**: Separar lógica de negocio de rutas de FastAPI
 - **Type Hints**: Agregar type hints completos en todo el código Python
 - **Code Quality**: Implementar linters (pylint, flake8, black)
 - **Arquitectura**: Migrar a arquitectura más escalable (microservicios, API REST)

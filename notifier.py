@@ -1,4 +1,4 @@
-"""
+﻿"""
 notifier.py — Sistema de Notificaciones de EmpleoIA
 Interfaz de alto nivel para enviar notificaciones y gestionar preferencias.
 """
@@ -17,21 +17,33 @@ class NotificationManager:
     """
 
     def __init__(self):
+        # Chequeo inicial (el real se hace por envío: _has_celery)
         self._use_celery = self._check_celery_available()
         logger.info(f"NotificationManager initialized (celery={self._use_celery})")
 
-    def _check_celery_available(self) -> bool:
+    @staticmethod
+    def _check_celery_available() -> bool:
+        """
+        True solo si hay workers respondiendo.
+        NOTA: inspect().active() NO lanza excepción sin workers (devuelve None),
+        por eso se verifica el resultado del ping, no solo la ausencia de error.
+        """
         try:
             from celery_app import celery
-            celery.control.inspect(timeout=1).active()
-            return True
+            ping = celery.control.inspect(timeout=1).ping()
+            return bool(ping)
         except Exception:
             return False
+
+    def _has_celery(self) -> bool:
+        """Re-chequea por envío (barato: 1s de timeout máximo)."""
+        self._use_celery = self._check_celery_available()
+        return self._use_celery
 
     def send_followup_reminder(self, job_data: dict, user_email: str) -> bool:
         """Envía recordatorio de follow-up para una postulación."""
         try:
-            if self._use_celery:
+            if self._has_celery():
                 from tasks.notification_tasks import send_followup_reminder
                 send_followup_reminder.delay(job_data, user_email)
             else:
@@ -47,7 +59,7 @@ class NotificationManager:
         if not jobs or not user_email:
             return False
         try:
-            if self._use_celery:
+            if self._has_celery():
                 from tasks.notification_tasks import send_new_jobs_digest
                 send_new_jobs_digest.delay(jobs, user_email)
             else:
@@ -61,7 +73,7 @@ class NotificationManager:
     def send_weekly_summary(self, stats: dict, user_email: str) -> bool:
         """Envía resumen semanal de actividad."""
         try:
-            if self._use_celery:
+            if self._has_celery():
                 from tasks.notification_tasks import send_weekly_summary
                 send_weekly_summary.delay(stats, user_email)
             else:
