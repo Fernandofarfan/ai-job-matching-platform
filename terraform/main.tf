@@ -8,6 +8,8 @@ locals {
   env    = var.environment
   prod   = var.environment == "prod"
   labels = { app = "empleoia", environment = var.environment }
+  # La imagen corre como UID/GID 1000 (APP_UID/APP_GID del Dockerfile): los buckets montados tienen que ser suyos
+  gcs_mount_options = ["uid=1000", "gid=1000"]
 
   apis = [
     "artifactregistry.googleapis.com",
@@ -312,13 +314,15 @@ resource "google_cloud_run_v2_service" "empleoia_web" {
     volumes {
       name = "uploads"
       gcs {
-        bucket = google_storage_bucket.uploads.name
+        bucket        = google_storage_bucket.uploads.name
+        mount_options = local.gcs_mount_options
       }
     }
     volumes {
       name = "results"
       gcs {
-        bucket = google_storage_bucket.results.name
+        bucket        = google_storage_bucket.results.name
+        mount_options = local.gcs_mount_options
       }
     }
 
@@ -434,13 +438,15 @@ resource "google_cloud_run_v2_worker_pool" "celery" {
     volumes {
       name = "uploads"
       gcs {
-        bucket = google_storage_bucket.uploads.name
+        bucket        = google_storage_bucket.uploads.name
+        mount_options = local.gcs_mount_options
       }
     }
     volumes {
       name = "results"
       gcs {
-        bucket = google_storage_bucket.results.name
+        bucket        = google_storage_bucket.results.name
+        mount_options = local.gcs_mount_options
       }
     }
 

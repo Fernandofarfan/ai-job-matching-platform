@@ -67,6 +67,14 @@ run "staging" {
   }
 
   assert {
+    condition = alltrue([
+      for v in concat(google_cloud_run_v2_service.empleoia_web.template[0].volumes, google_cloud_run_v2_worker_pool.celery[0].template[0].volumes) :
+      contains(v.gcs[0].mount_options, "uid=1000") && contains(v.gcs[0].mount_options, "gid=1000")
+    ])
+    error_message = "Los buckets deben montarse para el usuario sin root de la imagen (UID/GID 1000)"
+  }
+
+  assert {
     condition = (
       google_redis_instance.empleoia_redis[0].auth_enabled &&
       contains(keys(google_secret_manager_secret.app), "REDIS_URL") &&

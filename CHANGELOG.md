@@ -6,6 +6,12 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar] - Terraform con el provider de Google 8.x
+
+- Provider `hashicorp/google` de `~> 6.50` a `~> 8.11`. Ninguno de los cambios incompatibles de 7.0 y 8.0 toca los recursos del proyecto.
+- Cloud Run (web y worker) monta los buckets de CVs y resultados con `uid=1000,gid=1000`: la imagen corre sin root
+  y sin esto no podía escribir en `/app/uploads` ni `/app/results`.
+
 ## [Sin publicar] - Contenedores endurecidos
 
 - La imagen corre con un usuario sin privilegios (UID/GID 1000, configurables con `APP_UID`/`APP_GID`); el código queda
