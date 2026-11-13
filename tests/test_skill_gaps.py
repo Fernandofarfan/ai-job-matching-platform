@@ -24,6 +24,11 @@ def test_skills_in_reads_names_ending_in_symbols():
     assert skill_catalog.skills_in('C++ developer, C# y ASP.NET; también Node.js.') == ['c++', 'c#', 'asp.net', 'node.js']
 
 
+@pytest.mark.parametrize('text', ['C++17', 'C++20 moderno', 'C#10'])
+def test_skills_in_reads_versioned_names(text):
+    assert skill_catalog.skills_in(text)[0] in {'c++', 'c#'}
+
+
 def test_missing_skills_capped():
     description = ' '.join(['python', 'java', 'react', 'django', 'mysql', 'redis', 'docker', 'kafka', 'terraform'])
     assert len(jobMatcher.get_missing_skills([], description)) == 8
