@@ -39,7 +39,7 @@ class resumeParser:
         if api_key:
             try:
                 if 'genai' in globals() and genai is not None:
-                    self.client = genai.Client(api_key=api_key)
+                    self.client = genai.Client(api_key=api_key, http_options={'api_version': 'v1beta'})
                     self.model_name = os.getenv('GEMINI_PARSER_MODEL', 'gemini-2.5-flash-lite')
                     self.use_ai = True
                     print("✅ AI parser configured successfully")

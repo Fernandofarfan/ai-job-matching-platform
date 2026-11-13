@@ -92,7 +92,7 @@ def _get_client():
     global _client
     if _client is None:
         from google import genai
-        _client = genai.Client(api_key=os.getenv('GEMINI_API_KEY'))
+        _client = genai.Client(api_key=os.getenv('GEMINI_API_KEY'), http_options={'api_version': 'v1beta'})
     return _client
 
 
