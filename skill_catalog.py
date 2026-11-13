@@ -59,6 +59,6 @@ def skills_in(text: str) -> list[str]:
         name = canonical(skill)
         if skill in AMBIGUOUS:
             continue
-        if name not in found and re.search(r'\b' + re.escape(skill) + r'\b', text):
+        if name not in found and re.search(r'(?<!\w)' + re.escape(skill) + r'(?!\w)', text):
             found.append(name)
     return found

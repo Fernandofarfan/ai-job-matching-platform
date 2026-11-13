@@ -20,6 +20,10 @@ def test_missing_skills(profile, description, missing):
     assert jobMatcher.get_missing_skills(profile, description) == missing
 
 
+def test_skills_in_reads_names_ending_in_symbols():
+    assert skill_catalog.skills_in('C++ developer, C# y ASP.NET; también Node.js.') == ['c++', 'c#', 'asp.net', 'node.js']
+
+
 def test_missing_skills_capped():
     description = ' '.join(['python', 'java', 'react', 'django', 'mysql', 'redis', 'docker', 'kafka', 'terraform'])
     assert len(jobMatcher.get_missing_skills([], description)) == 8
