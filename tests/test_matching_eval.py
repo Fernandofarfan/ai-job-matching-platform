@@ -48,6 +48,7 @@ def test_company_age_is_not_required_experience():
 
 def test_feedback_dataset_and_report(monkeypatch, capsys):
     """Cada cuenta con marcas suficientes ordena sus ofertas con su último CV; el reporte no dice de quién."""
+    monkeypatch.delenv('GEMINI_API_KEY', raising=False)  # el CI la define; sin Gemini entran todas las cuentas
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
     from sqlalchemy.pool import StaticPool
