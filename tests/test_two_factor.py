@@ -6,9 +6,8 @@ import pyotp
 import pytest
 from cryptography.fernet import Fernet
 
-import accounts
-
 import account_lifecycle
+import accounts
 import google_oauth
 import security_events
 import two_factor

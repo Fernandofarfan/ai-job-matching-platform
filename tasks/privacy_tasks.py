@@ -70,8 +70,8 @@ STALE_CLAIM = timedelta(hours=1)
 
 def _delete_inactive(user_id: int, notice_at: datetime) -> bool:
     """Borra la cuenta si sigue con el aviso `notice_at` (entrar lo anula) y después sus perfiles y CVs."""
-    import accounts
     import account_lifecycle
+    import accounts
     import cv_storage
     import profile_store
 
@@ -103,8 +103,8 @@ def enforce_account_inactivity() -> dict[str, Any]:
     """Avisa por email a las cuentas sin entrar hace ACCOUNT_INACTIVITY_DAYS menos el aviso, y borra las que siguen
     sin entrar al vencer el aviso. Sin aviso enviado no se borra nada; la primera cuenta (administradora) no se toca."""
     import account_notify
-    import accounts
     import account_lifecycle
+    import accounts
     import profile_store
 
     days, notice = _inactivity_days()

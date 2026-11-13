@@ -11,7 +11,8 @@ import accounts
 import passkeys
 import two_factor
 from fastapi_web import (TextForm, flash, get_session, limit_key, save_session)
-from routers.auth_pages import audit, passkey_json, request_origin
+from routers.auth_pages import audit
+from routers.login_providers import passkey_json, request_origin
 from routers.account_pages import _form, _to_account, _user_id, render_account
 
 logger = logging.getLogger(__name__)

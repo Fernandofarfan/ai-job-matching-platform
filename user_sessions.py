@@ -8,9 +8,8 @@ from typing import Any, Optional
 from sqlalchemy import DateTime, Integer, String, delete, or_, select, update
 from sqlalchemy.orm import Mapped, mapped_column
 
-import accounts
-
 import account_lifecycle
+import accounts
 
 logger = logging.getLogger(__name__)
 

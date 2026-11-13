@@ -7,9 +7,8 @@ from fastapi import APIRouter, Request
 from fastapi.responses import Response
 from starlette.concurrency import run_in_threadpool
 
-import accounts
-
 import account_lifecycle
+import accounts
 import onboarding
 import ai_usage
 import auth

@@ -141,8 +141,8 @@ def _claim_minutes() -> int:
 
 def _send_weekly_digest() -> dict[str, Any]:
     """Resumen semanal de la cuenta actual."""
-    import accounts
     import account_lifecycle
+    import accounts
     import job_alerts
     uid = accounts.current_user_id()
     if uid is None:

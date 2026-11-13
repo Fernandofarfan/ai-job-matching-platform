@@ -6,9 +6,8 @@ from unittest import mock
 
 import pytest
 
-import accounts
-
 import account_lifecycle
+import accounts
 import push
 
 FCM = 'https://fcm.googleapis.com/fcm/send/abc'
