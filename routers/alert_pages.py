@@ -115,8 +115,11 @@ def _description_in_results(filename: Any, job: dict[str, Any]) -> str | None:
     path = _csv_path(filename) if isinstance(filename, str) else None
     if path is None:
         return None
-    try:
-        df = pd.read_csv(path)
+    try:  # como la tabla de resultados: UTF-8 (con o sin BOM) y latin-1 para los CSVs viejos
+        try:
+            df = pd.read_csv(path, encoding='utf-8-sig')
+        except UnicodeDecodeError:
+            df = pd.read_csv(path, encoding='latin-1')
     except (OSError, ValueError) as e:
         logger.warning(f'No se pudo leer {filename} para la descripción: {e}')
         return None

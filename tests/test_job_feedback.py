@@ -168,3 +168,15 @@ def test_api_job_feedback_takes_the_description_from_the_results(client, monkeyp
         assert client.post('/api/job_feedback', json={'job': job, 'interested': True, 'file': file}).status_code == 200
     client.post('/api/job_feedback', json={'job': job, 'interested': None, 'file': 'r.csv'})
     assert saved == ['Python, FastAPI y MySQL', None, None, None, None, None]
+
+
+def test_description_in_latin1_results(monkeypatch, tmp_path):
+    """Los CSVs viejos en latin-1 también dan la descripción, como en la tabla de resultados."""
+    import pandas as pd
+
+    from routers import alert_pages
+    pd.DataFrame([{'Title': 'Programador', 'Company': 'Señal', 'Description': 'Diseño de APIs'}]).to_csv(
+        tmp_path / 'viejo.csv', index=False, encoding='latin-1')
+    monkeypatch.setattr(accounts, 'results_dir', lambda: str(tmp_path))
+    job = {'title': 'Programador', 'company': 'Señal'}
+    assert alert_pages._description_in_results('viejo.csv', job) == 'Diseño de APIs'
