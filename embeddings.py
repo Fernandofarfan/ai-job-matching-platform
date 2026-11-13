@@ -73,8 +73,11 @@ def backend_for(language: Optional[str] = None) -> str:
 
 def enabled(language: Optional[str] = None):
     """True si el backend para ese idioma es embeddings y hay GEMINI_API_KEY (o un cliente inyectado)."""
-    if backend_for(language) != 'embeddings':
-        return False
+    return backend_for(language) == 'embeddings' and available()
+
+
+def available() -> bool:
+    """True si hay GEMINI_API_KEY (o un cliente inyectado): se pueden pedir embeddings a Gemini."""
     return _client is not None or bool(os.getenv('GEMINI_API_KEY'))
 
 

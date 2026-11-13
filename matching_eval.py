@@ -82,23 +82,28 @@ def feedback_dataset(min_each=3):
     Por cuenta con al menos `min_each` "me interesa" y `min_each` "no me interesa" (con descripción) y un CV:
     su último CV contra las ofertas que marcó, "me interesa" con relevancia 2 y "no me interesa" con 0, y cada
     CV ordena solo sus ofertas (`candidates`). Las cuentas quedan como `cuenta_<n>_<idioma del CV>` y las
-    ofertas como su huella: no sale ni el email, ni el id ni el texto. Vive en memoria; no se escribe.
+    ofertas como `<cuenta>/<huella>` (cada cuenta guardó su propia descripción): no sale ni el email, ni el id ni
+    el texto. Vive en memoria; no se escribe. Con Gemini disponible (puede recibir los CVs al medir embeddings)
+    solo entran las cuentas que dieron permiso para usar la IA.
     """
     import accounts
     import job_feedback
-    from embeddings import detect_language
+    from embeddings import available, detect_language
+    gemini = available()
     jobs, profiles = {}, {}
     for user_id, marks in job_feedback.labeled_texts().items():
         if min(sum(1 for _, i, _ in marks if i), sum(1 for _, i, _ in marks if not i)) < min_each:
             continue
         with accounts.as_user(user_id):
+            if gemini and accounts.ai_consent_missing():
+                continue
             cv = _latest_profile()
         if not cv or not (cv.get('raw_text') or cv.get('skills')):
             continue
-        for fp, _, job_text in marks:
-            jobs[fp] = job_text
         name = f"cuenta_{len(profiles) + 1}_{detect_language(cv.get('raw_text') or '')}"
+        for fp, _, job_text in marks:
+            jobs[f'{name}/{fp}'] = job_text
         profiles[name] = {'experience_years': cv.get('experience_years') or 0, 'skills': cv.get('skills') or [],
-                          'raw_text': cv.get('raw_text') or '', 'candidates': [fp for fp, _, _ in marks],
-                          'relevance': {fp: 2 if interested else 0 for fp, interested, _ in marks}}
+                          'raw_text': cv.get('raw_text') or '', 'candidates': [f'{name}/{fp}' for fp, _, _ in marks],
+                          'relevance': {f'{name}/{fp}': 2 if interested else 0 for fp, interested, _ in marks}}
     return {'description': 'Marcas de los usuarios', 'jobs': jobs, 'profiles': profiles}

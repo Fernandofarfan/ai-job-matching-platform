@@ -97,5 +97,19 @@ def test_feedback_dataset_and_report(monkeypatch, capsys):
         assert report['accounts'] == 1 and 'profiles' not in report and 'es' in report['by_language']
         assert eval_matching.main(['--feedback', '--min-each', '4']) == 0
         assert 'Ninguna cuenta' in capsys.readouterr().out
+
+        with accounts.as_user(2):  # mismas ofertas que la cuenta 1, con la descripción que guardó cada una
+            for i in range(3):
+                job_feedback.set_feedback({'title': f'Backend {i}', 'company': 'Acme'}, True, None, 'Analista SQL')
+                job_feedback.set_feedback({'title': f'Ventas {i}', 'company': 'Acme'}, False, None, 'Ventas')
+        dataset = matching_eval.feedback_dataset()
+        assert len(dataset['profiles']) == 2 and len(dataset['jobs']) == 13  # + la marca "Data" de antes
+        first = dataset['profiles']['cuenta_1_es']['candidates']
+        assert all(dataset['jobs'][j].startswith(('Backend developer', 'Vendedor')) for j in first)
+
+        import embeddings  # con Gemini disponible entran solo las cuentas con permiso de IA
+        monkeypatch.setattr(embeddings, 'available', lambda: True)
+        monkeypatch.setattr(accounts, 'ai_consent_missing', lambda: accounts.current_user_id() == 2)
+        assert list(matching_eval.feedback_dataset()['profiles']) == ['cuenta_1_es']
     finally:
         job_alerts.configure(None)
