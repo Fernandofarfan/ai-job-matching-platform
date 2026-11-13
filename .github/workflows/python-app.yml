@@ -23,8 +23,12 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: 'pip'
 
-      - name: Install linters
-        run: pip install ruff mypy
+      # mypy necesita FastAPI, SQLAlchemy y Pydantic instalados: sin ellos sus decoradores
+      # y modelos quedan como Any y las reglas estrictas fallan o no revisan nada.
+      - name: Install dependencies and linters
+        run: |
+          pip install --require-hashes -r requirements.txt
+          pip install ruff mypy
 
       - name: Ruff (pyflakes + bugbear)
         run: ruff check . --output-format=github
