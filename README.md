@@ -440,6 +440,7 @@ PUBLIC_BASE_URL=               # URL pública de la app para los enlaces de los 
 LOGIN_REQUIRED=true    # false = sin login (solo local)
 CV_ENCRYPTION_KEY=     # cifra los CVs en uploads/ y los perfiles (texto del CV incluido) en MySQL (Fernet). Sin ella no se pueden leer los ya cifrados
 CV_RETENTION_DAYS=0    # >0: Celery borra cada día CVs, perfiles y documentos más viejos que N días
+INDEED_SAVE_WITHOUT_DESCRIPTION=false  # true: si Indeed pide login para ver la oferta, se guarda sin descripción
 ACCOUNT_INACTIVITY_DAYS=0  # >0: borra las cuentas sin entrar hace N días (salvo la primera), con sus CVs y datos
 ACCOUNT_INACTIVITY_NOTICE_DAYS=30  # el email de aviso sale estos días antes (como mucho N/2); entrar lo anula
 EXTENSION_TOKEN=       # (viejo) token de la extensión para la primera cuenta; cada cuenta genera el suyo en Mi cuenta
@@ -620,6 +621,7 @@ docker run -d -p 6379:6379 redis:7-alpine
 - Esperá 24h antes de volver a intentar
 - Usá la extensión de Chrome en lugar del scraper automático
 - Revisá que tenés `LINKEDIN_TOKEN` (cookie `li_at`) en el `.env`
+- **Indeed desde un servidor:** Indeed suele pedir login para ver cada oferta. Usá un proxy residencial (`PROXY_SERVER`) o `INDEED_SAVE_WITHOUT_DESCRIPTION=true`, que guarda las ofertas con el resumen del listado, sin los filtros de experiencia y visa
 
 ### ❌ Extensión de Chrome no extrae datos
 - Recargá la página del trabajo antes de hacer clic en la extensión

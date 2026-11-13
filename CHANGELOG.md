@@ -6,6 +6,13 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar] - Indeed sin descripción (opcional)
+
+- `INDEED_SAVE_WITHOUT_DESCRIPTION=true`: si Indeed pide login para ver una oferta, esa y las siguientes de la búsqueda
+  se guardan con el resumen del listado, sin abrirlas y sin los filtros de experiencia y visa. Apagado por defecto:
+  la búsqueda se corta y guarda lo encontrado, como antes.
+- `.env.example` ya no pide `INDEED_EMAIL`/`INDEED_PASSWORD`: la búsqueda de Indeed no usa cuenta.
+
 ## [Sin publicar] - Borrado de cuentas inactivas con aviso previo
 
 - `ACCOUNT_INACTIVITY_DAYS` (0 = apagado): una tarea diaria avisa por email a las cuentas sin entrar

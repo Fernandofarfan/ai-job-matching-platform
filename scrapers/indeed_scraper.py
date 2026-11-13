@@ -24,6 +24,8 @@ CARD = "[class*='job_seen_beacon']"
 # El título pasó de <h2> a <h3>; se busca por la clase para no depender del nivel.
 TITLE_LINK = '.jobTitle a[data-jk]'
 TITLE = '.jobTitle span'
+SNIPPET = ".job-snippet, [data-testid='jobsnippet_footer']"
+NO_DESCRIPTION = 'Job description not available'
 VERIFICATION_TEXTS = ('Additional Verification Required', 'Verify you are human', 'Just a moment')
 # Indeed manda a los navegadores anónimos que detecta como bots al login en vez de mostrar la oferta.
 LOGIN_WALL = ('from=bot-detection', 'secure.indeed.com/auth', '/account/login')
@@ -31,6 +33,11 @@ EASY_APPLY_PHRASES = ('easily apply', 'apply now', 'easy apply', 'quick apply')
 DATE_POSTED = {'1', '3', '7', '14', '30'}
 EXPERIENCE = {'entry': 'ENTRY_LEVEL', 'mid': 'MID_LEVEL', 'senior': 'SENIOR_LEVEL'}
 REMOTE = {'remote': 'DSQF7', 'hybrid': 'PAXZC'}
+
+
+def save_without_description() -> bool:
+    """INDEED_SAVE_WITHOUT_DESCRIPTION: si Indeed pide login para ver la oferta, guardarla igual con el resumen del listado."""
+    return os.getenv('INDEED_SAVE_WITHOUT_DESCRIPTION', 'false').strip().lower() in ('1', 'true', 'yes', 'on')
 
 
 def search_url(job_title: str, location: str, filters: Optional[Dict] = None, start: int = 0,
@@ -73,7 +80,8 @@ def parse_card(card) -> Optional[Dict]:
         return None
     return {'id': job_id, 'Title': title, 'Company': text("[data-testid='company-name']"),
             'Location': text("[data-testid='text-location']"),
-            'Salary': text(".metadata.salary-snippet-container, [class*='salary']") or 'Not specified'}
+            'Salary': text(".metadata.salary-snippet-container, [class*='salary']") or 'Not specified',
+            'Snippet': text(SNIPPET)}
 
 
 class indeedScraper:
@@ -87,6 +95,7 @@ class indeedScraper:
         self._browser_factory = browser_factory
         self._browser = None
         self.base_url = BASE_URL
+        self.descriptions_blocked = False
 
     @property
     def page(self):
@@ -144,9 +153,30 @@ class indeedScraper:
         finally:
             page.close()
 
+    def _without_description(self, card_data: Dict) -> Dict:
+        """Oferta con los datos del listado, sin abrirla: no se pueden aplicar los filtros de experiencia ni de visa."""
+        job = {key: value for key, value in card_data.items() if key not in ('id', 'Snippet')}
+        job.update({'Job_Description': card_data.get('Snippet') or NO_DESCRIPTION,
+                    'Experience_Category': 'Unknown', 'Experience_Years': 'Not specified',
+                    'Job_Link': self._link(card_data['id']), 'Apply_Type': 'Not specified'})
+        return job
+
     def extract_job_details(self, card_data: Dict) -> Optional[Dict]:
-        """Completa una tarjeta con la descripción y aplica los filtros de ciudadanía y experiencia."""
-        description = self._description(card_data['id'])
+        """Completa una tarjeta con la descripción y aplica los filtros de ciudadanía y experiencia.
+
+        Si Indeed pide login para ver la oferta, lanza `PortalBlocked`, salvo con
+        INDEED_SAVE_WITHOUT_DESCRIPTION: ahí esta y las ofertas siguientes se guardan sin descripción.
+        """
+        if self.descriptions_blocked:
+            return self._without_description(card_data)
+        try:
+            description = self._description(card_data['id'])
+        except PortalBlocked:
+            if not save_without_description():
+                raise
+            logger.warning("Indeed pidió login para ver las ofertas; se guardan sin descripción")
+            self.descriptions_blocked = True
+            return self._without_description(card_data)
         if not description:
             return None
         if self._check_citizenship_requirements(description.lower()):
@@ -156,7 +186,7 @@ class indeedScraper:
         if category == 'SKIP_HIGH_EXPERIENCE':
             logger.info(f"Se saltea (más de 3 años): {card_data['Title']}")
             return None
-        job = {key: value for key, value in card_data.items() if key != 'id'}
+        job = {key: value for key, value in card_data.items() if key not in ('id', 'Snippet')}
         if job['Salary'] == 'Not specified':
             job['Salary'] = self.extract_salary_from_description(description) or 'Not specified'
         job.update({'Job_Description': self._clean_job_description(description),
