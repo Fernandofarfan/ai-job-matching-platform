@@ -94,6 +94,8 @@ def test_internal_errors_do_not_leak_details(api, db):
     db.get_all_tracked_jobs.side_effect = RuntimeError('password=secreta')
     resp = api.get('/api/tracker/jobs')
     assert resp.status_code == 500 and 'secreta' not in resp.text
+    db.get_all_tracked_jobs.assert_called_with(raise_errors=True)
+    assert resp.json()['success'] is False
 
 
 def test_login_required(api, app, accounts_db):

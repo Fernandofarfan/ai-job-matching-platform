@@ -18,3 +18,17 @@ def test_applied_date_keeps_naive_values_and_defaults_to_now():
     before = datetime.now()
     assert before <= _applied_date(None) <= datetime.now()
     assert before <= _applied_date('ayer') <= datetime.now()
+
+
+def test_tracked_jobs_hide_db_errors_unless_asked(monkeypatch):
+    """El tracker de las páginas se ve vacío si la base falla; el caché offline necesita el error para no borrarse."""
+    import pytest
+    from sqlalchemy.exc import OperationalError
+
+    from db_config import DatabaseManager
+    manager = object.__new__(DatabaseManager)
+    monkeypatch.setattr(manager, '_rows', lambda *a, **k: (_ for _ in ()).throw(OperationalError('SELECT', {}, Exception('caída'))),
+                        raising=False)
+    assert manager.get_all_tracked_jobs() == []
+    with pytest.raises(OperationalError):
+        manager.get_all_tracked_jobs(raise_errors=True)

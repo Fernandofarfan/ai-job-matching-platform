@@ -233,12 +233,18 @@ class DatabaseManager:
         self._log_status(new_id, None, values['status'])
         return new_id
 
-    def get_all_tracked_jobs(self):
-        """Todo el tracker, ordenado por columna del kanban y fecha."""
+    def get_all_tracked_jobs(self, raise_errors=False):
+        """Todo el tracker, ordenado por columna del kanban y fecha.
+
+        Si la base falla devuelve [], salvo con raise_errors=True: así quien sincroniza una copia (el caché offline)
+        no la confunde con un tracker vacío.
+        """
         try:
             return self._rows(f"SELECT * FROM applications WHERE user_id <=> :uid ORDER BY {_TRACKER_ORDER}")
         except SQLAlchemyError as err:
             logger.error(f"Error getting tracked jobs: {err}")
+            if raise_errors:
+                raise
             return []
 
     def get_tracked_job_by_id(self, job_id):
