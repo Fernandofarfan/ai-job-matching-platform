@@ -18,8 +18,16 @@ RUN pip install --upgrade pip
 COPY requirements.txt .
 RUN pip install --no-cache-dir --require-hashes -r requirements.txt
 
-# Copia todo el código fuente del proyecto
+# Copia todo el código fuente del proyecto (queda de root: la app no puede modificar su propio código)
 COPY . .
+
+# Usuario sin privilegios. UID 1000 es el usuario habitual del host, así los volúmenes ./uploads, ./results, etc.
+# de docker compose quedan escribibles; solo esos directorios son del usuario de la app.
+ARG APP_UID=1000
+ARG APP_GID=1000
+RUN mkdir -p uploads results profiles temp logs \
+    && chown -R ${APP_UID}:${APP_GID} uploads results profiles temp logs
+USER ${APP_UID}:${APP_GID}
 
 # Expone el puerto 5000
 EXPOSE 5000

@@ -62,8 +62,18 @@ run "staging" {
   }
 
   assert {
-    condition     = length(google_secret_manager_secret_iam_member.app) == 4
-    error_message = "La cuenta de servicio debe poder leer cada secreto"
+    condition     = length(google_secret_manager_secret_iam_member.app) == 6
+    error_message = "La cuenta de servicio debe poder leer cada secreto (4 de la app y las 2 URLs de Redis)"
+  }
+
+  assert {
+    condition = (
+      google_redis_instance.empleoia_redis[0].auth_enabled &&
+      contains(keys(google_secret_manager_secret.app), "REDIS_URL") &&
+      contains(keys(google_secret_manager_secret.app), "RATELIMIT_STORAGE_URI") &&
+      length([for e in google_cloud_run_v2_service.empleoia_web.template[0].containers[0].env : e if e.name == "REDIS_URL"]) == 1
+    )
+    error_message = "Redis debe pedir AUTH y su URL (con la contraseña) ir por Secret Manager, no en texto plano"
   }
 
   assert {
