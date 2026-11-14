@@ -1,0 +1,9 @@
+# Carga los tableros de monitoring/grafana/dashboards (montado en /var/lib/grafana/dashboards).
+apiVersion: 1
+providers:
+  - name: EmpleoIA
+    folder: EmpleoIA
+    type: file
+    allowUiUpdates: false
+    options:
+      path: /var/lib/grafana/dashboards

@@ -23,6 +23,19 @@ scrape_configs:
 | `empleoia_ai_month_tokens{kind}`, `empleoia_ai_month_calls`, `empleoia_ai_month_token_limit` | gauge | Consumo del mes compartido en Redis (todas las instancias) |
 | `empleoia_celery_queue_length{queue}` | gauge | Tareas esperando en `scraping`, `ai_processing` y `notifications` |
 
+## Tablero de Grafana
+
+`monitoring/grafana/dashboards/empleoia.json` muestra el estado del servicio (instancias, pedidos, errores 5xx, latencia y rutas más lentas), el costo de IA (tope mensual usado, tokens y llamadas a Gemini) y la salud de los scrapers (búsquedas por portal y resultado, portales sin ofertas y colas de Celery). Los umbrales de color son los mismos que los de las alertas.
+
+En local:
+
+```bash
+METRICS_TOKEN=un-token-largo docker compose --profile monitoring up -d
+# Grafana: http://localhost:3000 (admin / GRAFANA_ADMIN_PASSWORD, por defecto admin). Prometheus: http://localhost:9090
+```
+
+Prometheus (`monitoring/prometheus/prometheus.yml`) raspa `web:5000/metrics` con el token y carga `alerts.yml`. Grafana arranca con el datasource y el tablero ya cargados (`monitoring/grafana/provisioning`). En otro Grafana se importa el JSON y se elige un datasource Prometheus con uid `prometheus`.
+
 ## Alertas
 
 **Prometheus:** las reglas están en `monitoring/prometheus/alerts.yml`, con tests en `alerts.test.yml`:
