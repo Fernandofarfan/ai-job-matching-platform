@@ -20,6 +20,11 @@ def enforce_cv_retention():
     except Exception as e:
         logger.warning(f"No se pudieron borrar los eventos de seguridad viejos: {e}")
     try:
+        import user_sessions
+        user_sessions.purge()
+    except Exception as e:
+        logger.warning(f"No se pudieron borrar las sesiones vencidas: {e}")
+    try:
         encrypted += profile_store.encrypt_existing()
     except Exception as e:
         logger.warning(f"No se pudieron cifrar los perfiles existentes: {e}")

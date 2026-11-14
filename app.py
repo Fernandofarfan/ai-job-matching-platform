@@ -9,6 +9,7 @@ import profile_store
 from flask_wtf.csrf import CSRFProtect
 import accounts
 import auth
+import user_sessions
 from flask_limiter.util import get_remote_address
 import os
 import logging
@@ -114,7 +115,7 @@ def login():
                 else:
                     flash('Tenés que confirmar tu email, pero no se pudo mandar el enlace: avisale al administrador', 'danger')
             elif user:
-                auth.start_session(session, app.secret_key, user['id'])
+                auth.start_session(session, app.secret_key, user['id'], *account.client_info())
                 account.audit_login(user, 'login')
                 return redirect(_safe_next(next_url))
             else:
@@ -160,7 +161,7 @@ def register():
                             flash('Cuenta creada, pero no se pudo mandar el enlace para confirmar el email: '
                                   'avisale al administrador', 'danger')
                         return redirect(url_for('login', next=next_url))
-                    auth.start_session(session, app.secret_key, user_id)
+                    auth.start_session(session, app.secret_key, user_id, *account.client_info())
                     return redirect(_safe_next(next_url))
     except SQLAlchemyError as e:
         logger.error(f"Registro sin base de datos: {e}")
@@ -172,6 +173,7 @@ def register():
 
 @app.route('/logout', methods=['POST'])
 def logout():
+    user_sessions.revoke_sid(session.get('sid'))
     session.clear()
     return _clear_offline_data(redirect(url_for('login')))
 
