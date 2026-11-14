@@ -366,7 +366,8 @@ EmpleoIA/
 │   ├── main.tf
 │   └── variables.tf
 │
-├── 📄 app.py                 # Aplicación principal Flask (+ API routes)
+├── 📄 app.py                 # Configuración de Flask, login, helpers y scrapers en segundo plano
+├── 📁 web/                   # Rutas Flask por área (pages, profiles, tracker, scrapers, ai_api, files, documents, analytics, exports)
 ├── 📄 ai_engine.py           # 🆕 Motor de IA centralizado (Gemini)
 ├── 📄 celery_app.py          # 🆕 Configuración de Celery
 ├── 📄 models.py              # 🆕 Modelos SQLAlchemy ORM
