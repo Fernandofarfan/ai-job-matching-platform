@@ -78,7 +78,7 @@ def test_worker_publishes_progress_and_result():
 
 def test_credential_reload_keeps_backend(monkeypatch, tmp_path):
     """Releer el .env actualiza credenciales pero no cambia el backend fijado por el entorno."""
-    from web import scrapers
+    from routers import scraper_pages as scrapers
     (tmp_path / '.env').write_text('SCRAPER_BACKEND=thread\nINDEED_EMAIL=nuevo@x.com\nLI_AT_TOKEN=nuevo-token\n')
     monkeypatch.setenv('SCRAPER_BACKEND', 'celery')
     monkeypatch.setenv('INDEED_EMAIL', 'viejo@x.com')

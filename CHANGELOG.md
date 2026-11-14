@@ -6,6 +6,12 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar] - Páginas de Flask a FastAPI (5/6): búsquedas y conexiones
+
+- FastAPI sirve el arranque de las búsquedas, la prueba de scrapers y las solicitudes de conexión (`routers/scraper_pages.py`); las tareas de Computrabajo, Bumeran y universal pasan a `scraping_jobs.py`. Se quita la carpeta `web/`: Flask ya no tiene vistas.
+- `/test_task_status` solo acepta un UUID (antes leía cualquier `.json` con `../`) y solo muestra pruebas de la cuenta.
+- `/run_test_scraper` limita `max` a 20 y los errores ya no muestran el mensaje interno.
+
 ## [Sin publicar] - Páginas de Flask a FastAPI (4/5): resultados, documentos, perfiles y alertas
 
 - FastAPI sirve ver/descargar/borrar resultados, empresas y conexiones, `/api/save_applications`, cartas y CV optimizado, puntaje ATS, perfiles de CV (subida hasta `MAX_UPLOAD_MB`) y alertas (`routers/content_pages.py`).

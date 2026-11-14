@@ -1,10 +1,7 @@
-"""Las rutas viven en web/ y se registran sobre la app de app.py."""
+"""Todas las páginas las sirve FastAPI; Flask solo conserva reglas para armar URLs."""
 
 
-def test_routes_are_split_into_web_modules(app):
-    """Las vistas se definen en módulos de web/ y siguen registradas en la misma app."""
-    modules = {f.__module__ for f in app.view_functions.values() if f.__module__ != 'flask.app'}
-    web = {m for m in modules if m.startswith('web.')}
-    assert {'web.scrapers'} <= web
+def test_flask_has_no_views_left(app):
+    """No quedan vistas de Flask: las reglas que siguen son build-only para url_for."""
+    assert set(app.view_functions) <= {'static'}
     assert len(app.url_map._rules) >= 50
-

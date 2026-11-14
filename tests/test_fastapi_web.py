@@ -1,4 +1,5 @@
 """Páginas de FastAPI con la misma sesión, CSRF, avisos y URLs que Flask (fastapi_web.py)."""
+from unittest import mock
 import re
 
 from fastapi import Request
@@ -174,3 +175,41 @@ def test_delete_csv_needs_post_with_csrf_and_stays_in_results(client, app, monke
     (tmp_path / '.env').write_text('x')
     assert client.get('/results/.env').status_code == 404
     assert client.get('/results/notes.txt').status_code == 200
+
+
+def test_scraper_forms_need_csrf_and_launch_for_the_account(client, app, monkeypatch):
+    """Los formularios de búsqueda validan CSRF y lanzan la tarea con las búsquedas cargadas."""
+    import job_dispatch
+    launched = []
+    monkeypatch.setattr(job_dispatch, 'launch', lambda status, key, name, *args: launched.append((key, name, args)))
+    monkeypatch.setitem(app.config, 'WTF_CSRF_ENABLED', True)
+    assert client.post('/start_bumeran_scraper', data={'position[]': 'python'}).status_code == 400
+    monkeypatch.setitem(app.config, 'WTF_CSRF_ENABLED', False)
+    response = client.post('/start_bumeran_scraper', data={'position[]': ['python', ''], 'location[]': ['CABA', '']})
+    assert response.status_code == 302
+    assert launched == [('bumeran_scraping', 'run_bumeran_job', ([{'position': 'python', 'location': 'CABA'}],))]
+
+
+def test_test_task_status_rejects_paths_and_other_accounts(client, app):
+    """task_id debe ser un UUID y la prueba tiene que ser de la cuenta actual."""
+    import uuid
+    app_globals = app.extensions['empleoia_app_globals']
+    assert client.get('/test_task_status?task_id=../../secret').status_code == 404
+    mine, other = str(uuid.uuid4()), str(uuid.uuid4())
+    app_globals['test_tasks'][mine] = {'status': 'completed', 'result': [{'Title': 'x'}], 'user_id': None}
+    app_globals['test_tasks'][other] = {'status': 'completed', 'result': [], 'user_id': 999}
+    assert client.get(f'/test_task_status?task_id={mine}').get_json()['count'] == 1
+    assert client.get(f'/test_task_status?task_id={other}').status_code == 404
+
+
+def test_linkedin_test_fails_when_token_login_fails(app):
+    """La prueba de LinkedIn inicia sesión con el token y, si no puede, falla en vez de buscar como invitado."""
+    from routers import scraper_pages
+    fake = mock.Mock()
+    fake.return_value.login_with_cookie.return_value = False
+    app_globals = {'test_tasks': {'t': {}}, 'save_task_to_disk': lambda tid: None}
+    with mock.patch('scrapers.linkedin_pw.linkedinClass', fake):
+        scraper_pages._run_linkedin_test(app_globals, 't', 'tok', 'python', '', 5)
+    assert app_globals['test_tasks']['t']['status'] == 'failed'
+    fake.return_value.search_jobs.assert_not_called()
+    fake.return_value.close.assert_called_once()
