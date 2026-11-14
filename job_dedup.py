@@ -15,7 +15,7 @@ Job = dict[str, Any]
 
 PLACEHOLDERS = {'', 'confidencial', 'empresa confidencial', 'reservado', 'no especificado', 'no especificada',
                 'n a', 'na', 'nan', 'none', 'confidential', 'not specified', 'unknown'}
-COMPANY_SUFFIXES = {'sa', 'srl', 'sas', 'sau', 'sl', 'sacif', 'saic', 'saci', 'sacifi', 'ltda', 'inc', 'llc', 'corp', 'corporation',
+COMPANY_SUFFIXES = {'sa', 'srl', 'sas', 'sau', 'sl', 'sacif', 'saic', 'saci', 'sacifi', 'cicsa', 'saicf', 'sca', 'ltda', 'inc', 'llc', 'corp', 'corporation',
                     'ltd', 'limited', 'gmbh', 'cv', 'de'}
 GENERIC_PLACES = {'argentina', 'chile', 'uruguay', 'paraguay', 'bolivia', 'peru', 'colombia', 'mexico', 'brasil',
                   'brazil', 'latam', 'remoto', 'remote', 'hibrido', 'presencial', 'reciente', 'provincia', 'de', 'del'}
@@ -41,12 +41,30 @@ def _known(value: object) -> bool:
     return _norm(value) not in PLACEHOLDERS
 
 
-def title_key(title: object) -> str:
-    """Título normalizado con el seniority unificado: "Senior" y "Sr." dan "sr"."""
-    text = _norm(title)
+# Palabras de puestos en inglés con su traducción, para que "Data Analyst" y "Analista de Datos" den la misma clave.
+TITLE_WORDS = {'analyst': 'analista', 'data': 'datos', 'developer': 'desarrollador', 'engineer': 'ingeniero',
+               'manager': 'gerente', 'designer': 'disenador', 'sales': 'ventas', 'accountant': 'contador',
+               'cashier': 'cajero', 'support': 'soporte', 'software': 'software', 'business': 'negocio'}
+TITLE_STOPWORDS = {'de', 'del', 'la', 'el', 'los', 'las', 'y', 'of', 'and', 'the'}
+COMPANY_MARKERS = (' en ', ' at ', ' para ', ' - ', ' | ', ' / ')
+
+
+def title_key(title: object, company: object = '') -> str:
+    """Título normalizado: seniority unificado ("Senior" y "Sr." dan "sr"), sin el nombre de la empresa
+    ("Cajero - Coto" da "cajero") y con las palabras en inglés traducidas y ordenadas ("Data Analyst" y
+    "Analista de Datos" dan lo mismo)."""
+    raw = str(title or '')
+    company = company_key(company)
+    if company:
+        for marker in COMPANY_MARKERS:
+            head, sep, tail = raw.lower().rpartition(marker)
+            if sep and head.strip() and company_key(tail) == company:
+                raw = raw[:len(head)]
+                break
+    text = _norm(raw)
     for pattern, short in SENIORITY:
         text = re.sub(pattern, short, text)
-    return text
+    return ' '.join(sorted(TITLE_WORDS.get(w, w) for w in text.split() if w not in TITLE_STOPWORDS))
 
 
 def company_key(company: object) -> str:
@@ -146,7 +164,7 @@ def unify(jobs: Iterable[Job]) -> list[Job]:
     by_key: dict[tuple[str, str], list[int]] = {}
     for job in jobs:
         url = _url_key(job.get('URL'))
-        key = (title_key(job.get('Title')), company_key(job.get('Company')))
+        key = (title_key(job.get('Title'), job.get('Company')), company_key(job.get('Company')))
         index: int | None = by_url.get(url) if url else None
         if index is None and all(key):
             index = next((i for i in by_key.get(key, []) if all(_compatible(job, other) for other in groups[i])), None)

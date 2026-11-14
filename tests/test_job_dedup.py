@@ -116,3 +116,23 @@ def test_seniority_aliases_caba_and_different_provinces():
                                 _job('ZonaJobs', location='Villa Carlos Paz, Córdoba')])) == 2
     assert len(job_dedup.unify([_job('Bumeran', location='Gran Buenos Aires, Buenos Aires'),
                                 _job('ZonaJobs', location='CABA')])) == 2
+
+
+def test_title_key_drops_company_segment():
+    assert job_dedup.title_key('Cajero - Coto', 'Coto CICSA') == job_dedup.title_key('Cajero', 'Coto') == 'cajero'
+    assert job_dedup.title_key('Analista en Sistemas', 'Sistemas Globales') == 'analista en sistemas'
+    assert job_dedup.title_key('Analista en Sistemas', 'Acme') == 'analista en sistemas'
+
+
+def test_title_key_translates_english_titles():
+    assert job_dedup.title_key('Data Analyst') == job_dedup.title_key('Analista de Datos')
+    assert job_dedup.title_key('Developer C++') != job_dedup.title_key('Developer C#')
+
+
+def test_unify_translated_and_company_titles():
+    jobs = [{'Title': 'Data Analyst', 'Company': 'Rappi', 'Location': 'Buenos Aires', 'URL': 'https://a/1'},
+            {'Title': 'Analista de Datos', 'Company': 'Rappi', 'Location': 'Buenos Aires', 'URL': 'https://b/2'},
+            {'Title': 'Cajero - Coto', 'Company': 'Coto CICSA', 'Location': 'La Plata', 'URL': 'https://c/3'},
+            {'Title': 'Cajero', 'Company': 'Coto', 'Location': 'La Plata, Buenos Aires', 'URL': 'https://d/4'},
+            {'Title': 'Cajero', 'Company': 'Coto', 'Location': 'CABA', 'URL': 'https://e/5'}]
+    assert len(job_dedup.unify(jobs)) == 3
