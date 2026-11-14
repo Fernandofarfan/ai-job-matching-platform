@@ -3,6 +3,11 @@ output "web_url" {
   value       = google_cloud_run_v2_service.empleoia_web.uri
 }
 
+output "web_service" {
+  description = "Nombre del servicio de Cloud Run de la web"
+  value       = google_cloud_run_v2_service.empleoia_web.name
+}
+
 output "docker_registry" {
   description = "Repositorio de Artifact Registry para las imágenes"
   value       = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.empleoia.repository_id}"

@@ -59,6 +59,8 @@ En los comandos, `<env>` es `staging` o `prod` y la región es `southamerica-eas
 
 ## Volver a la versión anterior
 
+El deploy ya vuelve atrás solo en dos casos: la revisión nueva entra sin tráfico, con la etiqueta `candidate`, y si no pasa `/api/ready` nunca recibe tráfico; si lo pasa pero `/api/ready` falla después de darle el tráfico, el workflow lo devuelve a la revisión anterior. El worker y las migraciones no se vuelven atrás solos. Con el servicio privado (`public_access = false`) no hay smoke test HTTP y la revisión nueva recibe el tráfico apenas queda lista.
+
 Producción solo corre tags. Desplegá el tag anterior con "Run workflow" → `Deploy a GCP` → `prod`, eligiendo el tag en "Use workflow from"; la imagen ya existe y no se reconstruye. Para cortar el tráfico ya, mientras tanto:
 
 ```bash
