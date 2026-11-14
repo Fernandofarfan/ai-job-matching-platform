@@ -5,6 +5,8 @@ Reemplaza el uso de threading.Thread en app.py para scrapers robustos.
 import os
 import logging
 import random
+import copy
+import threading
 import time
 from datetime import datetime
 
@@ -231,8 +233,10 @@ def run_bumeran_scraper(self, credentials: dict, searches: list, filters: dict =
                 jobs = scraper.search_jobs(
                     position=search.get("position", ""),
                     location=search.get("location", ""),
-                    credentials=credentials
+                    email=(credentials or {}).get("email"),
+                    password=(credentials or {}).get("password"),
                 )
+                scraper.close()
                 if jobs:
                     all_jobs.extend(jobs)
                 time.sleep(random.uniform(2, 3))
@@ -269,8 +273,10 @@ def run_computrabajo_scraper(self, credentials: dict, searches: list, filters: d
                 jobs = scraper.search_jobs(
                     position=search.get("position", ""),
                     location=search.get("location", ""),
-                    credentials=credentials
+                    email=(credentials or {}).get("email"),
+                    password=(credentials or {}).get("password"),
                 )
+                scraper.close()
                 if jobs:
                     all_jobs.extend(jobs)
                 time.sleep(random.uniform(2, 3))
@@ -323,3 +329,23 @@ def run_universal_scraper(self, credentials: dict, searches: list, filters: dict
         "platforms": platforms,
         "message": f"Scrapers lanzados en paralelo: {', '.join(platforms)}"
     }
+
+
+@celery.task(bind=True, name="tasks.scraping_tasks.run_web_job")
+def run_web_job(self, key: str, name: str, args: list, poll_seconds: float = 2.0):
+    """Corre en el worker el mismo scraper que lanza la web y publica su `job_status[key]`."""
+    import app as web_app  # registra las rutas y el job_status compartido
+    import job_dispatch
+
+    func = job_dispatch.resolve(name)
+    status = web_app.job_status
+    status[key] = {**status.get(key, {}), "status": "running", "progress": 0, "message": "Iniciando..."}
+    worker = threading.Thread(target=func, args=args, daemon=True)
+    worker.start()
+    while worker.is_alive():
+        self.update_state(state="PROGRESS", meta=copy.deepcopy(status.get(key, {})))
+        worker.join(poll_seconds)
+    final = copy.deepcopy(status.get(key, {}))
+    if final.get("status") in job_dispatch.ACTIVE:
+        final["status"] = "completed"
+    return final

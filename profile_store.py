@@ -15,6 +15,8 @@ Base = declarative_base()
 JSON_PATH = os.path.join('profiles', 'user_profiles.json')
 # Roles borrados mientras MySQL no respondía; se borran en MySQL al volver
 DELETED_KEY = '_deleted'
+# Momento exacto de la escritura: el mtime del archivo tiene resolución de milisegundos
+WRITTEN_KEY = '_written_at'
 _RETRY_SECONDS = 60
 
 _session_factory = None
@@ -92,6 +94,7 @@ def _write_json(profiles, deleted):
     data = dict(profiles)
     if deleted:
         data[DELETED_KEY] = sorted(deleted)
+    data[WRITTEN_KEY] = time.time()
     with open(JSON_PATH, 'w', encoding='utf-8') as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
 
@@ -112,7 +115,10 @@ def _import_legacy_json():
     if not legacy and not deleted:
         return
     with _session_factory() as session:
-        written_at = datetime.fromtimestamp(os.path.getmtime(JSON_PATH))
+        stamp = _read_json_raw().get(WRITTEN_KEY)
+        if not isinstance(stamp, (int, float)):
+            stamp = os.path.getmtime(JSON_PATH)
+        written_at = datetime.fromtimestamp(stamp)
         rows = {row.role_type: row for row in session.scalars(select(UserProfile))}
         stale = {role for role, row in rows.items()
                  if row.updated_at and row.updated_at > written_at}
