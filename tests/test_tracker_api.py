@@ -87,7 +87,13 @@ def test_status_reminder_and_delete(api, db):
     assert resp.status_code == 200
     db.update_tracker_dates.assert_called_with(1, date(2026, 11, 25), None, 'Llamar')
     assert api.put('/api/tracker/job/1/reminder', json={'follow_up': '25/11/2026'}).status_code == 400
-    assert api.delete('/api/tracker/job/3').json()['success']
+    assert api.delete('/api/tracker/job/2').json()['success']
+
+
+def test_unknown_status_or_job_is_not_a_server_error(api, db):
+    assert api.put('/api/tracker/job/1/status', json={'status': '__main__'}).status_code == 400
+    assert api.put('/api/tracker/job/99/status', json={'status': 'applied'}).status_code == 404
+    assert api.delete('/api/tracker/job/99').status_code == 404
 
 
 def test_internal_errors_do_not_leak_details(api, db):

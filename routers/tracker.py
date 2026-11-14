@@ -6,7 +6,7 @@ from collections.abc import Callable, Coroutine
 from starlette.types import Message
 import logging
 from datetime import date, datetime
-from typing import Any, Optional, cast
+from typing import Any, Literal, Optional, cast
 
 from fastapi import APIRouter, Body, Depends, Request, Response
 from fastapi.exceptions import RequestValidationError
@@ -161,7 +161,7 @@ class NewJob(TrackerDates):
 class StatusUpdate(BaseModel):
     """Nuevo estado de una postulación (applied, interviewing, ...)."""
 
-    status: str = Field(min_length=1)
+    status: Literal['bookmarked', 'applying', 'applied', 'interviewing', 'negotiating', 'accepted', 'rejected']
 
 
 def with_iso_dates(job: dict[str, Any]) -> dict[str, Any]:
@@ -220,7 +220,9 @@ def get_job(job_id: int, db: Any = Depends(get_db)) -> dict[str, Any]:
 
 @router.put('/job/{job_id}/status', dependencies=browser, response_model=None)
 def update_status(job_id: int, body: StatusUpdate, db: Any = Depends(get_db)) -> dict[str, Any]:
-    """Cambia el estado (columna del Kanban)."""
+    """Cambia el estado (columna del Kanban); 404 si no existe."""
+    if not db.get_tracked_job_by_id(job_id):
+        raise ApiError(404, 'Job not found')
     if not db.update_job_status(job_id, body.status):
         raise ApiError(500, 'Failed to update status')
     return {'success': True, 'message': f'Job status updated to {body.status}'}
@@ -237,7 +239,9 @@ def update_reminder(job_id: int, dates: TrackerDates, db: Any = Depends(get_db))
 
 @router.delete('/job/{job_id}', dependencies=browser, response_model=None)
 def delete_job(job_id: int, db: Any = Depends(get_db)) -> dict[str, Any]:
-    """Borra la postulación."""
+    """Borra la postulación; 404 si no existe."""
+    if not db.get_tracked_job_by_id(job_id):
+        raise ApiError(404, 'Job not found')
     if not db.delete_tracked_job(job_id):
         raise ApiError(500, 'Failed to delete job')
     return {'success': True, 'message': 'Job deleted successfully'}

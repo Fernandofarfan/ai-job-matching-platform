@@ -61,4 +61,4 @@ Staging se despliega en cada push a `main`; producción solo desde un tag `vX.Y.
 
 ## CI
 
-`python-app.yml` corre en cada PR: Ruff y mypy, tests unitarios, integración con MySQL, Redis y Playwright (incluye axe), carga con Locust, comparación visual, OWASP ZAP, Bandit, pip-audit, gitleaks, Trivy y SBOM. Otros workflows: `scraper-health.yml` (monitor diario de portales), `matching-compare.yml`, `backup-restore-check.yml`, `terraform.yml`, `deploy.yml` y `release.yml`.
+`python-app.yml` corre en cada PR: Ruff y mypy, tests unitarios, integración con MySQL, Redis y Playwright (incluye axe), carga con Locust, comparación visual, OWASP ZAP, contrato de la API con Schemathesis, Bandit, pip-audit, gitleaks, Trivy y SBOM. Otros workflows: `scraper-health.yml` (monitor diario de portales), `matching-compare.yml`, `backup-restore-check.yml`, `terraform.yml`, `deploy.yml` y `release.yml`.

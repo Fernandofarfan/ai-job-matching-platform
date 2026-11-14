@@ -1,0 +1,4 @@
+# Schemathesis (scripts/api_contract.py). Sin GEMINI_API_KEY en el CI, la IA responde 503 a propósito.
+[[operations]]
+include-path-regex = "^/api/ai/"
+checks.not_a_server_error.expected-statuses = ["2XX", "3XX", "4XX", "503"]

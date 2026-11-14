@@ -2,6 +2,7 @@
 import logging
 import os
 import time
+from typing import Any
 from urllib.parse import quote
 
 from fastapi import FastAPI, Header, Request
@@ -162,13 +163,26 @@ async def server_error(request: Request, exc: Exception):
         context={"code": 500, "message": "Error interno del servidor"}))
 
 
+# Errores que cualquier ruta de la API puede devolver; se publican en /openapi.json para que Schemathesis los acepte.
+DOCUMENTED_ERRORS: dict[int | str, dict[str, Any]] = {
+    400: {"description": "Pedido inválido o token CSRF vencido"},
+    401: {"description": "Sin sesión"},
+    403: {"description": "Sin permiso (consentimiento de IA, rol o cuenta)"},
+    404: {"description": "No existe o no es de la cuenta"},
+    409: {"description": "Ya existe"},
+    413: {"description": "Pedido demasiado grande"},
+    429: {"description": "Límite de pedidos"},
+    503: {"description": "Servicio no configurado o no disponible (IA, push, worker)"},
+}
+
+
 def create_app(web_app=None) -> FastAPI:
     """FastAPI con sus routers; `web_app` (por defecto la de app.py) tiene la clave, la config y los globals."""
     error_reporting.setup("web")
     docs = os.getenv("ENABLE_API_DOCS", "0") == "1"
     app = FastAPI(title="EmpleoIA API", description="FastAPI Core para EmpleoIA", version=version.__version__,
                   docs_url="/docs" if docs else None, redoc_url="/redoc" if docs else None,
-                  openapi_url="/openapi.json" if docs else None)
+                  openapi_url="/openapi.json" if docs else None, responses=DOCUMENTED_ERRORS)
     try:
         app.mount("/static", StaticFiles(directory="static"), name="static")
     except Exception as e:
