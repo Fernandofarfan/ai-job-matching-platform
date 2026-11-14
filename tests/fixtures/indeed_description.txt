@@ -1,0 +1,13 @@
+About the role
+We are seeking a Data Engineer to build pipelines in Python and SQL.
+
+Basic Qualifications:
+- 2-3 years of experience with Python and AWS
+- Experience with SQL databases
+
+Preferred Qualifications:
+- 6+ years of experience leading teams
+
+Benefits
+Health insurance, dental, vision and 401k.
+Salary range: $90,000 - $120,000 per year

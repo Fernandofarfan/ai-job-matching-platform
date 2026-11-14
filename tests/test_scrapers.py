@@ -130,3 +130,35 @@ def test_getonboard_city_searches_keep_local_jobs():
     assert 'Data Engineer' in titles('Lima, Peru')
     assert titles('Arequipa, Perú') == ['Backend Python Developer']
     assert titles('Lima, Chile') == ['Backend Python Developer']
+
+
+def _without_browser(cls):
+    """Instancia sin __init__: estos helpers solo procesan texto y no abren Chrome."""
+    return object.__new__(cls)
+
+
+def test_indeed_text_helpers_on_saved_description():
+    from scrapers.indeed_scraper import indeedScraper
+    scraper = _without_browser(indeedScraper)
+    text = (FIXTURES / 'indeed_description.txt').read_text(encoding='utf-8')
+    # Solo cuenta lo de Basic Qualifications: el 6+ de Preferred no descarta la oferta
+    assert scraper.extract_years_of_experience(text) == '2-3'
+    assert scraper.categorize_experience(text) == 'Early Career (2-3 years)'
+    assert scraper.extract_years_of_experience('Basic qualifications: 5+ years of Java') == 'SKIP_HIGH_EXPERIENCE'
+    assert scraper.extract_years_of_experience('Junior role, we train you') == 'Entry Level'
+    assert scraper.extract_salary_from_description(text) == '$90,000 - $120,000 per year'
+    cleaned = scraper._clean_job_description(text)
+    assert 'Data Engineer' in cleaned and '401k' not in cleaned and 'Salary' not in cleaned
+    assert scraper._clean_job_description('') == 'Job description not available'
+
+
+def test_linkedin_text_helpers():
+    from scrapers.linkedin_scraper import linkedinClass
+    scraper = _without_browser(linkedinClass)
+    assert scraper._extract_years_of_experience('Requires 8+ years of experience in Go') == '8+ years'
+    assert scraper._extract_years_of_experience('2-3 years of experience with SQL') == '2-3 years'
+    assert scraper._extract_years_of_experience('Great team') == 'Not specified'
+    assert scraper._categorize_experience_with_limit('8+ years') == 'SKIP_HIGH_EXPERIENCE'
+    assert scraper._categorize_experience_with_limit('2-3 years') == 'Early Career (2-3 years)'
+    assert scraper._has_citizenship_requirements('must be a us citizen with active clearance')
+    assert not scraper._has_citizenship_requirements('remote from latam')

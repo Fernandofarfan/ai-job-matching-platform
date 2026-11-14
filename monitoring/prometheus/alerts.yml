@@ -61,3 +61,27 @@ groups:
         annotations:
           summary: Se agotó el tope mensual de tokens de IA
           description: Las funciones de IA quedan bloqueadas hasta el mes que viene o hasta subir AI_MONTHLY_TOKEN_LIMIT.
+
+      - alert: EmpleoIAPortalSinOfertas
+        # 3 o más búsquedas en un día y ninguna con ofertas: el portal cambió su HTML o bloquea al scraper.
+        # Cada instancia expone el mismo total de Redis: se toma el máximo entre instancias de hoy menos el de hace 24 h,
+        # así no se suma una vez por instancia ni se pierden búsquedas si las instancias cambian en el día.
+        # Sin datos de hace 24 h (Prometheus recién arrancado) o si el total bajó (Redis vaciado) se usa el increase de cada instancia.
+        expr: |
+          (
+            max by (portal) (sum by (portal, instance) (empleoia_scraper_runs_total{outcome=~"empty|error"}))
+              - max by (portal) (sum by (portal, instance) (empleoia_scraper_runs_total{outcome=~"empty|error"} offset 24h))
+              >= 0
+            or sum by (portal) (max by (portal, outcome) (increase(empleoia_scraper_runs_total{outcome=~"empty|error"}[24h])))
+          ) >= 3
+          unless (
+            max by (portal) (empleoia_scraper_runs_total{outcome="ok"})
+              - max by (portal) (empleoia_scraper_runs_total{outcome="ok"} offset 24h)
+              >= 0
+            or max by (portal) (increase(empleoia_scraper_runs_total{outcome="ok"}[24h]))
+          ) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.portal }} no devuelve ofertas"
+          description: "{{ $value | humanize }} búsquedas en 24 h sin ofertas: revisar el parser con scripts/scraper_health.py."

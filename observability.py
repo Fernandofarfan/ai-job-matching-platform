@@ -4,7 +4,7 @@ import logging
 import os
 
 from prometheus_client import CONTENT_TYPE_LATEST, CollectorRegistry, Counter, Histogram, generate_latest
-from prometheus_client.core import GaugeMetricFamily
+from prometheus_client.core import CounterMetricFamily, GaugeMetricFamily
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +22,7 @@ CONTENT_TYPE = CONTENT_TYPE_LATEST
 
 
 class _SharedStateCollector:
-    """Datos compartidos en Redis: consumo de IA del mes y tareas esperando en cada cola de Celery."""
+    """Datos compartidos en Redis: consumo de IA del mes, búsquedas por portal y tareas en cada cola de Celery."""
 
     def collect(self):
         try:
@@ -39,6 +39,16 @@ class _SharedStateCollector:
                                         value=usage['monthly_token_limit'])
         except Exception as e:
             logger.warning(f"Métricas de IA no disponibles ({e})")
+        try:
+            import scraper_stats
+            runs = CounterMetricFamily('empleoia_scraper_runs', 'Búsquedas por portal y resultado (ok, empty, error)',
+                                       labels=['portal', 'outcome'])
+            for portal, row in scraper_stats.counts().items():
+                for result, n in row.items():
+                    runs.add_metric([portal, result], n)
+            yield runs
+        except Exception as e:
+            logger.warning(f"Métricas de scrapers no disponibles ({e})")
         url = os.getenv('REDIS_URL', '')
         if url.startswith(('redis://', 'rediss://')):
             try:
