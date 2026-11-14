@@ -8,6 +8,8 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [Sin publicar] - Privacidad y seguridad de cuentas
 
+- **Eventos de seguridad** (`security_events.py`, migración `0010_security_events`): cada cuenta registra logins, contraseñas incorrectas, registro, verificación, cambios y recuperación de contraseña, Telegram, Gmail, token de la extensión y exportaciones; se ven en **Mi cuenta** → Actividad reciente. Un login desde un navegador no visto en 180 días manda un email de aviso (`LOGIN_ALERTS`). La retención diaria borra los eventos con más de `SECURITY_EVENTS_DAYS` días. Borrar la cuenta borra sus eventos.
+- `accounts.delete_account` y `claim_orphans` inspeccionan las tablas antes de escribir (en SQLite la inspección descartaba los borrados pendientes).
 - **Exportar mis datos** (`data_export.py`, `POST /account/export`): ZIP con todo lo que la app guarda de la cuenta (tablas propias en JSON, perfiles, CVs originales, CSV de resultados y documentos generados). Pide la contraseña, tiene límite de 5 por hora, se sirve con `Cache-Control: no-store` y deja afuera hash de contraseña, tokens y endpoints push.
 
 ## [Sin publicar] - Notificaciones push
