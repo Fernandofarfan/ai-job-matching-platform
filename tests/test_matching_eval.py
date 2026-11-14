@@ -114,3 +114,13 @@ def test_feedback_dataset_and_report(monkeypatch, capsys):
         assert list(matching_eval.feedback_dataset()['profiles']) == ['cuenta_1_es']
     finally:
         job_alerts.configure(None)
+
+
+def test_dataset_size_per_language():
+    """Bastantes CVs por idioma para que el promedio de cada idioma signifique algo."""
+    dataset = matching_eval.load()
+    assert len(dataset['jobs']) >= 35 and len(dataset['profiles']) >= 20
+    by_language: dict[str, int] = {}
+    for name in dataset['profiles']:
+        by_language[matching_eval.language(name)] = by_language.get(matching_eval.language(name), 0) + 1
+    assert min(by_language.values()) >= 5, by_language

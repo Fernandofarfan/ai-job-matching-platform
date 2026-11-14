@@ -5,7 +5,10 @@ import matching_eval
 
 # Línea base con TF-IDF (scripts/eval_matching.py). Si un cambio en el matching la baja, este test falla.
 # P@3 es más baja que con el dataset original: varios CVs tienen una sola oferta buena y P@3 no llega a 1.
-BASELINE = {'ndcg@5': 0.93, 'precision@3': 0.70, 'mrr': 0.95}
+# Con 24 CVs y 38 ofertas el promedio baja: los perfiles nuevos tienen ofertas parecidas de otras áreas.
+BASELINE = {'ndcg@5': 0.89, 'precision@3': 0.75, 'mrr': 0.95}
+# Mínimo por CV: que un perfil empeore aunque el promedio no baje también frena el CI.
+MIN_PROFILE = {'ndcg@5': 0.70, 'mrr': 1.0}
 
 
 def test_matching_quality_does_not_regress(monkeypatch):
@@ -15,12 +18,23 @@ def test_matching_quality_does_not_regress(monkeypatch):
         assert mean[metric] >= minimum, f'{metric} bajó a {mean[metric]:.3f} (mínimo {minimum})'
 
 
+def test_each_profile_meets_minimum(monkeypatch):
+    monkeypatch.setenv('MATCHING_BACKEND', 'tfidf')
+    profiles = matching_eval.evaluate()['profiles']
+    below = {f'{name} {metric}={m[metric]:.3f}' for name, m in profiles.items()
+             for metric, minimum in MIN_PROFILE.items() if m[metric] < minimum}
+    assert not below, f'CVs por debajo del mínimo {MIN_PROFILE}: {sorted(below)}'
+
+
 def test_script_exit_code(monkeypatch, capsys):
     monkeypatch.setenv('MATCHING_BACKEND', 'tfidf')
     from scripts import eval_matching
     assert eval_matching.main([]) == 0
     assert 'promedio' in capsys.readouterr().out
     assert eval_matching.main(['--min-ndcg', '1.01', '--json']) == 1
+    assert eval_matching.main(['--min-profile-ndcg', str(MIN_PROFILE['ndcg@5'])]) == 0
+    assert eval_matching.main(['--min-profile-ndcg', '0.95']) == 1
+    assert 'Por debajo de 0.95' in capsys.readouterr().out
 
 
 def test_compare_without_gemini_key(monkeypatch, capsys):
@@ -42,6 +56,11 @@ def test_compare_honors_json_and_threshold(monkeypatch, capsys):
     assert eval_matching.main(['--compare', '--json', '--min-ndcg', '1.01']) == 1
     out = json.loads(capsys.readouterr().out)
     assert 'mean' in out['tfidf'] and 'skipped' in out['embeddings']
+    assert eval_matching.main(['--compare', '--min-profile-ndcg', '0.95']) == 1
+    assert 'tfidf: por debajo de 0.95' in capsys.readouterr().out
+    assert eval_matching.main(['--compare', '--json', '--min-profile-ndcg', '0.95']) == 1
+    assert 'seguridad_es' in json.loads(capsys.readouterr().out)['below_min_profile_ndcg']['tfidf']
+    assert eval_matching.main(['--compare', '--min-profile-ndcg', str(MIN_PROFILE['ndcg@5'])]) == 0
 
 
 def test_compare_does_not_report_tfidf_as_embeddings(monkeypatch, capsys):

@@ -25,7 +25,20 @@
   "pt_suporte": "Analista de Suporte Técnico. 1 ano de experiência em atendimento a usuários, Windows, redes, Active Directory e help desk.",
   "ux": "UX/UI Designer. 3 years of experience with Figma, user research, wireframes, prototyping and design systems.",
   "pm": "Product Manager. 5 years of experience defining product roadmaps, user stories, Agile and Scrum, stakeholder management and product metrics.",
-  "de_lead": "Lead Data Engineer. 10+ years of experience with Spark, Kafka, Scala, Python and AWS. Lead a team of data engineers."
+  "de_lead": "Lead Data Engineer. 10+ years of experience with Spark, Kafka, Scala, Python and AWS. Lead a team of data engineers.",
+  "ux_sr": "Senior Product Designer. 6 years designing web and mobile apps in Figma, design systems, usability testing and user research.",
+  "es_ux": "Diseñador UX/UI. 2 años de experiencia en Figma, investigación de usuarios, prototipos, wireframes y sistemas de diseño.",
+  "es_pm": "Product Owner. 4 años de experiencia definiendo el roadmap, historias de usuario, Scrum, priorización del backlog y métricas de producto.",
+  "mobile_android": "Android Developer. 3 years of experience with Kotlin, Jetpack Compose, REST APIs, Firebase and publishing apps on Google Play.",
+  "mobile_ios": "iOS Developer. 3 years of experience with Swift, SwiftUI, Xcode, REST APIs and publishing apps on the App Store.",
+  "es_mobile": "Desarrollador Mobile. 2 años de experiencia con Flutter, Dart, Kotlin, Firebase y publicación de apps en Play Store y App Store.",
+  "sec_analyst": "Security Analyst. 3 years of experience in SOC monitoring, SIEM (Splunk), incident response, vulnerability management and ISO 27001.",
+  "es_seg": "Analista de Ciberseguridad. 2 años de experiencia en pentesting, OWASP, gestión de vulnerabilidades, SIEM y respuesta a incidentes.",
+  "es_marketing": "Analista de Marketing Digital. 2 años de experiencia en SEO, SEM, Google Ads, Google Analytics, campañas y redes sociales.",
+  "pt_marketing": "Analista de Marketing Digital. 2 anos de experiência com SEO, Google Ads, Google Analytics, campanhas e mídias sociais.",
+  "es_logistica": "Analista de Logística. 3 años de experiencia en gestión de inventario, compras, cadena de suministro, SAP y Excel.",
+  "pt_contabil": "Analista Contábil. 3 anos de experiência em contabilidade, conciliações bancárias, fechamento contábil, impostos e SAP.",
+  "es_atencion": "Representante de Atención al Cliente. 1 año de experiencia en call center, atención telefónica, reclamos y CRM."
  },
  "profiles": {
   "data_analyst": {
@@ -113,7 +126,8 @@
     "fe_react": 2,
     "be_node": 2,
     "be_python": 1,
-    "pt_fe": 2
+    "pt_fe": 2,
+    "es_mobile": 1
    }
   },
   "backend_python": {
@@ -150,7 +164,9 @@
    "raw_text": "Sales representative with 3 years of experience in B2B sales, negotiation with clients, CRM management in Salesforce and reporting in Excel.",
    "relevance": {
     "sales": 2,
-    "pt_vendas": 2
+    "pt_vendas": 2,
+    "es_marketing": 1,
+    "pt_marketing": 1
    }
   },
   "analista_datos_es": {
@@ -232,7 +248,8 @@
    "raw_text": "Contador público con 4 años de experiencia en impuestos, balances, liquidación de sueldos y SAP. Excel avanzado.",
    "relevance": {
     "es_contador": 2,
-    "accountant": 2
+    "accountant": 2,
+    "pt_contabil": 2
    }
   },
   "cientista_pt": {
@@ -280,7 +297,8 @@
    "raw_text": "Executivo de vendas com 4 anos de experiência em vendas B2B, negociação com clientes e CRM Salesforce.",
    "relevance": {
     "pt_vendas": 2,
-    "sales": 2
+    "sales": 2,
+    "pt_marketing": 1
    }
   },
   "suporte_jr_pt": {
@@ -293,7 +311,8 @@
    ],
    "raw_text": "Analista de suporte com 1 ano de experiência em help desk, atendimento a usuários, Windows, redes e Active Directory.",
    "relevance": {
-    "pt_suporte": 2
+    "pt_suporte": 2,
+    "es_atencion": 1
    }
   },
   "designer_ux": {
@@ -308,7 +327,144 @@
    "raw_text": "UX/UI designer with 3 years of experience in Figma, user research, wireframes, prototyping and design systems.",
    "relevance": {
     "ux": 2,
-    "pm": 1
+    "pm": 1,
+    "ux_sr": 2,
+    "es_ux": 2,
+    "es_pm": 1
+   }
+  },
+  "mobile_dev": {
+   "experience_years": 3,
+   "skills": [
+    "Kotlin",
+    "Android",
+    "Flutter",
+    "Dart",
+    "Firebase",
+    "REST APIs"
+   ],
+   "raw_text": "Mobile developer with 3 years of experience building Android apps in Kotlin and cross-platform apps in Flutter and Dart. Firebase, REST APIs and publishing on Google Play.",
+   "relevance": {
+    "mobile_android": 2,
+    "es_mobile": 2,
+    "mobile_ios": 1,
+    "fe_react": 1
+   }
+  },
+  "seguridad_es": {
+   "experience_years": 2,
+   "skills": [
+    "Pentesting",
+    "OWASP",
+    "SIEM",
+    "Splunk",
+    "Linux",
+    "Respuesta a incidentes"
+   ],
+   "raw_text": "Analista de seguridad informática con 2 años de experiencia en pentesting de aplicaciones web con OWASP, monitoreo en SIEM (Splunk), gestión de vulnerabilidades y respuesta a incidentes.",
+   "relevance": {
+    "es_seg": 2,
+    "sec_analyst": 2,
+    "devops": 1,
+    "es_devops_sr": 1
+   }
+  },
+  "marketing_es": {
+   "experience_years": 2,
+   "skills": [
+    "SEO",
+    "SEM",
+    "Google Ads",
+    "Google Analytics",
+    "Redes sociales"
+   ],
+   "raw_text": "Analista de marketing digital con 2 años de experiencia en posicionamiento SEO, campañas SEM en Google Ads, medición con Google Analytics y gestión de redes sociales.",
+   "relevance": {
+    "es_marketing": 2,
+    "pt_marketing": 2,
+    "sales": 1
+   }
+  },
+  "logistica_es": {
+   "experience_years": 3,
+   "skills": [
+    "Inventario",
+    "Compras",
+    "SAP",
+    "Excel",
+    "Cadena de suministro"
+   ],
+   "raw_text": "Analista de logística con 3 años de experiencia en control de inventario, compras a proveedores, cadena de suministro, SAP y reportes en Excel.",
+   "relevance": {
+    "es_logistica": 2,
+    "es_contador": 1,
+    "accountant": 1
+   }
+  },
+  "po_es": {
+   "experience_years": 4,
+   "skills": [
+    "Scrum",
+    "Roadmap",
+    "Historias de usuario",
+    "Backlog",
+    "Métricas de producto"
+   ],
+   "raw_text": "Product owner con 4 años de experiencia definiendo el roadmap, escribiendo historias de usuario, priorizando el backlog con Scrum y siguiendo métricas de producto.",
+   "relevance": {
+    "es_pm": 2,
+    "pm": 2,
+    "ux": 1,
+    "es_ux": 1
+   }
+  },
+  "contabil_pt": {
+   "experience_years": 3,
+   "skills": [
+    "Contabilidade",
+    "Conciliação",
+    "Impostos",
+    "SAP",
+    "Excel"
+   ],
+   "raw_text": "Analista contábil com 3 anos de experiência em contabilidade, conciliações bancárias, fechamento mensal, apuração de impostos e SAP.",
+   "relevance": {
+    "pt_contabil": 2,
+    "accountant": 2,
+    "es_contador": 2
+   }
+  },
+  "atencion_es": {
+   "experience_years": 1,
+   "skills": [
+    "Atención al cliente",
+    "Call center",
+    "CRM",
+    "Reclamos"
+   ],
+   "raw_text": "Representante de atención al cliente con 1 año de experiencia en call center, atención telefónica y por chat, gestión de reclamos y registro en CRM.",
+   "relevance": {
+    "es_atencion": 2,
+    "pt_suporte": 1,
+    "sales": 1
+   }
+  },
+  "disenador_ux_es": {
+   "experience_years": 4,
+   "skills": [
+    "Figma",
+    "UX",
+    "Investigación de usuarios",
+    "Prototipos",
+    "Sistemas de diseño"
+   ],
+   "raw_text": "Diseñador UX/UI con 4 años de experiencia en Figma, investigación de usuarios, tests de usabilidad, prototipos y sistemas de diseño para apps web y mobile.",
+   "relevance": {
+    "es_ux": 2,
+    "ux": 2,
+    "ux_sr": 2,
+    "pm": 1,
+    "es_pm": 1
    }
   }
  }
