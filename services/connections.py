@@ -3,6 +3,7 @@ import logging
 import random
 import time
 
+from i18n import lazy as _m
 from scrapers.linkedin_connection import linkedinConnections
 from services.state import job_status
 
@@ -13,7 +14,7 @@ def run_connection_requests(credentials, company_list, message_template, search_
     try:
         job_status['connection_requests']['status'] = 'running'
         job_status['connection_requests']['progress'] = 5
-        job_status['connection_requests']['message'] = 'Starting LinkedIn connection bot...'
+        job_status['connection_requests']['message'] = _m('Iniciando las solicitudes de conexión...')
         
         linkedin_email = credentials.get('linkedin_email')
         linkedin_password = credentials.get('linkedin_password')
@@ -30,7 +31,7 @@ def run_connection_requests(credentials, company_list, message_template, search_
         # Process each item with a fresh browser instance
         for index, item in enumerate(items_to_process):
             if job_status['connection_requests'].get('stop_requested'):
-                job_status['connection_requests']['message'] = 'Process stopped by user.'
+                job_status['connection_requests']['message'] = _m('Proceso detenido.')
                 job_status['connection_requests']['status'] = 'stopped'
                 break
 
@@ -40,9 +41,9 @@ def run_connection_requests(credentials, company_list, message_template, search_
             job_status['connection_requests']['progress'] = int(search_progress_base)
             
             if search_mode == 'general':
-                job_status['connection_requests']['message'] = f"Searching for: {item}..."
+                job_status['connection_requests']['message'] = _m('Buscando: %(item)s...', item=item)
             else:
-                job_status['connection_requests']['message'] = f"Processing connection requests for {item}..."
+                job_status['connection_requests']['message'] = _m('Enviando solicitudes para %(item)s...', item=item)
             
             try:
                 bot = linkedinConnections(email=linkedin_email, password=linkedin_password, li_at_token=linkedin_token)
@@ -57,7 +58,7 @@ def run_connection_requests(credentials, company_list, message_template, search_
                         login_success = True
                         
                 if not login_success:
-                    job_status['connection_requests']['message'] = "Login failed. Stopping process."
+                    job_status['connection_requests']['message'] = _m('No se pudo iniciar sesión; se detiene el proceso.')
                     logger.error("Login failed. Aborting remaining items.")
                     break
                     
@@ -81,19 +82,19 @@ def run_connection_requests(credentials, company_list, message_template, search_
                     )
                 
                 if job_status['connection_requests'].get('stop_requested'):
-                    job_status['connection_requests']['message'] = 'Process stopped by user.'
+                    job_status['connection_requests']['message'] = _m('Proceso detenido.')
                     job_status['connection_requests']['status'] = 'stopped'
                     break
                 
                 if success:
-                    job_status['connection_requests']['message'] = f"Successfully processed {item}"
+                    job_status['connection_requests']['message'] = _m('%(item)s listo', item=item)
                     total_connections_sent += bot.total_connections_sent
                 else:
-                    job_status['connection_requests']['message'] = f"Failed to process {item}"
+                    job_status['connection_requests']['message'] = _m('No se pudo procesar %(item)s', item=item)
                     
             except Exception as e:
                 logger.error(f"Unexpected error processing {item}: {str(e)}")
-                job_status['connection_requests']['message'] = f"Error with {item}: {str(e)}"
+                job_status['connection_requests']['message'] = _m('Error con %(item)s: %(error)s', item=item, error=str(e))
             finally:
                 # Always clean up the browser before moving to next item
                 if bot:
@@ -111,10 +112,10 @@ def run_connection_requests(credentials, company_list, message_template, search_
         # Mark task as complete
         job_status['connection_requests']['status'] = 'completed'
         job_status['connection_requests']['progress'] = 100
-        job_status['connection_requests']['message'] = f"Sent a total of {total_connections_sent} connection requests"
+        job_status['connection_requests']['message'] = _m('Se enviaron %(count)s solicitudes de conexión', count=total_connections_sent)
         
     except Exception as e:
         logger.error(f"Error in connection requests: {str(e)}")
         job_status['connection_requests']['status'] = 'failed'
-        job_status['connection_requests']['message'] = f"Error: {str(e)}"
+        job_status['connection_requests']['message'] = _m('Error: %(error)s', error=str(e))
         job_status['connection_requests']['progress'] = 0

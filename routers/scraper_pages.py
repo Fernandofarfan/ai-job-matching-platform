@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse, Response
 from starlette.concurrency import run_in_threadpool
 
 import accounts
+import i18n
 import job_dispatch
 from fastapi_web import TextForm, flash, services_for, read_form, redirect, url_for
 
@@ -69,7 +70,7 @@ async def start_indeed_scraper(request: Request):
     if not searches:
         return _to_scraper(request, 'Please provide at least one valid search', 'danger')
     await run_in_threadpool(_start, request, 'indeed_scraping', {'status': 'idle', 'progress': 0,
-                            'message': 'Starting...'}, 'run_indeed_scraper_with_matching',
+                            'message': i18n.lazy('Iniciando...')}, 'run_indeed_scraper_with_matching',
                             {'indeed_email': email, 'indeed_password': password}, searches, filters)
     return _to_scraper(request, 'Indeed scraper started', 'success')
 
@@ -93,7 +94,7 @@ async def start_linkedin_scraper(request: Request):
     if not searches:
         return _to_scraper(request, 'Please provide at least one valid search', 'danger')
     await run_in_threadpool(_start, request, 'linkedin_scraping', {'status': 'idle', 'progress': 0,
-                            'message': 'Starting...'}, 'run_linkedin_scraper_with_matching',
+                            'message': i18n.lazy('Iniciando...')}, 'run_linkedin_scraper_with_matching',
                             {'linkedin_token': token, 'linkedin_email': email, 'linkedin_password': password},
                             searches, filters)
     return _to_scraper(request, 'LinkedIn scraper started', 'success')
@@ -110,7 +111,7 @@ async def start_computrabajo_scraper(request: Request):
     if not searches:
         return _to_scraper(request, 'Please provide at least one valid search', 'danger')
     await run_in_threadpool(_start, request, 'computrabajo_scraping', {
-        'status': 'running', 'progress': 0, 'message': 'Starting Computrabajo scraper...'},
+        'status': 'running', 'progress': 0, 'message': i18n.lazy('Iniciando la búsqueda en %(portal)s...', portal='Computrabajo')},
         'run_computrabajo_job', searches, os.getenv('COMPUTRABAJO_EMAIL'), os.getenv('COMPUTRABAJO_PASSWORD'))
     return _to_scraper(request, 'Computrabajo scraper started', 'success')
 
@@ -125,7 +126,7 @@ async def start_bumeran_scraper(request: Request):
     if not searches:
         return _to_scraper(request, 'Please provide at least one valid search', 'danger')
     await run_in_threadpool(_start, request, 'bumeran_scraping', {
-        'status': 'running', 'progress': 0, 'message': 'Starting Bumeran scraper...'}, 'run_bumeran_job', searches)
+        'status': 'running', 'progress': 0, 'message': i18n.lazy('Iniciando la búsqueda en %(portal)s...', portal='Bumeran')}, 'run_bumeran_job', searches)
     return _to_scraper(request, 'Bumeran scraper started', 'success')
 
 
@@ -141,7 +142,7 @@ async def start_universal_scraper(request: Request):
     portals = ('indeed', 'linkedin', 'computrabajo', 'bumeran', 'zonajobs', 'getonboard')
     await run_in_threadpool(_start, request, 'universal_scraping', {
         'status': 'running', 'progress': 0,
-        'message': 'Iniciando búsqueda en Computrabajo, Bumeran, ZonaJobs y GetOnBoard...',
+        'message': i18n.lazy('Iniciando la búsqueda en %(portal)s...', portal='Computrabajo, Bumeran, ZonaJobs, GetOnBoard'),
         'scrapers': {name: {'status': 'idle', 'progress': 0} for name in portals}},
         'run_universal_job', position, location)
     return _to_scraper(request, 'Búsqueda universal iniciada en todas las plataformas', 'success')
@@ -274,7 +275,7 @@ async def stop_connection_requests(request: Request):
     job_status = services_for(request).job_status
     if 'connection_requests' in job_status:
         job_status['connection_requests']['stop_requested'] = True
-        job_status['connection_requests']['message'] = 'Stopping process...'
+        job_status['connection_requests']['message'] = i18n.lazy('Deteniendo el proceso...')
         flash(request, 'Stopping connection requests...', 'warning')
     return redirect(request, url_for(request, 'connections'))
 
@@ -299,7 +300,7 @@ async def start_connection_requests(request: Request):
     if mode == 'general' and not term:
         return back('Please enter a search term')
     services = services_for(request)
-    services.job_status['connection_requests'] = {'status': 'idle', 'progress': 0, 'message': 'Starting...',
+    services.job_status['connection_requests'] = {'status': 'idle', 'progress': 0, 'message': i18n.lazy('Iniciando...'),
                                                         'stop_requested': False}
     accounts.thread(target=services.connections.run_connection_requests,
                     args=({'linkedin_email': email, 'linkedin_password': password, 'linkedin_token': token},

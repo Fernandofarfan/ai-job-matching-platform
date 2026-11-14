@@ -6,6 +6,7 @@ import json
 import logging
 import os
 import secrets
+from collections.abc import Mapping
 from datetime import datetime
 from html import escape
 from typing import Optional
@@ -19,10 +20,11 @@ from werkzeug.utils import secure_filename
 import accounts
 import ats_score
 import cv_storage
+import i18n
 import job_alerts
 import job_dispatch
 from document_generators import ResumeOptimizer
-from fastapi_web import (_body_within, _csrf_ok, flash, web_app_for, get_session, services_for, read_form, read_upload,
+from fastapi_web import (_body_within, _csrf_ok, flash, select_language, web_app_for, get_session, services_for, read_form, read_upload,
                          redirect, render, save_session, upload_max_bytes, url_for)
 
 logger = logging.getLogger(__name__)
@@ -200,7 +202,16 @@ def debug_directories(request: Request):
 @router.get('/status', name='status')
 def status(request: Request):
     """Progreso de las búsquedas de la cuenta."""
-    return dict(job_dispatch.refresh(services_for(request).job_status))
+    select_language(request)
+    return _translated(job_dispatch.refresh(services_for(request).job_status))
+
+
+def _translated(state):
+    """Copia del estado con los `message` en el idioma de la cuenta."""
+    if isinstance(state, Mapping):
+        return {key: (i18n.render_message(value) if key == 'message' else _translated(value))
+                for key, value in state.items()}
+    return state
 
 
 @router.get('/results/{filename}', name='download_file')

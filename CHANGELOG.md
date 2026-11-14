@@ -6,6 +6,10 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar] - Mensajes de progreso traducidos
+
+- Los mensajes de progreso de las búsquedas y de las solicitudes de conexión se muestran en el idioma de la cuenta (español, inglés o portugués). Se guardan como texto en español más sus valores (`i18n.lazy`) y `/status` los traduce al leerlos, así que sirven igual desde un thread o desde el worker de Celery.
+
 ## [Sin publicar] - Errores de producción en Sentry
 
 - Con `SENTRY_DSN`, los errores 500 de la web y las tareas de Celery que fallan llegan a Sentry, con el entorno (`SENTRY_ENVIRONMENT`, que Terraform pone en staging/prod), la versión (`SENTRY_RELEASE` o `K_REVISION` de Cloud Run) y el componente (`web` o `worker`). Antes Sentry solo se iniciaba en la web, y los 500 que atrapaba el manejador de errores no llegaban.
