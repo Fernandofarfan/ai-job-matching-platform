@@ -213,7 +213,7 @@ Antes de comenzar, asegurate de tener instalado:
 
 - ✅ **Python 3.12+** - [Descargar](https://www.python.org/downloads/)
 - ✅ **MySQL 8.0+** - [Descargar](https://dev.mysql.com/downloads/)
-- ✅ **Google Chrome** - Para Selenium WebDriver
+- ✅ **Chromium de Playwright** - `python -m playwright install --with-deps chromium` (Indeed y las conexiones de LinkedIn todavía usan Google Chrome con Selenium)
 - ✅ **Git** - Para clonar el repositorio
 - ✅ **Redis** (opcional, para Celery) - [Descargar](https://redis.io/download/) o usar Docker
 
@@ -347,10 +347,12 @@ docker-compose logs -f web
 EmpleoIA/
 │
 ├── 📂 scrapers/              # Módulos de web scraping
-│   ├── indeed_scraper.py
-│   ├── linkedin_scraper.py
-│   ├── bumeran_scraper.py
-│   └── computrabajo_scraper.py
+│   ├── common.py              # Chromium de Playwright compartido (timeouts, reintentos)
+│   ├── linkedin_pw.py         # LinkedIn (Playwright)
+│   ├── bumeran_scraper.py     # Bumeran y ZonaJobs (Playwright)
+│   ├── computrabajo_scraper.py # Computrabajo (Playwright)
+│   ├── indeed_scraper.py      # Indeed (Selenium + undetected-chromedriver)
+│   └── linkedin_connection.py # Solicitudes de conexión (Selenium)
 │
 ├── 📂 tasks/                 # 🆕 Tareas asíncronas Celery
 │   ├── scraping_tasks.py     # Scraping en background
@@ -451,7 +453,9 @@ MATCHING_BACKEND=tfidf          # embeddings = match CV-oferta por significado c
 AI_CACHE_TTL=3600               # caché de respuestas de IA deterministas (temperatura ≤ 0.5); 0 la apaga
 AI_PRICE_INPUT_PER_MTOK=        # USD por millón de tokens, para el costo estimado (opcional)
 AI_PRICE_OUTPUT_PER_MTOK=
-SCRAPER_PAGE_TIMEOUT=30  # segundos máximos de carga de cada página en los scrapers de Selenium
+SCRAPER_PAGE_TIMEOUT=30  # segundos máximos de carga de cada página en los scrapers
+SCRAPER_HEADLESS=true    # false abre la ventana de Chromium (para depurar)
+PLAYWRIGHT_WS_ENDPOINT=  # opcional: navegador remoto (ws://...) en vez de lanzar Chromium
 SCRAPER_MAX_ATTEMPTS=3   # intentos por página (espera 2 s, 4 s… entre intentos)
 
 # === Observabilidad (opcional) ===
@@ -664,7 +668,7 @@ Proyecto desarrollado desde cero para automatizar la búsqueda de empleo con tec
 
 ### Tecnologías
 
-- **Web Scraping**: [Selenium](https://www.selenium.dev/) + [undetected-chromedriver](https://github.com/ultrafunkamsterdam/undetected-chromedriver)
+- **Web Scraping**: [Playwright](https://playwright.dev/python/) (Computrabajo, Bumeran, ZonaJobs, LinkedIn) y [Selenium](https://www.selenium.dev/) + [undetected-chromedriver](https://github.com/ultrafunkamsterdam/undetected-chromedriver) (Indeed, conexiones de LinkedIn)
 - **Framework**: [FastAPI](https://fastapi.tiangolo.com/)
 - **Task Queue**: [Celery](https://docs.celeryq.dev/) + [Redis](https://redis.io/)
 - **NLP**: [spaCy](https://spacy.io/)

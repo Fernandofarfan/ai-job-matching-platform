@@ -6,13 +6,8 @@ import os
 import pandas as pd
 from bs4 import BeautifulSoup
 from datetime import datetime
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.chrome.options import Options
 
-from scrapers.common import configure_driver, get_with_retries
+from scrapers.common import Browser, get_with_retries, hrefs
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -57,98 +52,37 @@ def parse_listing(html, base_url=BASE_URL):
 
 class ComputrabajoScraper:
     def __init__(self):
-        """Initialize Computrabajo scraper"""
+        """Abre Chromium (Playwright) para Computrabajo."""
         self.base_url = BASE_URL
-        self.driver = None
-        self.wait = None
-        self._setup_driver()
-        
-    def _setup_driver(self):
-        """Setup Chrome driver with options"""
-        # Prefer remote Selenium if available
-        selenium_url = os.getenv('SELENIUM_URL')
-        if selenium_url:
-            try:
-                options = Options()
-                options.add_argument('--no-sandbox')
-                options.add_argument('--disable-dev-shm-usage')
-                options.add_argument('--disable-notifications')
-                options.add_argument('--disable-blink-features=AutomationControlled')
-                options.add_argument('--window-size=1920,1080')
-                self.driver = webdriver.Remote(command_executor=selenium_url, options=options)
-                configure_driver(self.driver)
-                self.wait = WebDriverWait(self.driver, 20)
-                logger.info(f"Connected to remote Selenium at {selenium_url}")
-                return
-            except Exception as e:
-                logger.warning(f"Remote WebDriver failed: {e}. Falling back to local driver...")
-
-        options = Options()
-        options.add_argument('--no-sandbox')
-        options.add_argument('--disable-dev-shm-usage')
-        options.add_argument('--disable-notifications')
-        options.add_argument('--disable-blink-features=AutomationControlled')
-        options.add_argument('--window-size=1920,1080')
-        
-        try:
-            self.driver = webdriver.Chrome(options=options)
-            configure_driver(self.driver)
-            self.driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
-            self.wait = WebDriverWait(self.driver, 15)
-            logger.info("Chrome driver initialized successfully")
-        except Exception as e:
-            logger.error(f"Error setting up driver: {e}")
-            raise
+        self.browser = Browser()
+        self.page = self.browser.page
 
     def _login(self, email, password):
         """Login to Computrabajo"""
         try:
             logger.info("Attempting to login to Computrabajo...")
-            login_url = "https://candidato.computrabajo.com.ar/Login.aspx"
-            self.driver.get(login_url)
-            time.sleep(3)
-
-            # Step 1: Enter Email
+            get_with_retries(self.page, "https://candidato.computrabajo.com.ar/Login.aspx")
             try:
-                email_input = self.wait.until(EC.presence_of_element_located((By.ID, "Email")))
-                email_input.clear()
-                email_input.send_keys(email)
-                time.sleep(1)
-                
-                continue_button = self.driver.find_element(By.ID, "continueWithMailButton")
-                continue_button.click()
+                self.page.fill("#Email", email)
+                self.page.click("#continueWithMailButton")
                 logger.info("Email submitted, waiting for password field...")
-                time.sleep(2)
             except Exception as e:
                 logger.error(f"Error in login step 1 (Email): {e}")
                 return False
-
-            # Step 2: Enter Password
             try:
-                # Wait for password field to be visible/interactable
-                password_input = self.wait.until(EC.element_to_be_clickable((By.ID, "password")))
-                password_input.clear()
-                password_input.send_keys(password)
-                time.sleep(1)
-                
-                submit_button = self.driver.find_element(By.ID, "btnSubmitPass")
-                submit_button.click()
+                self.page.fill("#password", password)
+                self.page.click("#btnSubmitPass")
                 logger.info("Password submitted")
-                
-                # Wait for login to complete (check for user avatar or redirect)
-                time.sleep(5)
-                
-                if "Login" not in self.driver.current_url:
+                self.page.wait_for_load_state('domcontentloaded')
+                time.sleep(3)
+                if "Login" not in self.page.url:
                     logger.info("Login successful")
                     return True
-                else:
-                    logger.warning("Login might have failed, still on login page")
-                    return False
-                    
+                logger.warning("Login might have failed, still on login page")
+                return False
             except Exception as e:
                 logger.error(f"Error in login step 2 (Password): {e}")
                 return False
-
         except Exception as e:
             logger.error(f"Login failed with exception: {e}")
             return False
@@ -163,7 +97,7 @@ class ComputrabajoScraper:
             
         try:
             logger.info(f"Visiting job page: {job_url}")
-            get_with_retries(self.driver, job_url)
+            get_with_retries(self.page, job_url)
             time.sleep(random.uniform(2, 4))
             
             # Look for "Postularme" button
@@ -179,9 +113,7 @@ class ComputrabajoScraper:
             
             for selector in apply_selectors:
                 try:
-                    elements = self.driver.find_elements(By.CSS_SELECTOR, selector)
-                    for elem in elements:
-                        href = elem.get_attribute('href')
+                    for href in hrefs(self.page, selector):
                         if href and href != '#' and 'javascript' not in href:
                             # If it's an external link (not computrabajo), return it
                             if 'computrabajo' not in href:
@@ -219,7 +151,7 @@ class ComputrabajoScraper:
                 search_url = f"{self.base_url}/trabajo-de-{position_slug}"
             
             logger.info(f"Searching Computrabajo: {search_url}")
-            get_with_retries(self.driver, search_url)
+            get_with_retries(self.page, search_url)
             time.sleep(random.uniform(3, 5))
             
             page = 1
@@ -275,12 +207,12 @@ class ComputrabajoScraper:
         """Extract all jobs from current page"""
         for selector in JOB_CARD_SELECTORS:
             try:
-                self.wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, selector)))
+                self.page.wait_for_selector(selector, timeout=15_000)
                 break
             except Exception:
                 continue
         try:
-            jobs = parse_listing(self.driver.page_source, self.base_url)
+            jobs = parse_listing(self.page.content(), self.base_url)
         except Exception as e:
             logger.error(f"Error extracting jobs from page: {e}")
             return []
@@ -296,9 +228,11 @@ class ComputrabajoScraper:
             
             # Try finding the 'Siguiente' button by text if CSS fails
             try:
-                next_button = self.driver.find_element(By.XPATH, "//span[contains(text(), 'Siguiente')] | //a[contains(text(), 'Siguiente')]")
-                if next_button.is_displayed():
+                next_button = self.page.locator(
+                    "xpath=//span[contains(text(), 'Siguiente')] | //a[contains(text(), 'Siguiente')]").first
+                if next_button.count() and next_button.is_visible():
                     next_button.click()
+                    self.page.wait_for_load_state('domcontentloaded')
                     return True
             except:
                 pass
@@ -337,8 +271,8 @@ class ComputrabajoScraper:
             return None
             
     def close(self):
-        if self.driver:
-            self.driver.quit()
+        """Cierra el navegador."""
+        self.browser.close()
 
 if __name__ == "__main__":
     scraper = ComputrabajoScraper()

@@ -6,6 +6,13 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar] - Computrabajo, Bumeran y ZonaJobs en Playwright
+
+- Computrabajo, Bumeran y ZonaJobs usan Chromium de Playwright sin ventana (`scrapers/common.Browser`) en vez de Selenium: no hace falta Chrome ni Xvfb. `SCRAPER_HEADLESS=false` abre la ventana y `PLAYWRIGHT_WS_ENDPOINT` usa un navegador remoto; `SELENIUM_URL` ya no aplica a estos portales.
+- Se borra `scrapers/linkedin_scraper.py` (Selenium, sin uso: la búsqueda de LinkedIn ya corre en `linkedin_pw.py`); sus helpers de experiencia y ciudadanía pasan a `linkedin_pw`.
+- Fix: al reintentar el login de LinkedIn o terminar la búsqueda se cerraba `scraper.driver`, que el scraper de Playwright no tiene; ahora se cierra el navegador con `close()`.
+- Indeed y las solicitudes de conexión de LinkedIn siguen en Selenium.
+
 ## [Sin publicar] - app.py partido en servicios
 
 - `app.py` queda en ~90 líneas: arma la web y un `AppServices` tipado. La lógica pasa a `services/`: `profiles.py` (perfiles y CV), `portal_search.py` (Indeed y LinkedIn), `connections.py` (solicitudes de LinkedIn), `probe_tasks.py` (pruebas de scrapers) y `state.py` (`job_status`, parser y matcher).

@@ -227,8 +227,8 @@ def run_linkedin_scraper_with_matching(credentials, searches, filters=None):
                     
                     if attempt < max_login_attempts - 1:
                         try:
-                            if scraper and scraper.driver:
-                                scraper.driver.quit()
+                            if scraper:
+                                scraper.close()
                         except:
                             pass
                         time.sleep(2)
@@ -355,7 +355,6 @@ def run_linkedin_scraper_with_matching(credentials, searches, filters=None):
     finally:
         if scraper:
             try:
-                if hasattr(scraper, 'driver') and scraper.driver:
-                    scraper.driver.quit()
+                scraper.close()
             except Exception as cleanup_error:
                 logger.error(f"Cleanup error: {cleanup_error}")
