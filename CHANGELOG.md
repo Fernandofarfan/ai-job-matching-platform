@@ -6,6 +6,12 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar] - Contrato de la API con Schemathesis
+
+- El CI prueba las 36 rutas de la API contra `/openapi.json` con Schemathesis (`scripts/api_contract.py`, `schemathesis.toml`, `requirements-contract.txt`), con la sesión de una cuenta sembrada: falla ante un error 5xx o una respuesta fuera del contrato.
+- El OpenAPI documenta los errores 400, 401, 403, 404, 409, 413, 429 y 503.
+- Fix: cambiar a un estado inexistente o borrar o cambiar una postulación que no existe daba error 500. Ahora responde 400 o 404.
+
 ## [Sin publicar] - Deploy sin tráfico y vuelta atrás automática
 
 - `deploy.yml` crea la revisión nueva de la web sin tráfico, con la etiqueta `candidate`, prueba `/api/ready` en su URL y recién ahí le pasa el tráfico. Si `/api/ready` falla después del pase, el tráfico vuelve a la revisión anterior.

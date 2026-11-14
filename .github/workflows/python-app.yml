@@ -568,6 +568,85 @@ jobs:
           if-no-files-found: ignore
 
   # ─── Cobertura: unitarios + integración ───────────────────
+  contract:
+    name: Contrato de la API (Schemathesis sobre OpenAPI)
+    runs-on: ubuntu-latest
+    needs: lint
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: contract
+        ports: ["3306:3306"]
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+      redis:
+        image: redis:7
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    env:
+      DB_HOST: 127.0.0.1
+      DB_PORT: "3306"
+      DB_USER: root
+      DB_PASSWORD: root
+      DB_NAME: contract
+      REDIS_URL: redis://127.0.0.1:6379/0
+      CELERY_BROKER_URL: redis://127.0.0.1:6379/0
+      CELERY_RESULT_BACKEND: redis://127.0.0.1:6379/0
+      LOGIN_REQUIRED: "true"
+      ALLOW_SIGNUP: "true"
+      SCRAPER_BACKEND: thread
+      ENABLE_API_DOCS: "1"
+      API_RATE_LIMIT: "100000 per minute"
+      AI_RATE_LIMIT: "100000 per minute"
+      API_CONTRACT_EMAIL: contract@example.com
+      ADMIN_EMAIL: contract@example.com
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5.6.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install --require-hashes -r requirements.txt
+          python -m venv .venv-contract
+          .venv-contract/bin/pip install --require-hashes -r requirements-contract.txt
+
+      - name: Secretos efímeros
+        run: |
+          echo "API_CONTRACT_PASSWORD=$(python -c 'import secrets; print(secrets.token_urlsafe(16))')" >> "$GITHUB_ENV"
+          python scripts/generate_vapid_keys.py >> "$GITHUB_ENV"
+          echo "SECRET_KEY=$(python -c 'import secrets; print(secrets.token_hex(32))')" >> "$GITHUB_ENV"
+          echo "CV_ENCRYPTION_KEY=$(python -c 'import base64, secrets; print(base64.urlsafe_b64encode(secrets.token_bytes(32)).decode())')" >> "$GITHUB_ENV"
+
+      - name: App con una cuenta con datos
+        run: |
+          mkdir -p uploads results logs profiles contract
+          python -m alembic upgrade head
+          LOADTEST_EMAIL=$API_CONTRACT_EMAIL LOADTEST_PASSWORD=$API_CONTRACT_PASSWORD python loadtest/seed.py --jobs 20
+          python -m uvicorn main:app --host 127.0.0.1 --port 5000 > contract/uvicorn.log 2>&1 &
+          for i in $(seq 1 60); do curl -fs http://127.0.0.1:5000/api/health > /dev/null && break; sleep 1; done
+
+      - name: Schemathesis (sin errores 5xx y respuestas según el OpenAPI)
+        run: PATH="$PWD/.venv-contract/bin:$PATH" .venv-contract/bin/python scripts/api_contract.py http://127.0.0.1:5000 contract
+
+      - name: Reporte de Schemathesis
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
+        with:
+          name: contract
+          path: contract/
+
   coverage:
     name: Cobertura (mínimo 70%)
     runs-on: ubuntu-latest
@@ -596,7 +675,7 @@ jobs:
   summary:
     name: CI Summary
     runs-on: ubuntu-latest
-    needs: [lint, test, security, integration, image, coverage, loadtest, visual, zap]
+    needs: [lint, test, security, integration, image, coverage, loadtest, visual, zap, contract]
     if: always()
     steps:
       - name: Print CI Result
@@ -612,4 +691,5 @@ jobs:
           echo "Load test: ${{ needs.loadtest.result }}"
           echo "Visual: ${{ needs.visual.result }}"
           echo "ZAP: ${{ needs.zap.result }}"
+          echo "API contract: ${{ needs.contract.result }}"
           echo "================================================="

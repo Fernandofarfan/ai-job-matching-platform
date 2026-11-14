@@ -93,3 +93,4 @@ crash.log
 *.secret.tfvars
 
 .lighthouseci/
+.schemathesis/
