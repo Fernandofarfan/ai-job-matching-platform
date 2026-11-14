@@ -82,13 +82,19 @@ def live_server(migrated_db, tmp_path_factory):
 
 
 @pytest.fixture(scope='session')
-def browser():
-    """Chromium headless compartido por los tests E2E."""
+def playwright():
+    """Una sola instancia de Playwright: la API síncrona no admite dos a la vez."""
     sync_api = pytest.importorskip('playwright.sync_api')
     with sync_api.sync_playwright() as p:
-        b = p.chromium.launch()
-        yield b
-        b.close()
+        yield p
+
+
+@pytest.fixture(scope='session')
+def browser(playwright):
+    """Chromium headless compartido por los tests E2E."""
+    b = playwright.chromium.launch()
+    yield b
+    b.close()
 
 
 @pytest.fixture

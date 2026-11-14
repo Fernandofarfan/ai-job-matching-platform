@@ -1,68 +1,39 @@
 /**
- * background.js — Service Worker de EmpleoIA Saver
- * Maneja la inicialización y mensajes globales de la extensión.
+ * background.js — Service worker de EmpleoIA Saver: configuración inicial y menú contextual.
  */
+const DEFAULT_SERVER = 'http://localhost:5000';
 
-// ── Install ───────────────────────────────────────────────────────────────
 chrome.runtime.onInstalled.addListener(({ reason }) => {
   if (reason === 'install') {
-    // Configuración inicial por defecto
-    chrome.storage.sync.set({
-      serverUrl: 'http://localhost:5000',
-      autoExtract: true,
-    });
-
-    // Abrir la plataforma al instalar (opcional)
-    // chrome.tabs.create({ url: 'http://localhost:5000' });
-    console.log('EmpleoIA Saver instalado correctamente ✓');
+    chrome.storage.sync.set({ serverUrl: DEFAULT_SERVER, autoExtract: true });
   }
-});
-
-// ── Action click (cuando no hay popup) ────────────────────────────────────
-// El popup.html se encarga de todo, esto es solo por si acaso
-chrome.action.onClicked.addListener((tab) => {
-  console.log('EmpleoIA Saver clicked on:', tab.url);
-});
-
-// ── Context Menu (click derecho > Guardar en EmpleoIA) ──────────────────
-chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
     id: 'save-to-empleoia',
-    title: '🤖 Guardar en EmpleoIA',
+    title: 'Guardar en EmpleoIA',
     contexts: ['page', 'link'],
   });
 });
 
-chrome.contextMenus.onClicked.addListener(async (info, tab) => {
-  if (info.menuItemId === 'save-to-empleoia') {
-    // Inyectar manualmente y extraer
-    try {
-      await chrome.scripting.executeScript({
-        target: { tabId: tab.id },
-        files: ['content.js'],
-      });
+async function saveFromTab(tab) {
+  await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['content.js'] });
+  const response = await chrome.tabs.sendMessage(tab.id, { action: 'extractJobData' });
+  if (!response?.success || !response?.data) {
+    throw new Error(response?.error || 'No se pudieron extraer los datos');
+  }
+  const { serverUrl, extensionToken } = await chrome.storage.sync.get(['serverUrl', 'extensionToken']);
+  const saveResponse = await fetch(`${serverUrl || DEFAULT_SERVER}/api/tracker/save-from-extension`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Extension-Token': extensionToken || '' },
+    body: JSON.stringify({ ...response.data, status: 'bookmarked', job_link: response.data.apply_url || response.data.page_url }),
+  });
+  if (!saveResponse.ok) {
+    throw new Error(`No se pudo guardar (HTTP ${saveResponse.status}); revisá el servidor y el token de la extensión`);
+  }
+  chrome.tabs.sendMessage(tab.id, { action: 'showSavedIndicator', jobTitle: response.data.title || 'Trabajo' });
+}
 
-      const response = await chrome.tabs.sendMessage(tab.id, { action: 'extractJobData' });
-      if (response?.success && response?.data) {
-        const { serverUrl, extensionToken } = await chrome.storage.sync.get(['serverUrl', 'extensionToken']);
-        const url = serverUrl || 'http://localhost:5000';
-
-        const saveResponse = await fetch(`${url}/api/tracker/save-from-extension`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-Extension-Token': extensionToken || '' },
-          body: JSON.stringify({ ...response.data, status: 'bookmarked' }),
-        });
-        if (!saveResponse.ok) {
-          throw new Error(`No se pudo guardar (HTTP ${saveResponse.status}); revisá el token de la extensión`);
-        }
-
-        chrome.tabs.sendMessage(tab.id, {
-          action: 'showSavedIndicator',
-          jobTitle: response.data.title || 'Trabajo',
-        });
-      }
-    } catch (e) {
-      console.error('Context menu save error:', e);
-    }
+chrome.contextMenus.onClicked.addListener((info, tab) => {
+  if (info.menuItemId === 'save-to-empleoia' && tab?.id) {
+    saveFromTab(tab).catch(e => console.error('EmpleoIA Saver:', e.message));
   }
 });

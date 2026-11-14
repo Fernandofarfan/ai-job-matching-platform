@@ -1,20 +1,17 @@
 {
   "manifest_version": 3,
   "name": "EmpleoIA Saver",
-  "version": "1.0.0",
-  "description": "Guardá ofertas de trabajo directamente en tu EmpleoIA con 1 click desde LinkedIn, Indeed, Bumeran y Computrabajo.",
+  "version": "1.1.0",
+  "description": "Guardá ofertas de LinkedIn, Indeed, Bumeran, ZonaJobs, Computrabajo y GetOnBoard en tu EmpleoIA con 1 click.",
   "permissions": [
     "activeTab",
     "scripting",
-    "storage"
+    "storage",
+    "contextMenus"
   ],
   "host_permissions": [
-    "https://www.linkedin.com/*",
-    "https://ar.indeed.com/*",
-    "https://www.indeed.com/*",
-    "https://www.bumeran.com.ar/*",
-    "https://ar.computrabajo.com/*",
-    "http://localhost:5000/*"
+    "http://localhost:5000/*",
+    "http://127.0.0.1:5000/*"
   ],
   "action": {
     "default_popup": "popup.html",
@@ -23,7 +20,7 @@
       "48": "icons/icon48.png",
       "128": "icons/icon128.png"
     },
-    "default_title": "EmpleoIA — Guardar trabajo"
+    "default_title": "EmpleoIA: guardar oferta"
   },
   "icons": {
     "16": "icons/icon16.png",
@@ -37,13 +34,29 @@
         "https://ar.indeed.com/viewjob*",
         "https://www.indeed.com/viewjob*",
         "https://www.bumeran.com.ar/empleos-*",
-        "https://ar.computrabajo.com/ofertas-de-trabajo*"
+        "https://www.bumeran.com.ar/empleos/*",
+        "https://www.zonajobs.com.ar/empleos-*",
+        "https://www.zonajobs.com.ar/empleos/*",
+        "https://ar.computrabajo.com/ofertas-de-trabajo*",
+        "https://www.computrabajo.com.ar/ofertas-de-trabajo*",
+        "https://www.getonbrd.com/jobs/*"
       ],
-      "js": ["content.js"],
-      "css": ["content.css"]
+      "js": [
+        "content.js"
+      ],
+      "css": [
+        "content.css"
+      ]
     }
   ],
   "background": {
     "service_worker": "background.js"
+  },
+  "minimum_chrome_version": "116",
+  "optional_host_permissions": [
+    "https://*/*"
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
   }
 }
