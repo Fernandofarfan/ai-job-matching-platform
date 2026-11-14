@@ -1,7 +1,8 @@
 """Unifica la misma oferta publicada en varios portales (búsqueda universal).
 
 Dos ofertas son la misma si tienen la misma URL, o el mismo título y la misma empresa (sin tildes,
-mayúsculas, puntuación ni sufijos societarios, y con "Senior" igual a "Sr") en ubicaciones compatibles.
+mayúsculas, puntuación ni sufijos societarios, con "Senior" igual a "Sr", sin el nombre de la empresa en el título y con
+las palabras en inglés traducidas: "Data Analyst" es "Analista de Datos") en ubicaciones compatibles.
 La precisión y la cobertura se miden con los pares etiquetados de eval/dedup_pairs.json (scripts/eval_dedup.py). Las empresas
 "Confidencial" o vacías no se unifican: sin empresa no hay forma de saber si es la misma oferta.
 """
@@ -15,7 +16,7 @@ Job = dict[str, Any]
 
 PLACEHOLDERS = {'', 'confidencial', 'empresa confidencial', 'reservado', 'no especificado', 'no especificada',
                 'n a', 'na', 'nan', 'none', 'confidential', 'not specified', 'unknown'}
-COMPANY_SUFFIXES = {'sa', 'srl', 'sas', 'sau', 'sl', 'sacif', 'saic', 'saci', 'sacifi', 'ltda', 'inc', 'llc', 'corp', 'corporation',
+COMPANY_SUFFIXES = {'sa', 'srl', 'sas', 'sau', 'sl', 'sacif', 'saic', 'saci', 'sacifi', 'cicsa', 'saicf', 'sca', 'ltda', 'inc', 'llc', 'corp', 'corporation',
                     'ltd', 'limited', 'gmbh', 'cv', 'de'}
 GENERIC_PLACES = {'argentina', 'chile', 'uruguay', 'paraguay', 'bolivia', 'peru', 'colombia', 'mexico', 'brasil',
                   'brazil', 'latam', 'remoto', 'remote', 'hibrido', 'presencial', 'reciente', 'provincia', 'de', 'del'}
@@ -31,7 +32,8 @@ TRACKING_PARAMS = {'trk', 'trkinfo', 'refid', 'trackingid', 'position', 'pagenum
 
 def _norm(value: object) -> str:
     """Minúsculas ASCII, sin puntos y con el resto de la puntuación como espacios, salvo `+` y `#` (C++, C#)."""
-    text = unicodedata.normalize('NFKD', str(value or '')).encode('ascii', 'ignore').decode().lower()
+    text = unicodedata.normalize('NFKD', str(value or ''))
+    text = ''.join(c for c in text if not unicodedata.combining(c)).lower()  # "–" queda como separador, no se pierde
     text = re.sub(r'[^a-z0-9+# ]+', ' ', text.replace('.', ''))
     return ' '.join(text.split())
 
@@ -41,12 +43,30 @@ def _known(value: object) -> bool:
     return _norm(value) not in PLACEHOLDERS
 
 
-def title_key(title: object) -> str:
-    """Título normalizado con el seniority unificado: "Senior" y "Sr." dan "sr"."""
-    text = _norm(title)
+# Palabras de puestos en inglés con su traducción, para que "Data Analyst" y "Analista de Datos" den la misma clave.
+TITLE_WORDS = {'analyst': 'analista', 'data': 'datos', 'developer': 'desarrollador', 'engineer': 'ingeniero',
+               'manager': 'gerente', 'designer': 'disenador', 'sales': 'ventas', 'accountant': 'contador',
+               'cashier': 'cajero', 'support': 'soporte', 'software': 'software', 'business': 'negocio'}
+TITLE_STOPWORDS = {'de', 'del', 'la', 'el', 'los', 'las', 'y', 'of', 'and', 'the'}
+# Separadores entre el puesto y la empresa: "Cajero - Coto", "Cajero-Coto", "Cajero–Coto", "Cajero | Coto", "Cajero en Coto".
+COMPANY_SEPARATOR = re.compile(r'\s+(?:en|at|para)\s+|\s*[-–—|/]\s*', re.IGNORECASE)
+
+
+def title_key(title: object, company: object = '') -> str:
+    """Título normalizado: seniority unificado ("Senior" y "Sr." dan "sr"), sin el nombre de la empresa al final
+    ("Cajero - Coto CICSA" y "Cajero en Coto" dan "cajero"; "Administrativo de Personal" no cambia) y con las
+    palabras en inglés traducidas y ordenadas ("Data Analyst" y "Analista de Datos" dan lo mismo)."""
+    raw = str(title or '')
+    company = company_key(company)
+    if company:
+        for match in reversed(list(COMPANY_SEPARATOR.finditer(raw))):
+            if raw[:match.start()].strip() and company_key(raw[match.end():]) == company:
+                raw = raw[:match.start()]
+                break
+    text = _norm(raw)
     for pattern, short in SENIORITY:
         text = re.sub(pattern, short, text)
-    return text
+    return ' '.join(sorted(TITLE_WORDS.get(w, w) for w in text.split() if w not in TITLE_STOPWORDS))
 
 
 def company_key(company: object) -> str:
@@ -146,7 +166,7 @@ def unify(jobs: Iterable[Job]) -> list[Job]:
     by_key: dict[tuple[str, str], list[int]] = {}
     for job in jobs:
         url = _url_key(job.get('URL'))
-        key = (title_key(job.get('Title')), company_key(job.get('Company')))
+        key = (title_key(job.get('Title'), job.get('Company')), company_key(job.get('Company')))
         index: int | None = by_url.get(url) if url else None
         if index is None and all(key):
             index = next((i for i in by_key.get(key, []) if all(_compatible(job, other) for other in groups[i])), None)
