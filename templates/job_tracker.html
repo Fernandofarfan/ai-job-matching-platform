@@ -6,24 +6,24 @@
 <div class="container-fluid px-4 mt-4">
   <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-      <h2 class="fw-bold text-dark mb-1">Tablero de Postulaciones</h2>
-      <p class="text-muted mb-0">Gestiona el estado de tus aplicaciones en tiempo real</p>
+      <h2 class="fw-bold text-dark mb-1">{{ _('Tablero de Postulaciones') }}</h2>
+      <p class="text-muted mb-0">{{ _('Gestiona el estado de tus aplicaciones en tiempo real') }}</p>
     </div>
     <div class="d-flex gap-2 flex-wrap">
-      <a href="/export/tracker/excel" class="btn btn-outline-success" id="btn-tracker-excel" title="Exportar a Excel">
+      <a href="/export/tracker/excel" class="btn btn-outline-success" id="btn-tracker-excel" title="{{ _('Exportar a Excel') }}">
         <i class="bi bi-file-earmark-excel me-1"></i> Excel
       </a>
-      <a href="/export/tracker/pdf" class="btn btn-outline-danger" id="btn-tracker-pdf" title="Exportar a PDF">
+      <a href="/export/tracker/pdf" class="btn btn-outline-danger" id="btn-tracker-pdf" title="{{ _('Exportar a PDF') }}">
         <i class="bi bi-file-earmark-pdf me-1"></i> PDF
       </a>
       <a href="/results" class="btn btn-outline-secondary">
-        <i class="bi bi-file-earmark-spreadsheet me-2"></i> Importar de Resultados
+        <i class="bi bi-file-earmark-spreadsheet me-2"></i> {{ _('Importar de Resultados') }}
       </a>
       <button class="btn btn-outline-secondary" id="toggleCompactView" data-onclick="toggleCompactView">
-        <i class="bi bi-list-ul me-2"></i> Vista Compacta
+        <i class="bi bi-list-ul me-2"></i> {{ _('Vista Compacta') }}
       </button>
       <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addJobModal">
-        <i class="bi bi-plus-lg me-2"></i> Agregar Manualmente
+        <i class="bi bi-plus-lg me-2"></i> {{ _('Agregar Manualmente') }}
       </button>
     </div>
   </div>
@@ -35,7 +35,7 @@
         <div class="fm-icon fm-blue"><i class="bi bi-send-check"></i></div>
         <div class="fm-data">
           <div class="fm-value" id="fm-val-applied">0</div>
-          <div class="fm-label">Enviados</div>
+          <div class="fm-label">{{ _('Enviados') }}</div>
         </div>
         <div class="fm-arrow"><i class="bi bi-chevron-right"></i></div>
       </div>
@@ -43,16 +43,16 @@
         <div class="fm-icon fm-yellow"><i class="bi bi-camera-video"></i></div>
         <div class="fm-data">
           <div class="fm-value" id="fm-val-interviewing">0</div>
-          <div class="fm-label">Entrevistas</div>
+          <div class="fm-label">{{ _('Entrevistas') }}</div>
         </div>
-        <div class="fm-conv" id="fm-conv-interviewing" title="Tasa de conversión desde enviados"></div>
+        <div class="fm-conv" id="fm-conv-interviewing" title="{{ _('Tasa de conversión desde enviados') }}"></div>
         <div class="fm-arrow"><i class="bi bi-chevron-right"></i></div>
       </div>
       <div class="funnel-strip-item" id="fm-negotiating">
         <div class="fm-icon fm-orange"><i class="bi bi-currency-dollar"></i></div>
         <div class="fm-data">
           <div class="fm-value" id="fm-val-negotiating">0</div>
-          <div class="fm-label">Negociando</div>
+          <div class="fm-label">{{ _('Negociando') }}</div>
         </div>
         <div class="fm-conv" id="fm-conv-negotiating"></div>
         <div class="fm-arrow"><i class="bi bi-chevron-right"></i></div>
@@ -61,7 +61,7 @@
         <div class="fm-icon fm-green"><i class="bi bi-trophy"></i></div>
         <div class="fm-data">
           <div class="fm-value" id="fm-val-accepted">0</div>
-          <div class="fm-label">Aceptados</div>
+          <div class="fm-label">{{ _('Aceptados') }}</div>
         </div>
         <div class="fm-conv" id="fm-conv-accepted"></div>
       </div>
@@ -75,16 +75,16 @@
 
   <!-- Stage Pipeline -->
   <div class="pipeline-container">
-    <div class="row g-4 flex-nowrap pb-4" style="overflow-x: auto;" tabindex="0" role="region" aria-label="Tablero de postulaciones">
+    <div class="row g-4 flex-nowrap pb-4" style="overflow-x: auto;" tabindex="0" role="region" aria-label="{{ _('Tablero de postulaciones') }}">
 
       <!-- Applied -->
       <div class="col-md-3" style="min-width: 280px;">
         <div class="stage-column stage-applied" data-stage="applied">
           <div class="stage-header">
-            <span><i class="bi bi-send me-2"></i> Enviados</span>
+            <span><i class="bi bi-send me-2"></i> {{ _('Enviados') }}</span>
             <span class="badge bg-white text-primary shadow-sm" id="count-applied">0</span>
           </div>
-          <div class="stage-body" id="stage-applied" tabindex="0" role="region" aria-label="Enviados">
+          <div class="stage-body" id="stage-applied" tabindex="0" role="region" aria-label="{{ _('Enviados') }}">
             <!-- Jobs will be loaded here -->
           </div>
         </div>
@@ -94,10 +94,10 @@
       <div class="col-md-3" style="min-width: 280px;">
         <div class="stage-column stage-interviewing" data-stage="interviewing">
           <div class="stage-header">
-            <span><i class="bi bi-camera-video me-2"></i> Entrevista</span>
+            <span><i class="bi bi-camera-video me-2"></i> {{ _('Entrevista') }}</span>
             <span class="badge bg-white text-warning shadow-sm" id="count-interviewing">0</span>
           </div>
-          <div class="stage-body" id="stage-interviewing" tabindex="0" role="region" aria-label="Entrevistas">
+          <div class="stage-body" id="stage-interviewing" tabindex="0" role="region" aria-label="{{ _('Entrevistas') }}">
             <!-- Jobs will be loaded here -->
           </div>
         </div>
@@ -107,10 +107,10 @@
       <div class="col-md-3" style="min-width: 280px;">
         <div class="stage-column stage-negotiating" data-stage="negotiating">
           <div class="stage-header">
-            <span><i class="bi bi-currency-dollar me-2"></i> Negociando</span>
+            <span><i class="bi bi-currency-dollar me-2"></i> {{ _('Negociando') }}</span>
             <span class="badge bg-white text-danger shadow-sm" id="count-negotiating">0</span>
           </div>
-          <div class="stage-body" id="stage-negotiating" tabindex="0" role="region" aria-label="Negociando">
+          <div class="stage-body" id="stage-negotiating" tabindex="0" role="region" aria-label="{{ _('Negociando') }}">
             <!-- Jobs will be loaded here -->
           </div>
         </div>
@@ -120,10 +120,10 @@
       <div class="col-md-3" style="min-width: 280px;">
         <div class="stage-column stage-accepted" data-stage="accepted">
           <div class="stage-header">
-            <span><i class="bi bi-trophy me-2"></i> Aceptado</span>
+            <span><i class="bi bi-trophy me-2"></i> {{ _('Aceptado') }}</span>
             <span class="badge bg-white text-success shadow-sm" id="count-accepted">0</span>
           </div>
-          <div class="stage-body" id="stage-accepted" tabindex="0" role="region" aria-label="Aceptados">
+          <div class="stage-body" id="stage-accepted" tabindex="0" role="region" aria-label="{{ _('Aceptados') }}">
             <!-- Jobs will be loaded here -->
           </div>
         </div>
@@ -138,66 +138,66 @@
   <div class="modal-dialog modal-lg modal-dialog-centered">
     <div class="modal-content border-0 shadow">
       <div class="modal-header bg-light border-bottom-0">
-        <h5 class="modal-title fw-bold">Agregar Empleo Manualmente</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        <h5 class="modal-title fw-bold">{{ _('Agregar Empleo Manualmente') }}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ _('Cerrar') }}"></button>
       </div>
       <div class="modal-body p-4">
         <form id="addJobForm">
           <div class="row g-3">
             <div class="col-md-6">
-              <label class="form-label small fw-bold text-muted">Puesto *</label>
-              <input aria-label="Puesto" type="text" class="form-control" name="title" required placeholder="ej. Senior Python Dev">
+              <label class="form-label small fw-bold text-muted">{{ _('Puesto *') }}</label>
+              <input aria-label="{{ _('Puesto') }}" type="text" class="form-control" name="title" required placeholder="ej. Senior Python Dev">
             </div>
             <div class="col-md-6">
-              <label class="form-label small fw-bold text-muted">Empresa *</label>
-              <input aria-label="Empresa" type="text" class="form-control" name="company" required placeholder="ej. Tech Corp">
+              <label class="form-label small fw-bold text-muted">{{ _('Empresa *') }}</label>
+              <input aria-label="{{ _('Empresa') }}" type="text" class="form-control" name="company" required placeholder="ej. Tech Corp">
             </div>
             <div class="col-md-6">
-              <label class="form-label small fw-bold text-muted">Ubicación</label>
+              <label class="form-label small fw-bold text-muted">{{ _('Ubicación') }}</label>
               <div class="input-group">
                 <span class="input-group-text bg-light border-end-0"><i class="bi bi-geo-alt"></i></span>
-                <input aria-label="Ubicación" type="text" class="form-control border-start-0" name="location" placeholder="Ciudad, País">
+                <input aria-label="{{ _('Ubicación') }}" type="text" class="form-control border-start-0" name="location" placeholder="{{ _('Ciudad, País') }}">
               </div>
             </div>
             <div class="col-md-6">
-              <label class="form-label small fw-bold text-muted">Salario</label>
+              <label class="form-label small fw-bold text-muted">{{ _('Salario') }}</label>
               <div class="input-group">
                 <span class="input-group-text bg-light border-end-0"><i class="bi bi-currency-dollar"></i></span>
-                <input aria-label="Salario" type="text" class="form-control border-start-0" name="salary" placeholder="ej. 80k - 100k">
+                <input aria-label="{{ _('Salario') }}" type="text" class="form-control border-start-0" name="salary" placeholder="ej. 80k - 100k">
               </div>
             </div>
             <div class="col-12">
-              <label class="form-label small fw-bold text-muted">Enlace</label>
+              <label class="form-label small fw-bold text-muted">{{ _('Enlace') }}</label>
               <div class="input-group">
                 <span class="input-group-text bg-light border-end-0"><i class="bi bi-link-45deg"></i></span>
-                <input aria-label="Enlace" type="url" class="form-control border-start-0" name="job_link" placeholder="https://...">
+                <input aria-label="{{ _('Enlace') }}" type="url" class="form-control border-start-0" name="job_link" placeholder="https://...">
               </div>
             </div>
             <div class="col-md-6">
-              <label class="form-label small fw-bold text-muted">Estado Inicial</label>
-              <select aria-label="Estado Inicial" class="form-select" name="status">
-                <option value="applied">Enviado</option>
-                <option value="interviewing">Entrevista</option>
-                <option value="negotiating">Negociando</option>
-                <option value="accepted">Aceptado</option>
+              <label class="form-label small fw-bold text-muted">{{ _('Estado Inicial') }}</label>
+              <select aria-label="{{ _('Estado Inicial') }}" class="form-select" name="status">
+                <option value="applied">{{ _('Enviado') }}</option>
+                <option value="interviewing">{{ _('Entrevista') }}</option>
+                <option value="negotiating">{{ _('Negociando') }}</option>
+                <option value="accepted">{{ _('Aceptado') }}</option>
               </select>
             </div>
             <div class="col-md-6">
-              <label class="form-label small fw-bold text-muted">Interés</label>
-              <select aria-label="Interés" class="form-select" name="excitement">
-                <option value="1">⭐ (Bajo)</option>
-                <option value="2">⭐⭐ (Medio-Bajo)</option>
-                <option value="3" selected>⭐⭐⭐ (Medio)</option>
-                <option value="4">⭐⭐⭐⭐ (Alto)</option>
-                <option value="5">⭐⭐⭐⭐⭐ (Muy Alto)</option>
+              <label class="form-label small fw-bold text-muted">{{ _('Interés') }}</label>
+              <select aria-label="{{ _('Interés') }}" class="form-select" name="excitement">
+                <option value="1">{{ _('⭐ (Bajo)') }}</option>
+                <option value="2">{{ _('⭐⭐ (Medio-Bajo)') }}</option>
+                <option value="3" selected>{{ _('⭐⭐⭐ (Medio)') }}</option>
+                <option value="4">{{ _('⭐⭐⭐⭐ (Alto)') }}</option>
+                <option value="5">{{ _('⭐⭐⭐⭐⭐ (Muy Alto)') }}</option>
               </select>
             </div>
             <div class="col-md-6">
-              <label class="form-label small fw-bold text-muted" for="addFollowUp">Recordar seguimiento el</label>
+              <label class="form-label small fw-bold text-muted" for="addFollowUp">{{ _('Recordar seguimiento el') }}</label>
               <input type="date" class="form-control" id="addFollowUp" name="follow_up">
             </div>
             <div class="col-md-6">
-              <label class="form-label small fw-bold text-muted" for="addDeadline">Fecha límite</label>
+              <label class="form-label small fw-bold text-muted" for="addDeadline">{{ _('Fecha límite') }}</label>
               <input type="date" class="form-control" id="addDeadline" name="deadline">
             </div>
           </div>
@@ -205,8 +205,8 @@
       </div>
       <div class="modal-footer border-top-0 bg-light">
         <button type="button" class="btn btn-link text-muted text-decoration-none"
-          data-bs-dismiss="modal">Cancelar</button>
-        <button type="button" class="btn btn-primary px-4" data-onclick="saveManualJob">Guardar Empleo</button>
+          data-bs-dismiss="modal">{{ _('Cancelar') }}</button>
+        <button type="button" class="btn btn-primary px-4" data-onclick="saveManualJob">{{ _('Guardar Empleo') }}</button>
       </div>
     </div>
   </div>
@@ -217,17 +217,17 @@
   <div class="modal-dialog modal-lg modal-dialog-centered">
     <div class="modal-content border-0 shadow">
       <div class="modal-header border-bottom-0 pb-0">
-        <h5 class="modal-title fw-bold" id="jobDetailTitle">Detalles</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        <h5 class="modal-title fw-bold" id="jobDetailTitle">{{ _('Detalles') }}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ _('Cerrar') }}"></button>
       </div>
       <div class="modal-body p-4" id="jobDetailBody">
         <!-- Details loaded dynamically -->
       </div>
       <div class="modal-footer border-top-0 bg-light justify-content-between">
         <button type="button" class="btn btn-outline-danger" data-onclick="deleteJob">
-          <i class="bi bi-trash me-2"></i> Eliminar
+          <i class="bi bi-trash me-2"></i> {{ _('Eliminar') }}
         </button>
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ _('Cerrar') }}</button>
       </div>
     </div>
   </div>
@@ -329,7 +329,7 @@
     card.dataset.jobId = job.id;
 
     const stars = '⭐'.repeat(job.excitement || 0);
-    const appliedDate = job.date_applied ? new Date(job.date_applied).toLocaleDateString() : 'Pendiente';
+    const appliedDate = job.date_applied ? new Date(job.date_applied).toLocaleDateString() : {{ _('Pendiente')|tojson }};
 
     card.innerHTML = `
     <div class="job-card-title text-truncate">${job.title}</div>
@@ -338,8 +338,8 @@
     </div>
     ${job.location ? `<div class="text-muted mb-1 small"><i class="bi bi-geo-alt me-1"></i> ${job.location}</div>` : ''}
     ${job.salary && job.salary !== 'Not specified' ? `<div class="text-success mb-2 small fw-bold"><i class="bi bi-currency-dollar me-1"></i> ${job.salary}</div>` : ''}
-    ${job.follow_up_due ? `<div class="badge bg-warning text-dark mb-2"><i class="bi bi-alarm me-1" aria-hidden="true"></i> Hacer seguimiento</div>` : ''}
-    ${!job.follow_up_due && job.follow_up ? `<div class="text-muted mb-2 small"><i class="bi bi-alarm me-1" aria-hidden="true"></i> Seguimiento: ${escapeHtml(job.follow_up)}</div>` : ''}
+    ${job.follow_up_due ? `<div class="badge bg-warning text-dark mb-2"><i class="bi bi-alarm me-1" aria-hidden="true"></i> {{ _('Hacer seguimiento') }}</div>` : ''}
+    ${!job.follow_up_due && job.follow_up ? `<div class="text-muted mb-2 small"><i class="bi bi-alarm me-1" aria-hidden="true"></i> {{ _('Seguimiento:') }} ${escapeHtml(job.follow_up)}</div>` : ''}
     <div class="job-card-footer">
       <span class="text-warning small" style="letter-spacing: -2px;">${stars}</span>
       <span class="small">${appliedDate}</span>
@@ -440,46 +440,46 @@
           <div class="row g-4">
             <div class="col-md-6">
               <div class="mb-3">
-                <label class="small text-muted fw-bold text-uppercase">Empresa</label>
+                <label class="small text-muted fw-bold text-uppercase">{{ _('Empresa') }}</label>
                 <div class="fs-5">${job.company}</div>
               </div>
               <div class="mb-3">
-                <label class="small text-muted fw-bold text-uppercase">Ubicación</label>
-                <div><i class="bi bi-geo-alt me-2"></i> ${job.location || 'No especificada'}</div>
+                <label class="small text-muted fw-bold text-uppercase">{{ _('Ubicación') }}</label>
+                <div><i class="bi bi-geo-alt me-2"></i> ${job.location || {{ _('No especificada')|tojson }}}</div>
               </div>
               <div class="mb-3">
-                <label class="small text-muted fw-bold text-uppercase">Salario</label>
-                <div class="text-success fw-bold"><i class="bi bi-currency-dollar me-2"></i> ${job.salary || 'No especificado'}</div>
+                <label class="small text-muted fw-bold text-uppercase">{{ _('Salario') }}</label>
+                <div class="text-success fw-bold"><i class="bi bi-currency-dollar me-2"></i> ${job.salary || {{ _('No especificado')|tojson }}}</div>
               </div>
               <div class="mb-3">
-                <label class="small text-muted fw-bold text-uppercase">Estado Actual</label>
+                <label class="small text-muted fw-bold text-uppercase">{{ _('Estado Actual') }}</label>
                 <div><span class="badge bg-primary">${job.status}</span></div>
               </div>
             </div>
             <div class="col-md-6">
               <div class="mb-3">
-                <label class="small text-muted fw-bold text-uppercase">Fechas</label>
+                <label class="small text-muted fw-bold text-uppercase">{{ _('Fechas') }}</label>
                 <div class="small">
-                  <div class="mb-1">Guardado: ${new Date(job.date_saved || job.created_at).toLocaleDateString()}</div>
-                  <div class="mb-1">Aplicado: ${(job.date_applied || job.applied_date) ? new Date(job.date_applied || job.applied_date).toLocaleDateString() : 'Pendiente'}</div>
+                  <div class="mb-1">{{ _('Guardado:') }} ${new Date(job.date_saved || job.created_at).toLocaleDateString()}</div>
+                  <div class="mb-1">Aplicado: ${(job.date_applied || job.applied_date) ? new Date(job.date_applied || job.applied_date).toLocaleDateString() : {{ _('Pendiente')|tojson }}}</div>
                 </div>
               </div>
               <div class="mb-3">
-                <label class="small text-muted fw-bold text-uppercase" for="detailFollowUp">Recordar seguimiento el</label>
+                <label class="small text-muted fw-bold text-uppercase" for="detailFollowUp">{{ _('Recordar seguimiento el') }}</label>
                 <input type="date" class="form-control form-control-sm" id="detailFollowUp" value="${escapeHtml((job.follow_up || '').slice(0, 10))}">
               </div>
               <div class="mb-3">
-                <label class="small text-muted fw-bold text-uppercase" for="detailDeadline">Fecha límite</label>
+                <label class="small text-muted fw-bold text-uppercase" for="detailDeadline">{{ _('Fecha límite') }}</label>
                 <input type="date" class="form-control form-control-sm" id="detailDeadline" value="${escapeHtml((job.deadline || '').slice(0, 10))}">
               </div>
               <div class="mb-3">
-                <label class="small text-muted fw-bold text-uppercase">Interés</label>
+                <label class="small text-muted fw-bold text-uppercase">{{ _('Interés') }}</label>
                 <div class="text-warning">${stars}</div>
               </div>
             </div>
             <div class="col-12">
               <div class="p-3 bg-light rounded">
-                <label class="small text-muted fw-bold text-uppercase mb-2">Enlace</label>
+                <label class="small text-muted fw-bold text-uppercase mb-2">{{ _('Enlace') }}</label>
                 <div class="text-truncate">
                   <a href="${job.job_link}" target="_blank" class="text-decoration-none">
                     <i class="bi bi-box-arrow-up-right me-2"></i> ${job.job_link}
@@ -488,7 +488,7 @@
               </div>
             </div>
             <div class="col-12">
-              <label class="small text-muted fw-bold text-uppercase" for="detailNotes">Notas</label>
+              <label class="small text-muted fw-bold text-uppercase" for="detailNotes">{{ _('Notas') }}</label>
               <textarea class="form-control" id="detailNotes" rows="3">${escapeHtml(job.notes || '')}</textarea>
               <div class="d-flex align-items-center gap-2 mt-2">
                 <button type="button" class="btn btn-sm btn-primary" data-onclick="saveReminder">
@@ -523,7 +523,7 @@
       .then(response => response.json())
       .then(data => {
         status.className = data.success ? 'small text-success' : 'small text-danger';
-        status.textContent = data.success ? 'Guardado' : (data.error || 'No se pudo guardar');
+        status.textContent = data.success ? {{ _('Guardado')|tojson }} : (data.error || {{ _('No se pudo guardar')|tojson }});
         if (data.success) loadAllJobs();
       });
   }
@@ -557,7 +557,7 @@
           loadAllJobs();
           if (data.warning) alert(data.warning);
         } else {
-          alert(data.error || data.message || 'No se pudo agregar la postulación');
+          alert(data.error || data.message || {{ _('No se pudo agregar la postulación')|tojson }});
         }
       });
   }
@@ -565,7 +565,7 @@
   function deleteJob() {
     if (!currentJobId) return;
 
-    if (confirm('¿Estás seguro de eliminar este empleo?')) {
+    if (confirm({{ _('¿Estás seguro de eliminar este empleo?')|tojson }})) {
       fetch(`/api/tracker/job/${currentJobId}`, {
         method: 'DELETE'
       })
@@ -600,10 +600,10 @@
     const btn = document.getElementById('toggleCompactView');
     if (isCompact) {
       btn.classList.add('active', 'bg-secondary', 'text-white');
-      btn.innerHTML = '<i class="bi bi-grid me-2"></i> Vista Normal';
+      btn.innerHTML = '<i class="bi bi-grid me-2"></i> {{ _('Vista Normal') }}';
     } else {
       btn.classList.remove('active', 'bg-secondary', 'text-white');
-      btn.innerHTML = '<i class="bi bi-list-ul me-2"></i> Vista Compacta';
+      btn.innerHTML = '<i class="bi bi-list-ul me-2"></i> {{ _('Vista Compacta') }}';
     }
   }
 </script>

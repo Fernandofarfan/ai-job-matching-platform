@@ -7,7 +7,7 @@
     <div class="card border-0 shadow-sm mb-4">
       <div class="card-body p-4">
         <h5 class="fw-bold mb-4">
-          <i class="bi bi-person-badge me-2 text-primary"></i> Estado de Perfiles
+          <i class="bi bi-person-badge me-2 text-primary"></i> Estado de {{ _('Perfiles') }}
         </h5>
 
         <div class="text-center mb-4">
@@ -20,7 +20,7 @@
             </svg>
             <div class="position-absolute top-50 start-50 translate-middle text-center">
               <div class="fs-3 fw-bold text-primary" id="total-profiles">0</div>
-              <div class="small text-muted">Perfiles</div>
+              <div class="small text-muted">{{ _('Perfiles') }}</div>
             </div>
           </div>
         </div>
@@ -32,31 +32,31 @@
             <span class="small fw-medium">
               <i class="bi bi-bar-chart me-2 text-muted"></i>Data Analyst
             </span>
-            <span id="status-analyst" class="badge bg-light text-muted border">Pendiente</span>
+            <span id="status-analyst" class="badge bg-light text-muted border">{{ _('Pendiente') }}</span>
           </div>
           <div class="d-flex justify-content-between align-items-center">
             <span class="small fw-medium">
               <i class="bi bi-gear me-2 text-muted"></i>Data Engineer
             </span>
-            <span id="status-engineer" class="badge bg-light text-muted border">Pendiente</span>
+            <span id="status-engineer" class="badge bg-light text-muted border">{{ _('Pendiente') }}</span>
           </div>
           <div class="d-flex justify-content-between align-items-center">
             <span class="small fw-medium">
               <i class="bi bi-clipboard-data me-2 text-muted"></i>Data Scientist
             </span>
-            <span id="status-scientist" class="badge bg-light text-muted border">Pendiente</span>
+            <span id="status-scientist" class="badge bg-light text-muted border">{{ _('Pendiente') }}</span>
           </div>
           <div class="d-flex justify-content-between align-items-center">
             <span class="small fw-medium">
               <i class="bi bi-robot me-2 text-muted"></i>AI/ML Engineer
             </span>
-            <span id="status-ai" class="badge bg-light text-muted border">Pendiente</span>
+            <span id="status-ai" class="badge bg-light text-muted border">{{ _('Pendiente') }}</span>
           </div>
           <div class="d-flex justify-content-between align-items-center">
             <span class="small fw-medium">
-              <i class="bi bi-file-text me-2 text-muted"></i>Otros
+              <i class="bi bi-file-text me-2 text-muted"></i>{{ _('Otros') }}
             </span>
-            <span id="status-other" class="badge bg-light text-muted border">Pendiente</span>
+            <span id="status-other" class="badge bg-light text-muted border">{{ _('Pendiente') }}</span>
           </div>
         </div>
       </div>
@@ -71,19 +71,19 @@
         <ul class="list-unstyled small mb-0 d-flex flex-column gap-2">
           <li class="d-flex">
             <i class="bi bi-check-circle-fill me-2 mt-1 opacity-75"></i>
-            <span>Sube un CV específico para cada rol que busques.</span>
+            <span>{{ _('Sube un CV específico para cada rol que busques.') }}</span>
           </li>
           <li class="d-flex">
             <i class="bi bi-check-circle-fill me-2 mt-1 opacity-75"></i>
-            <span>El sistema extrae tus habilidades automáticamente.</span>
+            <span>{{ _('El sistema extrae tus habilidades automáticamente.') }}</span>
           </li>
           <li class="d-flex">
             <i class="bi bi-check-circle-fill me-2 mt-1 opacity-75"></i>
-            <span>Las ofertas se emparejan con el CV más adecuado.</span>
+            <span>{{ _('Las ofertas se emparejan con el CV más adecuado.') }}</span>
           </li>
           <li class="d-flex">
             <i class="bi bi-check-circle-fill me-2 mt-1 opacity-75"></i>
-            <span>Solo verás empleos con +60% de coincidencia.</span>
+            <span>{{ _('Solo verás empleos con +60% de coincidencia.') }}</span>
           </li>
         </ul>
       </div>
@@ -95,45 +95,45 @@
     <!-- Upload Section with Drag & Drop -->
     <div class="card border-0 shadow-sm mb-4">
       <div class="card-header bg-white border-0 pt-4 px-4 pb-0">
-        <h4 class="fw-bold mb-0">Cargar Nuevo CV</h4>
+        <h4 class="fw-bold mb-0">{{ _('Cargar Nuevo CV') }}</h4>
       </div>
       <div class="card-body p-4">
         <form action="/upload_resume" method="post" enctype="multipart/form-data" id="uploadForm">
           <div class="row g-3 mb-4">
             <div class="col-md-6">
-              <label class="form-label small fw-bold text-muted">1. Tipo de Rol</label>
-              <select aria-label="Tipo de rol" class="form-select" id="role_type" name="role_type" required>
-                <option value="">Seleccionar Rol...</option>
+              <label class="form-label small fw-bold text-muted">{{ _('1. Tipo de Rol') }}</label>
+              <select aria-label="{{ _('Tipo de rol') }}" class="form-select" id="role_type" name="role_type" required>
+                <option value="">{{ _('Seleccionar Rol...') }}</option>
                 <option value="data_analyst">📊 Data Analyst</option>
                 <option value="data_engineer">⚙️ Data Engineer</option>
                 <option value="data_scientist">🔬 Data Scientist</option>
                 <option value="ai_engineer">🤖 AI/ML Engineer</option>
-                <option value="other">📄 Otros</option>
+                <option value="other">{{ _('📄 Otros') }}</option>
               </select>
             </div>
 
             <div class="col-md-6">
-              <label class="form-label small fw-bold text-muted">3. Habilidades Adicionales (Opcional)</label>
-              <input aria-label="Habilidades adicionales (opcional)" type="text" class="form-control" id="additional_skills" name="additional_skills"
-                placeholder="ej. AWS, Docker, Kubernetes" />
-              <div class="form-text small">Se sumarán a las detectadas automáticamente.</div>
+              <label class="form-label small fw-bold text-muted">{{ _('3. Habilidades Adicionales (Opcional)') }}</label>
+              <input aria-label="{{ _('Habilidades adicionales (opcional)') }}" type="text" class="form-control" id="additional_skills" name="additional_skills"
+                placeholder="{{ _('ej. AWS, Docker, Kubernetes') }}" />
+              <div class="form-text small">{{ _('Se sumarán a las detectadas automáticamente.') }}</div>
             </div>
           </div>
 
           <!-- Drag & Drop Zone -->
           <div class="mb-4">
-            <label class="form-label small fw-bold text-muted">2. Archivo (PDF/DOCX)</label>
+            <label class="form-label small fw-bold text-muted">{{ _('2. Archivo (PDF/DOCX)') }}</label>
             <div id="dropZone" class="drop-zone">
-              <input aria-label="Archivo del CV (PDF, DOCX o TXT)" type="file" class="d-none" id="resume" name="resume" accept=".pdf,.docx,.txt" required />
+              <input aria-label="{{ _('Archivo del CV (PDF, DOCX o TXT)') }}" type="file" class="d-none" id="resume" name="resume" accept=".pdf,.docx,.txt" required />
               <div id="dropZoneContent" class="drop-zone-content">
                 <i class="bi bi-cloud-arrow-up display-1 text-primary mb-3"></i>
-                <h5 class="fw-bold mb-2">Arrastra tu CV aquí</h5>
+                <h5 class="fw-bold mb-2">{{ _('Arrastra tu CV aquí') }}</h5>
                 <p class="text-muted mb-3">o haz clic para seleccionar</p>
                 <button type="button" class="btn btn-outline-primary"
                   data-onclick="openResumePicker">
-                  <i class="bi bi-folder2-open me-2"></i>Seleccionar Archivo
+                  <i class="bi bi-folder2-open me-2"></i>{{ _('Seleccionar Archivo') }}
                 </button>
-                <p class="small text-muted mt-3 mb-0">Formatos soportados: PDF, DOCX, TXT (Máx. 10MB)</p>
+                <p class="small text-muted mt-3 mb-0">{{ _('Formatos soportados: PDF, DOCX, TXT (Máx. 10MB)') }}</p>
               </div>
               <div id="filePreview" class="file-preview" style="display: none;">
                 <div class="d-flex align-items-center justify-content-between">
@@ -155,7 +155,7 @@
           </div>
 
           <button type="submit" class="btn btn-primary w-100 py-3" id="submitBtn">
-            <i class="bi bi-cloud-arrow-up me-2"></i> Subir y Analizar CV
+            <i class="bi bi-cloud-arrow-up me-2"></i> {{ _('Subir y Analizar CV') }}
           </button>
         </form>
       </div>
@@ -164,8 +164,8 @@
     <!-- Active Profiles List -->
     <div class="card border-0 shadow-sm">
       <div class="card-header bg-white border-0 pt-4 px-4 pb-0 d-flex justify-content-between align-items-center">
-        <h4 class="fw-bold mb-0">Mis Perfiles Activos</h4>
-        <button class="btn btn-sm btn-outline-secondary" data-onclick="loadAllProfiles" aria-label="Actualizar perfiles" title="Actualizar perfiles">
+        <h4 class="fw-bold mb-0">{{ _('Mis Perfiles Activos') }}</h4>
+        <button class="btn btn-sm btn-outline-secondary" data-onclick="loadAllProfiles" aria-label="{{ _('Actualizar perfiles') }}" title="{{ _('Actualizar perfiles') }}">
           <i class="bi bi-arrow-clockwise" aria-hidden="true"></i>
         </button>
       </div>
@@ -173,7 +173,7 @@
         <div id="profilesContainer">
           <div class="text-center py-5">
             <div class="spinner-border spinner-border-sm text-primary mb-2" role="status"></div>
-            <div class="small text-muted">Cargando perfiles...</div>
+            <div class="small text-muted">{{ _('Cargando perfiles...') }}</div>
           </div>
         </div>
       </div>
@@ -182,12 +182,12 @@
     <!-- Privacidad -->
     <div class="card border-0 shadow-sm mt-4">
       <div class="card-body p-4">
-        <h4 class="fw-bold mb-2">Privacidad</h4>
-        <p class="text-muted small mb-3">Podés borrar en cualquier momento tus perfiles, los CVs subidos y los documentos generados (Ley 25.326).</p>
-        <form method="POST" action="/delete_profile" data-confirm="¿Borrar todos tus perfiles, CVs y documentos generados? No se puede deshacer.">
+        <h4 class="fw-bold mb-2">{{ _('Privacidad') }}</h4>
+        <p class="text-muted small mb-3">{{ _('Podés borrar en cualquier momento tus perfiles, los CVs subidos y los documentos generados (Ley 25.326).') }}</p>
+        <form method="POST" action="/delete_profile" data-confirm="{{ _('¿Borrar todos tus perfiles, CVs y documentos generados? No se puede deshacer.') }}">
           {% if csrf_token is defined %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
           <button type="submit" class="btn btn-outline-danger btn-sm" id="deleteAllDataBtn">
-            <i class="bi bi-shield-x me-1" aria-hidden="true"></i> Borrar mis datos
+            <i class="bi bi-shield-x me-1" aria-hidden="true"></i> {{ _('Borrar mis datos') }}
           </button>
         </form>
       </div>
@@ -390,7 +390,7 @@
         document.getElementById("profilesContainer").innerHTML = `
           <div class="text-center py-5 text-muted">
             <i class="bi bi-exclamation-circle fs-4 d-block mb-2"></i>
-            Error al cargar perfiles.
+            {{ _('Error al cargar perfiles.') }}
           </div>
         `;
       });
@@ -414,8 +414,8 @@
       container.innerHTML = `
         <div class="text-center py-5 text-muted">
           <i class="bi bi-folder2-open fs-1 d-block mb-3 opacity-50"></i>
-          <h6 class="fw-bold">No hay perfiles cargados</h6>
-          <p class="small mb-0">¡Sube tu primer CV arriba!</p>
+          <h6 class="fw-bold">{{ _('No hay perfiles cargados') }}</h6>
+          <p class="small mb-0">{{ _('¡Sube tu primer CV arriba!') }}</p>
         </div>
       `;
       return;
@@ -434,7 +434,7 @@
       data_engineer: "Data Engineer",
       data_scientist: "Data Scientist",
       ai_engineer: "AI/ML Engineer",
-      other: "Otros",
+      other: {{ _('Otros')|tojson }},
     };
 
     container.innerHTML = "";
@@ -446,7 +446,7 @@
         day: 'numeric'
       });
       const skillsCount = profile.skills ? profile.skills.length : 0;
-      const resumeFilename = profile.resume_filename || "Desconocido";
+      const resumeFilename = profile.resume_filename || {{ _('Desconocido')|tojson }};
 
       const card = document.createElement('div');
       card.className = 'profile-card fade-in';
@@ -458,18 +458,18 @@
               <div class="d-flex align-items-center gap-2 mb-2">
                 <h5 class="fw-bold mb-0">${roleNames[roleType] || roleType}</h5>
                 <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25">
-                  <i class="bi bi-check-circle me-1"></i>Activo
+                  <i class="bi bi-check-circle me-1"></i>{{ _('Activo') }}
                 </span>
               </div>
               <div class="small text-muted mb-2">
                 <i class="bi bi-paperclip me-1"></i>${resumeFilename.substring(0, 40)}${resumeFilename.length > 40 ? '...' : ''}
               </div>
               <div class="small text-muted mb-3">
-                <i class="bi bi-calendar me-1"></i>Subido: ${uploadDate}
+                <i class="bi bi-calendar me-1"></i>{{ _('Subido:') }} ${uploadDate}
               </div>
               ${profile.skills && profile.skills.length > 0 ? `
               <div class="mb-2">
-                <div class="small fw-bold text-muted mb-2">Habilidades detectadas:</div>
+                <div class="small fw-bold text-muted mb-2">{{ _('Habilidades detectadas:') }}</div>
                 <div class="d-flex flex-wrap gap-1">
                   ${profile.skills.slice(0, 8).map(skill => `
                     <span class="skill-badge">${skill}</span>
@@ -483,11 +483,11 @@
             </div>
           </div>
           <div class="d-flex gap-2">
-            <a href="/view_profile/${roleType}" class="btn btn-sm btn-outline-primary" title="Ver Detalles">
+            <a href="/view_profile/${roleType}" class="btn btn-sm btn-outline-primary" title="{{ _('Ver Detalles') }}">
               <i class="bi bi-eye"></i>
             </a>
             <a href="/delete_profile/${roleType}" class="btn btn-sm btn-outline-danger" 
-               title="Eliminar" data-confirm="¿Eliminar este perfil?">
+               title="{{ _('Eliminar') }}" data-confirm="{{ _('¿Eliminar este perfil?') }}">
               <i class="bi bi-trash"></i>
             </a>
           </div>
@@ -513,13 +513,13 @@
       const statusElement = document.getElementById(elementId);
       if (statusElement) {
         if (profiles[roleType]) {
-          statusElement.textContent = "Activo";
+          statusElement.textContent = {{ _('Activo')|tojson }};
           statusElement.className = "badge bg-success bg-opacity-10 text-success border border-success border-opacity-25";
-          statusElement.innerHTML = '<i class="bi bi-check-circle me-1"></i> Activo';
+          statusElement.innerHTML = '<i class="bi bi-check-circle me-1"></i> {{ _('Activo') }}';
         } else {
-          statusElement.textContent = "Pendiente";
+          statusElement.textContent = {{ _('Pendiente')|tojson }};
           statusElement.className = "badge bg-light text-muted border";
-          statusElement.innerHTML = 'Pendiente';
+          statusElement.innerHTML = {{ _('Pendiente')|tojson }};
         }
       }
     }

@@ -1,16 +1,16 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="mb-4">
-  <h1 class="h2 fw-bold text-dark mb-1">Alertas de empleo</h1>
-  <p class="text-muted mb-0">Guardá una búsqueda y te avisamos solo cuando aparecen ofertas nuevas. Si la misma oferta está en varios portales, te llega una vez.</p>
+  <h1 class="h2 fw-bold text-dark mb-1">{{ _('Alertas de empleo') }}</h1>
+  <p class="text-muted mb-0">{{ _('Guardá una búsqueda y te avisamos solo cuando aparecen ofertas nuevas. Si la misma oferta está en varios portales, te llega una vez.') }}</p>
 </div>
 
 {% if db_error %}
-<div class="alert alert-danger" role="alert">La base de datos no responde: las alertas necesitan MySQL.</div>
+<div class="alert alert-danger" role="alert">{{ _('La base de datos no responde: las alertas necesitan MySQL.') }}</div>
 {% endif %}
 {% if not channels.email and not channels.telegram and not channels.push %}
 <div class="alert alert-warning" role="alert">
-  No hay canales configurados. Definí <code>SMTP_USER</code>/<code>SMTP_PASSWORD</code> o <code>TELEGRAM_BOT_TOKEN</code>/<code>TELEGRAM_CHAT_ID</code> en <code>.env</code>; mientras tanto las ofertas nuevas se registran pero no se envían.
+  {{ _('No hay canales configurados. Definí') }} <code>SMTP_USER</code>/<code>SMTP_PASSWORD</code> o <code>TELEGRAM_BOT_TOKEN</code>/<code>TELEGRAM_CHAT_ID</code> {{ _('en') }} <code>.env</code>{{ _('; mientras tanto las ofertas nuevas se registran pero no se envían.') }}
 </div>
 {% endif %}
 
@@ -18,23 +18,23 @@
   <div class="col-lg-4">
     <div class="card border-0 shadow-sm">
       <div class="card-body p-4">
-        <h2 class="h5 fw-bold mb-3">Nueva alerta</h2>
+        <h2 class="h5 fw-bold mb-3">{{ _('Nueva alerta') }}</h2>
         <form method="POST" action="{{ url_for('alerts') }}">
           {% if csrf_token is defined %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
           <div class="mb-3">
-            <label for="position" class="form-label fw-bold">Puesto</label>
-            <input type="text" class="form-control" id="position" name="position" maxlength="200" required placeholder="Ej.: Data Analyst">
+            <label for="position" class="form-label fw-bold">{{ _('Puesto') }}</label>
+            <input type="text" class="form-control" id="position" name="position" maxlength="200" required placeholder="{{ _('Ej.: Data Analyst') }}">
           </div>
           <div class="mb-3">
-            <label for="location" class="form-label fw-bold">Ubicación</label>
-            <input type="text" class="form-control" id="location" name="location" maxlength="200" placeholder="Ej.: Buenos Aires (opcional)">
+            <label for="location" class="form-label fw-bold">{{ _('Ubicación') }}</label>
+            <input type="text" class="form-control" id="location" name="location" maxlength="200" placeholder="{{ _('Ej.: Buenos Aires (opcional)') }}">
           </div>
           <div class="mb-3">
-            <label for="name" class="form-label fw-bold">Nombre</label>
-            <input type="text" class="form-control" id="name" name="name" maxlength="120" placeholder="Opcional">
+            <label for="name" class="form-label fw-bold">{{ _('Nombre') }}</label>
+            <input type="text" class="form-control" id="name" name="name" maxlength="120" placeholder="{{ _('Opcional') }}">
           </div>
           <fieldset class="mb-3">
-            <legend class="form-label fw-bold fs-6">Portales</legend>
+            <legend class="form-label fw-bold fs-6">{{ _('Portales') }}</legend>
             {% for p in portals %}
             <div class="form-check form-check-inline">
               <input class="form-check-input" type="checkbox" name="portals" value="{{ p }}" id="portal-{{ p }}" checked>
@@ -43,26 +43,26 @@
             {% endfor %}
           </fieldset>
           <fieldset class="mb-3">
-            <legend class="form-label fw-bold fs-6">Avisarme por</legend>
+            <legend class="form-label fw-bold fs-6">{{ _('Avisarme por') }}</legend>
             <div class="form-check form-check-inline">
               <input class="form-check-input" type="checkbox" name="channels" value="email" id="ch-email" {% if channels.email %}checked{% endif %}>
-              <label class="form-check-label" for="ch-email">Email{% if not channels.email %} (sin configurar){% endif %}</label>
+              <label class="form-check-label" for="ch-email">Email{% if not channels.email %} {{ _('(sin configurar)') }}{% endif %}</label>
             </div>
             <div class="form-check form-check-inline">
               <input class="form-check-input" type="checkbox" name="channels" value="telegram" id="ch-telegram" {% if channels.telegram %}checked{% endif %}>
-              <label class="form-check-label" for="ch-telegram">Telegram{% if not channels.telegram %} (sin configurar){% endif %}</label>
+              <label class="form-check-label" for="ch-telegram">Telegram{% if not channels.telegram %} {{ _('(sin configurar)') }}{% endif %}</label>
             </div>
             <div class="form-check form-check-inline">
               <input class="form-check-input" type="checkbox" name="channels" value="push" id="ch-push" {% if channels.push %}checked{% endif %}>
-              <label class="form-check-label" for="ch-push">Notificación push{% if not channels.push %} (activala en Mi cuenta){% endif %}</label>
+              <label class="form-check-label" for="ch-push">{{ _('Notificación push') }}{% if not channels.push %} {{ _('(activala en Mi cuenta)') }}{% endif %}</label>
             </div>
           </fieldset>
           <div class="mb-3">
-            <label for="min_score" class="form-label fw-bold">Match mínimo con tu CV (%)</label>
+            <label for="min_score" class="form-label fw-bold">{{ _('Match mínimo con tu CV (%)') }}</label>
             <input type="number" class="form-control" id="min_score" name="min_score" min="0" max="100" step="5" value="0" aria-describedby="min-score-help">
-            <div id="min-score-help" class="form-text">Se aplica solo si cargaste un CV en Perfil.</div>
+            <div id="min-score-help" class="form-text">{{ _('Se aplica solo si cargaste un CV en Perfil.') }}</div>
           </div>
-          <button type="submit" class="btn btn-primary w-100"><i class="bi bi-bell me-2"></i>Guardar alerta</button>
+          <button type="submit" class="btn btn-primary w-100"><i class="bi bi-bell me-2"></i>{{ _('Guardar alerta') }}</button>
         </form>
       </div>
     </div>
@@ -71,25 +71,25 @@
   <div class="col-lg-8">
     <div class="card border-0 shadow-sm">
       <div class="card-body p-4">
-        <h2 class="h5 fw-bold mb-3">Mis alertas</h2>
+        <h2 class="h5 fw-bold mb-3">{{ _('Mis alertas') }}</h2>
         {% if not searches %}
-        <p class="text-muted mb-0">Todavía no guardaste ninguna alerta.</p>
+        <p class="text-muted mb-0">{{ _('Todavía no guardaste ninguna alerta.') }}</p>
         {% else %}
         <div class="table-responsive" tabindex="0">
           <table class="table align-middle">
-            <thead><tr><th scope="col">Búsqueda</th><th scope="col">Portales</th><th scope="col">Avisos</th><th scope="col">Última revisión</th><th scope="col"><span class="visually-hidden">Acciones</span></th></tr></thead>
+            <thead><tr><th scope="col">{{ _('Búsqueda') }}</th><th scope="col">{{ _('Portales') }}</th><th scope="col">{{ _('Avisos') }}</th><th scope="col">{{ _('Última revisión') }}</th><th scope="col"><span class="visually-hidden">{{ _('Acciones') }}</span></th></tr></thead>
             <tbody>
             {% for s in searches %}
               <tr class="{% if not s.active %}text-muted{% endif %}">
-                <td><strong>{{ s.name }}</strong><br><small>{{ s.position }}{% if s.location %} · {{ s.location }}{% endif %}{% if s.min_score %} · ≥ {{ s.min_score|int }}%{% endif %}</small>{% if not s.active %} <span class="badge bg-secondary">Pausada</span>{% endif %}</td>
+                <td><strong>{{ s.name }}</strong><br><small>{{ s.position }}{% if s.location %} · {{ s.location }}{% endif %}{% if s.min_score %} · ≥ {{ s.min_score|int }}%{% endif %}</small>{% if not s.active %} <span class="badge bg-secondary">{{ _('Pausada') }}</span>{% endif %}</td>
                 <td class="text-capitalize">{{ s.portals|join(', ') }}</td>
                 <td>{{ s.channels|join(', ') or '—' }}</td>
-                <td><small>{% if s.last_run_at %}{{ s.last_run_at.strftime('%d/%m %H:%M') }}<br>{{ s.last_result }}{% else %}Nunca{% endif %}</small></td>
+                <td><small>{% if s.last_run_at %}{{ s.last_run_at.strftime('%d/%m %H:%M') }}<br>{{ s.last_result }}{% else %}{{ _('Nunca') }}{% endif %}</small></td>
                 <td class="text-end text-nowrap">
                   {% for action, icon, label in [('run_alert', 'play', 'Buscar ahora'), ('toggle_alert', 'pause' if s.active else 'arrow-repeat', 'Pausar' if s.active else 'Reanudar'), ('delete_alert', 'trash', 'Borrar')] %}
                   <form method="POST" action="{{ url_for(action, search_id=s.id) }}" class="d-inline">
                     {% if csrf_token is defined %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
-                    <button type="submit" class="btn btn-sm btn-outline-{{ 'danger' if action == 'delete_alert' else 'secondary' }}" title="{{ label }}" aria-label="{{ label }}: {{ s.name }}"><i class="bi bi-{{ icon }}"></i></button>
+                    <button type="submit" class="btn btn-sm btn-outline-{{ 'danger' if action == 'delete_alert' else 'secondary' }}" title="{{ _(label) }}" aria-label="{{ _(label) }}: {{ s.name }}"><i class="bi bi-{{ icon }}"></i></button>
                   </form>
                   {% endfor %}
                 </td>
