@@ -21,8 +21,11 @@ exclude = ["^alembic/", "^chrome_extension/", "^build/", "^venv"]
 [tool.coverage.run]
 source = ["."]
 omit = ["tests/*", "tests_integration/*", "scripts/*", "alembic/*", "locustfile.py", "load_tests/*"]
+# los E2E levantan la app con uvicorn en otro proceso: también se mide
+parallel = true
+patch = ["subprocess"]
 
 [tool.coverage.report]
-# se sube por etapas a medida que se suman tests
-fail_under = 57
+# mínimo de tests unitarios + integración juntos (job "coverage" del CI); los unitarios solos piden 60
+fail_under = 70
 skip_covered = true
