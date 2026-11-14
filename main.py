@@ -21,6 +21,7 @@ import rate_limit
 import security_headers
 from routers import account_pages, ai, analytics, auth_pages, content_pages, scraper_pages, documents, insights, pages, tracker
 from routers import push as push_router
+from routers import webhooks
 
 PUBLIC_API_PATHS = {"/api/health", "/api/ready"}
 EXTENSION_API_PATHS = {"/api/tracker/save-from-extension"}
@@ -181,6 +182,7 @@ def create_app(web_app=None) -> FastAPI:
     app.include_router(account_pages.router)
     app.include_router(content_pages.router)
     app.include_router(scraper_pages.router)
+    app.include_router(webhooks.router)
 
     app.get("/metrics", include_in_schema=False)(metrics)
     app.get("/api/health", name="health_check")(health_check)

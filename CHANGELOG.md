@@ -6,6 +6,14 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar] - Emails por proveedor, con reintentos y rebotes
+
+- `email_delivery.py`: `EMAIL_PROVIDER=smtp` (por defecto; sirve para SES SMTP) o `sendgrid` (`SENDGRID_API_KEY`, `EMAIL_FROM`). Todos los emails pasan por ahí.
+- Reintentos: las fallas temporales (SMTP 4xx o conexión caída, HTTP 429/5xx) se reintentan `EMAIL_MAX_ATTEMPTS` veces (3 por defecto), con espera creciente desde `EMAIL_RETRY_SECONDS`. Antes un email que fallaba se perdía sin reintento.
+- Rebotes: un rechazo permanente de SMTP sobre el destinatario, y los rebotes, denuncias de spam y `dropped` que informa SendGrid en `POST /webhooks/sendgrid` (firma ECDSA con `SENDGRID_WEBHOOK_PUBLIC_KEY`), agregan la dirección a `email_suppressions`. A esas direcciones no se les manda más. Se guarda solo el SHA-256 del email.
+- Resumen semanal: si el worker se corta entre tomar el resumen y mandarlo, a los `WEEKLY_DIGEST_CLAIM_MINUTES` minutos (60 por defecto) se vuelve a mandar. Antes esa semana se perdía.
+- Migración `0018_email_delivery`.
+
 ## [Sin publicar] - "Me interesa / no me interesa" en las ofertas
 
 - Resultados: cada oferta tiene "me interesa" y "no me interesa"; tocar la marca activa la quita. Se guarda por cuenta en la tabla nueva `job_feedback` (migración `0017_job_feedback`), identificada por título y empresa, así que vale para la misma oferta en otro portal. `POST /api/job_feedback`.

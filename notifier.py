@@ -100,6 +100,7 @@ class NotificationManager:
         """Retorna la configuración de notificaciones desde .env."""
         return {
             "smtp_configured": bool(os.getenv("SMTP_USER") and os.getenv("SMTP_PASSWORD")),
+            "email_provider": os.getenv("EMAIL_PROVIDER", "smtp"),
             "notification_email": os.getenv("NOTIFICATION_EMAIL", ""),
             "smtp_host": os.getenv("SMTP_HOST", "smtp.gmail.com"),
             "celery_available": self._use_celery,

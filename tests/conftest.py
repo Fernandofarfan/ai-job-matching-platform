@@ -303,6 +303,7 @@ def _accounts_sqlite():
     import push  # noqa: F401
     import security_events  # noqa: F401
     import two_factor  # noqa: F401
+    import email_delivery  # noqa: F401
     accounts.Base.metadata.create_all(engine)
     accounts.configure(sessionmaker(bind=engine))
     yield engine
