@@ -6,6 +6,12 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar] - Ofertas repetidas entre portales
+
+- La búsqueda universal unifica la misma oferta publicada en varios portales (`job_dedup.unify`): misma URL, o mismo título y empresa sin tildes, puntuación ni sufijos societarios, en ubicaciones compatibles. Se queda la copia con la descripción más larga y completa los datos que le falten con las otras.
+- Cada oferta trae `Portales` ("Bumeran, Computrabajo") y `Otros_enlaces`; la tabla de resultados muestra la columna "Portales".
+- Las ofertas de empresa "Confidencial" o vacía no se unifican por título.
+
 ## [Sin publicar] - Versiones y releases
 
 - `VERSION` es la versión de la app (semver). `/api/health` muestra la versión y el commit de la imagen, y Sentry reporta `empleoia@X.Y.Z+<commit>`.

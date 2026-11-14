@@ -9,6 +9,7 @@ from typing import Any, Callable, Optional
 import pandas as pd
 
 import accounts
+import job_dedup
 import scraper_stats
 from i18n import lazy as _m
 from scrapers.bumeran_scraper import BumeranScraper
@@ -134,7 +135,7 @@ def run_bumeran_job(searches: list[dict[str, Any]]) -> None:
 
 def run_universal_job(position: str, location: str) -> None:
     try:
-        all_results = []
+        all_results: list[Job] = []
         scraper_results: dict[str, list[Job]] = {
             'indeed': [],
             'linkedin': [],
@@ -269,6 +270,10 @@ def run_universal_job(position: str, location: str) -> None:
 
         for source, jobs in scraper_results.items():
             all_results.extend(jobs)
+        found = len(all_results)
+        all_results = job_dedup.unify(all_results)
+        if found > len(all_results):
+            logger.info(f"Búsqueda universal: {found - len(all_results)} ofertas repetidas entre portales unificadas")
 
         if all_results:
             # Create consolidated DataFrame

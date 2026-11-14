@@ -43,7 +43,7 @@ warn_return_any = true
 
 # Etapa 3: scrapers, IA y parser de CVs. Playwright, BeautifulSoup y google-genai traen tipos; se exige todo.
 [[tool.mypy.overrides]]
-module = ["scrapers.*", "ai_engine", "resume_parser", "embeddings", "scraping_jobs"]
+module = ["scrapers.*", "ai_engine", "resume_parser", "embeddings", "scraping_jobs", "job_dedup"]
 disallow_untyped_defs = true
 disallow_incomplete_defs = true
 disallow_untyped_calls = true
