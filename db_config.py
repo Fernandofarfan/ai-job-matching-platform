@@ -171,7 +171,7 @@ class DatabaseManager:
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 company_name VARCHAR(255) NOT NULL UNIQUE,
                 excluded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
             """
             cursor.execute(query)
             connection.commit()
@@ -216,7 +216,8 @@ class DatabaseManager:
             query = """
                 SELECT DISTINCT a.company, COUNT(*) as application_count
                 FROM applications a
-                LEFT JOIN networking_exclusions ne ON a.company = ne.company_name
+                LEFT JOIN networking_exclusions ne
+                    ON a.company = ne.company_name COLLATE utf8mb4_unicode_ci
                 WHERE a.status = 'applied' AND ne.company_name IS NULL
                 GROUP BY a.company
                 ORDER BY MAX(a.applied_date) DESC

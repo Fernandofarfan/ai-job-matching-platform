@@ -1320,14 +1320,13 @@ def api_get_applications():
         return jsonify({'success': False, 'error': str(e)}), 500
 @app.route('/view_profile')
 def view_profile():
-    user_profile = get_user_profile()
-    if not user_profile:
+    profiles = get_all_user_profiles()
+    if not profiles:
         flash('No profile found. Please upload a resume first.', 'warning')
         return redirect(url_for('profile'))
-    
-    return render_template('view_profile.html', 
-                         profile=user_profile, 
-                         resume_filename=user_profile.get('resume_filename'))
+
+    latest_role = max(profiles, key=lambda role: profiles[role].get('upload_date', ''))
+    return redirect(url_for('view_profile_by_role', role_type=latest_role))
 
 ALLOWED_RESUME_EXTENSIONS = {'.pdf', '.docx', '.txt'}
 
@@ -1339,7 +1338,7 @@ def upload_resume():
         return redirect(url_for('profile'))
     
     file = request.files['resume']
-    role_type = request.form.get('role_type')
+    role_type = secure_filename(request.form.get('role_type', ''))
     additional_skills = request.form.get('additional_skills', '')
     
     if not role_type:
@@ -1361,7 +1360,7 @@ def upload_resume():
             return redirect(url_for('profile'))
 
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        filename = f"resume_{secure_filename(role_type)}_{timestamp}_{original_name}"
+        filename = f"resume_{role_type}_{timestamp}_{original_name}"
         filepath = os.path.join(uploads_dir, filename)
         file.save(filepath)
         
