@@ -94,11 +94,7 @@ jobs:
             prometheus-client==0.26.0 \
             sentry-sdk==2.74.0 \
             python-docx==0.8.11 \
-            scikit-learn==1.9.1 \
-            spacy==3.8.18
-
-      - name: Download spacy model (small, for CI)
-        run: python -m spacy download es_core_news_sm || true
+            scikit-learn==1.9.1
 
       - name: Create required directories
         run: mkdir -p uploads results logs profiles temp/test_tasks
@@ -247,7 +243,6 @@ jobs:
           python -m pip install --upgrade pip
           pip install --require-hashes -r requirements.txt
           pip install pytest==9.2.0 pytest-cov==7.1.0
-          python -m spacy download en_core_web_sm || true
           python -m playwright install --with-deps chromium
           sudo apt-get install -y -qq xvfb
 

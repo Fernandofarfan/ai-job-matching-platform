@@ -3,7 +3,15 @@ version: "3.9"
 # ============================================================
 # EmpleoIA — Docker Compose
 # Levanta: web (FastAPI) + MySQL + Redis + Celery Worker + Flower
+# Requiere en .env: REDIS_PASSWORD (y DB_PASSWORD, SECRET_KEY, FLOWER_PASSWORD fuera de local)
 # ============================================================
+
+# Logs de cada contenedor: hasta 3 archivos de 10 MB, así no llenan el disco
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
 
 services:
 
@@ -22,6 +30,7 @@ services:
       mysql:
         condition: service_healthy
     restart: "no"
+    logging: *default-logging
     networks:
       - empleoia-net
 
@@ -37,7 +46,7 @@ services:
       - DB_USER=root
       - DB_PASSWORD=${DB_PASSWORD:-empleoia_pass}
       - DB_NAME=job_tracker
-      - REDIS_URL=redis://redis:6379/0
+      - REDIS_URL=redis://:${REDIS_PASSWORD:?Definí REDIS_PASSWORD en .env (ver .env.example)}@redis:6379/0
       - SCRAPER_BACKEND=celery
       - INDEED_SAVE_WITHOUT_DESCRIPTION=${INDEED_SAVE_WITHOUT_DESCRIPTION:-false}
       - AI_BACKEND=celery
@@ -80,6 +89,7 @@ services:
       timeout: 10s
       retries: 3
       start_period: 30s
+    logging: *default-logging
     networks:
       - empleoia-net
 
@@ -98,7 +108,7 @@ services:
       - DB_USER=root
       - DB_PASSWORD=${DB_PASSWORD:-empleoia_pass}
       - DB_NAME=job_tracker
-      - REDIS_URL=redis://redis:6379/0
+      - REDIS_URL=redis://:${REDIS_PASSWORD:?Definí REDIS_PASSWORD en .env (ver .env.example)}@redis:6379/0
       - SCRAPER_BACKEND=celery
       - INDEED_SAVE_WITHOUT_DESCRIPTION=${INDEED_SAVE_WITHOUT_DESCRIPTION:-false}
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
@@ -124,6 +134,7 @@ services:
       migrate:
         condition: service_completed_successfully
     restart: unless-stopped
+    logging: *default-logging
     networks:
       - empleoia-net
 
@@ -132,9 +143,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    command: celery -A celery_app beat --loglevel=info --scheduler celery.beat:PersistentScheduler
+    command: celery -A celery_app beat --loglevel=info --scheduler celery.beat:PersistentScheduler --schedule temp/celerybeat-schedule
     environment:
-      - REDIS_URL=redis://redis:6379/0
+      - REDIS_URL=redis://:${REDIS_PASSWORD:?Definí REDIS_PASSWORD en .env (ver .env.example)}@redis:6379/0
       - SCRAPER_BACKEND=celery
       - DB_HOST=mysql
       - DB_PASSWORD=${DB_PASSWORD:-empleoia_pass}
@@ -147,22 +158,24 @@ services:
       - redis
       - celery_worker
     restart: unless-stopped
+    logging: *default-logging
     networks:
       - empleoia-net
 
   # ── Flower (Celery Dashboard) ─────────────────────────────────────
   flower:
     image: mher/flower:2.0.0
-    command: celery flower --broker=redis://redis:6379/0 --port=5555
+    command: celery flower --port=5555
     ports:
       - "127.0.0.1:5555:5555"
     depends_on:
       - redis
       - celery_worker
     environment:
-      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD:?Definí REDIS_PASSWORD en .env (ver .env.example)}@redis:6379/0
       - FLOWER_BASIC_AUTH=${FLOWER_USER:-admin}:${FLOWER_PASSWORD:-admin123}
     restart: unless-stopped
+    logging: *default-logging
     networks:
       - empleoia-net
 
@@ -183,6 +196,7 @@ services:
     depends_on:
       - web
     restart: unless-stopped
+    logging: *default-logging
     networks:
       - empleoia-net
 
@@ -202,6 +216,7 @@ services:
     depends_on:
       - prometheus
     restart: unless-stopped
+    logging: *default-logging
     networks:
       - empleoia-net
 
@@ -212,12 +227,16 @@ services:
       - "127.0.0.1:6379:6379"
     volumes:
       - redis_data:/data
-    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD:?Definí REDIS_PASSWORD en .env (ver .env.example)}
+    # sh expande la contraseña sin dejarla en `docker inspect`; docker-entrypoint.sh baja a usuario redis
+    command: ["sh", "-c", "exec docker-entrypoint.sh redis-server --requirepass \"$$REDIS_PASSWORD\" --maxmemory 256mb --maxmemory-policy allkeys-lru"]
     restart: unless-stopped
+    logging: *default-logging
     networks:
       - empleoia-net
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "REDISCLI_AUTH=\"$$REDIS_PASSWORD\" redis-cli ping | grep -q PONG"]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -235,6 +254,7 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
     restart: unless-stopped
+    logging: *default-logging
     networks:
       - empleoia-net
     healthcheck:

@@ -5,6 +5,7 @@ import os
 import logging
 
 import sys
+from logging.handlers import RotatingFileHandler
 from dotenv import load_dotenv
 
 # Cargar variables de entorno desde .env
@@ -20,11 +21,13 @@ app = web_settings.WebApp()
 # Con `python app.py` este módulo es __main__: los routers deben importar este mismo módulo
 sys.modules.setdefault('app', sys.modules[__name__])
 
+os.makedirs('logs', exist_ok=True)
 logging.basicConfig(
     level=os.getenv('LOG_LEVEL', 'INFO').upper(),
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('logs/app.log'),
+        # logs/app.log no crece sin límite: 5 MB por archivo, se guardan los 3 anteriores
+        RotatingFileHandler('logs/app.log', maxBytes=5 * 1024 * 1024, backupCount=3, encoding='utf-8'),
         logging.StreamHandler()
     ]
 )

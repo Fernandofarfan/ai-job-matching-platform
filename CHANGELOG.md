@@ -6,6 +6,17 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar] - Contenedores endurecidos
+
+- La imagen corre con un usuario sin privilegios (UID/GID 1000, configurables con `APP_UID`/`APP_GID`); el código queda
+  de root y solo `uploads/`, `results/`, `profiles/`, `temp/` y `logs/` son escribibles. Si esos directorios quedaron
+  de root por una versión anterior: `sudo chown -R 1000:1000 uploads results profiles temp logs`.
+- Redis pide contraseña: `REDIS_PASSWORD` es obligatoria en docker compose y arma la URL de web, worker, beat y Flower.
+  En Terraform, Memorystore tiene AUTH y `REDIS_URL`/`RATELIMIT_STORAGE_URI` pasan a Secret Manager.
+- Logs con tope: cada contenedor rota a los 10 MB (3 archivos) y `logs/app.log` a los 5 MB (3 anteriores).
+- Celery beat guarda su agenda en `temp/celerybeat-schedule`.
+- Sin spaCy: el modelo se cargaba pero nunca se usaba (y la imagen no lo traía). Salen spaCy y 20 dependencias indirectas.
+
 ## [Sin publicar] - Indeed sin descripción (opcional)
 
 - `INDEED_SAVE_WITHOUT_DESCRIPTION=true`: si Indeed pide login para ver una oferta, esa y las siguientes de la búsqueda

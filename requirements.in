@@ -36,7 +36,6 @@ requests==2.34.2
 pywebpush==1.14.1
 
 # --- NLP & Parsing ---
-spacy==3.8.18
 pypdf==7.0.1
 python-docx==0.8.11
 

@@ -1,4 +1,4 @@
-"""Calidad del matching con TF-IDF real (sin los mocks de sklearn/spaCy de tests/conftest.py)."""
+"""Calidad del matching con TF-IDF real (sin los mocks de sklearn de tests/conftest.py)."""
 import json
 import matching_eval
 

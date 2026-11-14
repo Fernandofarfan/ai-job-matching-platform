@@ -21,7 +21,8 @@ locals {
     "storage.googleapis.com",
   ]
 
-  redis_url = var.enable_redis ? "redis://${google_redis_instance.empleoia_redis[0].host}:${google_redis_instance.empleoia_redis[0].port}/0" : ""
+  # Con AUTH: la URL lleva la contraseña de Memorystore, así que va a Secret Manager y no a plain_env.
+  redis_url = var.enable_redis ? "redis://:${google_redis_instance.empleoia_redis[0].auth_string}@${google_redis_instance.empleoia_redis[0].host}:${google_redis_instance.empleoia_redis[0].port}/0" : ""
 
   # Variables en texto plano comunes a web, worker y migraciones.
   plain_env = merge(
@@ -40,7 +41,6 @@ locals {
       LOG_LEVEL             = "INFO"
       TRUSTED_PROXY_HOPS    = "1"
     },
-    var.enable_redis ? { REDIS_URL = local.redis_url, RATELIMIT_STORAGE_URI = local.redis_url } : {},
     var.extra_env,
   )
 
@@ -52,6 +52,7 @@ locals {
       GEMINI_API_KEY    = var.gemini_api_key
       CV_ENCRYPTION_KEY = var.cv_encryption_key
     },
+    var.enable_redis ? { REDIS_URL = local.redis_url, RATELIMIT_STORAGE_URI = local.redis_url } : {},
     var.extra_secrets,
   )
   secret_names = nonsensitive(toset(keys(local.secret_values)))
@@ -187,6 +188,7 @@ resource "google_redis_instance" "empleoia_redis" {
   authorized_network = google_compute_network.empleoia_vpc.id
   connect_mode       = "PRIVATE_SERVICE_ACCESS"
   redis_version      = "REDIS_7_0"
+  auth_enabled       = true
   display_name       = "EmpleoIA Redis (${local.env})"
   labels             = local.labels
 
@@ -446,7 +448,7 @@ resource "google_cloud_run_v2_worker_pool" "celery" {
       image   = var.image
       command = ["celery"]
       args = [
-        "-A", "celery_app", "worker", "--beat",
+        "-A", "celery_app", "worker", "--beat", "--schedule", "temp/celerybeat-schedule",
         "--queues", "scraping,ai_processing,notifications",
         "--concurrency", "2", "--loglevel", "info",
       ]

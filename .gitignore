@@ -48,11 +48,13 @@ token.pickle
 *.sqlite3
 
 # Logs
-logs/
+logs/*
+!logs/.gitkeep
 *.log
 
 # Temporary files
-temp/
+temp/*
+!temp/.gitkeep
 tmp/
 *.tmp
 

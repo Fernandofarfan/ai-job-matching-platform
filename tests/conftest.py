@@ -39,7 +39,6 @@ def _mk(name):
 _ALL_MOCKS = [
     # Async
     # NLP / ML
-    'spacy', 'spacy.lang', 'spacy.lang.es',
     'nltk', 'nltk.tokenize', 'nltk.corpus', 'nltk.data', 'nltk.stem',
     'sklearn', 'sklearn.feature_extraction', 'sklearn.feature_extraction.text',
     'sklearn.metrics', 'sklearn.metrics.pairwise', 'sklearn.preprocessing',

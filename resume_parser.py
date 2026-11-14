@@ -3,12 +3,6 @@ import re
 import os
 import docx
 import pypdf
-try:
-    import spacy
-    _SPACY_AVAILABLE = True
-except (ImportError, Exception):
-    spacy = None  # type: ignore[assignment]
-    _SPACY_AVAILABLE = False
 import json
 from datetime import datetime
 
@@ -27,16 +21,6 @@ load_dotenv()
 
 class resumeParser:
     def __init__(self):
-        
-        try:
-            if _SPACY_AVAILABLE:
-                self.nlp = spacy.load("en_core_web_sm")
-            else:
-                self.nlp = None
-        except OSError:
-            print("Warning: spaCy model not found. Install with: python -m spacy download en_core_web_sm")
-            self.nlp = None
-            
         self.configure_genai()
         
         self.technical_skills = {k: list(v) for k, v in skill_catalog.TECHNICAL_SKILLS.items()}
