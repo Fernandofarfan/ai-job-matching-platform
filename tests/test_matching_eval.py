@@ -44,3 +44,73 @@ def test_company_age_is_not_required_experience():
     m = jobMatcher()
     assert m._extract_required_experience('Empresa con 30 años de experiencia en el mercado. Buscamos dev.') == 0
     assert m._extract_required_experience('Empresa com 25 anos de experiência. Pelo menos 2 anos em Java.') == 2
+
+
+def test_feedback_dataset_and_report(monkeypatch, capsys):
+    """Cada cuenta con marcas suficientes ordena sus ofertas con su último CV; el reporte no dice de quién."""
+    monkeypatch.delenv('GEMINI_API_KEY', raising=False)  # el CI la define; sin Gemini entran todas las cuentas
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+    from sqlalchemy.pool import StaticPool
+
+    import accounts
+    import job_alerts
+    import job_feedback
+    import profile_store
+    engine = create_engine('sqlite://', connect_args={'check_same_thread': False}, poolclass=StaticPool)
+    job_alerts.Base.metadata.create_all(engine)
+    job_alerts.configure(sessionmaker(bind=engine))
+    cvs = {1: {'viejo': {'raw_text': 'Vendedor', 'upload_date': '2025-01-01'},
+               'nuevo': {'raw_text': 'Desarrollador backend con experiencia en Python, Django y PostgreSQL para la web',
+                         'skills': ['Python', 'Django', 'PostgreSQL'], 'experience_years': 3,
+                         'upload_date': '2026-11-01'}},
+           2: {'cv': {'raw_text': 'Data', 'skills': ['SQL']}}}
+    monkeypatch.setattr(profile_store, 'get_all_profiles', lambda: cvs.get(accounts.current_user_id()))
+
+    class SkillMatcher:
+        """Los tests unitarios corren sin scikit-learn: match = habilidades del CV que nombra la oferta."""
+        def calculate_overall_match(self, profile, text):
+            return {'overall_match': sum(skill in text for skill in profile['skills'])}
+
+    import job_matcher
+    monkeypatch.setattr(job_matcher, 'jobMatcher', SkillMatcher)
+    try:
+        with accounts.as_user(1):
+            for i in range(3):
+                job_feedback.set_feedback({'title': f'Backend {i}', 'company': 'Acme'}, True, None,
+                                          'Backend developer: Python, Django y PostgreSQL. 2 años de experiencia.')
+                job_feedback.set_feedback({'title': f'Ventas {i}', 'company': 'Acme'}, False, None,
+                                          'Vendedor de seguros con auto propio, atención al cliente.')
+        with accounts.as_user(2):  # una sola marca: no alcanza
+            job_feedback.set_feedback({'title': 'Data', 'company': 'Acme'}, True, None, 'SQL')
+        dataset = matching_eval.feedback_dataset()
+        assert list(dataset['profiles']) == ['cuenta_1_es'] and len(dataset['jobs']) == 6
+        profile = dataset['profiles']['cuenta_1_es']
+        assert profile['skills'] == ['Python', 'Django', 'PostgreSQL'] and sorted(profile['relevance'].values()) == [0] * 3 + [2] * 3
+        result = matching_eval.evaluate(dataset)
+        assert result['mean']['ndcg@5'] == pytest.approx(1.0) and result['mean']['precision@3'] == 1.0
+
+        import json
+
+        from scripts import eval_matching
+        assert eval_matching.main(['--feedback', '--json', '--min-ndcg', '0.9']) == 0
+        report = json.loads(capsys.readouterr().out)
+        assert report['accounts'] == 1 and 'profiles' not in report and 'es' in report['by_language']
+        assert eval_matching.main(['--feedback', '--min-each', '4']) == 0
+        assert 'Ninguna cuenta' in capsys.readouterr().out
+
+        with accounts.as_user(2):  # mismas ofertas que la cuenta 1, con la descripción que guardó cada una
+            for i in range(3):
+                job_feedback.set_feedback({'title': f'Backend {i}', 'company': 'Acme'}, True, None, 'Analista SQL')
+                job_feedback.set_feedback({'title': f'Ventas {i}', 'company': 'Acme'}, False, None, 'Ventas')
+        dataset = matching_eval.feedback_dataset()
+        assert len(dataset['profiles']) == 2 and len(dataset['jobs']) == 13  # + la marca "Data" de antes
+        first = dataset['profiles']['cuenta_1_es']['candidates']
+        assert all(dataset['jobs'][j].startswith(('Backend developer', 'Vendedor')) for j in first)
+
+        import embeddings  # con Gemini disponible entran solo las cuentas con permiso de IA
+        monkeypatch.setattr(embeddings, 'available', lambda: True)
+        monkeypatch.setattr(accounts, 'ai_consent_missing', lambda: accounts.current_user_id() == 2)
+        assert list(matching_eval.feedback_dataset()['profiles']) == ['cuenta_1_es']
+    finally:
+        job_alerts.configure(None)

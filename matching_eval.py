@@ -50,9 +50,10 @@ def evaluate(dataset=None, matcher=None):
     jobs = dataset['jobs']
     per_profile = {}
     for name, profile in dataset['profiles'].items():
-        scores = {job_id: matcher.calculate_overall_match(profile, text)['overall_match']
-                  for job_id, text in jobs.items()}
-        ranking = sorted(jobs, key=lambda j: (-scores[j], j))
+        candidates = profile.get('candidates') or list(jobs)  # sin `candidates` se ordenan todas las ofertas
+        scores = {job_id: matcher.calculate_overall_match(profile, jobs[job_id])['overall_match']
+                  for job_id in candidates}
+        ranking = sorted(candidates, key=lambda j: (-scores[j], j))
         rels = [profile['relevance'].get(j, 0) for j in ranking]
         per_profile[name] = {
             'ndcg@5': ndcg(rels), 'precision@3': precision(rels), 'mrr': reciprocal_rank(rels),
@@ -66,3 +67,43 @@ def evaluate(dataset=None, matcher=None):
     by_language = {lang: average([p for name, p in per_profile.items() if language(name) == lang])
                    for lang in sorted({language(name) for name in per_profile})}
     return {'profiles': per_profile, 'mean': average(list(per_profile.values())), 'by_language': by_language}
+
+
+def _latest_profile():
+    """CV de la cuenta actual subido más recientemente (si tiene uno por rol), o None."""
+    import profile_store
+    profiles = [p for p in (profile_store.get_all_profiles() or {}).values() if isinstance(p, dict)]
+    return max(profiles, key=lambda p: str(p.get('upload_date') or ''), default=None)
+
+
+def feedback_dataset(min_each=3):
+    """Dataset con el formato de eval/matching_dataset.json armado con las marcas de los usuarios.
+
+    Por cuenta con al menos `min_each` "me interesa" y `min_each` "no me interesa" (con descripción) y un CV:
+    su último CV contra las ofertas que marcó, "me interesa" con relevancia 2 y "no me interesa" con 0, y cada
+    CV ordena solo sus ofertas (`candidates`). Las cuentas quedan como `cuenta_<n>_<idioma del CV>` y las
+    ofertas como `<cuenta>/<huella>` (cada cuenta guardó su propia descripción): no sale ni el email, ni el id ni
+    el texto. Vive en memoria; no se escribe. Con Gemini disponible (puede recibir los CVs al medir embeddings)
+    solo entran las cuentas que dieron permiso para usar la IA.
+    """
+    import accounts
+    import job_feedback
+    from embeddings import available, detect_language
+    gemini = available()
+    jobs, profiles = {}, {}
+    for user_id, marks in job_feedback.labeled_texts().items():
+        if min(sum(1 for _, i, _ in marks if i), sum(1 for _, i, _ in marks if not i)) < min_each:
+            continue
+        with accounts.as_user(user_id):
+            if gemini and accounts.ai_consent_missing():
+                continue
+            cv = _latest_profile()
+        if not cv or not (cv.get('raw_text') or cv.get('skills')):
+            continue
+        name = f"cuenta_{len(profiles) + 1}_{detect_language(cv.get('raw_text') or '')}"
+        for fp, _, job_text in marks:
+            jobs[f'{name}/{fp}'] = job_text
+        profiles[name] = {'experience_years': cv.get('experience_years') or 0, 'skills': cv.get('skills') or [],
+                          'raw_text': cv.get('raw_text') or '', 'candidates': [f'{name}/{fp}' for fp, _, _ in marks],
+                          'relevance': {f'{name}/{fp}': 2 if interested else 0 for fp, interested, _ in marks}}
+    return {'description': 'Marcas de los usuarios', 'jobs': jobs, 'profiles': profiles}

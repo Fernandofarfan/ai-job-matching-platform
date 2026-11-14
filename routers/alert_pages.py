@@ -104,6 +104,36 @@ async def run_alert(request: Request, search_id: int) -> Response:
     return _go(request, 'alerts')
 
 
+DESCRIPTION_COLUMNS = ('Description', 'Job_Description', 'description', 'job_description')
+
+
+def _description_in_results(filename: Any, job: dict[str, Any]) -> str | None:
+    """Descripción de la oferta en el CSV de resultados de la cuenta (la tabla no la muestra), o None."""
+    import pandas as pd
+
+    from routers.content_pages import _csv_path
+    path = _csv_path(filename) if isinstance(filename, str) else None
+    if path is None:
+        return None
+    try:  # como la tabla de resultados: UTF-8 (con o sin BOM) y latin-1 para los CSVs viejos
+        try:
+            df = pd.read_csv(path, encoding='utf-8-sig')
+        except UnicodeDecodeError:
+            df = pd.read_csv(path, encoding='latin-1')
+    except (OSError, ValueError) as e:
+        logger.warning(f'No se pudo leer {filename} para la descripción: {e}')
+        return None
+    column = next((c for c in DESCRIPTION_COLUMNS if c in df.columns), None)
+    if column is None:
+        return None
+    wanted = job_alerts.fingerprint(job)
+    for row in df.to_dict('records'):
+        if job_alerts.fingerprint(row) == wanted:
+            value = row.get(column)
+            return value if isinstance(value, str) and value.strip() else None
+    return None
+
+
 @router.post('/api/job_feedback', name='api_job_feedback')
 async def api_job_feedback(request: Request) -> Response:
     """"Me interesa" (`interested: true`), "no me interesa" (`false`) o quitar la marca (`null`) en una oferta."""
@@ -113,7 +143,7 @@ async def api_job_feedback(request: Request) -> Response:
         return _json_error('Token CSRF inválido o vencido: recargá la página', 400)
     try:
         data = json.loads(await request.body())
-        job, interested = data.get('job'), data.get('interested')
+        job, interested, filename = data.get('job'), data.get('interested'), data.get('file')
     except (ValueError, AttributeError):
         return _json_error('JSON inválido', 400)
     if not isinstance(job, dict) or interested not in (True, False, None):
@@ -121,7 +151,8 @@ async def api_job_feedback(request: Request) -> Response:
     import job_feedback
     import job_ranking
     try:
-        await run_in_threadpool(job_feedback.set_feedback, job, interested, data.get('match_score'))
+        job_text = await run_in_threadpool(_description_in_results, filename, job) if interested is not None else None
+        await run_in_threadpool(job_feedback.set_feedback, job, interested, data.get('match_score'), job_text)
     except ValueError:
         return _json_error('La oferta no tiene título', 400)
     except Exception as e:
