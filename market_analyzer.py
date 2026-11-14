@@ -32,7 +32,7 @@ _CURRENCY_PATTERNS = {
 def extract_salary_from_text(text: str) -> dict:
     """Extrae rango salarial de texto libre usando regex."""
     if not text or len(str(text)) < 3:
-        return {"min": None, "max": None, "currency": None, "raw": None, "confidence": "none"}
+        return {"min": None, "max": None, "avg": None, "currency": None, "raw": None, "confidence": "none"}
 
     text = str(text)
 
@@ -77,7 +77,7 @@ def extract_salary_from_text(text: str) -> dict:
             except (ValueError, IndexError):
                 continue
 
-    return {"min": None, "max": None, "currency": detected_currency, "raw": None, "confidence": "none"}
+    return {"min": None, "max": None, "avg": None, "currency": detected_currency, "raw": None, "confidence": "none"}
 
 
 def analyze_salary_distribution(jobs_df: pd.DataFrame,

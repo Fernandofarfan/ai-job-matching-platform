@@ -14,6 +14,7 @@ except Exception as e:
 
 # Include Routers
 app.include_router(ai.router)
+app.include_router(ai.extras)
 app.include_router(analytics.router)
 app.include_router(tracker.router)
 app.include_router(insights.router)
