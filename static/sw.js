@@ -1,9 +1,9 @@
 /**
  * EmpleoIA – Service Worker v1.0
- * Estrategia: Cache-First para assets estáticos, Network-First para APIs
+ * Estrategia: Network-First con fallback a caché (assets, APIs y páginas)
  */
 
-const CACHE_NAME = 'empleoia-v1';
+const CACHE_NAME = 'empleoia-v2';
 const OFFLINE_URL = '/offline';
 
 // Assets que siempre queremos en caché
@@ -12,11 +12,9 @@ const STATIC_ASSETS = [
   '/tracker',
   '/analytics',
   '/results',
-  '/static/css/main.css',
   '/static/css/analytics_premium.css',
   '/static/css/tracker_premium.css',
   '/static/css/navbar_premium.css',
-  '/static/js/main.js',
   '/static/js/offline-cache.js',
 ];
 
@@ -71,9 +69,9 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Para assets estáticos → Cache-First
+  // Para assets estáticos → Network-First: un deploy nuevo se ve sin esperar a que cambie CACHE_NAME
   if (url.pathname.startsWith('/static/')) {
-    event.respondWith(cacheFirstStrategy(request));
+    event.respondWith(networkFirstStrategy(request));
     return;
   }
 
@@ -83,26 +81,15 @@ self.addEventListener('fetch', (event) => {
 
 // ── Estrategias ───────────────────────────────────────────────
 
-async function cacheFirstStrategy(request) {
-  const cached = await caches.match(request);
-  if (cached) return cached;
-
-  try {
-    const response = await fetch(request);
-    if (response.ok) {
-      const cache = await caches.open(CACHE_NAME);
-      cache.put(request, response.clone());
-    }
-    return response;
-  } catch {
-    return new Response('Asset no disponible offline', { status: 503 });
-  }
+// Las redirecciones (p. ej. al login cuando venció la sesión) no se guardan bajo la URL pedida.
+function cacheable(response) {
+  return response.ok && !response.redirected;
 }
 
 async function networkFirstStrategy(request) {
   try {
     const response = await fetch(request);
-    if (response.ok) {
+    if (cacheable(response)) {
       const cache = await caches.open(CACHE_NAME);
       cache.put(request, response.clone());
     }
@@ -120,7 +107,7 @@ async function networkFirstStrategy(request) {
 async function networkFirstWithOfflineFallback(request) {
   try {
     const response = await fetch(request);
-    if (response.ok) {
+    if (cacheable(response)) {
       const cache = await caches.open(CACHE_NAME);
       cache.put(request, response.clone());
     }

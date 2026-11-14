@@ -8,6 +8,7 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Agregado
+- Tests de integración (`tests_integration/`, job de CI `integration`) contra MySQL 8 y Redis reales, y E2E con Playwright de login, subida de CV y tracker. Se corren con `INTEGRATION=1 python -m pytest tests_integration`.
 - Matching semántico opcional (`MATCHING_BACKEND=embeddings`): la similitud de texto CV-oferta usa embeddings de Gemini (`gemini-embedding-001`) con caché en memoria y cuenta en el tope mensual de tokens. Si la IA falla o no está configurada, sigue con TF-IDF.
 - Alertas de empleo (`/alerts`): búsquedas guardadas en Computrabajo y Bumeran que Celery Beat revisa cada `ALERTS_INTERVAL_HOURS` y avisan por email o Telegram solo con ofertas nuevas. La misma oferta en dos portales se avisa una vez (huella de título + empresa en `seen_jobs`) y se puede exigir un match mínimo con el CV. Migración Alembic `0002_job_alerts`.
 - `SCRAPER_BACKEND=celery`: las búsquedas de la web (Indeed, LinkedIn, Computrabajo, Bumeran y universal) corren en el worker de Celery con el mismo código y el progreso se ve igual en `/status`. Por defecto siguen en un thread. Docker Compose ya usa Celery.
@@ -17,6 +18,11 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
   Las respuestas con temperatura ≤ 0.5 se cachean `AI_CACHE_TTL` segundos.
 - Monitor diario de scrapers (`scripts/scraper_health.py` + workflow `Monitor de scrapers`): busca en Computrabajo y Bumeran y abre un issue si alguno no devuelve ofertas.
 - Página `/optimize_resume` (antes daba 500 porque faltaba la plantilla) y enlace "Optimizar CV" en el menú.
+
+### Corregido
+- Tracker: `applications.status` acepta los estados del kanban (`bookmarked`, `applying`, `negotiating`); antes MySQL rechazaba esas altas. Migración Alembic `0003_tracker_status`.
+- Modo offline: el service worker se sirve en `/sw.js` (antes `/static/sw.js` no podía tomar el scope `/` y nunca se registraba). Los assets son network-first, así un deploy nuevo se ve sin limpiar caché, y `/login` y `/logout` envían `Clear-Site-Data` para que sin sesión no queden páginas ni datos del tracker guardados en el navegador.
+- Se quitaron de `base.html` `css/main.css` y `js/main.js`, que no existen y daban 404 en todas las páginas.
 
 ### Cambiado
 - `app.py` pasó de ~3.080 a ~820 líneas: las rutas se movieron a `web/` (un módulo por área) sin cambiar URLs, endpoints, login, CSRF ni rate limit.

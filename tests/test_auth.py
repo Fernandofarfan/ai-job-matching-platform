@@ -72,3 +72,28 @@ def test_rotating_password_invalidates_sessions(client, monkeypatch):
     assert client.get('/tracker').status_code == 200
     monkeypatch.setenv('APP_PASSWORD', 'nueva')
     assert client.get('/tracker').status_code == 302
+
+
+def test_login_and_logout_clear_offline_data(client, monkeypatch):
+    """Sin sesión, el navegador borra el caché del service worker e IndexedDB."""
+    monkeypatch.setenv('APP_PASSWORD', 'secreta')
+    assert client.get('/login').headers['Clear-Site-Data'] == '"cache", "storage"'
+    _login(client, 'secreta')
+    assert client.post('/logout').headers['Clear-Site-Data'] == '"cache", "storage"'
+
+
+def test_login_page_keeps_offline_data_with_active_session(client, monkeypatch):
+    """Con sesión activa, abrir /login redirige sin borrar los datos offline."""
+    monkeypatch.setenv('APP_PASSWORD', 'secreta')
+    _login(client, 'secreta')
+    response = client.get('/login')
+    assert response.status_code == 302
+    assert 'Clear-Site-Data' not in response.headers
+
+
+def test_login_next_to_login_does_not_loop(client, monkeypatch):
+    """next=/login no redirige al propio login (evita un bucle con sesión activa)."""
+    monkeypatch.setenv('APP_PASSWORD', 'secreta')
+    _login(client, 'secreta')
+    assert client.get('/login?next=/login').headers['Location'] == '/'
+    assert client.get('/login?next=/login/?x=1').headers['Location'] == '/'

@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session, send_from_directory, make_response
 from flask_limiter import Limiter
 import rate_limit
 import profile_store
@@ -72,7 +72,7 @@ limiter = Limiter(
 if not auth.auth_enabled():
     logger.warning("APP_PASSWORD no definida: la app no pide login (usala solo en local)")
 
-PUBLIC_ENDPOINTS = {'login', 'static', 'health', 'api_save_from_extension'}
+PUBLIC_ENDPOINTS = {'login', 'static', 'health', 'service_worker', 'api_save_from_extension'}
 
 
 @app.before_request
@@ -86,7 +86,8 @@ def require_login():
 
 def _safe_next(target):
     is_local = target and target.startswith('/') and not target.startswith('//') and '\\' not in target
-    return target if is_local else url_for('index')
+    loops = is_local and target.split('?')[0].rstrip('/') in ('/login', '/logout')
+    return target if is_local and not loops else url_for('index')
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -94,6 +95,8 @@ def _safe_next(target):
 def login():
     next_url = request.args.get('next', '')
     if not auth.auth_enabled():
+        return redirect(_safe_next(next_url))
+    if request.method == 'GET' and auth.is_session_valid(session, app.secret_key):
         return redirect(_safe_next(next_url))
     if request.method == 'POST':
         if auth.check_password(request.form.get('password', '')):
@@ -103,13 +106,19 @@ def login():
             session.permanent = True
             return redirect(_safe_next(next_url))
         flash('Contraseña incorrecta', 'danger')
-    return render_template('login.html', next_url=next_url)
+    return _clear_offline_data(make_response(render_template('login.html', next_url=next_url)))
 
 
 @app.route('/logout', methods=['POST'])
 def logout():
     session.clear()
-    return redirect(url_for('login'))
+    return _clear_offline_data(redirect(url_for('login')))
+
+
+def _clear_offline_data(response):
+    """Sin sesión no deben quedar páginas ni datos del tracker en el caché del service worker ni en IndexedDB."""
+    response.headers['Clear-Site-Data'] = '"cache", "storage"'
+    return response
 
 
 @app.context_processor
@@ -751,6 +760,14 @@ except ImportError:
 def health():
     """Health check del servidor Flask."""
     return jsonify({'status': 'ok', 'gemini': bool(AI_AVAILABLE)})
+
+
+@app.route('/sw.js')
+def service_worker():
+    """Service worker servido desde la raíz para que su scope cubra toda la app."""
+    resp = send_from_directory(app.static_folder, 'sw.js', mimetype='application/javascript')
+    resp.headers['Cache-Control'] = 'no-cache'
+    return resp
 
 
 @app.errorhandler(413)

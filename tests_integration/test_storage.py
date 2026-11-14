@@ -1,0 +1,71 @@
+"""Persistencia real: perfiles, alertas y tracker en MySQL; contador de IA en Redis."""
+import os
+import uuid
+
+import pytest
+
+
+@pytest.fixture
+def mysql(migrated_db):
+    """Sesión SQLAlchemy contra la base migrada."""
+    import job_alerts
+    import profile_store
+    profile_store.configure(None)
+    job_alerts.configure(None)
+    yield
+    profile_store.configure(None)
+    job_alerts.configure(None)
+
+
+def test_profile_round_trip(mysql, monkeypatch, tmp_path):
+    """Guardar, leer y borrar un perfil pasa por la tabla user_profiles, no por el JSON."""
+    import profile_store
+    monkeypatch.setattr(profile_store, 'JSON_PATH', str(tmp_path / 'profiles.json'))
+    role = f'it_{uuid.uuid4().hex[:8]}'
+    profile_store.save_profile(role, {'name': 'Ana', 'skills': ['python', 'sql'], 'experience_years': 4})
+    assert profile_store._sessions() is not None
+    assert profile_store.get_profile(role)['skills'] == ['python', 'sql']
+    assert not os.path.exists(profile_store.JSON_PATH)
+    assert profile_store.delete_profile(role)
+    assert profile_store.get_profile(role) is None
+
+
+def test_alert_dedupe_persists(mysql):
+    """Una oferta avisada no se repite en otra corrida aunque venga de otro portal."""
+    import job_alerts
+    search = job_alerts.create_search({'position': 'Python', 'portals': ['computrabajo'], 'channels': []})
+    tag = uuid.uuid4().hex[:8]
+    first = [{'Title': f'Dev {tag}', 'Company': 'Acme', 'source': 'computrabajo'}]
+    again = [{'title': f'DEV {tag}', 'company': 'ACME', 'source': 'bumeran'},
+             {'title': f'QA {tag}', 'company': 'Acme', 'source': 'bumeran'}]
+    assert len(job_alerts.filter_new(first, search['id'])) == 1
+    assert [j['title'] for j in job_alerts.filter_new(again, search['id'])] == [f'QA {tag}']
+    job_alerts.delete_search(search['id'])
+    assert job_alerts.get_search(search['id']) is None
+
+
+def test_tracker_rejects_duplicates(migrated_db):
+    """El tracker guarda el empleo y detecta el duplicado por título y empresa."""
+    from db_config import DatabaseManager
+    db = DatabaseManager()
+    db.create_job_tracker_table()
+    job = {'title': f'Data Engineer {uuid.uuid4().hex[:8]}', 'company': 'Globant', 'status': 'bookmarked'}
+    job_id = db.add_job_to_tracker(job)
+    assert isinstance(job_id, int)
+    assert db.add_job_to_tracker(job) == {'exists': True, 'job_id': job_id, 'message': 'Job already in tracker'}
+    assert any(j['title'] == job['title'] for j in db.get_all_tracked_jobs())
+
+
+def test_ai_usage_shared_in_redis(monkeypatch):
+    """Con RATELIMIT_STORAGE_URI=redis:// el consumo de IA se comparte entre instancias."""
+    import ai_usage
+    monkeypatch.setenv('RATELIMIT_STORAGE_URI', os.getenv('REDIS_URL', 'redis://127.0.0.1:6379/0'))
+    ai_usage.reset()
+    before = ai_usage.summary()
+    ai_usage.record(120, 30)
+    ai_usage.reset()  # otra instancia: storage nuevo, mismo Redis
+    after = ai_usage.summary()
+    assert after['input_tokens'] - before['input_tokens'] == 120
+    assert after['output_tokens'] - before['output_tokens'] == 30
+    assert after['calls'] - before['calls'] == 1
+    ai_usage.reset()

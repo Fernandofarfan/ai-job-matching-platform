@@ -118,7 +118,7 @@
 
 ### ⚡ **Rendimiento y Modo Offline (PWA)**
 - Soporte para Progressive Web App (PWA) con modo de instalación
-- Sistema offline utilizando Service Workers y almacenamiento local en IndexedDB
+- Sistema offline utilizando Service Workers (`/sw.js`) y almacenamiento local en IndexedDB; al cerrar sesión o vencer la sesión se borran del navegador
 - Acceso continuo a las postulaciones guardadas incluso sin conexión a internet
 
 ### 👤 **Gestión de Perfiles**
