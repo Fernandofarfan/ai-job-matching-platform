@@ -6,6 +6,13 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar] - CSP sin estilos inline
+
+- `style-src` ya no permite `'unsafe-inline'`: un HTML inyectado no puede cambiar cómo se ve la página. Los 74
+  atributos `style="..."` pasan a clases de `static/css/app.css` y los bloques `<style>` llevan el nonce del pedido.
+- Las barras de progreso que calcula el servidor usan `data-progress-width`; los elementos ocultos hasta que el
+  JavaScript los muestra usan la clase `js-hidden`.
+
 ## [Sin publicar] - Todas las páginas en inglés y portugués
 
 - Entrevista simulada, optimizar CV, optimizar en lote, cartas en lote, conexiones, panel de métricas, ver perfil y

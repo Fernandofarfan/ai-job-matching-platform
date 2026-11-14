@@ -14,9 +14,9 @@
           <div class="position-relative d-inline-block">
             <svg width="120" height="120">
               <circle cx="60" cy="60" r="54" fill="none" stroke="#e5e7eb" stroke-width="8" />
-              <circle id="progressCircle" cx="60" cy="60" r="54" fill="none" stroke="#4f46e5" stroke-width="8"
+              <circle class="st-048bc9" id="progressCircle" cx="60" cy="60" r="54" fill="none" stroke="#4f46e5" stroke-width="8"
                 stroke-dasharray="339.292" stroke-dashoffset="339.292" transform="rotate(-90 60 60)"
-                style="transition: stroke-dashoffset 1s ease" />
+                />
             </svg>
             <div class="position-absolute top-50 start-50 translate-middle text-center">
               <div class="fs-3 fw-bold text-primary" id="total-profiles">0</div>
@@ -63,7 +63,7 @@
     </div>
 
     <!-- How it Works Card -->
-    <div class="card border-0 shadow-sm" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+    <div class="st-f942a9 card border-0 shadow-sm">
       <div class="card-body p-4 text-white">
         <h6 class="fw-bold mb-3">
           <i class="bi bi-lightning-charge me-2"></i> ¿Cómo funciona?
@@ -135,7 +135,7 @@
                 </button>
                 <p class="small text-muted mt-3 mb-0">{{ _('Formatos soportados: PDF, DOCX, TXT (Máx. 10MB)') }}</p>
               </div>
-              <div id="filePreview" class="file-preview" style="display: none;">
+              <div id="filePreview" class="js-hidden file-preview">
                 <div class="d-flex align-items-center justify-content-between">
                   <div class="d-flex align-items-center gap-3">
                     <div class="file-icon">
@@ -195,7 +195,7 @@
   </div>
 </div>
 
-<style>
+<style nonce="{{ csp_nonce() }}">
   /* Drag & Drop Zone */
   .drop-zone {
     border: 3px dashed #e5e7eb;

@@ -1,0 +1,53 @@
+/* Estilos que antes iban en atributos style="" de las plantillas: la CSP no permite estilos inline. */
+.st-048bc9 { transition: stroke-dashoffset 1s ease; }
+.st-090936 { max-width: 760px !important; }
+.st-10b01b { resize: none !important; }
+.st-199b58 { font-size: 0.75rem !important; }
+.st-1eda4f { height: 6px !important; }
+.st-1edf6f { position: sticky !important; top: 1rem !important; }
+.st-221d4c { min-height: 100vh !important; }
+.st-42b0eb { height: 12px !important; border-radius: 999px !important; }
+.st-4d81df { z-index: 2000 !important; }
+.st-4fbcd3 { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important; border: none !important; }
+.st-56de50 { min-width: 220px !important; }
+.st-5c99c0 { max-width: 720px !important; }
+.st-619c97 { max-height: 250px !important; overflow-y: auto !important; }
+.st-72d2bc { width: 10%; transition: width 0.5s ease; }
+.st-759002 { width: 0%; }
+.st-75fbf8 { font-size: 3rem !important; }
+.st-837905 { white-space: pre-wrap !important; }
+.st-875ee4 { max-width: 560px !important; }
+.st-89a1df { overflow-x: auto !important; }
+.st-8dcf7d { background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%) !important; }
+.st-93eaa0 { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important; -webkit-background-clip: text !important; -webkit-text-fill-color: transparent !important; }
+.st-980061 { min-width: 280px !important; }
+.st-a38fd6 { white-space: pre-wrap !important; font-family: 'Inter', sans-serif !important; font-size: 0.9rem !important; line-height: 1.7 !important; }
+.st-a39a1d { height: 6px !important; border-radius: 3px !important; }
+.st-b20ad8 { height: 10px !important; }
+.st-b4cf53 { font-size: 2rem !important; }
+.st-b66370 { max-width: 220px !important; }
+.st-c604d3 { height: 12px !important; }
+.st-c6ab9b { text-decoration: none !important; }
+.st-c98962 { max-width: 16rem !important; }
+.st-d5f690 { height: 8px !important; }
+.st-e7bffb { background: #15803d !important; font-size: 0.7rem !important; }
+.st-f043eb { max-width: 380px !important; width: 100%; }
+.st-f942a9 { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important; }
+
+/* Ocultos hasta que el JavaScript los muestra */
+.js-hidden { display: none; }
+
+/* Elementos que arma el JavaScript */
+.offline-banner { position: fixed; top: 0; left: 0; right: 0; z-index: 9999; background: linear-gradient(90deg, #f59e0b, #d97706); color: white; padding: 10px 20px; display: flex; align-items: center; justify-content: space-between; font-family: Inter, sans-serif; font-size: 0.875rem; font-weight: 600; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+.offline-banner-icon { margin-right: 8px; }
+.offline-banner-close { background: rgba(255,255,255,0.2); border: none; color: white; padding: 4px 12px; border-radius: 20px; cursor: pointer; font-weight: 600; }
+.network-badge { font-size: 0.7rem; }
+.network-badge-online { background: #15803d; }
+.network-badge-offline { background: #b91c1c; }
+.update-toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #1a1a2e; color: white; padding: 14px 24px; border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.3); display: flex; align-items: center; gap: 14px; font-family: Inter, sans-serif; z-index: 10000; }
+.update-toast-text { font-size: 0.9rem; }
+.update-toast-button { background: #667eea; border: none; color: white; padding: 6px 14px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.82rem; }
+.tracker-stars { letter-spacing: -2px; }
+.history-row { border-color: rgba(255,255,255,0.05) !important; }
+.history-question { max-width: 70%; }
+.history-score { min-width: 42px; }

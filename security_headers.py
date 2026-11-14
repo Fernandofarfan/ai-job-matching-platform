@@ -19,11 +19,11 @@ def nonce(request: Request) -> str:
 
 
 def content_security_policy(script_nonce: str) -> str:
-    """Scripts solo propios, del CDN o con el nonce (sin onclick="..." ni javascript:)."""
+    """Scripts y estilos solo propios, del CDN o con el nonce (sin onclick="...", javascript: ni style="...")."""
     directives = {
         "default-src": "'self'",
         "script-src": f"'self' 'nonce-{script_nonce}' {CDN}",
-        "style-src": f"'self' 'unsafe-inline' {CDN} {FONTS_CSS}",
+        "style-src": f"'self' 'nonce-{script_nonce}' {CDN} {FONTS_CSS}",
         "font-src": f"'self' data: {CDN} {FONTS}",
         "img-src": "'self' data: blob:",
         "connect-src": "'self'",

@@ -98,21 +98,12 @@ function showOfflineBanner(cachedCount = 0) {
   const banner = document.createElement('div');
   banner.id = 'offline-banner';
   banner.innerHTML = `
-    <div style="
-      position: fixed; top: 0; left: 0; right: 0; z-index: 9999;
-      background: linear-gradient(90deg, #f59e0b, #d97706);
-      color: white; padding: 10px 20px;
-      display: flex; align-items: center; justify-content: space-between;
-      font-family: Inter, sans-serif; font-size: 0.875rem; font-weight: 600;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-    ">
+    <div class="offline-banner">
       <span>
-        <i class="bi bi-wifi-off" style="margin-right:8px;"></i>
+        <i class="bi bi-wifi-off offline-banner-icon"></i>
         Modo Offline – Mostrando ${cachedCount} registros en caché
       </span>
-      <button type="button" data-close-offline-banner
-              style="background:rgba(255,255,255,0.2); border:none; color:white;
-                     padding:4px 12px; border-radius:20px; cursor:pointer; font-weight:600;">
+      <button type="button" data-close-offline-banner class="offline-banner-close">
         Cerrar
       </button>
     </div>
@@ -131,8 +122,8 @@ function updateOnlineStatus() {
 
   if (indicator) {
     indicator.innerHTML = isOnline
-      ? '<span class="badge" style="background:#15803d; font-size:0.7rem;">● Online</span>'
-      : '<span class="badge" style="background:#b91c1c; font-size:0.7rem;">● Offline</span>';
+      ? '<span class="badge network-badge network-badge-online">● Online</span>'
+      : '<span class="badge network-badge network-badge-offline">● Offline</span>';
   }
 
   if (!isOnline) {
@@ -185,19 +176,9 @@ async function registerServiceWorker() {
 function showUpdateToast() {
   const toast = document.createElement('div');
   toast.innerHTML = `
-    <div style="
-      position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-      background: #1a1a2e; color: white; padding: 14px 24px;
-      border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.3);
-      display: flex; align-items: center; gap: 14px;
-      font-family: Inter, sans-serif; z-index: 10000;
-    ">
-      <span style="font-size:0.9rem;">🔄 Nueva versión disponible</span>
-      <button type="button" data-reload style="
-        background: #667eea; border: none; color: white;
-        padding: 6px 14px; border-radius: 8px; cursor: pointer;
-        font-weight: 600; font-size: 0.82rem;
-      ">Actualizar</button>
+    <div class="update-toast">
+      <span class="update-toast-text">🔄 Nueva versión disponible</span>
+      <button type="button" data-reload class="update-toast-button">Actualizar</button>
     </div>
   `;
   document.body.appendChild(toast);

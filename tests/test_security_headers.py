@@ -18,6 +18,10 @@ def test_html_page_has_csp_with_matching_nonce(client):
     scripts = re.findall(r'<script(?![^>]*\bsrc=)([^>]*)>', response.get_data(as_text=True))
     assert scripts and all(f'nonce="{nonce}"' in attrs for attrs in scripts)
     assert "'unsafe-inline'" not in csp.split('script-src')[1].split(';')[0]
+    style_src = csp.split('style-src')[1].split(';')[0]
+    assert "'unsafe-inline'" not in style_src and f"'nonce-{nonce}'" in style_src
+    styles = re.findall(r'<style([^>]*)>', response.get_data(as_text=True))
+    assert styles and all(f'nonce="{nonce}"' in attrs for attrs in styles)
     assert "frame-ancestors 'none'" in csp and "object-src 'none'" in csp
 
 
@@ -178,3 +182,13 @@ def test_precached_pages_have_their_scripts_precached():
               for name in re.findall(r"url_for\('static', filename='(js/[^']+)'\)",
                                      (TEMPLATES / page).read_text(encoding='utf-8'))}
     assert needed - precached == set()
+
+
+def test_no_inline_style_attributes():
+    """Con style-src sin 'unsafe-inline', un style="..." no se aplica: va a static/css/app.css."""
+    static_js = TEMPLATES.parent / 'static' / 'js'
+    offenders = [str(p) for p in [*TEMPLATES.rglob('*.html'), *static_js.rglob('*.js')]
+                 if re.search(r'<[^>]*\sstyle\s*=', p.read_text(encoding='utf-8'))]
+    offenders += [str(p) for p in TEMPLATES.rglob('*.html')
+                  if re.search(r'<style(?![^>]*nonce=)', p.read_text(encoding='utf-8'))]
+    assert offenders == []

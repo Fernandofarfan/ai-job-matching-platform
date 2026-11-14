@@ -47,7 +47,7 @@ function toggleFilters(filterId) {
   const buttonId = 'toggle-' + filterId;
   const button = document.getElementById(buttonId);
 
-  if (filterDiv.style.display === 'none') {
+  if (getComputedStyle(filterDiv).display === 'none') {
     filterDiv.style.display = 'block';
     if (button) button.textContent = t("Ocultar Configuración");
   } else {

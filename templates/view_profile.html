@@ -139,9 +139,9 @@
                 {% endif %}
               </span>
             </div>
-            <div class="progress" style="height: 12px; border-radius: 999px;">
+            <div class="st-42b0eb progress">
               <div class="progress-bar bg-gradient-success" role="progressbar"
-                style="width: {{ (profile.experience_years / 10 * 100) | round }}%"
+                data-progress-width="{{ (profile.experience_years / 10 * 100) | round }}"
                 aria-valuenow="{{ profile.experience_years }}" aria-valuemin="0" aria-valuemax="10">
               </div>
             </div>
@@ -220,11 +220,11 @@
 </div>
 
 <!-- Success Banner -->
-<div class="alert alert-success border-0 shadow-sm mt-4"
-  style="background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);">
+<div class="st-8dcf7d alert alert-success border-0 shadow-sm mt-4"
+ >
   <div class="d-flex align-items-center">
     <div class="me-3">
-      <i class="bi bi-check-circle-fill text-success" style="font-size: 2rem;"></i>
+      <i class="st-b4cf53 bi bi-check-circle-fill text-success"></i>
     </div>
     <div class="flex-grow-1">
       <h6 class="fw-bold mb-1 text-success">
@@ -242,7 +242,7 @@
   </div>
 </div>
 
-<style>
+<style nonce="{{ csp_nonce() }}">
   /* Stat Cards */
   .stat-card {
     background: white;

@@ -23,8 +23,9 @@
 
     <!-- App CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/navbar_premium.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
 
-    <style>
+    <style nonce="{{ csp_nonce() }}">
     /* ── AI Copilot Sidebar ──────────────────────────────────────────── */
     #copilot-sidebar {
         position: fixed;
@@ -287,10 +288,11 @@
         #copilot-overlay { display: block; }
     }
     </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
 </head>
 
 <body>
-    <a class="visually-hidden-focusable position-absolute top-0 start-0 m-2 p-2 bg-light text-dark rounded" style="z-index:2000" href="#contenido">{{ _('Saltar al contenido') }}</a>
+    <a class="st-4d81df visually-hidden-focusable position-absolute top-0 start-0 m-2 p-2 bg-light text-dark rounded" href="#contenido">{{ _('Saltar al contenido') }}</a>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark" aria-label="{{ _('Navegación principal') }}">
         <div class="container">
             <a class="navbar-brand" href="/">
@@ -354,7 +356,7 @@
                 </div>
                 <!-- Indicador de estado de red -->
                 <div class="navbar-text ms-2" id="network-indicator" title="{{ _('Estado de conexión') }}">
-                    <span class="badge" style="background:#15803d; font-size:0.7rem;">● Online</span>
+                    <span class="st-e7bffb badge">● Online</span>
                 </div>
             </div>
         </div>
@@ -465,6 +467,7 @@
     <script src="{{ url_for('static', filename='js/copilot.js') }}"></script>
 
     <link rel="stylesheet" href="{{ url_for('static', filename='css/a11y.css') }}">
+    <script src="{{ url_for('static', filename='js/progress-width.js') }}"></script>
     {% block scripts %}{% endblock %}
 </body>
 

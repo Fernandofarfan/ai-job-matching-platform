@@ -3,7 +3,7 @@
  * Estrategia: Network-First con fallback a caché (assets, APIs y páginas)
  */
 
-const CACHE_NAME = 'empleoia-v3';
+const CACHE_NAME = 'empleoia-v4';
 const OFFLINE_URL = '/offline';
 
 // Assets que siempre queremos en caché
@@ -15,6 +15,7 @@ const STATIC_ASSETS = [
   '/static/css/analytics_premium.css',
   '/static/css/tracker_premium.css',
   '/static/css/navbar_premium.css',
+  '/static/css/app.css',
   // los scripts de base.html y de las páginas de arriba: sin ellos, esas páginas abren offline pero vacías
   '/static/js/csrf.js',
   '/static/js/actions.js',
@@ -22,6 +23,7 @@ const STATIC_ASSETS = [
   '/static/js/push.js',
   '/static/js/copilot.js',
   '/static/js/i18n.js',
+  '/static/js/progress-width.js',
   '/static/js/pages/job_tracker.js',
   '/static/js/pages/dashboard.js',
 ];

@@ -61,7 +61,7 @@
               </form>
               <details class="d-inline-block ms-1">
                 <summary class="btn btn-sm btn-outline-secondary">{{ _('Más') }}</summary>
-                <form method="POST" class="mt-2" style="min-width: 220px;">
+                <form method="POST" class="st-56de50 mt-2">
                   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                   <label for="admin-password-{{ u.id }}" class="form-label small">{{ _('Tu contraseña') }}</label>
                   <input type="password" class="form-control form-control-sm mb-2" id="admin-password-{{ u.id }}" name="password" required autocomplete="current-password">

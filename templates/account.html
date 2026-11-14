@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="container py-4" style="max-width: 720px;">
+<div class="st-5c99c0 container py-4">
   <h1 class="h3 fw-bold mb-4">{{ _('Mi cuenta') }}</h1>
   <div class="card border-0 shadow-sm mb-4">
     <div class="card-body p-4">
@@ -64,7 +64,7 @@
       </form>
       {% elif totp_setup %}
       <p class="small">{{ _('Escaneá el QR con Google Authenticator, Authy, 1Password u otra app compatible, o cargá la clave a mano.') }}</p>
-      <div class="mb-2" style="max-width: 220px;">{{ totp_setup.qr }}</div>
+      <div class="st-b66370 mb-2">{{ totp_setup.qr }}</div>
       <p class="small">{{ _('Clave:') }} <code class="user-select-all" id="totp-secret">{{ totp_setup.secret }}</code></p>
       <form method="POST" action="{{ url_for('two_factor_enable') }}" class="d-flex gap-2 align-items-end">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -231,7 +231,7 @@
               <td class="text-nowrap">{{ e.created_at.strftime('%d/%m/%Y %H:%M') if e.created_at else '' }}</td>
               <td>{{ _(e.label) }}</td>
               <td>{{ e.ip or '' }}</td>
-              <td class="text-truncate" style="max-width: 16rem;" title="{{ e.user_agent or '' }}">{{ e.user_agent or '' }}</td>
+              <td class="st-c98962 text-truncate" title="{{ e.user_agent or '' }}">{{ e.user_agent or '' }}</td>
             </tr>
           {% endfor %}
           </tbody>

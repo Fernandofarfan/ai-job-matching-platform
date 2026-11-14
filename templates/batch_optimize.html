@@ -64,19 +64,19 @@
       </div>
       <div class="card-body p-4">
         <!-- Progress Section -->
-        <div id="optimization_status" style="display: none;">
+        <div class="js-hidden" id="optimization_status">
           <div class="mb-2 d-flex justify-content-between small">
             <span id="optimization_message" class="text-muted">{{ _('Iniciando...') }}</span>
             <span id="progress-percentage" class="fw-bold text-primary">0%</span>
           </div>
-          <div class="progress mb-4" style="height: 8px;">
-            <div id="optimization_progress" class="progress-bar progress-bar-striped progress-bar-animated"
-              role="progressbar" style="width: 0%"></div>
+          <div class="st-d5f690 progress mb-4">
+            <div id="optimization_progress" class="st-759002 progress-bar progress-bar-striped progress-bar-animated"
+              role="progressbar"></div>
           </div>
         </div>
 
         <!-- Results List -->
-        <div id="optimization_results" style="display: none;">
+        <div class="js-hidden" id="optimization_results">
           <div class="table-responsive" tabindex="0">
             <table class="table table-hover align-middle mb-0">
               <thead class="bg-light">
@@ -97,7 +97,7 @@
         <!-- Empty State -->
         <div id="empty-state" class="text-center py-5">
           <div class="mb-3 text-muted opacity-25">
-            <i class="bi bi-file-earmark-person" style="font-size: 3rem;"></i>
+            <i class="st-75fbf8 bi bi-file-earmark-person"></i>
           </div>
           <p class="text-muted small">{{ _('Los resultados aparecerán aquí una vez inicie el proceso.') }}</p>
         </div>
