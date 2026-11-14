@@ -432,7 +432,9 @@ FLASK_HOST=127.0.0.1   # python app.py solo escucha en localhost; usá 0.0.0.0 p
 FLASK_PORT=5000
 FLASK_DEBUG=0          # 1 activa el debugger de Werkzeug: nunca lo expongas a la red
 MAX_UPLOAD_MB=16       # tamaño máximo de CV
-AI_RATE_LIMIT=30 per minute     # límite por IP para /api/ai/*
+AI_RATE_LIMIT=30 per minute     # límite por cuenta (o por IP sin sesión) para /api/ai/*
+API_RATE_LIMIT=300 per minute   # límite por cuenta para todo /api/*
+TRUSTED_PROXY_HOPS=0            # 1 en Cloud Run: toma la IP real de X-Forwarded-For
 RATELIMIT_STORAGE_URI=memory:// # usá redis://... con varias instancias
 AI_MONTHLY_TOKEN_LIMIT=0        # tope mensual de tokens de Gemini (0 = sin tope); consumo en GET /api/ai/usage.
 AI_USER_MONTHLY_TOKEN_LIMIT=0   # tope mensual por cuenta (0 = sin tope); cada cuenta ve su consumo en GET /api/ai/usage.

@@ -37,6 +37,7 @@ locals {
       AI_BACKEND            = var.enable_worker ? "celery" : "sync"
       GENERATED_DIR         = "${local.results_mount}/generated"
       LOG_LEVEL             = "INFO"
+      TRUSTED_PROXY_HOPS    = "1"
     },
     var.enable_redis ? { REDIS_URL = local.redis_url, RATELIMIT_STORAGE_URI = local.redis_url } : {},
     var.extra_env,

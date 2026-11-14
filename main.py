@@ -22,27 +22,47 @@ app.include_router(insights.router)
 app.include_router(documents.router)
 app.include_router(push_router.router)
 
+import accounts  # noqa: E402
 import rate_limit  # noqa: E402
 from fastapi.responses import JSONResponse  # noqa: E402
 from starlette.routing import Match  # noqa: E402
 
+PUBLIC_API_PATHS = {"/api/health"}
+EXTENSION_API_PATHS = {"/api/tracker/save-from-extension"}
+
 
 @app.middleware("http")
 async def rate_limit_ai(request: Request, call_next):
-    """Cuenta las rutas de IA nativas de FastAPI; las de Flask las cuenta app.py con el mismo contador."""
+    """Límites por cuenta (o por IP sin sesión): API_RATE_LIMIT para todo /api/* y AI_RATE_LIMIT para la IA.
+
+    Corre dentro de require_login, que ya fijó la cuenta. Las rutas de IA que siguen en Flask
+    las cuenta app.py con el mismo contador.
+    """
+    client_ip = rate_limit.client_ip(request.client.host if request.client else None,
+                                     request.headers.get("x-forwarded-for"))
+    user_id = accounts.current_user_id()
+    path = request.url.path
+    token = request.headers.get("x-extension-token")
+    if user_id is None and token and path in EXTENSION_API_PATHS:
+        # la extensión no manda cookie: su token identifica la cuenta. Los tokens inválidos se
+        # cuentan por IP y, superado el límite, se corta antes de consultar la base.
+        if not rate_limit.bad_token_allowed(client_ip):
+            return JSONResponse({"error": "Demasiadas solicitudes, probá de nuevo en un minuto"}, status_code=429)
+        user_id = await run_in_threadpool(auth.extension_token_user, token)
+        if user_id is None:
+            rate_limit.record_bad_token(client_ip)
+    key = rate_limit.client_key(user_id, client_ip)
+    if path.startswith("/api/") and path not in PUBLIC_API_PATHS and not rate_limit.hit_api_limit(key):
+        return JSONResponse({"error": "Demasiadas solicitudes, probá de nuevo en un minuto"}, status_code=429)
     if any(route.matches(request.scope)[0] != Match.NONE for route in ai.router.routes):
-        client_ip = request.client.host if request.client else "unknown"
-        if not rate_limit.hit_ai_limit(client_ip):
+        if not rate_limit.hit_ai_limit(key):
             return JSONResponse({"error": "Demasiadas solicitudes de IA, probá de nuevo en un minuto"}, status_code=429)
     return await call_next(request)
 
-import accounts  # noqa: E402
 import auth  # noqa: E402
 from starlette.concurrency import run_in_threadpool  # noqa: E402
 from fastapi.responses import RedirectResponse  # noqa: E402
 from urllib.parse import quote  # noqa: E402
-
-PUBLIC_API_PATHS = {"/api/health"}
 
 
 @app.middleware("http")
