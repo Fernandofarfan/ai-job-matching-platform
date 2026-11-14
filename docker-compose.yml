@@ -39,6 +39,7 @@ services:
       - DB_NAME=job_tracker
       - REDIS_URL=redis://redis:6379/0
       - SCRAPER_BACKEND=celery
+      - INDEED_SAVE_WITHOUT_DESCRIPTION=${INDEED_SAVE_WITHOUT_DESCRIPTION:-false}
       - AI_BACKEND=celery
       - SECRET_KEY=${SECRET_KEY:-}
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
@@ -99,6 +100,7 @@ services:
       - DB_NAME=job_tracker
       - REDIS_URL=redis://redis:6379/0
       - SCRAPER_BACKEND=celery
+      - INDEED_SAVE_WITHOUT_DESCRIPTION=${INDEED_SAVE_WITHOUT_DESCRIPTION:-false}
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
       - SMTP_USER=${SMTP_USER:-}
       - SMTP_PASSWORD=${SMTP_PASSWORD:-}

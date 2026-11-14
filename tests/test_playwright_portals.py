@@ -105,6 +105,40 @@ def test_login_wall_on_description_stops_with_partial_results(monkeypatch):
     assert [j['Title'] for j in scraper.extract_jobs('x', 'y')] == ['Data Engineer'] and calls == ['a1', 'a2']
 
 
+def test_login_wall_saves_jobs_without_description_when_enabled(monkeypatch):
+    from scrapers.common import PortalBlocked
+    cards = [_card('a1', 'Data Engineer'), _card('a2', 'QA'), _card('a3', 'Ops')]
+    cards[1].children[indeed_scraper.SNIPPET] = Node('Testing manual y automatizado')
+    page = Node(children={indeed_scraper.CARD: cards})
+    page.content = lambda: '<html>ok</html>'
+    monkeypatch.setenv('INDEED_SAVE_WITHOUT_DESCRIPTION', 'true')
+    monkeypatch.setattr(indeed_scraper, 'get_with_retries', lambda p, url: None)
+    monkeypatch.setattr(indeed_scraper.time, 'sleep', lambda s: None)
+    scraper = indeed_scraper.indeedScraper(browser_factory=lambda: mock.Mock(page=page))
+    calls = []
+
+    def description(job_id):
+        calls.append(job_id)
+        if job_id == 'a2':
+            raise PortalBlocked('login')
+        return 'Requirements: 2 years of experience with Python.'
+    monkeypatch.setattr(scraper, '_description', description)
+    jobs = scraper.extract_jobs('x', 'y')
+    assert [j['Title'] for j in jobs] == ['Data Engineer', 'QA', 'Ops'] and calls == ['a1', 'a2']
+    assert jobs[0]['Experience_Category'] == 'Early Career (2 years)' and 'Snippet' not in jobs[0]
+    assert jobs[1]['Job_Description'] == 'Testing manual y automatizado'
+    assert jobs[2]['Job_Description'] == indeed_scraper.NO_DESCRIPTION
+    assert jobs[2]['Experience_Category'] == 'Unknown' and jobs[2]['Job_Link'].endswith('jk=a3')
+    assert all('Snippet' not in job and 'id' not in job for job in jobs)
+
+
+def test_save_without_description_is_off_by_default(monkeypatch):
+    monkeypatch.delenv('INDEED_SAVE_WITHOUT_DESCRIPTION', raising=False)
+    assert indeed_scraper.save_without_description() is False
+    monkeypatch.setenv('INDEED_SAVE_WITHOUT_DESCRIPTION', 'TRUE')
+    assert indeed_scraper.save_without_description() is True
+
+
 def test_description_redirected_to_login_raises(monkeypatch):
     from scrapers.common import PortalBlocked
     tab = mock.Mock(url='https://secure.indeed.com/auth?continue=x&from=bot-detection-anonymous')

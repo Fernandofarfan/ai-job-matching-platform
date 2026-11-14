@@ -6,6 +6,14 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar] - Indeed sin descripción (opcional)
+
+- `INDEED_SAVE_WITHOUT_DESCRIPTION=true`: si Indeed pide login para ver una oferta, esa y las siguientes de la búsqueda
+  se guardan con el resumen del listado, sin abrirlas y sin los filtros de experiencia y visa. Apagado por defecto:
+  la búsqueda se corta y guarda lo encontrado, como antes.
+- La búsqueda de Indeed desde la web ya no exige `INDEED_EMAIL`/`INDEED_PASSWORD` (el formulario no los tiene y el
+  scraper no los usa desde Playwright): antes fallaba con "Please provide Indeed email and password" si no estaban en `.env`.
+
 ## [Sin publicar] - Borrado de cuentas inactivas con aviso previo
 
 - `ACCOUNT_INACTIVITY_DAYS` (0 = apagado): una tarea diaria avisa por email a las cuentas sin entrar
