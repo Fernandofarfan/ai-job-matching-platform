@@ -31,7 +31,7 @@ ignore_missing_imports = true
 follow_imports = "silent"
 explicit_package_bases = true
 files = ["."]
-exclude = ["^alembic/", "^chrome_extension/", "^build/", "^venv"]
+exclude = ["^alembic/", "^chrome_extension/", "^build/", "^venv", "^mutants/"]
 
 # mypy estricto por etapas: los módulos de esta lista ya cumplen --strict y no pueden volver atrás.
 # Etapa 1: cuentas, sesiones, segundo factor, passkeys y modelos.
@@ -100,3 +100,30 @@ patch = ["subprocess"]
 # mínimo de tests unitarios + integración juntos (job "coverage" del CI); los unitarios solos piden 60
 fail_under = 80
 skip_covered = true
+
+[tool.mutmut]
+# Pruebas de mutación sobre los módulos críticos: `mutmut run` y después `mutmut results`. Ver docs/mutation-testing.md.
+paths_to_mutate = ["job_dedup.py", "rate_limit.py", "auth.py", "accounts.py"]
+# Solo los tests de estos módulos: el resto revisa archivos del repo (Dockerfile, workflows) que no están en mutants/.
+tests_dir = [
+    "tests/conftest.py", "tests/test_job_dedup.py", "tests/test_dedup_eval.py", "tests/test_portal_search.py",
+    "tests/test_rate_limits.py", "tests/test_auth.py", "tests/test_account_inactivity.py",
+    "tests/test_account_integrations.py", "tests/test_two_factor.py", "tests/test_user_sessions.py",
+    "tests/test_passkeys.py", "tests/test_security_events.py", "tests/test_account_rules.py", "tests/test_admin.py",
+    "tests/test_legal.py"
+]
+# Lo que importan los tests y no se muta: mutmut corre desde mutants/ y no ve el resto del repo.
+# tests/test_mutmut_config.py avisa si falta un módulo.
+also_copy = [
+    "eval", "scripts", "templates", "static", "routers", "services", "scrapers", "tasks", "alembic", "translations",
+    "alembic.ini", "VERSION", "account_lifecycle.py", "account_notify.py", "ai_engine.py", "ai_usage.py", "app.py",
+    "ats_score.py", "celery_app.py", "cv_storage.py", "data_export.py", "db_config.py", "db_schema.py",
+    "document_batch.py", "document_generators.py", "email_delivery.py", "embeddings.py", "error_reporting.py",
+    "fastapi_web.py", "google_oauth.py", "i18n.py", "integrations.py", "job_alerts.py", "job_dispatch.py",
+    "job_feedback.py", "job_matcher.py", "job_ranking.py", "main.py", "market_analyzer.py", "matching_eval.py",
+    "models.py", "notification_messages.py", "notifier.py", "observability.py", "onboarding.py", "passkeys.py",
+    "profile_store.py", "push.py", "resume_parser.py", "scraper_stats.py", "scraping_jobs.py", "security_events.py",
+    "security_headers.py", "skill_catalog.py", "tracker_export.py", "tracker_stats.py", "two_factor.py",
+    "user_sessions.py", "version.py", "web_settings.py"
+]
+pytest_add_cli_args = ["-p", "no:cacheprovider", "-q", "-x"]
