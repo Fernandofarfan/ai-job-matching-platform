@@ -105,7 +105,7 @@ def test_run_search_filters_by_match(db, monkeypatch):
                                        'channels': ['email'], 'min_score': 50})
     scores = {'Buena': 80.0, 'Mala': 20.0}
     matcher = SimpleNamespace(calculate_overall_match=lambda p, text: {'overall_match': scores[text.split('\n')[0]]})
-    monkeypatch.setattr('resume_parser.jobMatcher', lambda: matcher)
+    monkeypatch.setattr('job_matcher.jobMatcher', lambda: matcher)
     notify = mock.Mock(return_value={})
     jobs = [_job('Mala'), _job('Buena')]
     job_alerts.run_search(search['id'], notify, lambda p: _FakeScraper(jobs), profile={'skills': ['python']})

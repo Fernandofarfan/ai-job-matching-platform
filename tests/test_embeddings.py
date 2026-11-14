@@ -94,8 +94,8 @@ def test_api_error_falls_back():
 
 def test_job_matcher_prefers_embeddings():
     """jobMatcher usa el puntaje semántico y solo cae a TF-IDF si no hay."""
-    import resume_parser
-    matcher = resume_parser.jobMatcher()
+    import job_matcher
+    matcher = job_matcher.jobMatcher()
     with mock.patch.object(embeddings, 'similarity', return_value=73.0):
         assert matcher.calculate_text_similarity('cv', 'oferta') == 73.0
     with mock.patch.object(embeddings, 'similarity', return_value=None), \

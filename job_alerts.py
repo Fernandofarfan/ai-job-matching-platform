@@ -316,7 +316,7 @@ def score(jobs, profile):
     """Agrega `match_percent` (0-100) a cada oferta si hay un perfil de CV."""
     if not profile:
         return jobs
-    from resume_parser import jobMatcher
+    from job_matcher import jobMatcher
     matcher = jobMatcher()
     for job in jobs:
         text = f"{_field(job, 'title')}\n{_field(job, 'description')}"

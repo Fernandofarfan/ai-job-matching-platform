@@ -1,6 +1,7 @@
 """Estado del proceso: progreso de las búsquedas de cada cuenta y el parser y matcher de CVs."""
 import job_dispatch
-from resume_parser import jobMatcher, resumeParser
+from job_matcher import jobMatcher
+from resume_parser import resumeParser
 
 resume_parser = resumeParser()
 job_matcher = jobMatcher()

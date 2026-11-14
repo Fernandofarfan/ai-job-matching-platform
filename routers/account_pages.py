@@ -1,34 +1,32 @@
-"""Mi cuenta (integraciones, contraseña, sesiones, segundo factor, exportar y borrar), Administración y
-exportación a Excel/PDF, en FastAPI.
+"""Mi cuenta (integraciones, contraseña, sesiones, exportar y borrar), en FastAPI.
+
+Segundo factor y passkeys en security_pages.py, Administración en admin_pages.py y Excel/PDF en export_pages.py.
 
 Los nombres de ruta son los endpoints que usaba Flask; los límites usan rate_limit (fastapi_web.hit_limit)
 con la misma clave por cuenta.
 """
 import logging
 import os
-from datetime import date, datetime
+from datetime import date
 from typing import Optional, cast
 from urllib.parse import quote
 
 from fastapi import APIRouter, Request
-from fastapi.responses import JSONResponse, Response
-from markupsafe import Markup
+from fastapi.responses import Response
 from starlette.concurrency import run_in_threadpool
 
 import accounts
-import ai_usage
 import auth
 import data_export
 import integrations
 import security_events
-import tracker_export
 import passkeys
 import two_factor
 import user_sessions
 from fastapi_web import (TextForm, clear_offline_data, client_info, flash, web_app_for, get_session, hit_limit, services_for,
                          limit_key, public_url, read_form, redirect, render, safe_next, save_session,
                          too_many_requests, url_for)
-from routers.auth_pages import audit, passkey_json, request_origin, send_verification
+from routers.auth_pages import audit, send_verification
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["account"], include_in_schema=False)
@@ -425,348 +423,13 @@ def _delete_account(request: Request, form: TextForm) -> Response:
 
 # ─── Segundo factor desde Mi cuenta ──────────────────────────────────────────
 
-def _setup_context(user_id: int) -> dict:
-    """QR y secreto de una configuración empezada."""
-    secret = two_factor.pending_secret(user_id)
-    user = accounts.get_user(user_id)
-    if not secret or not user:
-        return {}
-    uri = two_factor.provisioning_uri(user['email'], secret)
-    return {'totp_setup': {'secret': secret, 'qr': Markup(two_factor.qr_svg(uri))}}
-
-
-@router.post("/account/2fa/setup", name="two_factor_setup")
-async def two_factor_setup(request: Request):
-    """Genera el secreto y muestra el QR para escanear."""
-    form, error = await _form(request, '5 per minute', 'two_factor_setup')
-    return error or await run_in_threadpool(_two_factor_setup, request, form)
-
-
-def _two_factor_setup(request: Request, form: TextForm) -> Response:
-    """Pide la contraseña antes de empezar la configuración."""
-    user_id = _user_id()
-    if not accounts.check_password(user_id, form.get('password', '')):
-        flash(request, 'La contraseña no es correcta', 'danger')
-        return _to_account(request)
-    try:
-        two_factor.start_setup(user_id)
-    except two_factor.TwoFactorError as e:
-        flash(request, str(e), 'warning')
-        return _to_account(request)
-    return render_account(request, **_setup_context(user_id))
-
-
-@router.post("/account/2fa/enable", name="two_factor_enable")
-async def two_factor_enable(request: Request):
-    """Activa el segundo factor con un código de la app y muestra los códigos de recuperación una vez."""
-    form, error = await _form(request, '10 per minute', 'two_factor_enable')
-    return error or await run_in_threadpool(_two_factor_enable, request, form)
-
-
-def _two_factor_enable(request: Request, form: TextForm) -> Response:
-    """Comprueba el primer código y activa el segundo factor."""
-    user_id = _user_id()
-    codes = two_factor.enable(user_id, form.get('code', '').strip())
-    if not codes:
-        flash(request, 'El código no es correcto: revisá la hora del teléfono y probá con el siguiente', 'danger')
-        return render_account(request, **_setup_context(user_id))
-    audit(request, user_id, 'two_factor_enabled')
-    flash(request, 'Verificación en dos pasos activada', 'success')
-    return render_account(request, recovery_codes=codes)
-
-
-def _confirm_identity(request: Request, user_id: int, form: TextForm) -> bool:
-    """Contraseña y código actuales (desactivar o ver códigos nuevos pide los dos)."""
-    if not accounts.check_password(user_id, form.get('password', '')):
-        flash(request, 'La contraseña no es correcta', 'danger')
-        return False
-    if not two_factor.verify(user_id, form.get('code', '').strip()):
-        audit(request, user_id, 'two_factor_failed')
-        flash(request, 'El código no es correcto', 'danger')
-        return False
-    return True
-
-
-@router.post("/account/2fa/disable", name="two_factor_disable")
-async def two_factor_disable(request: Request):
-    """Desactiva el segundo factor."""
-    form, error = await _form(request, '5 per minute', 'two_factor_disable')
-    return error or await run_in_threadpool(_two_factor_disable, request, form)
-
-
-def _two_factor_disable(request: Request, form: TextForm) -> Response:
-    """Con contraseña y código, quita el segundo factor."""
-    user_id = _user_id()
-    if _confirm_identity(request, user_id, form):
-        two_factor.disable(user_id)
-        audit(request, user_id, 'two_factor_disabled')
-        flash(request, 'Verificación en dos pasos desactivada', 'success')
-    return _to_account(request)
-
-
-@router.post("/account/2fa/recovery", name="two_factor_recovery")
-async def two_factor_recovery(request: Request):
-    """Genera códigos de recuperación nuevos; los anteriores dejan de valer."""
-    form, error = await _form(request, '5 per minute', 'two_factor_recovery')
-    return error or await run_in_threadpool(_two_factor_recovery, request, form)
-
-
-def _two_factor_recovery(request: Request, form: TextForm) -> Response:
-    """Con contraseña y código, muestra códigos nuevos una sola vez."""
-    user_id = _user_id()
-    if not _confirm_identity(request, user_id, form):
-        return _to_account(request)
-    codes = two_factor.regenerate_recovery_codes(user_id)
-    audit(request, user_id, 'recovery_codes_regenerated')
-    return render_account(request, recovery_codes=codes)
-
 
 # ─── Administración ──────────────────────────────────────────────────────────
-
-def _admin_id() -> Optional[int]:
-    """Id del administrador, o None para cualquier otra cuenta (que recibe 404)."""
-    user_id = accounts.current_user_id()
-    return user_id if auth.auth_enabled() and user_id is not None and accounts.is_admin(user_id) else None
-
-
-def _target(request: Request, admin_id: int, user_id: int) -> Optional[dict]:
-    """Cuenta sobre la que se actúa; None (con aviso) si es la propia o la administradora."""
-    target = accounts.get_user(user_id)
-    if target is None:
-        return None
-    if user_id in (admin_id, accounts.first_user_id()) or accounts.is_admin(user_id):
-        flash(request, 'La cuenta administradora se gestiona desde Mi cuenta', 'warning')
-        return None
-    return target
-
-
-def _password_ok(request: Request, admin_id: int, form: TextForm) -> bool:
-    """Las acciones irreversibles piden la contraseña del administrador."""
-    if accounts.check_password(admin_id, form.get('password', '')):
-        return True
-    flash(request, 'La contraseña no es correcta', 'danger')
-    return False
-
-
-def _to_admin(request: Request) -> Response:
-    """Vuelta al panel de administración."""
-    return redirect(request, url_for(request, 'admin_panel'))
-
-
-@router.get("/admin", name="admin_panel")
-def admin_panel(request: Request):
-    """Lista de cuentas con estado, segundo factor, última actividad y consumo de IA del mes."""
-    if _admin_id() is None:
-        return _not_found(request)
-    users = accounts.list_users()
-    try:
-        with_two_factor = two_factor.enabled_user_ids()
-        last_seen = user_sessions.last_seen_by_user()
-    except Exception as e:
-        logger.error(f'No se pudo leer el detalle de las cuentas: {e}')
-        with_two_factor, last_seen = set(), {}
-    for user in users:
-        user['two_factor'] = user['id'] in with_two_factor
-        user['last_seen'] = last_seen.get(user['id'])
-        user['ai'] = ai_usage.account_usage(user['id'])
-        user['is_admin'] = accounts.is_admin(user['id'])
-    response = render(request, 'admin.html', users=users, signup_open=accounts.signup_open(),
-                      usage=ai_usage.summary(), user_limit=ai_usage.user_monthly_limit())
-    response.headers['Cache-Control'] = 'no-store'
-    return response
-
-
-async def _admin_action(request: Request, user_id: int, spec: str, namespace: str, action) -> Response:
-    """CSRF, 404 para quien no administra, límite y `action(request, admin_id, target, form)` fuera del event loop."""
-    form, error = await read_form(request)
-    if error:
-        return error
-    admin_id = await run_in_threadpool(_admin_id)
-    if admin_id is None:
-        return _not_found(request)
-    if not hit_limit(request, spec, namespace, limit_key(request)):
-        return too_many_requests()
-
-    def run() -> Response:
-        """Busca la cuenta y aplica la acción."""
-        if accounts.get_user(user_id) is None:
-            return _not_found(request)
-        target = _target(request, admin_id, user_id)
-        if target:
-            action(request, admin_id, target, form)
-        return _to_admin(request)
-    return await run_in_threadpool(run)
-
-
-def _block(request: Request, admin_id: int, target: dict, form: TextForm) -> None:
-    """Bloquea la cuenta: no entra, sus sesiones se cierran y no recibe avisos."""
-    if accounts.set_disabled(target['id'], True):
-        audit(request, target['id'], 'account_blocked')
-        flash(request, f"{target['email']} quedó bloqueada", 'success')
-
-
-def _unblock(request: Request, admin_id: int, target: dict, form: TextForm) -> None:
-    """Desbloquea la cuenta."""
-    if accounts.set_disabled(target['id'], False):
-        audit(request, target['id'], 'account_unblocked')
-        flash(request, f"{target['email']} quedó desbloqueada", 'success')
-
-
-def _reset_two_factor(request: Request, admin_id: int, target: dict, form: TextForm) -> None:
-    """Quita la verificación en dos pasos de quien perdió el teléfono y los códigos."""
-    if _password_ok(request, admin_id, form):
-        two_factor.disable(target['id'])
-        audit(request, target['id'], 'two_factor_reset')
-        flash(request, f"{target['email']} ya puede entrar solo con la contraseña", 'success')
-
-
-def _delete(request: Request, admin_id: int, target: dict, form: TextForm) -> None:
-    """Borra la cuenta y todos sus datos, igual que "Borrar mi cuenta"."""
-    if not _password_ok(request, admin_id, form):
-        return
-    with accounts.as_user(target['id']):
-        removed = services_for(request).profiles.delete_user_profile()
-    if not removed:
-        flash(request, 'No se pudieron borrar los CVs: la cuenta no se borró', 'danger')
-        return
-    try:
-        accounts.delete_account(target['id'])
-    except Exception as e:
-        logger.error(f"No se pudo borrar la cuenta {target['id']}: {e}")
-        flash(request, 'No se pudo borrar la cuenta; probá de nuevo', 'danger')
-        return
-    audit(request, admin_id, 'admin_deleted_account')
-    flash(request, f"{target['email']} y todos sus datos se borraron", 'success')
-
-
-@router.post("/admin/users/{user_id}/block", name="admin_block")
-async def admin_block(request: Request, user_id: int):
-    """Bloquea la cuenta."""
-    return await _admin_action(request, user_id, '30 per minute', 'admin_block', _block)
-
-
-@router.post("/admin/users/{user_id}/unblock", name="admin_unblock")
-async def admin_unblock(request: Request, user_id: int):
-    """Desbloquea la cuenta."""
-    return await _admin_action(request, user_id, '30 per minute', 'admin_unblock', _unblock)
-
-
-@router.post("/admin/users/{user_id}/2fa/reset", name="admin_reset_two_factor")
-async def admin_reset_two_factor(request: Request, user_id: int):
-    """Quita la verificación en dos pasos (pide la contraseña del administrador)."""
-    return await _admin_action(request, user_id, '10 per minute', 'admin_reset_two_factor', _reset_two_factor)
-
-
-@router.post("/admin/users/{user_id}/delete", name="admin_delete")
-async def admin_delete(request: Request, user_id: int):
-    """Borra la cuenta y sus datos (pide la contraseña del administrador)."""
-    return await _admin_action(request, user_id, '10 per minute', 'admin_delete', _delete)
 
 
 # ─── Exportar el tracker y los resultados ────────────────────────────────────
 
-def _stamp() -> str:
-    """Fecha y hora para el nombre del archivo."""
-    return datetime.now().strftime('%Y%m%d_%H%M')
-
-
-@router.get("/export/tracker/excel", name="export_tracker_excel")
-def export_tracker_excel(request: Request):
-    """Exporta el tracker de la cuenta a Excel (.xlsx)."""
-    try:
-        data = tracker_export.tracker_excel(services_for(request).db.get_all_tracked_jobs())
-    except Exception as e:
-        logger.error(f'Error exporting tracker to Excel: {e}')
-        flash(request, 'No se pudo exportar; probá de nuevo', 'danger')
-        return redirect(request, url_for(request, 'tracker'))
-    return _download(request, data, tracker_export.XLSX, f'EmpleoIA_Tracker_{_stamp()}.xlsx')
-
-
-@router.get("/export/tracker/pdf", name="export_tracker_pdf")
-def export_tracker_pdf(request: Request):
-    """Exporta el tracker de la cuenta a PDF."""
-    try:
-        data = tracker_export.tracker_pdf(services_for(request).db.get_all_tracked_jobs())
-    except Exception as e:
-        logger.error(f'Error exporting tracker to PDF: {e}')
-        flash(request, 'No se pudo exportar; probá de nuevo', 'danger')
-        return redirect(request, url_for(request, 'tracker'))
-    return _download(request, data, 'application/pdf', f'EmpleoIA_Tracker_{_stamp()}.pdf')
-
-
-@router.get("/export/results/{filename}/excel", name="export_results_excel")
-def export_results_excel(request: Request, filename: str):
-    """Exporta un CSV de resultados de la cuenta como Excel."""
-    path = os.path.join(accounts.results_dir(), filename)
-    if filename != os.path.basename(filename) or not filename.endswith('.csv') or not os.path.isfile(path):
-        flash(request, 'Archivo no encontrado', 'danger')
-        return redirect(request, url_for(request, 'results'))
-    try:
-        data = tracker_export.results_excel(path)
-    except Exception as e:
-        logger.error(f'Error exporting results to Excel: {e}')
-        flash(request, 'No se pudo exportar; probá de nuevo', 'danger')
-        return redirect(request, url_for(request, 'results'))
-    return _download(request, data, tracker_export.XLSX, f'{filename[:-4]}_export.xlsx')
-
 
 # ─── Passkeys ────────────────────────────────────────────────────────────────
 
-@router.post("/account/passkeys/options", name="passkey_options")
-async def passkey_options(request: Request):
-    """Desafío para registrar una passkey; pide la contraseña, como el segundo factor."""
-    data, error = await passkey_json(request, '5 per minute', 'passkey_options', limit_key(request))
-    return error or await run_in_threadpool(_passkey_options, request, data or {})
 
-
-def _passkey_options(request: Request, data: dict) -> Response:
-    """Comprueba la contraseña y devuelve las opciones de `navigator.credentials.create`."""
-    user_id = _user_id()
-    user = accounts.get_user(user_id)
-    if user is None or not accounts.check_password(user_id, str(data.get('password') or '')):
-        return JSONResponse({'error': 'La contraseña no es correcta'}, status_code=400)
-    challenge = passkeys.new_challenge(get_session(request), 'register', user_id)
-    return save_session(request, Response(
-        passkeys.registration_options(user_id, user['email'], request_origin(request), challenge),
-        media_type='application/json'))
-
-
-@router.post("/account/passkeys", name="passkey_register")
-async def passkey_register(request: Request):
-    """Guarda la passkey que creó el navegador."""
-    data, error = await passkey_json(request, '10 per minute', 'passkey_register', limit_key(request))
-    return error or await run_in_threadpool(_passkey_register, request, data or {})
-
-
-def _passkey_register(request: Request, data: dict) -> Response:
-    """Verifica la respuesta del navegador con el desafío de la sesión."""
-    user_id = _user_id()
-    challenge = passkeys.take_challenge(get_session(request), 'register', user_id)
-    if challenge is None:
-        return save_session(request, JSONResponse({'error': 'El pedido venció: probá de nuevo'}, status_code=400))
-    try:
-        saved = passkeys.register(user_id, data.get('credential') or {}, challenge, request_origin(request),
-                                  str(data.get('name') or ''))
-    except passkeys.PasskeyError as e:
-        return save_session(request, JSONResponse({'error': str(e)}, status_code=400))
-    audit(request, user_id, 'passkey_added')
-    flash(request, 'Passkey agregada', 'success')
-    return save_session(request, JSONResponse({'success': True, 'passkey': saved}))
-
-
-@router.post("/account/passkeys/{passkey_id}/delete", name="passkey_delete")
-async def passkey_delete(request: Request, passkey_id: int):
-    """Borra una passkey de la cuenta."""
-    form, error = await _form(request, '10 per minute', 'passkey_delete')
-    return error or await run_in_threadpool(_passkey_delete, request, passkey_id)
-
-
-def _passkey_delete(request: Request, passkey_id: int) -> Response:
-    """Solo borra passkeys de la cuenta actual."""
-    user_id = _user_id()
-    if passkeys.delete(user_id, passkey_id):
-        audit(request, user_id, 'passkey_removed')
-        flash(request, 'Passkey borrada', 'success')
-    else:
-        flash(request, 'Esa passkey no existe', 'warning')
-    return _to_account(request)

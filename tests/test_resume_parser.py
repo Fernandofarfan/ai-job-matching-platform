@@ -61,12 +61,12 @@ class TestJobMatcher:
 
     @pytest.fixture(autouse=True)
     def setup(self):
-        from resume_parser import jobMatcher
+        from job_matcher import jobMatcher
         self.matcher = jobMatcher()
 
     def test_matcher_instantiation(self):
         """El matcher debe instanciarse sin errores."""
-        from resume_parser import jobMatcher
+        from job_matcher import jobMatcher
         matcher = jobMatcher()
         assert matcher is not None
 

@@ -146,7 +146,7 @@ def test_upload_resume_validation(client, monkeypatch, tmp_path):
     monkeypatch.setattr('cv_storage.plaintext_path', mock.MagicMock())
     parser = mock.Mock()
     parser.parse_resume.return_value = None
-    monkeypatch.setattr('routers.content_pages.services_for',
+    monkeypatch.setattr('routers.profile_pages.services_for',
                         lambda request: mock.Mock(resume_parser=parser, profiles=profiles))
     assert client.post('/upload_resume', data={'resume': (b'x', 'cv.txt'), 'role_type': 'de'}).status_code == 302
     parser.parse_resume.return_value = {'skills': ['python']}
