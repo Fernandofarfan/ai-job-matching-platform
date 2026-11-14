@@ -1,5 +1,5 @@
 {
- "description": "CVs y ofertas etiquetadas a mano. relevance: 2 = buena opción, 1 = parcial, 0 (o sin etiqueta) = no corresponde.",
+ "description": "CVs y ofertas etiquetadas a mano, en inglés, español y portugués. relevance: 2 = buena opción, 1 = parcial, 0 (o sin etiqueta) = no corresponde.",
  "jobs": {
   "da_jr": "Junior Data Analyst. 1+ years of experience with SQL and Excel. Build dashboards in Power BI, reporting for the sales team, pivot tables and data cleaning.",
   "da_bi": "BI Analyst. 2 years of experience with Tableau, SQL and statistics. Create dashboards and KPI reporting, hypothesis testing and A/B analysis for marketing.",
@@ -12,44 +12,304 @@
   "be_node": "Backend Developer Node.js. 3 years of experience with JavaScript, Node.js, Express, MongoDB and REST APIs.",
   "devops": "DevOps Engineer. 5+ years of experience with Kubernetes, Terraform, Docker, CI/CD pipelines, Linux and AWS infrastructure monitoring.",
   "sales": "Sales Executive. 2 years of experience in B2B sales, negotiation, CRM (Salesforce) and meeting commercial targets.",
-  "accountant": "Accountant. 3 years of experience in accounting, taxes, financial statements, payroll and SAP."
+  "accountant": "Accountant. 3 years of experience in accounting, taxes, financial statements, payroll and SAP.",
+  "es_da_ssr": "Analista de Datos Semi Senior. 2 años de experiencia con SQL, Power BI y Excel. Armado de tableros e informes para el área comercial y limpieza de datos con Python.",
+  "es_be_java": "Desarrollador Backend Java. 4 años de experiencia con Java, Spring Boot, microservicios, MySQL y APIs REST. Docker y Git.",
+  "es_qa": "QA Automation. 3 años de experiencia en testing automatizado con Selenium, Cypress, Postman y pipelines de CI/CD. Scripts en Python o JavaScript.",
+  "es_rrhh": "Analista de Recursos Humanos. 2 años de experiencia en reclutamiento y selección, entrevistas, onboarding y clima laboral.",
+  "es_contador": "Contador Público. 3 años de experiencia en impuestos, balances, liquidación de sueldos y SAP. Excel avanzado.",
+  "es_devops_sr": "DevOps Senior. 8 años de experiencia con Kubernetes, Terraform, AWS, Docker, Linux y CI/CD. Liderazgo técnico del equipo de infraestructura.",
+  "pt_ds": "Cientista de Dados. 3 anos de experiência com machine learning, Python, pandas, scikit-learn, estatística e modelagem preditiva.",
+  "pt_fe": "Desenvolvedor Front-end. 2 anos de experiência com React, TypeScript, JavaScript, HTML e CSS. Consumo de APIs REST.",
+  "pt_vendas": "Executivo de Vendas. 3 anos de experiência em vendas B2B, negociação, CRM Salesforce e metas comerciais.",
+  "pt_suporte": "Analista de Suporte Técnico. 1 ano de experiência em atendimento a usuários, Windows, redes, Active Directory e help desk.",
+  "ux": "UX/UI Designer. 3 years of experience with Figma, user research, wireframes, prototyping and design systems.",
+  "pm": "Product Manager. 5 years of experience defining product roadmaps, user stories, Agile and Scrum, stakeholder management and product metrics.",
+  "de_lead": "Lead Data Engineer. 10+ years of experience with Spark, Kafka, Scala, Python and AWS. Lead a team of data engineers."
  },
  "profiles": {
   "data_analyst": {
    "experience_years": 2,
-   "skills": ["SQL", "Excel", "Power BI", "Tableau", "Data Visualization", "Statistics", "Python", "Pandas"],
+   "skills": [
+    "SQL",
+    "Excel",
+    "Power BI",
+    "Tableau",
+    "Data Visualization",
+    "Statistics",
+    "Python",
+    "Pandas"
+   ],
    "raw_text": "Data analyst with 2 years of experience building dashboards and reports in Power BI and Tableau. SQL queries, Excel pivot tables, statistics and data cleaning with Python pandas for sales and marketing teams.",
-   "relevance": {"da_jr": 2, "da_bi": 2, "ds_ml": 1, "de_cloud": 1}
+   "relevance": {
+    "da_jr": 2,
+    "da_bi": 2,
+    "ds_ml": 1,
+    "de_cloud": 1,
+    "es_da_ssr": 2,
+    "pt_ds": 1
+   }
   },
   "data_engineer": {
    "experience_years": 4,
-   "skills": ["Python", "SQL", "Apache Spark", "Airflow", "AWS", "ETL", "Snowflake", "Docker", "Azure"],
+   "skills": [
+    "Python",
+    "SQL",
+    "Apache Spark",
+    "Airflow",
+    "AWS",
+    "ETL",
+    "Snowflake",
+    "Docker",
+    "Azure"
+   ],
    "raw_text": "Data engineer with 4 years of experience designing ETL pipelines with Python, Spark and Airflow on AWS (S3, Glue, Redshift) and Azure Data Factory. Data modeling in Snowflake, Docker.",
-   "relevance": {"de_cloud": 2, "de_azure": 2, "da_jr": 1, "be_python": 1, "ds_ml": 1, "devops": 1}
+   "relevance": {
+    "de_cloud": 2,
+    "de_azure": 2,
+    "da_jr": 1,
+    "be_python": 1,
+    "ds_ml": 1,
+    "devops": 1,
+    "de_lead": 1
+   }
   },
   "ml_engineer": {
    "experience_years": 3,
-   "skills": ["Python", "Machine Learning", "PyTorch", "TensorFlow", "NLP", "Pandas", "Docker", "Statistics"],
+   "skills": [
+    "Python",
+    "Machine Learning",
+    "PyTorch",
+    "TensorFlow",
+    "NLP",
+    "Pandas",
+    "Docker",
+    "Statistics"
+   ],
    "raw_text": "Machine learning engineer with 3 years of experience training NLP and classification models with PyTorch and TensorFlow, predictive modeling with pandas and scikit-learn, deploying models with Docker.",
-   "relevance": {"ai_llm": 2, "ds_ml": 2, "de_cloud": 1, "da_bi": 1}
+   "relevance": {
+    "ai_llm": 2,
+    "ds_ml": 2,
+    "de_cloud": 1,
+    "da_bi": 1,
+    "pt_ds": 2
+   }
   },
   "web_developer": {
    "experience_years": 3,
-   "skills": ["JavaScript", "React", "TypeScript", "HTML", "CSS", "Node.js", "REST API", "Git", "MongoDB"],
+   "skills": [
+    "JavaScript",
+    "React",
+    "TypeScript",
+    "HTML",
+    "CSS",
+    "Node.js",
+    "REST API",
+    "Git",
+    "MongoDB"
+   ],
    "raw_text": "Full stack web developer with 3 years of experience building React and TypeScript frontends and Node.js Express backends with MongoDB. REST APIs, HTML, CSS and Git.",
-   "relevance": {"fe_react": 2, "be_node": 2, "be_python": 1}
+   "relevance": {
+    "fe_react": 2,
+    "be_node": 2,
+    "be_python": 1,
+    "pt_fe": 2
+   }
   },
   "backend_python": {
    "experience_years": 5,
-   "skills": ["Python", "Django", "FastAPI", "PostgreSQL", "REST API", "Docker", "Git", "Kubernetes"],
+   "skills": [
+    "Python",
+    "Django",
+    "FastAPI",
+    "PostgreSQL",
+    "REST API",
+    "Docker",
+    "Git",
+    "Kubernetes"
+   ],
    "raw_text": "Backend developer with 5 years of experience in Python with Django and FastAPI, PostgreSQL databases, REST APIs and microservices deployed with Docker and Kubernetes.",
-   "relevance": {"be_python": 2, "be_node": 1, "devops": 1, "de_cloud": 1, "ai_llm": 1}
+   "relevance": {
+    "be_python": 2,
+    "be_node": 1,
+    "devops": 1,
+    "de_cloud": 1,
+    "ai_llm": 1,
+    "es_be_java": 1
+   }
   },
   "sales_rep": {
    "experience_years": 3,
-   "skills": ["Sales", "Negotiation", "Salesforce", "CRM", "Excel"],
+   "skills": [
+    "Sales",
+    "Negotiation",
+    "Salesforce",
+    "CRM",
+    "Excel"
+   ],
    "raw_text": "Sales representative with 3 years of experience in B2B sales, negotiation with clients, CRM management in Salesforce and reporting in Excel.",
-   "relevance": {"sales": 2}
+   "relevance": {
+    "sales": 2,
+    "pt_vendas": 2
+   }
+  },
+  "analista_datos_es": {
+   "experience_years": 2,
+   "skills": [
+    "SQL",
+    "Excel",
+    "Power BI",
+    "Python",
+    "Pandas",
+    "Statistics"
+   ],
+   "raw_text": "Analista de datos con 2 años de experiencia armando tableros en Power BI, consultas SQL, tablas dinámicas en Excel y limpieza de datos con Python y pandas para el área comercial.",
+   "relevance": {
+    "es_da_ssr": 2,
+    "da_jr": 2,
+    "da_bi": 1,
+    "ds_ml": 1,
+    "pt_ds": 1
+   }
+  },
+  "java_backend_es": {
+   "experience_years": 5,
+   "skills": [
+    "Java",
+    "Spring Boot",
+    "MySQL",
+    "REST API",
+    "Docker",
+    "Git",
+    "Microservices"
+   ],
+   "raw_text": "Desarrollador backend con 5 años de experiencia en Java y Spring Boot, microservicios, bases MySQL, APIs REST, Docker y Git.",
+   "relevance": {
+    "es_be_java": 2,
+    "be_python": 1,
+    "be_node": 1
+   }
+  },
+  "qa_es": {
+   "experience_years": 3,
+   "skills": [
+    "Selenium",
+    "Cypress",
+    "Postman",
+    "Python",
+    "JavaScript",
+    "CI/CD",
+    "Testing"
+   ],
+   "raw_text": "QA automation con 3 años de experiencia en testing automatizado con Selenium y Cypress, pruebas de APIs con Postman y pipelines de CI/CD.",
+   "relevance": {
+    "es_qa": 2,
+    "devops": 1
+   }
+  },
+  "rrhh_es": {
+   "experience_years": 3,
+   "skills": [
+    "Recruiting",
+    "Interviews",
+    "Onboarding",
+    "Excel"
+   ],
+   "raw_text": "Analista de recursos humanos con 3 años de experiencia en reclutamiento y selección, entrevistas por competencias, onboarding y encuestas de clima laboral.",
+   "relevance": {
+    "es_rrhh": 2
+   }
+  },
+  "contador_es": {
+   "experience_years": 4,
+   "skills": [
+    "Accounting",
+    "Taxes",
+    "SAP",
+    "Excel",
+    "Payroll"
+   ],
+   "raw_text": "Contador público con 4 años de experiencia en impuestos, balances, liquidación de sueldos y SAP. Excel avanzado.",
+   "relevance": {
+    "es_contador": 2,
+    "accountant": 2
+   }
+  },
+  "cientista_pt": {
+   "experience_years": 3,
+   "skills": [
+    "Python",
+    "Machine Learning",
+    "Pandas",
+    "Scikit-learn",
+    "Statistics"
+   ],
+   "raw_text": "Cientista de dados com 3 anos de experiência em machine learning, modelagem preditiva e estatística com Python, pandas e scikit-learn.",
+   "relevance": {
+    "pt_ds": 2,
+    "ds_ml": 2,
+    "ai_llm": 1,
+    "da_bi": 1
+   }
+  },
+  "frontend_pt": {
+   "experience_years": 2,
+   "skills": [
+    "React",
+    "TypeScript",
+    "JavaScript",
+    "HTML",
+    "CSS",
+    "Git"
+   ],
+   "raw_text": "Desenvolvedor front-end com 2 anos de experiência em React, TypeScript, JavaScript, HTML e CSS, consumindo APIs REST.",
+   "relevance": {
+    "pt_fe": 2,
+    "fe_react": 2,
+    "be_node": 1
+   }
+  },
+  "vendas_pt": {
+   "experience_years": 4,
+   "skills": [
+    "Sales",
+    "Negotiation",
+    "Salesforce",
+    "CRM"
+   ],
+   "raw_text": "Executivo de vendas com 4 anos de experiência em vendas B2B, negociação com clientes e CRM Salesforce.",
+   "relevance": {
+    "pt_vendas": 2,
+    "sales": 2
+   }
+  },
+  "suporte_jr_pt": {
+   "experience_years": 1,
+   "skills": [
+    "Windows",
+    "Networking",
+    "Active Directory",
+    "Help Desk"
+   ],
+   "raw_text": "Analista de suporte com 1 ano de experiência em help desk, atendimento a usuários, Windows, redes e Active Directory.",
+   "relevance": {
+    "pt_suporte": 2
+   }
+  },
+  "designer_ux": {
+   "experience_years": 3,
+   "skills": [
+    "Figma",
+    "UX",
+    "User Research",
+    "Prototyping",
+    "Wireframes"
+   ],
+   "raw_text": "UX/UI designer with 3 years of experience in Figma, user research, wireframes, prototyping and design systems.",
+   "relevance": {
+    "ux": 2,
+    "pm": 1
+   }
   }
  }
 }

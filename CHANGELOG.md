@@ -6,6 +6,13 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar] - Más casos para medir el matching
+
+- `eval/matching_dataset.json`: de 6 CVs y 12 ofertas a 16 CVs y 25 ofertas, con CVs y ofertas en español y portugués, y ofertas que piden más años de los que tiene el CV.
+- `resume_parser`: los años de experiencia pedidos también se leen en español y portugués ("3 años de experiencia", "2 anos de experiência", "mínimo 4 años", "pelo menos 5 anos"). Antes esas ofertas contaban como sin requisito.
+- `python scripts/eval_matching.py --compare`: mide TF-IDF y embeddings sobre el mismo dataset (embeddings necesita `GEMINI_API_KEY`).
+- Línea base del CI: precisión@3 mínima 0,70 (varios CVs nuevos tienen una sola oferta buena).
+
 ## [Sin publicar] - Resumen semanal por email
 
 - Tarea semanal `send_weekly_digests` en Celery beat: un email por cuenta activa con las ofertas nuevas de sus alertas, las postulaciones sin respuesta y los próximos pasos del tracker. Si no hay novedades, no se manda. Beat la corre cada hora y cada cuenta recibe el resumen 7 días después del anterior (`users.weekly_digest_sent_at`), así los reinicios del worker no lo postergan y las ofertas no se repiten. Las entrevistas en curso solas no disparan el email.
