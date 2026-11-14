@@ -347,7 +347,8 @@ TELEGRAM_MAX_CHARS = 4096
 
 def _telegram_chunks(text: str, size: int = TELEGRAM_MAX_CHARS) -> list:
     """Parte el texto en mensajes de hasta `size` caracteres, cortando entre ofertas (líneas '• ')."""
-    chunks, current = [], ""
+    chunks: list[str] = []
+    current = ""
     for block in text.split("\n• "):
         block = block if not current and not chunks else "• " + block
         candidate = f"{current}\n{block}" if current else block

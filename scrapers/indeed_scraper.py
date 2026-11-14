@@ -14,7 +14,7 @@ import logging
 import os
 from datetime import datetime
 import pandas as pd
-from typing import List, Dict
+from typing import Dict, List, Optional
 from functools import wraps
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -541,7 +541,7 @@ class indeedScraper:
             logger.error(f"Error in handle_page_not_found: {e}")
             return False
 
-    def extract_job_details(self, job_element, job_index, total_jobs) -> Dict:
+    def extract_job_details(self, job_element, job_index, total_jobs) -> Optional[Dict]:
         """Extract job details from job element with proper filtering"""
         try:
             job_info = {}
@@ -1322,7 +1322,7 @@ class indeedScraper:
                         except:
                             continue
                             
-                    if not what_field:
+                    if what_field is None:
                         # Fallback
                         what_field = search_form.find_element(By.CSS_SELECTOR, "input[type='text']")
                         
@@ -1366,6 +1366,10 @@ class indeedScraper:
 
                     if what_field.get_attribute("value") != job_title:
                         logger.error("Job title not entered correctly")
+                        continue
+
+                    if where_field is None:
+                        logger.error("Location field not found")
                         continue
 
                     where_field.click()
@@ -2044,9 +2048,6 @@ class indeedScraper:
                     logger.error("Search failed, retrying...")
                     continue
 
-                logger.info("Applying filters...")
-                self.apply_filters()
-                time.sleep(0.5)
 
                 if self.check_and_handle_verification():
                     time.sleep(5)

@@ -4,6 +4,7 @@ Extrae y analiza datos salariales de los CSVs scrapeados y los enriquece con IA.
 """
 import logging
 import re
+from typing import Any
 
 import pandas as pd
 import numpy as np
@@ -179,13 +180,13 @@ def get_salary_by_company(jobs_df: pd.DataFrame,
                            company_col: str = "Company",
                            salary_col: str = "Salary") -> list:
     """Retorna ranking de empresas por salario promedio."""
-    results = []
+    results: list[dict[str, Any]] = []
 
     for col in [title_col, company_col, salary_col]:
         if col not in jobs_df.columns:
             return []
 
-    company_data = {}
+    company_data: dict[str, list[float]] = {}
     for _, row in jobs_df.iterrows():
         company = str(row.get(company_col, ""))
         if not company or company == "nan":

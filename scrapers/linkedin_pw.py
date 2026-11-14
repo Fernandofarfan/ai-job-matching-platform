@@ -2,7 +2,7 @@ import os
 import re
 import time
 import logging
-from typing import List, Dict
+from typing import Any, Dict, List, Optional
 from playwright.sync_api import sync_playwright
 
 logging.basicConfig(level=logging.INFO)
@@ -78,7 +78,7 @@ def categorize_experience_with_limit(years: str) -> str:
 
 class linkedinClass:
     """Implementación modernizada usando Playwright (Fase 2)."""
-    def __init__(self, li_at_token: str = None, email: str = None, password: str = None):
+    def __init__(self, li_at_token: Optional[str] = None, email: Optional[str] = None, password: Optional[str] = None):
         self.li_at_token = li_at_token
         self.email = email
         self.password = password
@@ -86,7 +86,7 @@ class linkedinClass:
         
         # Lógica de proxy rotation
         proxy_server = os.getenv('PROXY_SERVER')
-        launch_opts = {"headless": True}
+        launch_opts: dict[str, Any] = {"headless": True}
         if proxy_server:
             launch_opts["proxy"] = {"server": proxy_server}
             
@@ -124,7 +124,7 @@ class linkedinClass:
             logger.error(f"Credentials login failed: {e}")
             return False
 
-    def search_jobs(self, keyword: str, location: str, filters: dict = None, max_jobs_per_search: int = 50) -> List[Dict]:
+    def search_jobs(self, keyword: str, location: str, filters: Optional[dict] = None, max_jobs_per_search: int = 50) -> List[Dict]:
         jobs = []
         try:
             search_url = f"https://www.linkedin.com/jobs/search/?keywords={keyword}&location={location}"
