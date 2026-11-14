@@ -11,6 +11,7 @@ spec.loader.exec_module(report)
 
 
 def test_report_counts_by_module(tmp_path, monkeypatch, capsys):
+    """Cuenta detectados, sobrevivientes, sin tests y otros por módulo, con el puntaje."""
     (tmp_path / 'mutants').mkdir()
     codes = {'auth.a__mutmut_1': 1, 'auth.a__mutmut_2': 0, 'auth.a__mutmut_3': 33, 'auth.a__mutmut_4': None}
     (tmp_path / 'mutants' / 'auth.py.meta').write_text(json.dumps({'exit_code_by_key': codes}))
@@ -22,5 +23,6 @@ def test_report_counts_by_module(tmp_path, monkeypatch, capsys):
 
 
 def test_report_without_mutants_fails(tmp_path, monkeypatch):
+    """Sin `mutants/` el script falla con código 1."""
     monkeypatch.chdir(tmp_path)
     assert report.main() == 1

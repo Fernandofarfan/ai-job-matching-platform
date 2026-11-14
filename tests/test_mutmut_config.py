@@ -7,6 +7,7 @@ CONFIG = tomllib.loads((ROOT / 'pyproject.toml').read_text(encoding='utf-8'))['t
 
 
 def test_mutated_modules_and_tests_exist():
+    """Todo lo que nombra la configuración existe en el repo."""
     for path in CONFIG['paths_to_mutate'] + CONFIG['tests_dir'] + CONFIG['also_copy']:
         assert (ROOT / path).exists(), path
 

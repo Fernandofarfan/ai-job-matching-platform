@@ -48,6 +48,7 @@ def render(summary: dict[str, Counter[str]]) -> str:
 
 
 def main() -> int:
+    """Imprime la tabla; falla si todavía no se corrió mutmut."""
     mutants = Path('mutants')
     if not mutants.is_dir():
         print('No hay mutants/: corré `mutmut run` primero.', file=sys.stderr)
