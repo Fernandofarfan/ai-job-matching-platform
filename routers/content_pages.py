@@ -112,7 +112,7 @@ def _job_table(file_path: str) -> dict[str, Any]:
         df['Habilidades'] = [_skills_cell(job.get('matched_skills'), job.get('missing_skills'))
                              for job in df.to_dict('records')]
     df = df.rename(columns=COLUMNS)
-    display_columns = ['Título', 'Empresa', 'Ubicación', 'Habilidades', 'Enlace', 'URL', 'Apply_URL']
+    display_columns = ['Título', 'Empresa', 'Ubicación', 'Portales', 'Habilidades', 'Enlace', 'URL', 'Apply_URL']
     if 'preference' in df.columns:
         df = df.rename(columns={'preference': 'Afinidad'})
         display_columns.insert(0, 'Afinidad')

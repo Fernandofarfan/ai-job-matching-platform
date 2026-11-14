@@ -81,7 +81,7 @@
 - Búsqueda automatizada en **Indeed**, **LinkedIn**, **Bumeran** y **Computrabajo**
 - **Celery + Redis**: Scraping en segundo plano sin congelar la app web
 - **Flower Dashboard**: Monitor de tareas en `localhost:5555` para ver el progreso
-- **🚀 Scraper Universal**: Ejecuta múltiples plataformas simultáneamente en paralelo
+- **🚀 Scraper Universal**: Ejecuta múltiples plataformas simultáneamente en paralelo y unifica la misma oferta publicada en varios portales (columna "Portales")
 - Filtrado inteligente por habilidades, ubicación y nivel de experiencia
 - Chromium sin ventana con Playwright en todos los portales
 
@@ -316,7 +316,7 @@ docker-compose logs -f web
 #### Usar el Scraper Integrado
 - **LinkedIn**: Andá a **Buscar Empleos** → LinkedIn → Configurá credenciales → Iniciar
 - **Indeed**: Andá a **Buscar Empleos** → Indeed → Configurá credenciales → Iniciar
-- **Universal**: Ejecuta Computrabajo + Bumeran simultáneamente
+- **Universal**: Ejecuta Computrabajo, Bumeran, ZonaJobs y GetOnBoard simultáneamente. Una oferta repetida en varios portales aparece una sola vez: misma URL, o mismo título y empresa en una ubicación compatible. Las de empresa "Confidencial" no se unifican
 
 ### 3️⃣ Mock Interviews (NEW)
 
