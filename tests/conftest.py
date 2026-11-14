@@ -262,7 +262,7 @@ def mock_db(app):
 @pytest.fixture
 def tracker_db(app):
     """Mock del DatabaseManager que usan las rutas (el de app.db_manager)."""
-    return app.extensions['empleoia_app_globals']['db_manager']
+    return app.extensions['empleoia_services'].db
 
 
 @pytest.fixture
@@ -273,7 +273,7 @@ def api(app, tracker_db):
 
     from routers import ai, documents, insights, tracker
     from routers import push as push_router
-    app_globals = app.extensions['empleoia_app_globals']
+    profiles = app.extensions['empleoia_services'].profiles
     fastapi_app = FastAPI()
     fastapi_app.include_router(tracker.router)
     fastapi_app.include_router(insights.router)
@@ -287,7 +287,7 @@ def api(app, tracker_db):
         available=False, engine=None, notifier=None, resume_text=lambda: None, profile=lambda: None)
     fastapi_app.dependency_overrides[documents.get_resume_text] = lambda: lambda: None
     fastapi_app.dependency_overrides[insights.get_profiles] = lambda: (
-        app_globals['get_all_user_profiles'], app_globals['get_user_profile'])
+        profiles.get_all_user_profiles, profiles.get_user_profile)
     return TestClient(fastapi_app)
 
 

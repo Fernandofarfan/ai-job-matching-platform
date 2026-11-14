@@ -24,7 +24,7 @@ import security_events
 import tracker_export
 import two_factor
 import user_sessions
-from fastapi_web import (TextForm, clear_offline_data, client_info, flash, web_app_for, get_session, hit_limit, legacy,
+from fastapi_web import (TextForm, clear_offline_data, client_info, flash, web_app_for, get_session, hit_limit, services_for,
                          limit_key, public_url, read_form, redirect, render, safe_next, save_session,
                          too_many_requests, url_for)
 from routers.auth_pages import audit, send_verification
@@ -373,7 +373,7 @@ def _delete_account(request: Request, form: dict) -> Response:
         # Telegram, Gmail y la extensión son de la primera cuenta: pasarían a la siguiente
         flash(request, 'La primera cuenta (administradora) no se puede borrar mientras haya otras cuentas', 'danger')
         return _to_account(request)
-    if not legacy(request)['delete_user_profile']():
+    if not services_for(request).profiles.delete_user_profile():
         flash(request, 'No se pudieron borrar tus CVs: la cuenta no se borró', 'danger')
         return _to_account(request)
     try:
@@ -590,7 +590,7 @@ def _delete(request: Request, admin_id: int, target: dict, form: dict) -> None:
     if not _password_ok(request, admin_id, form):
         return
     with accounts.as_user(target['id']):
-        removed = legacy(request)['delete_user_profile']()
+        removed = services_for(request).profiles.delete_user_profile()
     if not removed:
         flash(request, 'No se pudieron borrar los CVs: la cuenta no se borró', 'danger')
         return
@@ -639,7 +639,7 @@ def _stamp() -> str:
 def export_tracker_excel(request: Request):
     """Exporta el tracker de la cuenta a Excel (.xlsx)."""
     try:
-        data = tracker_export.tracker_excel(legacy(request)['db_manager'].get_all_tracked_jobs())
+        data = tracker_export.tracker_excel(services_for(request).db.get_all_tracked_jobs())
     except Exception as e:
         logger.error(f'Error exporting tracker to Excel: {e}')
         flash(request, 'No se pudo exportar; probá de nuevo', 'danger')
@@ -651,7 +651,7 @@ def export_tracker_excel(request: Request):
 def export_tracker_pdf(request: Request):
     """Exporta el tracker de la cuenta a PDF."""
     try:
-        data = tracker_export.tracker_pdf(legacy(request)['db_manager'].get_all_tracked_jobs())
+        data = tracker_export.tracker_pdf(services_for(request).db.get_all_tracked_jobs())
     except Exception as e:
         logger.error(f'Error exporting tracker to PDF: {e}')
         flash(request, 'No se pudo exportar; probá de nuevo', 'danger')

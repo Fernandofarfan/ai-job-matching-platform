@@ -116,7 +116,7 @@ def test_app_exports_db_manager_for_legacy_routes():
 def test_connections_escapes_company_in_data_args(client, app):
     """La empresa va en data-args como JSON escapado: una comilla no corta el atributo."""
     from unittest import mock
-    db = app.extensions['empleoia_app_globals']['db_manager']
+    db = app.extensions['empleoia_services'].db
     with mock.patch.object(db, 'get_companies_for_connections', return_value=[{'company': "O'Hara <SA>"}]):
         body = client.get('/connections').get_data(as_text=True)
     assert "data-args='[\"O\\u0027Hara \\u003cSA\\u003e\", \"$el\"]'" in body

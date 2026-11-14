@@ -340,11 +340,10 @@ def run_universal_scraper(self, credentials: dict, searches: list, filters: dict
 def run_web_job(self, key: str, name: str, args: list, poll_seconds: float = 2.0, user_id=None):
     """Corre en el worker el mismo scraper que lanza la web (como `user_id`) y publica su `job_status[key]`."""
     import accounts
-    import app as web_app  # registra las rutas y el job_status compartido
     import job_dispatch
+    from services.state import job_status as status
 
     func = job_dispatch.resolve(name)
-    status = web_app.job_status
     with accounts.as_user(user_id):
         status[key] = {**status.get(key, {}), "status": "running", "progress": 0, "message": "Iniciando..."}
         worker = accounts.thread(target=func, args=args, daemon=True)

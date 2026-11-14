@@ -6,6 +6,11 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar] - app.py partido en servicios
+
+- `app.py` queda en ~90 líneas: arma la web y un `AppServices` tipado. La lógica pasa a `services/`: `profiles.py` (perfiles y CV), `portal_search.py` (Indeed y LinkedIn), `connections.py` (solicitudes de LinkedIn), `probe_tasks.py` (pruebas de scrapers) y `state.py` (`job_status`, parser y matcher).
+- Las páginas usan `fastapi_web.services_for(request)` en vez del diccionario de globals de `app.py`; el worker y `scraping_jobs.py` ya no importan `app`.
+
 ## [Sin publicar] - Aviso cuando un portal deja de devolver ofertas
 
 - Cada búsqueda anota su resultado por portal (`ok`, `empty`, `error`) en el storage compartido (`RATELIMIT_STORAGE_URI`), así cuentan también las del worker y las alertas de empleo. `/metrics` lo expone como `empleoia_scraper_runs_total{portal,outcome}`.

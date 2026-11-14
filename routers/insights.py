@@ -14,9 +14,9 @@ router = APIRouter(prefix='/api', tags=['insights'], route_class=TrackerRoute, d
 
 
 def get_profiles():
-    """Funciones de perfiles de app.py; se sobrescriben en tests."""
-    from app import get_all_user_profiles, get_user_profile
-    return get_all_user_profiles, get_user_profile
+    """Funciones de perfiles (services/profiles.py); se sobrescriben en tests."""
+    from services import profiles
+    return profiles.get_all_user_profiles, profiles.get_user_profile
 
 
 def get_ranking_model():

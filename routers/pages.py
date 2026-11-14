@@ -7,7 +7,7 @@ from starlette.concurrency import run_in_threadpool
 
 import auth
 import i18n
-from fastapi_web import legacy, render
+from fastapi_web import services_for, render
 
 router = APIRouter(tags=["pages"], include_in_schema=False)
 
@@ -19,12 +19,12 @@ def index(request: Request):
 
 @router.get("/scraper", name="scraper")
 def scraper(request: Request):
-    return render(request, "scraper.html", profile_available=legacy(request)["get_user_profile"]() is not None)
+    return render(request, "scraper.html", profile_available=services_for(request).profiles.get_user_profile() is not None)
 
 
 @router.get("/results", name="results")
 def results(request: Request):
-    return render(request, "results.html", job_files=legacy(request)["get_recent_job_files"]())
+    return render(request, "results.html", job_files=services_for(request).profiles.get_recent_job_files())
 
 
 @router.get("/profile", name="profile")
@@ -36,7 +36,7 @@ def profile(request: Request):
 def mock_interview(request: Request):
     """Página de entrevistas simuladas con IA."""
     try:
-        tracked_jobs = legacy(request)["db_manager"].get_all_tracked_jobs()
+        tracked_jobs = services_for(request).db.get_all_tracked_jobs()
     except Exception:
         tracked_jobs = []
     return render(request, "mock_interview.html", tracked_jobs=tracked_jobs)

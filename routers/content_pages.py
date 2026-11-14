@@ -22,7 +22,7 @@ import cv_storage
 import job_alerts
 import job_dispatch
 from document_generators import ResumeOptimizer
-from fastapi_web import (_body_within, _csrf_ok, flash, web_app_for, get_session, legacy, read_form, read_upload,
+from fastapi_web import (_body_within, _csrf_ok, flash, web_app_for, get_session, services_for, read_form, read_upload,
                          redirect, render, save_session, upload_max_bytes, url_for)
 
 logger = logging.getLogger(__name__)
@@ -126,7 +126,7 @@ async def api_save_applications(request: Request):
             return _json_error('applied_jobs inválido', 400)
     except (ValueError, AttributeError):
         return _json_error('JSON inválido', 400)
-    db = legacy(request)['db_manager']
+    db = services_for(request).db
 
     def save():
         """Guarda las postulaciones y el archivo procesado; devuelve ids y empresas."""
@@ -161,7 +161,7 @@ async def exclude_company_from_networking(request: Request):
         if company in session.get(key, []):
             session[key] = [c for c in session[key] if c != company]
     try:
-        ok = await run_in_threadpool(legacy(request)['db_manager'].exclude_company, company)
+        ok = await run_in_threadpool(services_for(request).db.exclude_company, company)
     except Exception as e:
         logger.error(f'Error excluding company: {e}')
         ok = False
@@ -175,8 +175,8 @@ def connections(request: Request):
     session = get_session(request)
     companies = session.get('applied_companies', [])
     if not companies:
-        companies = [c['company'] for c in legacy(request)['db_manager'].get_companies_for_connections()]
-    return render(request, 'connections.html', job_files=legacy(request)['get_recent_job_files'](),
+        companies = [c['company'] for c in services_for(request).db.get_companies_for_connections()]
+    return render(request, 'connections.html', job_files=services_for(request).profiles.get_recent_job_files(),
                   companies=companies, empresas=session.get('companies', companies),
                   auto_start=request.query_params.get('auto_start') == 'true')
 
@@ -200,7 +200,7 @@ def debug_directories(request: Request):
 @router.get('/status', name='status')
 def status(request: Request):
     """Progreso de las búsquedas de la cuenta."""
-    return dict(job_dispatch.refresh(legacy(request)['job_status']))
+    return dict(job_dispatch.refresh(services_for(request).job_status))
 
 
 @router.get('/results/{filename}', name='download_file')
@@ -294,7 +294,7 @@ def batch_cover_letters(request: Request):
 @router.get('/batch_optimize', name='batch_optimize_page')
 def batch_optimize_page(request: Request):
     """Página de CVs optimizados en lote."""
-    return render(request, 'batch_optimize.html', job_files=legacy(request)['get_recent_job_files']())
+    return render(request, 'batch_optimize.html', job_files=services_for(request).profiles.get_recent_job_files())
 
 
 @router.get('/optimize_resume', name='optimize_resume_page')
@@ -314,7 +314,7 @@ async def optimize_resume(request: Request):
     if not job_description:
         flash(request, 'Pegá la descripción de la oferta', 'danger')
         return _go(request, 'optimize_resume_page')
-    resume_text = form.get('resume_text', '') or await run_in_threadpool(legacy(request)['get_resume_text_from_profile'])
+    resume_text = form.get('resume_text', '') or await run_in_threadpool(services_for(request).profiles.get_resume_text_from_profile)
     if not resume_text:
         flash(request, 'Pegá el texto de tu CV o subilo primero en Perfil', 'warning')
         return _go(request, 'optimize_resume_page')
@@ -341,7 +341,7 @@ async def ats_score_page(request: Request):
     if error:
         return error
     job_description = form.get('job_description', '')
-    resume_text = form.get('resume_text', '') or await run_in_threadpool(legacy(request)['get_resume_text_from_profile'])
+    resume_text = form.get('resume_text', '') or await run_in_threadpool(services_for(request).profiles.get_resume_text_from_profile)
     if not resume_text:
         flash(request, 'Pegá el texto de tu CV o subilo primero en Perfil', 'warning')
         return _go(request, 'optimize_resume_page')
@@ -355,7 +355,7 @@ async def ats_score_page(request: Request):
 @router.get('/view_profile', name='view_profile')
 def view_profile(request: Request):
     """Lleva al perfil de CV subido más reciente."""
-    profiles = legacy(request)['get_all_user_profiles']()
+    profiles = services_for(request).profiles.get_all_user_profiles()
     if not profiles:
         flash(request, 'No profile found. Please upload a resume first.', 'warning')
         return _go(request, 'profile')
@@ -365,16 +365,16 @@ def view_profile(request: Request):
 
 def _parse_and_save(request: Request, data: bytes, filename: str, role_type: str, extra: str) -> bool:
     """Guarda el CV (cifrado si corresponde), lo parsea y crea el perfil del rol."""
-    app_globals = legacy(request)
+    services = services_for(request)
     cv_storage.save(data, filename)
     with cv_storage.plaintext_path(filename) as path:
-        profile = app_globals['resume_parser'].parse_resume(path)
+        profile = services.resume_parser.parse_resume(path)
     if not profile:
         flash(request, 'Error parsing resume. Please check the file format.', 'danger')
         return False
     if extra:
         profile['skills'] = list(set(profile['skills'] + [s.strip() for s in extra.split(',')]))
-    if not app_globals['save_user_profile_for_role'](profile, filename, role_type):
+    if not services.profiles.save_user_profile_for_role(profile, filename, role_type):
         flash(request, 'Error saving profile', 'danger')
         return False
     return True
@@ -421,7 +421,7 @@ async def delete_profile(request: Request):
     _form, error = await read_form(request)
     if error:
         return error
-    if await run_in_threadpool(legacy(request)['delete_user_profile']):
+    if await run_in_threadpool(services_for(request).profiles.delete_user_profile):
         flash(request, 'Se borraron tus perfiles, CVs y documentos generados', 'success')
     else:
         flash(request, 'Error deleting profile', 'danger')
@@ -431,7 +431,7 @@ async def delete_profile(request: Request):
 @router.get('/view_profile/{role_type}', name='view_profile_by_role')
 def view_profile_by_role(request: Request, role_type: str):
     """Perfil de CV de un rol."""
-    profile = legacy(request)['get_user_profile_by_role'](role_type)
+    profile = services_for(request).profiles.get_user_profile_by_role(role_type)
     if not profile:
         flash(request, f"No profile found for {role_type.replace('_', ' ').title()}", 'warning')
         return _go(request, 'profile')
@@ -442,7 +442,7 @@ def view_profile_by_role(request: Request, role_type: str):
 @router.get('/delete_profile/{role_type}', name='delete_profile_by_role')
 def delete_profile_by_role(request: Request, role_type: str):
     """Pide confirmación antes de borrar el perfil del rol."""
-    if not legacy(request)['get_user_profile_by_role'](role_type):
+    if not services_for(request).profiles.get_user_profile_by_role(role_type):
         flash(request, 'Profile not found', 'danger')
         return _go(request, 'profile')
     return render(request, 'confirm_delete.html', role_type=role_type, role_name=role_type.replace('_', ' ').title())
@@ -454,7 +454,7 @@ async def confirm_delete_profile(request: Request, role_type: str):
     _form, error = await read_form(request)
     if error:
         return error
-    if await run_in_threadpool(legacy(request)['delete_user_profile_by_role'], role_type):
+    if await run_in_threadpool(services_for(request).profiles.delete_user_profile_by_role, role_type):
         flash(request, f"✅ {role_type.replace('_', ' ').title()} profile deleted successfully", 'success')
     else:
         flash(request, 'Error deleting profile', 'danger')

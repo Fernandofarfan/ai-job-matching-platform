@@ -24,12 +24,13 @@ JsonBody = Body(default_factory=dict)
 
 
 def get_ai():
-    """Motor de IA, notificador y helpers de perfil de app.py; se sobrescribe en tests."""
+    """Motor de IA y notificador de app.py y helpers de perfil; se sobrescribe en tests."""
     import app
+    from services import profiles
     return SimpleNamespace(available=app.AI_AVAILABLE, engine=app.ai_engine,
                            notifier=app.notification_manager,
-                           resume_text=app.get_resume_text_from_profile,
-                           profile=app.get_user_profile)
+                           resume_text=profiles.get_resume_text_from_profile,
+                           profile=profiles.get_user_profile)
 
 
 def _require_ai(ai):

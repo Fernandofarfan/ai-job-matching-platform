@@ -16,8 +16,8 @@ logger = logging.getLogger(__name__)
 TASK_NAME = 'tasks.scraping_tasks.run_web_job'
 # Solo estas funciones pueden ejecutarse desde un mensaje del broker
 JOBS = {
-    'run_indeed_scraper_with_matching': 'app',
-    'run_linkedin_scraper_with_matching': 'app',
+    'run_indeed_scraper_with_matching': 'services.portal_search',
+    'run_linkedin_scraper_with_matching': 'services.portal_search',
     'run_computrabajo_job': 'scraping_jobs',
     'run_bumeran_job': 'scraping_jobs',
     'run_universal_job': 'scraping_jobs',

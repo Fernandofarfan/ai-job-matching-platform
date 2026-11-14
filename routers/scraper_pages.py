@@ -12,7 +12,7 @@ from starlette.concurrency import run_in_threadpool
 
 import accounts
 import job_dispatch
-from fastapi_web import TextForm, flash, legacy, read_form, redirect, url_for
+from fastapi_web import TextForm, flash, services_for, read_form, redirect, url_for
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["scrapers"], include_in_schema=False)
@@ -47,7 +47,7 @@ def _to_scraper(request: Request, message: str, category: str) -> Response:
 
 def _start(request: Request, key: str, state: dict, job: str, *args) -> None:
     """Marca la búsqueda de la cuenta y la lanza en un thread o en el worker."""
-    job_status = legacy(request)['job_status']
+    job_status = services_for(request).job_status
     job_status[key] = state
     job_dispatch.launch(job_status, key, job, *args)
 
@@ -165,10 +165,10 @@ def _close(scraper) -> None:
         pass
 
 
-def _run_linkedin_test(app_globals: dict, tid: str, token: str, position: str, location: str, max_jobs: int) -> None:
-    """Prueba de LinkedIn en segundo plano; el estado queda en test_tasks y en disco."""
+def _run_linkedin_test(probe, tid: str, token: str, position: str, location: str, max_jobs: int) -> None:
+    """Prueba de LinkedIn en segundo plano; el estado queda en probe.tasks y en disco (services/probe_tasks.py)."""
     from scrapers.linkedin_pw import linkedinClass
-    tasks, save = app_globals['test_tasks'], app_globals['save_task_to_disk']
+    tasks, save = probe.tasks, probe.save
     task = tasks[tid]
     task.update(status='running', started_at=datetime.now().isoformat())
     save(tid)
@@ -202,14 +202,14 @@ def _run_test(request: Request, name: str, position: str, location: str, max_job
         if not token:
             return JSONResponse({'error': 'Please provide LinkedIn authentication token via ?linkedin_token=... '
                                           'or env LINKEDIN_LI_AT/LI_AT'}, status_code=400)
-        app_globals = legacy(request)
+        probe = services_for(request).probe_tasks
         task_id = str(uuid.uuid4())
-        app_globals['test_tasks'][task_id] = {
+        probe.tasks[task_id] = {
             'status': 'queued', 'progress': 0, 'scraper': 'linkedin', 'position': position, 'location': location,
             'max': max_jobs, 'result': None, 'error': None, 'started_at': None, 'finished_at': None,
             'user_id': accounts.current_user_id()}
-        app_globals['save_task_to_disk'](task_id)
-        accounts.thread(target=_run_linkedin_test, args=(app_globals, task_id, token, position, location, max_jobs),
+        probe.save(task_id)
+        accounts.thread(target=_run_linkedin_test, args=(probe, task_id, token, position, location, max_jobs),
                         daemon=True).start()
         return JSONResponse({'task_id': task_id, 'status': 'started'}, status_code=202)
     makers = {'bumeran': BumeranScraper, 'computrabajo': ComputrabajoScraper, 'indeed': indeedScraper}
@@ -255,8 +255,8 @@ def test_task_status(request: Request):
         task_id = str(uuid.UUID(task_id))
     except ValueError:
         return JSONResponse({'error': 'task_id not found'}, status_code=404)
-    app_globals = legacy(request)
-    task = app_globals['test_tasks'].get(task_id) or app_globals['load_task_from_disk'](task_id)
+    probe = services_for(request).probe_tasks
+    task = probe.tasks.get(task_id) or probe.load(task_id)
     if not task or task.get('user_id') != accounts.current_user_id():
         return JSONResponse({'error': 'task_id not found'}, status_code=404)
     completed = task.get('status') == 'completed'
@@ -271,7 +271,7 @@ async def stop_connection_requests(request: Request):
     _form, error = await read_form(request)
     if error:
         return error
-    job_status = legacy(request)['job_status']
+    job_status = services_for(request).job_status
     if 'connection_requests' in job_status:
         job_status['connection_requests']['stop_requested'] = True
         job_status['connection_requests']['message'] = 'Stopping process...'
@@ -298,10 +298,10 @@ async def start_connection_requests(request: Request):
         return back('Please select at least one company')
     if mode == 'general' and not term:
         return back('Please enter a search term')
-    app_globals = legacy(request)
-    app_globals['job_status']['connection_requests'] = {'status': 'idle', 'progress': 0, 'message': 'Starting...',
+    services = services_for(request)
+    services.job_status['connection_requests'] = {'status': 'idle', 'progress': 0, 'message': 'Starting...',
                                                         'stop_requested': False}
-    accounts.thread(target=app_globals['run_connection_requests'],
+    accounts.thread(target=services.connections.run_connection_requests,
                     args=({'linkedin_email': email, 'linkedin_password': password, 'linkedin_token': token},
                           companies, form.get('message_template', ''), mode, term), daemon=True).start()
     flash(request, 'Connection requests started', 'success')

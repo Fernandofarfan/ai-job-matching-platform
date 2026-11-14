@@ -22,7 +22,7 @@ def generate_documents_batch(self, kind: str, filename: str, num_jobs: int, user
 def _generate_documents_batch(self, kind: str, filename: str, num_jobs: int):
     """Cartas o CVs adaptados para las primeras `num_jobs` ofertas de un CSV de results/."""
     import document_batch
-    from app import get_resume_text_from_profile
+    from services.profiles import get_resume_text_from_profile
 
     def progress(done, total):
         self.update_state(state="PROGRESS", meta={
