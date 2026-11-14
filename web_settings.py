@@ -42,7 +42,7 @@ def _tag(value: Any) -> Any:
     return value
 
 
-def _untag(obj: dict) -> Any:
+def _untag(obj: dict[str, Any]) -> Any:
     """Inverso de `_tag` (object_hook de json.loads)."""
     if len(obj) != 1:
         return obj
@@ -80,7 +80,7 @@ class TaggedJSON:
 class WebApp:
     """Clave, configuración y globals de app.py que comparten las páginas de FastAPI."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.config: dict[str, Any] = {
             'SECRET_KEY': os.getenv('SECRET_KEY'),
             'MAX_CONTENT_LENGTH': int(os.getenv('MAX_UPLOAD_MB', '16')) * 1024 * 1024,
@@ -101,7 +101,7 @@ class WebApp:
         self.extensions: dict[str, Any] = {}
 
     @property
-    def secret_key(self):
+    def secret_key(self) -> Any:
         """SECRET_KEY de la config (firma la sesión, el CSRF y los enlaces de las cuentas)."""
         return self.config['SECRET_KEY']
 
@@ -117,7 +117,8 @@ class WebApp:
     @property
     def permanent_session_lifetime(self) -> timedelta:
         """Duración de una sesión permanente."""
-        return self.config['PERMANENT_SESSION_LIFETIME']
+        lifetime: timedelta = self.config['PERMANENT_SESSION_LIFETIME']
+        return lifetime
 
     def session_serializer(self) -> URLSafeTimedSerializer:
         """Firma de la cookie `session`, igual que SecureCookieSessionInterface de Flask."""

@@ -1,4 +1,9 @@
 """Métricas del tracker: por portal, días hasta postular, embudo y mapa por día (sin dependencias web)."""
+from collections.abc import Iterable
+from datetime import date
+from typing import Any
+
+Row = dict[str, Any]
 
 PORTALS = {
     'computrabajo': 'Computrabajo', 'bumeran': 'Bumeran', 'zonajobs': 'ZonaJobs',
@@ -8,14 +13,14 @@ APPLIED_OR_LATER = {'applied', 'interviewing', 'negotiating', 'accepted', 'rejec
 RESPONDED = {'interviewing', 'negotiating', 'accepted'}
 
 
-def portal_of(link):
+def portal_of(link: Any) -> str:
     """Portal de una oferta según el dominio de su enlace ('Otros' si no es uno conocido)."""
     from urllib.parse import urlparse
     host = (urlparse(link or '').hostname or '').lower()
     return next((name for key, name in PORTALS.items() if key in host), 'Otros')
 
 
-def _as_date(value):
+def _as_date(value: object) -> date | None:
     from datetime import date, datetime
     if isinstance(value, datetime):
         return value.date()
@@ -30,20 +35,20 @@ def _as_date(value):
 POSTED = APPLIED_OR_LATER - {'rejected'}
 
 
-def history_by_job(history):
+def history_by_job(history: Iterable[Row] | None) -> dict[Any, list[Row]]:
     """{id de postulación: [cambios en orden]} a partir de get_status_history()."""
-    grouped = {}
+    grouped: dict[Any, list[Row]] = {}
     for change in history or []:
         grouped.setdefault(change.get('application_id'), []).append(change)
     return grouped
 
 
-def _applied_on(job, changes):
+def _applied_on(job: Row, changes: list[Row]) -> date | None:
     """Fecha en que se postuló según el historial, o None si el historial no lo registra."""
     return next((_as_date(c.get('changed_at')) for c in changes if c.get('new_status') in POSTED), None)
 
 
-def _was_applied(job, changes):
+def _was_applied(job: Row, changes: list[Row]) -> bool:
     """Con historial, una rechazada cuenta solo si pasó por postulada; sin historial se asume que sí."""
     status = job.get('status')
     if status != 'rejected':
@@ -52,9 +57,9 @@ def _was_applied(job, changes):
     return _applied_on(job, changes) is not None if known else True
 
 
-def portal_stats(jobs, history=None):
+def portal_stats(jobs: list[Row], history: Iterable[Row] | None = None) -> list[Any]:
     """Por portal: guardadas, postuladas, con respuesta y tasa de respuesta (respuestas / postuladas)."""
-    stats = {}
+    stats: dict[str, dict[str, Any]] = {}
     by_job = history_by_job(history)
     for job in jobs:
         row = stats.setdefault(portal_of(job.get('job_link')), {'saved': 0, 'applied': 0, 'responses': 0})
@@ -69,7 +74,7 @@ def portal_stats(jobs, history=None):
     )
 
 
-def avg_days_to_apply(jobs, history=None):
+def avg_days_to_apply(jobs: list[Row], history: Iterable[Row] | None = None) -> float | None:
     """Días promedio entre que se guarda una oferta y se postula (None si no hay datos)."""
     days = []
     by_job = history_by_job(history)
@@ -93,14 +98,14 @@ def avg_days_to_apply(jobs, history=None):
     return round(sum(days) / len(days), 1) if days else None
 
 
-def advanced_stats(all_jobs, history=None):
+def advanced_stats(all_jobs: list[Row], history: Iterable[Row] | None = None) -> dict[str, Any]:
     """Métricas avanzadas: tiempos promedio por etapa, tasa respuesta, heatmap."""
     from collections import defaultdict
 
 
     # ── Conteos por estado ──
-    by_status = defaultdict(int)
-    by_weekday = defaultdict(int)  # 0=Lun … 6=Dom
+    by_status: defaultdict[str, int] = defaultdict(int)
+    by_weekday: defaultdict[int, int] = defaultdict(int)  # 0=Lun … 6=Dom
     total = len(all_jobs)
 
     applied = interviewing = accepted = rejected = 0

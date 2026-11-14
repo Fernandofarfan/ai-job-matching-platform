@@ -3,11 +3,12 @@
 Con Celery la búsqueda sobrevive a reinicios y escalado del contenedor web: el worker
 publica el progreso como estado de la tarea y `refresh()` lo copia a `job_status`.
 """
+from typing import Any
 import copy
 import importlib
 import logging
 import os
-from collections.abc import MutableMapping
+from collections.abc import Callable, Iterator, MutableMapping
 
 import accounts
 import i18n
@@ -27,41 +28,41 @@ ACTIVE = ('queued', 'running', 'idle')
 _TASK_TTL = 24 * 3600
 
 
-class PerUserStatus(MutableMapping):
+class PerUserStatus(MutableMapping[str, Any]):
     """`job_status` separado por cuenta: cada usuario ve y modifica solo sus búsquedas."""
 
-    def __init__(self, default):
+    def __init__(self, default: dict[str, Any]) -> None:
         self._default = default
-        self._by_user: dict = {}
+        self._by_user: dict[int | None, dict[str, Any]] = {}
 
-    def _mine(self):
+    def _mine(self) -> dict[str, Any]:
         uid = accounts.current_user_id()
         if uid not in self._by_user:
             self._by_user[uid] = copy.deepcopy(self._default)
         return self._by_user[uid]
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: str) -> Any:
         return self._mine()[key]
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key: str, value: Any) -> None:
         self._mine()[key] = value
 
-    def __delitem__(self, key):
+    def __delitem__(self, key: str) -> None:
         del self._mine()[key]
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[str]:
         return iter(self._mine())
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self._mine())
 
 
-def _task_key(key):
+def _task_key(key: str) -> str:
     uid = accounts.current_user_id()
     return f'empleoia:scraper_task:{key}' if uid is None else f'empleoia:scraper_task:u{uid}:{key}'
 
 
-def _remember(celery, key, task_id):
+def _remember(celery: Any, key: str, task_id: str) -> None:
     """Guarda en Redis la última tarea de cada búsqueda: `job_status` es local a cada proceso web."""
     try:
         celery.backend.client.set(_task_key(key), task_id, ex=_TASK_TTL)
@@ -69,7 +70,7 @@ def _remember(celery, key, task_id):
         logger.warning(f'No se pudo guardar la tarea {task_id} de {key}: {e}')
 
 
-def _recall(celery, key):
+def _recall(celery: Any, key: str) -> str | None:
     try:
         value = celery.backend.client.get(_task_key(key))
     except Exception:
@@ -79,17 +80,18 @@ def _recall(celery, key):
     return value if isinstance(value, str) else None
 
 
-def use_celery():
+def use_celery() -> bool:
     return os.getenv('SCRAPER_BACKEND', 'thread').strip().lower() == 'celery'
 
 
-def resolve(name):
+def resolve(name: str) -> Callable[..., Any]:
     if name not in JOBS:
         raise ValueError(f'Tarea de scraping desconocida: {name}')
-    return getattr(importlib.import_module(JOBS[name]), name)
+    func: Callable[..., Any] = getattr(importlib.import_module(JOBS[name]), name)
+    return func
 
 
-def launch(job_status, key, name, *args):
+def launch(job_status: MutableMapping[str, Any], key: str, name: str, *args: Any) -> str | None:
     """Arranca `name(*args)`; devuelve el id de la tarea Celery o None si corre en un thread."""
     func = resolve(name)
     if use_celery():
@@ -101,12 +103,12 @@ def launch(job_status, key, name, *args):
             **job_status.get(key, {}),
             'status': 'queued', 'progress': 0, 'message': i18n.lazy('En cola...'), 'task_id': result.id,
         }
-        return result.id
+        return str(result.id)
     accounts.thread(target=func, args=args, daemon=True).start()
     return None
 
 
-def refresh(job_status):
+def refresh(job_status: MutableMapping[str, Any]) -> MutableMapping[str, Any]:
     """Actualiza en `job_status` las búsquedas que corren en Celery.
 
     Adopta la última tarea guardada en Redis de cada búsqueda, así otra instancia web

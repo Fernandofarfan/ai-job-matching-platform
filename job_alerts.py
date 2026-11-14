@@ -8,13 +8,17 @@ import logging
 import re
 import unicodedata
 from datetime import datetime
+from collections.abc import Callable, Iterable
 from typing import Any
 
 from sqlalchemy import JSON, Boolean, DateTime, Float, Integer, String, UniqueConstraint, func, select
 
 import accounts
 import scraper_stats
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+
+Job = dict[str, Any]
+Notify = Callable[[dict[str, Any], list[Job]], dict[str, bool]]
+from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
 from sqlalchemy.exc import IntegrityError
 
 logger = logging.getLogger(__name__)
@@ -31,7 +35,7 @@ MAX_JOBS_PER_PORTAL = 30
 MAX_JOBS_PER_ALERT = 15
 _ANONYMOUS = {'', 'confidential', 'confidencial', 'empresa confidencial', 'importante empresa'}
 
-_session_factory = None
+_session_factory: Callable[[], Session] | None = None
 
 
 class SavedSearch(Base):
@@ -51,7 +55,7 @@ class SavedSearch(Base):
     last_run_at: Mapped[datetime | None] = mapped_column(DateTime)
     last_result: Mapped[str | None] = mapped_column(String(255))
 
-    def to_dict(self):
+    def to_dict(self) -> dict[str, Any]:
         """Representación serializable (vista y tareas de Celery)."""
         return {
             'id': self.id, 'name': self.name, 'position': self.position,
@@ -79,13 +83,13 @@ class SeenJob(Base):
     first_seen_at: Mapped[datetime | None] = mapped_column(DateTime, default=datetime.now)
 
 
-def configure(session_factory):
+def configure(session_factory: Callable[[], Session] | None) -> None:
     """Usa la fábrica de sesiones dada (tests) o None para volver a MySQL."""
     global _session_factory
     _session_factory = session_factory
 
 
-def _sessions():
+def _sessions() -> Callable[[], Session]:
     """Fábrica de sesiones de MySQL (las tablas las crea Alembic)."""
     global _session_factory
     if _session_factory is None:
@@ -94,14 +98,14 @@ def _sessions():
     return _session_factory
 
 
-def _normalize(text):
+def _normalize(text: object) -> str:
     """Minúsculas, sin acentos ni signos: 'Analista  Sr. (Python)' -> 'analista sr python'."""
     text = unicodedata.normalize('NFKD', str(text or ''))
     text = ''.join(c for c in text if not unicodedata.combining(c)).lower()
     return re.sub(r'[^a-z0-9]+', ' ', text).strip()
 
 
-def _field(job, name):
+def _field(job: Job, name: str) -> Any:
     """Lee un campo de oferta con la mayúscula de los scrapers ('Title') o en minúscula."""
     for key in (name.capitalize(), name):
         value = job.get(key)
@@ -111,7 +115,7 @@ def _field(job, name):
     return ''
 
 
-def fingerprint(job):
+def fingerprint(job: Job) -> str:
     """Huella de una oferta independiente del portal; las empresas anónimas usan la ubicación."""
     company = _normalize(_field(job, 'company'))
     if company in _ANONYMOUS:
@@ -120,13 +124,13 @@ def fingerprint(job):
     return hashlib.sha1(key.encode('utf-8'), usedforsecurity=False).hexdigest()
 
 
-def _clean_list(values, allowed):
+def _clean_list(values: Iterable[str] | None, allowed: Iterable[str]) -> list[str]:
     """Valores permitidos, sin repetir y en el orden de `allowed`."""
     chosen = set(values or [])
     return [v for v in allowed if v in chosen]
 
 
-def validate(data):
+def validate(data: dict[str, Any]) -> dict[str, Any]:
     """Normaliza los datos de una búsqueda; lanza ValueError con un mensaje para el usuario."""
     position = str(data.get('position') or '').strip()[:200]
     if not position:
@@ -148,47 +152,47 @@ def validate(data):
     }
 
 
-def _mine(model):
+def _mine(model: Any) -> Any:
     """Condición: la fila es del usuario actual (o sin dueño si no hay usuario)."""
     uid = accounts.current_user_id()
     return model.user_id.is_(None) if uid is None else model.user_id == uid
 
 
-def _own_row(session, search_id):
+def _own_row(session: Session, search_id: int) -> SavedSearch | None:
     """La búsqueda si es del usuario actual; None si no existe o es de otro."""
     row = session.get(SavedSearch, search_id)
     return row if row is not None and row.user_id == accounts.current_user_id() else None
 
 
-def list_searches():
+def list_searches() -> list[dict[str, Any]]:
     """Búsquedas guardadas del usuario, la más nueva primero."""
     with _sessions()() as session:
         rows = session.scalars(select(SavedSearch).where(_mine(SavedSearch)).order_by(SavedSearch.id.desc())).all()
         return [r.to_dict() for r in rows]
 
 
-def search_owner(search_id):
+def search_owner(search_id: int) -> int | None:
     """Usuario dueño de la búsqueda (para tareas de Celery que corren sin sesión)."""
     with _sessions()() as session:
         row = session.get(SavedSearch, search_id)
         return row.user_id if row else None
 
 
-def active_search_ids():
+def active_search_ids() -> list[tuple[int, int | None]]:
     """(id, user_id) de todas las búsquedas activas de todos los usuarios."""
     with _sessions()() as session:
-        return [tuple(r) for r in session.execute(
+        return [(r[0], r[1]) for r in session.execute(
             select(SavedSearch.id, SavedSearch.user_id).where(SavedSearch.active.is_(True)))]
 
 
-def get_search(search_id):
+def get_search(search_id: int) -> dict[str, Any] | None:
     """Una búsqueda del usuario como dict, o None."""
     with _sessions()() as session:
         row = _own_row(session, search_id)
         return row.to_dict() if row else None
 
 
-def create_search(data):
+def create_search(data: dict[str, Any]) -> dict[str, Any]:
     """Valida y guarda una búsqueda; devuelve su dict."""
     clean = validate(data)
     with _sessions()() as session:
@@ -198,7 +202,7 @@ def create_search(data):
         return row.to_dict()
 
 
-def delete_search(search_id):
+def delete_search(search_id: int) -> bool:
     """Borra una búsqueda; True si existía."""
     with _sessions()() as session:
         row = _own_row(session, search_id)
@@ -209,7 +213,7 @@ def delete_search(search_id):
         return True
 
 
-def set_active(search_id, active):
+def set_active(search_id: int, active: bool) -> bool:
     """Pausa o reanuda una búsqueda; True si existía."""
     with _sessions()() as session:
         row = _own_row(session, search_id)
@@ -220,9 +224,9 @@ def set_active(search_id, active):
         return True
 
 
-def find_new(jobs):
+def find_new(jobs: Iterable[Job]) -> list[Job]:
     """Ofertas que nunca se avisaron, sin repetidas en este lote. No las marca como vistas."""
-    batch = {}
+    batch: dict[str, Job] = {}
     for job in jobs:
         batch.setdefault(fingerprint(job), job)
     if not batch:
@@ -235,7 +239,7 @@ def find_new(jobs):
 
 
 def seen_since(since: datetime, limit: int = 10,
-               until: datetime | None = None) -> tuple[int, list[dict]]:
+               until: datetime | None = None) -> tuple[int, list[dict[str, Any]]]:
     """Ofertas que las alertas de la cuenta encontraron desde `since` (y antes de `until`):
     total y las más recientes."""
     with _sessions()() as session:
@@ -246,7 +250,7 @@ def seen_since(since: datetime, limit: int = 10,
         return total, [{'title': r.title, 'company': r.company, 'url': r.url, 'source': r.source} for r in rows]
 
 
-def mark_seen(jobs, search_id=None):
+def mark_seen(jobs: list[Job], search_id: int | None = None) -> None:
     """Registra las ofertas como avisadas para no repetirlas."""
     if not jobs:
         return
@@ -265,14 +269,14 @@ def mark_seen(jobs, search_id=None):
         session.commit()
 
 
-def filter_new(jobs, search_id=None):
+def filter_new(jobs: Iterable[Job], search_id: int | None = None) -> list[Job]:
     """Ofertas nuevas, ya marcadas como vistas."""
     new = find_new(jobs)
     mark_seen(new, search_id)
     return new
 
 
-def _make_scraper(portal):
+def _make_scraper(portal: str) -> Any:
     """Scraper sin login del portal dado."""
     if portal == 'computrabajo':
         from scrapers.computrabajo_scraper import ComputrabajoScraper
@@ -287,10 +291,10 @@ def _make_scraper(portal):
     return BumeranScraper()
 
 
-def scrape(search, make_scraper=None):
+def scrape(search: dict[str, Any], make_scraper: Callable[[str], Any] | None = None) -> list[Job]:
     """Corre la búsqueda en cada portal; un portal caído no corta a los demás."""
     make_scraper = make_scraper or _make_scraper
-    jobs = []
+    jobs: list[Job] = []
     for portal in search['portals']:
         scraper = None
         try:
@@ -312,7 +316,7 @@ def scrape(search, make_scraper=None):
     return jobs
 
 
-def score(jobs, profile):
+def score(jobs: list[Job], profile: dict[str, Any] | None) -> list[Job]:
     """Agrega `match_percent` (0-100) a cada oferta si hay un perfil de CV."""
     if not profile:
         return jobs
@@ -327,7 +331,7 @@ def score(jobs, profile):
     return jobs
 
 
-def _load_profile():
+def _load_profile() -> dict[str, Any] | None:
     """Primer perfil de CV guardado, o None."""
     try:
         import profile_store
@@ -336,7 +340,7 @@ def _load_profile():
         return None
 
 
-def run_search(search_id, notify, make_scraper=None, profile=None):
+def run_search(search_id: int, notify: Notify, make_scraper: Callable[[str], Any] | None = None, profile: dict[str, Any] | None = None) -> dict[str, Any]:
     """Busca, filtra por match, descarta lo ya avisado y llama a notify(search, nuevas)."""
     search = get_search(search_id)
     if search is None:
@@ -370,7 +374,7 @@ def run_search(search_id, notify, make_scraper=None, profile=None):
     return {'search_id': search_id, 'found': len(jobs), 'new': pending, 'sent': sent}
 
 
-def run_all(notify, make_scraper=None):
+def run_all(notify: Notify, make_scraper: Callable[[str], Any] | None = None) -> list[dict[str, Any]]:
     """Corre las búsquedas activas de todos los usuarios, cada una con el perfil de su dueño."""
     results, profiles = [], {}
     try:

@@ -62,6 +62,18 @@ disallow_any_generics = true
 check_untyped_defs = true
 warn_return_any = true
 
+# Etapa 4: el resto de los módulos de la app y los scripts. Con todo tipado, servicios y rutas también exigen
+# disallow_untyped_calls.
+[[tool.mypy.overrides]]
+module = ["account_lifecycle", "account_notify", "ai_usage", "app", "ats_score", "celery_app", "cv_storage", "data_export", "db_config", "db_schema", "document_batch", "document_generators", "email_delivery", "error_reporting", "fastapi_web", "google_oauth", "i18n", "integrations", "job_alerts", "job_dispatch", "job_feedback", "job_matcher", "job_ranking", "main", "market_analyzer", "matching_eval", "notification_messages", "notifier", "observability", "onboarding", "profile_store", "push", "rate_limit", "scraper_stats", "security_headers", "skill_catalog", "tracker_export", "tracker_stats", "web_settings", "scripts.*"]
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+disallow_untyped_calls = true
+disallow_untyped_decorators = true
+disallow_any_generics = true
+check_untyped_defs = true
+warn_return_any = true
+
 [tool.coverage.run]
 source = ["."]
 omit = ["tests/*", "tests_integration/*", "scripts/*", "alembic/*", "locustfile.py", "load_tests/*"]

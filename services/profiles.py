@@ -93,7 +93,7 @@ def delete_user_profile() -> bool:
     profile_path = os.path.join('profiles', 'user_profile.json')
     try:
         if accounts.current_user_id() is not None:
-            resumes = {p.get('resume_filename') for p in profile_store.get_all_profiles().values()} - {None, ''}
+            resumes = {name for p in profile_store.get_all_profiles().values() if (name := p.get('resume_filename'))}
             profile_store.delete_all()
             for name in resumes:
                 cv_storage.delete(name)

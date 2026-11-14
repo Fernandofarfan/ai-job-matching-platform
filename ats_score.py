@@ -1,4 +1,5 @@
 """Puntaje ATS de un CV (0-100) sin IA: legibilidad para filtros automáticos y palabras clave de la oferta."""
+from typing import Any
 import re
 import unicodedata
 from collections import Counter
@@ -20,28 +21,28 @@ WEIGHTS = {'contact': 15, 'sections': 20, 'length': 10, 'achievements': 10, 'dat
 MAX_KEYWORDS = 25
 
 
-def _norm(text):
+def _norm(text: str | None) -> str:
     """Minúsculas y sin tildes."""
     return unicodedata.normalize('NFKD', text or '').encode('ascii', 'ignore').decode().lower()
 
 
-def _tokens(text):
+def _tokens(text: str | None) -> list[str]:
     return re.findall(r'[a-z][a-z0-9+#./-]{1,30}', _norm(text))
 
 
-def job_keywords(job_description, limit=MAX_KEYWORDS):
+def job_keywords(job_description: str | None, limit: int = MAX_KEYWORDS) -> list[str]:
     """Términos más repetidos de la oferta, sin palabras vacías."""
     words = [t.strip('.-/') for t in _tokens(job_description)]
     counts = Counter(w for w in words if len(w) > 2 and w not in STOPWORDS and not w.isdigit())
     return [w for w, _ in counts.most_common(limit)]
 
 
-def _check(check_id, label, ratio, tip):
+def _check(check_id: str, label: str, ratio: float, tip: str) -> dict[str, Any]:
     ratio = max(0.0, min(1.0, ratio))
     return {'id': check_id, 'label': label, 'passed': ratio >= 0.99, 'ratio': round(ratio, 2), 'tip': tip}
 
 
-def score_resume(resume_text, job_description=''):
+def score_resume(resume_text: str | None, job_description: str = "") -> dict[str, Any]:
     """Puntaje, chequeos con sugerencias y palabras clave encontradas/faltantes."""
     norm = _norm(resume_text)
     words = len(norm.split())

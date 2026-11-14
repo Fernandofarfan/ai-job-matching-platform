@@ -5,6 +5,8 @@ Sale con código 1 si algún portal devuelve menos de --min-jobs ofertas o lanza
 Si un portal muestra un captcha se informa como `blocked` y no hace fallar la corrida: eso dice
 que bloquea al navegador, no que haya cambiado su HTML. LinkedIn queda afuera porque requiere login.
 """
+from typing import Any
+from collections.abc import Callable
 import argparse
 import json
 import logging
@@ -14,22 +16,22 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
-def _computrabajo():
+def _computrabajo() -> Any:
     from scrapers.computrabajo_scraper import ComputrabajoScraper
     return ComputrabajoScraper()
 
 
-def _bumeran():
+def _bumeran() -> Any:
     from scrapers.bumeran_scraper import BumeranScraper
     return BumeranScraper()
 
 
-def _zonajobs():
+def _zonajobs() -> Any:
     from scrapers.zonajobs_scraper import ZonaJobsScraper
     return ZonaJobsScraper()
 
 
-def _getonboard():
+def _getonboard() -> Any:
     from scrapers.getonboard_scraper import GetOnBoardScraper
     return GetOnBoardScraper()
 
@@ -37,22 +39,22 @@ def _getonboard():
 class _IndeedListing:
     """Indeed con la interfaz del monitor: solo cuenta las tarjetas del listado público."""
 
-    def __init__(self, location=''):
+    def __init__(self, location: str = "") -> None:
         """Abre el navegador recién en la primera búsqueda."""
         from scrapers.indeed_scraper import indeedScraper
         self.scraper = indeedScraper()
         self.location = location
 
-    def search_jobs(self, query, max_jobs=5):
+    def search_jobs(self, query: str, max_jobs: int = 5) -> list[dict[str, Any]]:
         """Tarjetas de la primera página; `PortalBlocked` si aparece un captcha."""
         return self.scraper.listing(query, self.location, max_jobs)
 
-    def close(self):
+    def close(self) -> None:
         """Cierra el navegador."""
         self.scraper.close()
 
 
-def _indeed():
+def _indeed() -> Any:
     """Indeed con la ubicación de SCRAPER_HEALTH_INDEED_LOCATION."""
     return _IndeedListing(os.getenv('SCRAPER_HEALTH_INDEED_LOCATION', 'Remote'))
 
@@ -61,7 +63,7 @@ PORTALS = {'computrabajo': _computrabajo, 'bumeran': _bumeran, 'zonajobs': _zona
            'indeed': _indeed}
 
 
-def check_portal(name, factory, query, max_jobs):
+def check_portal(name: str, factory: Callable[[], Any], query: str, max_jobs: int) -> dict[str, Any]:
     """Resultado de un portal: {'portal', 'jobs', 'error', 'blocked'}."""
     from scrapers.common import PortalBlocked
     scraper = None
@@ -81,14 +83,14 @@ def check_portal(name, factory, query, max_jobs):
                 pass
 
 
-def run(query='python', min_jobs=1, max_jobs=5, portals=None):
+def run(query: str = "python", min_jobs: int = 1, max_jobs: int = 5, portals: dict[str, Callable[[], Any]] | None = None) -> tuple[bool, list[dict[str, Any]]]:
     """Revisa los portales y devuelve (ok, resultados)."""
     results = [check_portal(name, factory, query, max_jobs) for name, factory in (portals or PORTALS).items()]
     ok = all(r['blocked'] or (r['error'] is None and r['jobs'] >= min_jobs) for r in results)
     return ok, results
 
 
-def main(argv=None):
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument('--query', default='python')
     parser.add_argument('--min-jobs', type=int, default=1)

@@ -2,7 +2,7 @@
 import logging
 import os
 import threading
-from typing import Optional
+from typing import Any, Optional
 
 from limits import parse
 from limits.storage import storage_from_string
@@ -12,11 +12,11 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_AI_RATE_LIMIT = '30 per minute'
 DEFAULT_API_RATE_LIMIT = '300 per minute'
-_state: dict = {}
+_state: dict[str, Any] = {}
 _lock = threading.Lock()
 
 
-def _parse_limit(env: str, default: str):
+def _parse_limit(env: str, default: str) -> Any:
     """Un valor inválido no desactiva el límite: se usa el valor por defecto."""
     value = os.getenv(env, default)
     try:
@@ -26,7 +26,7 @@ def _parse_limit(env: str, default: str):
         return parse(default)
 
 
-def _limiter():
+def _limiter() -> dict[str, Any]:
     """Se crea una sola vez, en el primer uso, para leer la configuración ya cargada desde .env."""
     with _lock:
         if not _state:
@@ -70,7 +70,7 @@ def _hit(limit_name: str, namespace: str, key: str, consume: bool = True) -> boo
     try:
         state = _limiter()
         check = state['limiter'].hit if consume else state['limiter'].test
-        return check(state[limit_name], namespace, key or 'unknown')
+        return bool(check(state[limit_name], namespace, key or 'unknown'))
     except Exception as e:
         logger.warning(f"Rate limit no disponible ({e}); se permite la solicitud")
         return True
@@ -80,7 +80,7 @@ def hit_page(spec: str, namespace: str, key: str) -> bool:
     """Suma un pedido al límite `spec` (p. ej. '5 per minute') de una página; False si lo superó."""
     try:
         state = _limiter()
-        return state['limiter'].hit(parse(spec), 'page', namespace, key or 'unknown')
+        return bool(state['limiter'].hit(parse(spec), 'page', namespace, key or 'unknown'))
     except Exception as e:
         logger.warning(f"Rate limit no disponible ({e}); se permite la solicitud")
         return True

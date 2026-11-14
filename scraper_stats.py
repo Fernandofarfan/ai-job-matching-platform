@@ -16,18 +16,18 @@ EXPIRY_SECONDS = 400 * 24 * 3600
 PORTALS = ('computrabajo', 'bumeran', 'zonajobs', 'getonboard', 'linkedin', 'indeed')
 
 
-def _key(portal, outcome):
+def _key(portal: str, outcome: str) -> str:
     return f"scraper_runs:{portal}:{outcome}"
 
 
-def outcome(jobs, error=None):
+def outcome(jobs: Optional[Sequence[object]], error: Optional[BaseException] = None) -> str:
     """'error' si falló, 'empty' si no trajo ofertas, 'ok' si trajo al menos una."""
     if error is not None:
         return 'error'
     return 'ok' if jobs else 'empty'
 
 
-def record(portal: str, jobs: Optional[Sequence[object]], error: Optional[BaseException] = None) -> None:
+def record(portal: str, jobs: Optional[Sequence[object]], error: Optional[BaseException] = None) -> str:
     """Anota una búsqueda de `portal`; nunca corta la búsqueda si el storage no responde."""
     result = outcome(jobs, error)
     if result != 'ok':
@@ -39,7 +39,7 @@ def record(portal: str, jobs: Optional[Sequence[object]], error: Optional[BaseEx
     return result
 
 
-def counts():
+def counts() -> dict[str, dict[str, int]]:
     """{portal: {outcome: n}} de todos los portales, en 0 si no corrieron.
 
     Exponer los ceros desde el arranque hace que Prometheus vea también el incremento de la primera búsqueda.

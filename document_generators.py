@@ -19,7 +19,7 @@ def _generated_dir(kind: str) -> str:
 
 
 def _safe_filename(prefix: str, job_title: str, company: str, ext: str) -> str:
-    def clean(value):
+    def clean(value: object) -> str:
         return "".join(c for c in str(value) if c.isalnum() or c in (" ", "-", "_")).strip()[:50]
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
     return f"{prefix}_{clean(job_title)}_{clean(company)}_{timestamp}.{ext}".replace(" ", "_")

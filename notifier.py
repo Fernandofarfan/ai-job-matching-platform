@@ -2,6 +2,7 @@
 notifier.py — Sistema de Notificaciones de EmpleoIA
 Interfaz de alto nivel para enviar notificaciones y gestionar preferencias.
 """
+from typing import Any
 import os
 import logging
 from datetime import datetime, date
@@ -15,7 +16,7 @@ class NotificationManager:
     dependiendo de la disponibilidad de Redis/Celery.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._use_celery = self._check_celery_available()
         logger.info(f"NotificationManager initialized (celery={self._use_celery})")
 
@@ -27,7 +28,7 @@ class NotificationManager:
         except Exception:
             return False
 
-    def send_followup_reminder(self, job_data: dict, user_email: str) -> bool:
+    def send_followup_reminder(self, job_data: dict[str, Any], user_email: str) -> bool:
         """Envía recordatorio de follow-up para una postulación."""
         try:
             if self._use_celery:
@@ -41,7 +42,7 @@ class NotificationManager:
             logger.error(f"Error sending follow-up reminder: {e}")
             return False
 
-    def send_new_jobs_digest(self, jobs: list, user_email: str) -> bool:
+    def send_new_jobs_digest(self, jobs: list[Any], user_email: str) -> bool:
         """Envía digest de nuevos trabajos encontrados."""
         if not jobs or not user_email:
             return False
@@ -57,7 +58,7 @@ class NotificationManager:
             logger.error(f"Error sending jobs digest: {e}")
             return False
 
-    def send_weekly_summary(self, stats: dict, user_email: str) -> bool:
+    def send_weekly_summary(self, stats: dict[str, Any], user_email: str) -> bool:
         """Envía resumen semanal de actividad."""
         try:
             if self._use_celery:
@@ -71,7 +72,7 @@ class NotificationManager:
             logger.error(f"Error sending weekly summary: {e}")
             return False
 
-    def check_upcoming_followups(self, applications: list) -> list:
+    def check_upcoming_followups(self, applications: list[Any]) -> list[Any]:
         """
         Verifica cuáles postulaciones tienen follow-up para hoy o vencido.
         Retorna lista de applications que necesitan follow-up.
@@ -96,7 +97,7 @@ class NotificationManager:
 
         return pending
 
-    def get_notification_config(self) -> dict:
+    def get_notification_config(self) -> dict[str, Any]:
         """Retorna la configuración de notificaciones desde .env."""
         return {
             "smtp_configured": bool(os.getenv("SMTP_USER") and os.getenv("SMTP_PASSWORD")),
@@ -106,7 +107,7 @@ class NotificationManager:
             "celery_available": self._use_celery,
         }
 
-    def test_email_config(self) -> dict:
+    def test_email_config(self) -> dict[str, Any]:
         """Envía un email de prueba para verificar la configuración SMTP."""
         from tasks.notification_tasks import _send_email, _get_email_template
         email = os.getenv("NOTIFICATION_EMAIL") or os.getenv("SMTP_USER")

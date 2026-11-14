@@ -1,4 +1,5 @@
 """Exportación del tracker y de los resultados a Excel/PDF (bytes del archivo)."""
+from typing import Any
 import io
 from datetime import datetime
 
@@ -7,7 +8,7 @@ import pandas as pd
 XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 
 
-def tracker_excel(jobs: list) -> bytes:
+def tracker_excel(jobs: list[Any]) -> bytes:
     """Tracker completo en .xlsx, con colores por estado y una hoja de resumen."""
     import openpyxl
     from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
@@ -93,7 +94,7 @@ def tracker_excel(jobs: list) -> bytes:
     return output.getvalue()
 
 
-def tracker_pdf(jobs: list) -> bytes:
+def tracker_pdf(jobs: list[Any]) -> bytes:
     """Tracker en PDF horizontal (hasta 200 filas)."""
     from reportlab.lib.pagesizes import A4, landscape
     from reportlab.lib import colors

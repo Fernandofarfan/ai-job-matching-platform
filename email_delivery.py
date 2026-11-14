@@ -6,6 +6,7 @@
 - Rebotes y denuncias de spam que informa SendGrid (`POST /webhooks/sendgrid`, firmado) también la suprimen.
   A una dirección suprimida no se le manda más. Se guarda solo el SHA-256 del email, no el email.
 """
+from typing import Any
 import base64
 import hashlib
 import logging
@@ -49,7 +50,7 @@ class TemporaryError(Exception):
 class PermanentError(Exception):
     """Falla que no se arregla reintentando; `bounce` si la dirección no existe."""
 
-    def __init__(self, message, bounce=False):
+    def __init__(self, message: str, bounce: bool = False) -> None:
         super().__init__(message)
         self.bounce = bounce
 
@@ -116,7 +117,7 @@ def unsuppress(email: str) -> bool:
         return True
 
 
-def _send_smtp(to, subject, html):
+def _send_smtp(to: str, subject: str, html: str) -> None:
     user, password = os.getenv('SMTP_USER', ''), os.getenv('SMTP_PASSWORD', '')
     msg = MIMEMultipart('alternative')
     msg['Subject'], msg['From'], msg['To'] = subject, f'EmpleoIA <{sender()}>', to
@@ -145,7 +146,7 @@ def _send_smtp(to, subject, html):
         raise TemporaryError(type(e).__name__) from e
 
 
-def _send_sendgrid(to, subject, html):
+def _send_sendgrid(to: str, subject: str, html: str) -> None:
     import requests
     try:
         resp = requests.post(SENDGRID_URL, timeout=15, headers={
@@ -170,7 +171,7 @@ def _attempts() -> int:
         return 3
 
 
-def _wait(attempt: int):
+def _wait(attempt: int) -> None:
     """Espera antes del reintento `attempt` (1 s, 2 s, 4 s... con `EMAIL_RETRY_SECONDS=1`)."""
     time.sleep(float(os.getenv('EMAIL_RETRY_SECONDS', '1')) * 2 ** (attempt - 1))
 
@@ -205,7 +206,7 @@ def send(to: str, subject: str, html: str) -> bool:
     return False
 
 
-def verify_sendgrid_signature(payload: bytes, signature: str, timestamp: str, now=None) -> bool:
+def verify_sendgrid_signature(payload: bytes, signature: str, timestamp: str, now: float | None = None) -> bool:
     """Firma ECDSA del Event Webhook de SendGrid con `SENDGRID_WEBHOOK_PUBLIC_KEY` y timestamp reciente."""
     key = os.getenv('SENDGRID_WEBHOOK_PUBLIC_KEY', '')
     if not (key and signature and timestamp):
@@ -224,7 +225,7 @@ def verify_sendgrid_signature(payload: bytes, signature: str, timestamp: str, no
         return False
 
 
-def handle_sendgrid_events(events) -> int:
+def handle_sendgrid_events(events: Any) -> int:
     """Suprime las direcciones con rebote, denuncia de spam o `dropped` por esas causas; devuelve cuántas.
     Levanta SuppressionError si alguna no se pudo guardar."""
     count = failed = 0

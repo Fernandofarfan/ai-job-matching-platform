@@ -1,10 +1,12 @@
 """Métricas Prometheus (/metrics) y trazas OpenTelemetry opcionales (OTEL_EXPORTER_OTLP_ENDPOINT)."""
+from typing import Any
+from collections.abc import Iterable, Iterator, Mapping
 import hmac
 import logging
 import os
 
 from prometheus_client import CONTENT_TYPE_LATEST, CollectorRegistry, Counter, Histogram, generate_latest
-from prometheus_client.core import CounterMetricFamily, GaugeMetricFamily
+from prometheus_client.core import CounterMetricFamily, GaugeMetricFamily, Metric
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +26,7 @@ CONTENT_TYPE = CONTENT_TYPE_LATEST
 class _SharedStateCollector:
     """Datos compartidos en Redis: consumo de IA del mes, búsquedas por portal y tareas en cada cola de Celery."""
 
-    def collect(self):
+    def collect(self) -> Iterator[Metric]:
         try:
             import ai_usage
             usage = ai_usage.summary()
@@ -66,23 +68,23 @@ class _SharedStateCollector:
 REGISTRY.register(_SharedStateCollector())
 
 
-def observe_ai(input_tokens, output_tokens):
+def observe_ai(input_tokens: int, output_tokens: int) -> None:
     AI_CALLS.inc()
     AI_TOKENS.labels('input').inc(max(int(input_tokens or 0), 0))
     AI_TOKENS.labels('output').inc(max(int(output_tokens or 0), 0))
 
 
-def observe_request(method, route, status, seconds):
+def observe_request(method: str, route: str, status: int, seconds: float) -> None:
     HTTP_REQUESTS.labels(method, route, str(status)).inc()
     HTTP_LATENCY.labels(method, route).observe(seconds)
 
 
-def route_label(asgi_app, scope):
+def route_label(asgi_app: Any, scope: Mapping[str, Any]) -> str:
     """Plantilla de la ruta (/download_resume/{filename}) para no crear una serie por URL."""
     return _asgi_route(asgi_app.router.routes, scope) or 'unmatched'
 
 
-def _asgi_route(routes, scope, prefix=''):
+def _asgi_route(routes: Iterable[Any], scope: Any, prefix: str = "") -> str | None:
     from starlette.routing import Match, Mount
 
     for route in routes:
@@ -101,11 +103,11 @@ def _asgi_route(routes, scope, prefix=''):
             continue
         path = getattr(route, 'path', None)
         if path:
-            return prefix + path
+            return prefix + str(path)
     return None
 
 
-def metrics_allowed(authorization):
+def metrics_allowed(authorization: str | None) -> bool | None:
     """/metrics solo con METRICS_TOKEN configurado y enviado como Bearer; si falta, devuelve None (404)."""
     token = os.getenv('METRICS_TOKEN', '')
     if not token:
@@ -113,23 +115,23 @@ def metrics_allowed(authorization):
     return hmac.compare_digest((authorization or '').encode(), f'Bearer {token}'.encode())
 
 
-def render():
+def render() -> bytes:
     """Texto de exposición Prometheus del registro global."""
     return generate_latest(REGISTRY)
 
 
-def requests_excluded_urls():
+def requests_excluded_urls() -> str:
     """URLs salientes sin trazar: la API de Telegram lleva el token del bot en el path."""
     # Igual que el fallback de RequestsInstrumentor: la variable específica pisa a la global
     extra = os.getenv('OTEL_PYTHON_REQUESTS_EXCLUDED_URLS') or os.getenv('OTEL_PYTHON_EXCLUDED_URLS', '')
     return ','.join(u for u in ('api.telegram.org', extra) if u)
 
 
-def tracing_enabled():
+def tracing_enabled() -> bool:
     return bool(os.getenv('OTEL_EXPORTER_OTLP_ENDPOINT') or os.getenv('OTEL_EXPORTER_OTLP_TRACES_ENDPOINT'))
 
 
-def setup_tracing(fastapi_app=None, celery_worker=False):
+def setup_tracing(fastapi_app: Any = None, celery_worker: bool = False) -> bool:
     """Envía trazas por OTLP/HTTP si hay endpoint; el nombre y el muestreo salen de OTEL_SERVICE_NAME/OTEL_TRACES_*."""
     if not tracing_enabled():
         return False
@@ -149,7 +151,7 @@ def setup_tracing(fastapi_app=None, celery_worker=False):
             FastAPIInstrumentor.instrument_app(fastapi_app, excluded_urls='api/health,api/ready,metrics')
         if celery_worker:
             from opentelemetry.instrumentation.celery import CeleryInstrumentor
-            CeleryInstrumentor().instrument()
+            CeleryInstrumentor().instrument()  # type: ignore[no-untyped-call]  # opentelemetry-instrumentation-celery no tiene tipos
         return True
     except Exception as e:
         logger.warning(f"No se pudo activar OpenTelemetry ({e})")

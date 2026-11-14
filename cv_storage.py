@@ -20,7 +20,7 @@ UPLOADS_DIR = 'uploads'
 _FERNET_PREFIX = b'gAAAAA'
 
 
-def generated_dirs():
+def generated_dirs() -> tuple[str, ...]:
     """CVs adaptados y cartas; GENERATED_DIR es la carpeta compartida entre web y worker."""
     root = os.getenv('GENERATED_DIR', 'temp')
     kinds = ('resumes', 'cover_letters')

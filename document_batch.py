@@ -3,6 +3,8 @@
 En Celery el pedido no depende de que la instancia web siga viva: el worker publica el
 progreso como estado de la tarea y la página lo consulta en /api/documents/tasks/<id>.
 """
+from typing import Any
+from collections.abc import Callable
 import accounts
 import logging
 import os
@@ -23,22 +25,22 @@ _TASK_TTL = 24 * 3600
 class BatchError(ValueError):
     """Pedido inválido: se informa al usuario con el código HTTP indicado."""
 
-    def __init__(self, message, status=400):
+    def __init__(self, message: str, status: int = 400) -> None:
         super().__init__(message)
         self.status = status
 
 
-def generated_dir(kind):
+def generated_dir(kind: str) -> str:
     """Carpeta de los documentos generados; GENERATED_DIR la comparte entre web y worker."""
     from document_generators import _generated_dir
     return _generated_dir(kind)
 
 
-def use_celery():
+def use_celery() -> bool:
     return os.getenv('AI_BACKEND', 'sync').strip().lower() == 'celery'
 
 
-def validate(kind, filename, num_jobs):
+def validate(kind: str, filename: str | None, num_jobs: Any) -> tuple[str, int]:
     """Normaliza el pedido; lanza BatchError si no se puede procesar."""
     if kind not in KINDS:
         raise BatchError('Tipo de documento desconocido')
@@ -55,13 +57,13 @@ def validate(kind, filename, num_jobs):
     return filename, max(1, min(num_jobs, MAX_JOBS))
 
 
-def _account_alive():
+def _account_alive() -> bool:
     """False si la cuenta dueña del lote se borró mientras se generaba (no hay que recrear sus archivos)."""
     uid = accounts.current_user_id()
     return uid is None or accounts.get_user(uid) is not None
 
 
-def run(kind, filename, num_jobs, resume_text, progress=None, pause=2.0):
+def run(kind: str, filename: str | None, num_jobs: Any, resume_text: str | None, progress: Callable[[int, int], Any] | None = None, pause: float = 2.0) -> dict[str, Any]:
     """Genera un documento por oferta del CSV. `progress(done, total)` se llama tras cada una."""
     from document_generators import CoverLetterGenerator, ResumeOptimizer
 
@@ -73,6 +75,8 @@ def run(kind, filename, num_jobs, resume_text, progress=None, pause=2.0):
     if not description_col:
         raise BatchError('El archivo no tiene una columna de descripción')
 
+    create: Callable[[str, str], str]
+    save: Callable[..., str]
     if kind == 'cover_letters':
         generator = CoverLetterGenerator()
         create, save = generator.generate_cover_letter, generator.save_cover_letter
@@ -81,7 +85,7 @@ def run(kind, filename, num_jobs, resume_text, progress=None, pause=2.0):
         create, save = optimizer.optimize_resume, optimizer.save_resume
 
     rows = df.head(num_jobs)
-    results = []
+    results: list[dict[str, Any]] = []
     for done, (index, row) in enumerate(rows.iterrows(), 1):
         job_title = str(row.get('Title', 'Puesto sin título'))
         company = str(row.get('Company', 'Empresa sin nombre'))
@@ -111,11 +115,11 @@ def run(kind, filename, num_jobs, resume_text, progress=None, pause=2.0):
     }
 
 
-def _task_key(task_id):
+def _task_key(task_id: str) -> str:
     return f'empleoia:document_task:{task_id}'
 
 
-def enqueue(kind, filename, num_jobs):
+def enqueue(kind: str, filename: str | None, num_jobs: Any) -> str:
     """Encola el lote en el worker; el CV lo lee el worker, no viaja por el broker."""
     from celery_app import celery
 
@@ -123,10 +127,10 @@ def enqueue(kind, filename, num_jobs):
     result = celery.send_task(TASK_NAME, args=[kind, filename, num_jobs],
                              kwargs={'user_id': accounts.current_user_id()})
     celery.backend.client.set(_task_key(result.id), kind, ex=_TASK_TTL)
-    return result.id
+    return str(result.id)
 
 
-def status(task_id):
+def status(task_id: str) -> dict[str, Any] | None:
     """Estado de una tarea encolada por `enqueue`; None si el id no es de un lote de documentos."""
     from celery_app import celery
 

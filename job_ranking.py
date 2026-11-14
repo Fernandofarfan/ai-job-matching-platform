@@ -16,7 +16,12 @@ import re
 import time
 import unicodedata
 from collections import Counter
+from collections.abc import Iterable
 from datetime import date, datetime
+from typing import Any
+
+Job = dict[str, Any]
+Model = dict[str, Any]
 
 logger = logging.getLogger(__name__)
 
@@ -31,10 +36,10 @@ _STOPWORDS = {
     'sr', 'ssr', 'jr', 'semi', 'senior', 'junior', 'remoto', 'hibrido', 'presencial',
 }
 _CACHE_SECONDS = 600
-_cache: dict = {}
+_cache: dict[int | None, tuple[float, Model | None]] = {}
 
 
-def _weight():
+def _weight() -> float:
     """Peso del ranking personal frente al match del CV (0 a 1)."""
     try:
         return min(max(float(os.getenv('RANKING_WEIGHT', '0.3')), 0.0), 1.0)
@@ -42,7 +47,7 @@ def _weight():
         return 0.3
 
 
-def _stale_days():
+def _stale_days() -> int:
     """Días tras los que una oferta guardada sin postular cuenta como descartada."""
     try:
         return max(int(os.getenv('RANKING_STALE_DAYS', '14')), 1)
@@ -50,13 +55,13 @@ def _stale_days():
         return 14
 
 
-def _norm(text):
+def _norm(text: object) -> str:
     """Minúsculas, sin acentos y con espacios simples."""
     text = unicodedata.normalize('NFKD', str(text or '')).encode('ascii', 'ignore').decode().lower()
     return re.sub(r'\s+', ' ', text).strip()
 
 
-def _get(job, *keys):
+def _get(job: Job, *keys: str) -> str:
     """Primer valor no vacío entre las claves (tracker en minúscula, CSV capitalizado)."""
     for key in keys:
         value = job.get(key)
@@ -65,7 +70,7 @@ def _get(job, *keys):
     return ''
 
 
-def features(job):
+def features(job: Job) -> set[str]:
     """Rasgos de una oferta (dict del tracker o fila de un CSV de scraping)."""
     from tracker_stats import portal_of
 
@@ -81,7 +86,7 @@ def features(job):
     return feats
 
 
-def _as_date(value):
+def _as_date(value: object) -> date | None:
     """Fecha de un valor date/datetime/ISO; None si no se puede leer."""
     if isinstance(value, datetime):
         return value.date()
@@ -93,7 +98,7 @@ def _as_date(value):
         return None
 
 
-def label(job, today=None):
+def label(job: Job, today: date | None = None) -> int:
     """Peso positivo (>0), negativo (<0) o 0 si la postulación todavía no dice nada."""
     if job.get('interested') is not None:
         return FEEDBACK_WEIGHT if job['interested'] else -FEEDBACK_WEIGHT
@@ -107,9 +112,10 @@ def label(job, today=None):
     return 0
 
 
-def train(applications, today=None):
+def train(applications: Iterable[Job], today: date | None = None) -> Model | None:
     """Modelo {'pos', 'neg', 'n_pos', 'n_neg', 'vocab'} o None si no hay ejemplos suficientes."""
-    pos, neg = Counter(), Counter()
+    pos: Counter[str] = Counter()
+    neg: Counter[str] = Counter()
     n_pos = n_neg = 0
     for job in applications:
         weight = label(job, today)
@@ -127,12 +133,12 @@ def train(applications, today=None):
     return {'pos': pos, 'neg': neg, 'n_pos': n_pos, 'n_neg': n_neg}
 
 
-def _log_odds(model, feat):
+def _log_odds(model: Model, feat: str) -> float:
     """Log-odds suavizado (Laplace) de que el rasgo aparezca en ofertas que te interesan."""
     return math.log((model['pos'][feat] + 1) / (model['n_pos'] + 2)) - math.log((model['neg'][feat] + 1) / (model['n_neg'] + 2))
 
 
-def preference(model, job):
+def preference(model: Model, job: Job) -> float:
     """0-100: qué tan parecida es la oferta a las que elegiste (50 = neutral)."""
     known = [f for f in features(job) if model['pos'][f] or model['neg'][f]]
     if not known:
@@ -141,13 +147,13 @@ def preference(model, job):
     return round(100 / (1 + math.exp(-z)), 1)
 
 
-def _auc(pos, neg):
+def _auc(pos: list[float], neg: list[float]) -> float:
     """Probabilidad de que un puntaje de `pos` supere a uno de `neg` (empates cuentan medio)."""
     wins = sum(1.0 if p > n else 0.5 if p == n else 0.0 for p in pos for n in neg)
     return wins / (len(pos) * len(neg))
 
 
-def _same_offer(a, b):
+def _same_offer(a: Job, b: Job) -> bool:
     """True si dos ejemplos son la misma oferta (mismo enlace, o mismo título y empresa)."""
     link_a = _get(a, 'job_link', 'Job_Link', 'URL', 'url').strip()
     if link_a and link_a == _get(b, 'job_link', 'Job_Link', 'URL', 'url').strip():
@@ -157,7 +163,7 @@ def _same_offer(a, b):
         _norm(_get(b, 'title', 'Title')), _norm(_get(b, 'company', 'Company')))
 
 
-def learn_weight(examples, today=None):
+def learn_weight(examples: list[Job], today: date | None = None) -> dict[str, Any] | None:
     """Peso del ranking que mejor separa "me interesa" de "no me interesa" en lo que marcó la cuenta.
 
     {'weight', 'auc', 'match_auc', 'examples'} o None si no hay `MIN_TUNING` ofertas marcadas con match de cada
@@ -175,7 +181,7 @@ def learn_weight(examples, today=None):
         held_out.append((row['interested'], float(row['match_score']), preference(model, row) if model else 50.0))
     default = _weight()
 
-    def auc_at(weight):
+    def auc_at(weight: float) -> float:
         """AUC de las ofertas marcadas con el puntaje combinado con ese peso del ranking."""
         scores = [(interested, (1 - weight) * match + weight * pref) for interested, match, pref in held_out]
         return _auc([s for i, s in scores if i], [s for i, s in scores if not i])
@@ -184,7 +190,7 @@ def learn_weight(examples, today=None):
             'examples': len(held_out)}
 
 
-def top_signals(model, n=8):
+def top_signals(model: Model, n: int = 8) -> dict[str, list[dict[str, Any]]]:
     """Rasgos que más suben y más bajan una oferta, para mostrar qué aprendió."""
     feats = set(model['pos']) | set(model['neg'])
     scored = sorted(((round(_log_odds(model, f), 2), f) for f in feats), reverse=True)
@@ -193,24 +199,24 @@ def top_signals(model, n=8):
             'dislikes': [p for p in reversed(pretty) if p['weight'] < 0][:n]}
 
 
-def _cache_key():
+def _cache_key() -> int | None:
     """Un modelo por cuenta: el ranking de una no puede mostrar las empresas que eligió otra."""
     import accounts
     return accounts.current_user_id()
 
 
-def invalidate():
+def invalidate() -> None:
     """Descarta el modelo cacheado de la cuenta actual (p. ej. después de marcar una oferta)."""
     _cache.pop(_cache_key(), None)
 
 
-def load_model():
+def load_model() -> Model | None:
     """Entrena con el tracker y lo marcado en las ofertas (cacheado unos minutos por cuenta); None sin datos."""
     key = _cache_key()
     cached = _cache.get(key)
     if cached and time.monotonic() - cached[0] < _CACHE_SECONDS:
         return cached[1]
-    examples = []
+    examples: list[Job] = []
     try:
         from db_config import db_manager
         examples += db_manager.get_applications() or []
@@ -230,7 +236,7 @@ def load_model():
     return model
 
 
-def rank(jobs, model=None, match_key='match_percent'):
+def rank(jobs: list[Job], model: Model | None = None, match_key: str = "match_percent") -> list[Job]:
     """Agrega `preference` y `ranked_score` y ordena de mayor a menor; sin modelo deja el orden por match."""
     model = model if model is not None else load_model()
     weight = model.get('weight', _weight()) if model else _weight()

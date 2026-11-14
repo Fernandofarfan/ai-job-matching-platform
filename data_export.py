@@ -1,4 +1,5 @@
 """Exportar mis datos: un ZIP con todo lo que la app guarda de una cuenta (sin secretos)."""
+from typing import Any
 import io
 import json
 import logging
@@ -18,11 +19,11 @@ logger = logging.getLogger(__name__)
 EXPORTED_TABLES = tuple(t for t in accounts.OWNED_TABLES if t not in ('user_integrations', 'push_subscriptions', 'user_sessions', 'user_totp', 'passkeys'))
 
 
-def _dump(data) -> str:
+def _dump(data: Any) -> str:
     return json.dumps(data, ensure_ascii=False, indent=2, default=str)
 
 
-def _rows(session, inspector, table: str, user_id: int) -> list:
+def _rows(session: Any, inspector: Any, table: str, user_id: int) -> list[Any]:
     from sqlalchemy import text
     if not inspector.has_table(table) or 'user_id' not in {c['name'] for c in inspector.get_columns(table)}:
         return []
@@ -30,7 +31,7 @@ def _rows(session, inspector, table: str, user_id: int) -> list:
     return [dict(row._mapping) for row in result]
 
 
-def _add_dir(zf: zipfile.ZipFile, src: str, arc: str):
+def _add_dir(zf: zipfile.ZipFile, src: str, arc: str) -> None:
     if not os.path.isdir(src):
         return
     for root, _dirs, files in os.walk(src):
@@ -63,7 +64,7 @@ def build(user_id: int) -> bytes:
                 zf.writestr(f'datos/{table}.json', _dump(_rows(session, inspector, table, user_id)))
         profiles = profile_store.get_all_profiles()
         zf.writestr('perfiles.json', _dump(profiles))
-        for name in sorted({p.get('resume_filename') for p in profiles.values()} - {None, ''}):
+        for name in sorted({name for p in profiles.values() if (name := p.get('resume_filename'))}):
             try:
                 zf.writestr(f'cvs/{name}', cv_storage.read_bytes(name))
             except (OSError, RuntimeError, ValueError) as e:

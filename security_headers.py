@@ -1,11 +1,16 @@
 """Cabeceras de seguridad de todas las respuestas: CSP con nonce por pedido, HSTS y anti-framing."""
 import os
+from collections.abc import Awaitable, Callable
+from typing import TypeVar
 import secrets
 
 from fastapi import Request
+from starlette.responses import Response
 
 CDN = "https://cdn.jsdelivr.net"
 HSTS = "max-age=31536000; includeSubDomains"
+
+R = TypeVar('R', bound=Response)
 
 
 def nonce(request: Request) -> str:
@@ -45,13 +50,13 @@ def is_https(request: Request) -> bool:
             or os.getenv("SESSION_COOKIE_SECURE", "0") == "1")
 
 
-async def add_security_headers(request: Request, call_next):
+async def add_security_headers(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
     """Agrega las cabeceras sin pisar las que ya puso una ruta. CSP_REPORT_ONLY=1 solo informa."""
     nonce(request)
     return apply(request, await call_next(request))
 
 
-def apply(request: Request, response):
+def apply(request: Request, response: R) -> R:
     """Cabeceras de seguridad en `response`; también la usa el 500, que se arma fuera de los middlewares."""
     script_nonce = nonce(request)
     csp_header = ("Content-Security-Policy-Report-Only" if os.getenv("CSP_REPORT_ONLY", "0") == "1"

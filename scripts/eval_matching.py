@@ -9,6 +9,8 @@ la base): cada cuenta con al menos --min-each marcas de cada lado ordena las ofe
 Solo muestra promedios, nunca filas por cuenta.
 Sale con código 1 si el NDCG@5 promedio queda por debajo de --min-ndcg.
 """
+from typing import Any
+from collections.abc import Callable
 import argparse
 import json
 import os
@@ -17,7 +19,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
-def main(argv=None):
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument('--min-ndcg', type=float, default=0.0)
     parser.add_argument('--json', action='store_true', help='imprimir el resultado como JSON')
@@ -39,7 +41,7 @@ def main(argv=None):
         return compare(args.min_ndcg, args.json, dataset)
     result = matching_eval.evaluate(dataset)
     if args.feedback:
-        result = {'accounts': len(dataset['profiles']), 'mean': result['mean'], 'by_language': result['by_language']}
+        result = {'accounts': len((dataset or {}).get('profiles', {})), 'mean': result['mean'], 'by_language': result['by_language']}
         if args.json:
             print(json.dumps(result, indent=2))
         else:
@@ -58,7 +60,7 @@ def main(argv=None):
     return 1 if result['mean']['ndcg@5'] < args.min_ndcg else 0
 
 
-def compare(min_ndcg=0.0, as_json=False, dataset=None):
+def compare(min_ndcg: float = 0.0, as_json: bool = False, dataset: dict[str, Any] | None = None) -> int:
     """Promedios con cada backend de similitud de texto; sin GEMINI_API_KEY solo mide TF-IDF.
     Sale con 1 si algún backend medido queda por debajo de `min_ndcg`."""
     import embeddings
@@ -66,7 +68,7 @@ def compare(min_ndcg=0.0, as_json=False, dataset=None):
     previous = os.environ.get('MATCHING_BACKEND')
     # el backend por idioma mezclaría los dos backends en cada fila: se compara cada uno puro
     by_language = os.environ.pop('MATCHING_BACKEND_BY_LANGUAGE', None)
-    results = {}
+    results: dict[str, dict[str, Any]] = {}
     try:
         for backend in ('tfidf', 'embeddings'):
             os.environ['MATCHING_BACKEND'] = backend
@@ -81,7 +83,7 @@ def compare(min_ndcg=0.0, as_json=False, dataset=None):
             fallbacks = 0
             original = embeddings.similarity
 
-            def counted(profile_text, job_text, _similarity=original):
+            def counted(profile_text: object, job_text: object, _similarity: Callable[[object, object], float | None] = original) -> float | None:
                 """Similitud de embeddings que anota cuántas veces cayó a TF-IDF (devolvió None)."""
                 nonlocal fallbacks
                 value = _similarity(profile_text, job_text)
@@ -124,7 +126,7 @@ def compare(min_ndcg=0.0, as_json=False, dataset=None):
     return 1 if any(ndcg < min_ndcg for ndcg in measured) else 0
 
 
-def _diff(a, b):
+def _diff(a: dict[str, float], b: dict[str, float]) -> dict[str, float]:
     """a - b, métrica por métrica."""
     return {metric: a[metric] - b[metric] for metric in a}
 

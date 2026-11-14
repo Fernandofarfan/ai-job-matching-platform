@@ -4,6 +4,7 @@ Los textos se escriben en español en las plantillas (`{{ _('Texto') }}`) y los 
 `translations/<idioma>.json` los traducen; lo que falta en un catálogo se muestra en español.
 El idioma sale de la cookie `lang` (selector de la barra) o, sin ella, de `Accept-Language`.
 """
+from typing import Any
 import json
 import os
 from contextvars import ContextVar
@@ -19,15 +20,16 @@ _current: ContextVar[str] = ContextVar('lang', default=DEFAULT)
 
 
 @lru_cache(maxsize=None)
-def catalog(lang: str) -> dict:
+def catalog(lang: str) -> dict[str, Any]:
     """Traducciones de un idioma, con el texto en español como clave."""
     if lang == DEFAULT or lang not in LANGUAGES:
         return {}
     with open(os.path.join(_DIR, f'{lang}.json'), encoding='utf-8') as f:
-        return json.load(f)
+        data: dict[str, Any] = json.load(f)
+    return data
 
 
-def negotiate(cookie, accept_language) -> str:
+def negotiate(cookie: str | None, accept_language: str | None) -> str:
     """Idioma elegido en la cookie o, si no, el primero soportado de `Accept-Language` (por calidad)."""
     if cookie in LANGUAGES:
         return cookie
@@ -56,25 +58,25 @@ def get_locale() -> str:
     return _current.get()
 
 
-def gettext(text: str, **values) -> str:
+def gettext(text: str, **values: Any) -> str:
     """Texto traducido al idioma actual; `%(nombre)s` se completa con `values`."""
     translated = catalog(get_locale()).get(text, text) if text else text
     return translated % values if values else translated
 
 
-def lazy(text: str, **values) -> dict:
+def lazy(text: str, **values: Any) -> dict[str, Any]:
     """Mensaje para traducir al mostrarlo (progreso de búsquedas que arman threads y el worker)."""
     return {'text': text, 'values': values}
 
 
-def render_message(message) -> str:
+def render_message(message: Any) -> str:
     """Texto de un mensaje de `lazy()` (o un texto suelto) en el idioma actual."""
     if isinstance(message, dict) and isinstance(message.get('text'), str):
         return gettext(message['text'], **(message.get('values') or {}))
     return gettext(message) if isinstance(message, str) else message
 
 
-def jinja_gettext(text, **values) -> Markup:
+def jinja_gettext(text: str, **values: Any) -> Markup:
     """`_()` de las plantillas: el texto se escapa y los valores también, salvo los marcados como seguros."""
     if not isinstance(text, str):
         return escape(text)

@@ -5,14 +5,16 @@ descartadas y mide el matching contra lo que eligen los usuarios: qué tan segui
 "me interesa" tiene más match que una marcada "no me interesa" (AUC; 0,5 = al azar, 1 = siempre).
 """
 import logging
+from collections.abc import Iterable
 from datetime import datetime
+from typing import Any
 
 from sqlalchemy import Boolean, DateTime, Float, Integer, String, Text, UniqueConstraint, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Mapped, mapped_column
 
 import job_alerts
-from job_alerts import Base, fingerprint
+from job_alerts import Base, Job, fingerprint
 
 logger = logging.getLogger(__name__)
 
@@ -38,13 +40,13 @@ class JobFeedback(Base):
     updated_at: Mapped[datetime | None] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now)
 
 
-def _text(job, name, limit):
+def _text(job: Job, name: str, limit: int) -> str | None:
     """Campo de la oferta (mayúscula de los scrapers o minúscula), recortado al largo de la columna."""
     value = job.get(name.capitalize()) or job.get(name) or ''
     return str(value).strip()[:limit] or None
 
 
-def _url(job):
+def _url(job: Job) -> str | None:
     """Enlace de la oferta, solo http(s)."""
     for key in ('job_link', 'Job_Link', 'URL', 'url'):
         value = str(job.get(key) or '').strip()
@@ -53,7 +55,7 @@ def _url(job):
     return None
 
 
-def _score(value):
+def _score(value: Any) -> float | None:
     """Match 0-100 o None si no viene o no es un número."""
     try:
         score = float(value)
@@ -62,7 +64,7 @@ def _score(value):
     return score if 0 <= score <= 100 else None
 
 
-def set_feedback(job, interested, match_score=None, job_text=None):
+def set_feedback(job: Job, interested: bool | None, match_score: Any = None, job_text: str | None = None) -> None:
     """Guarda "me interesa" (True), "no me interesa" (False) o lo borra (None) para la cuenta actual.
 
     `job_text` (la descripción de la oferta) se guarda si viene; si no, queda la que ya estaba."""
@@ -96,7 +98,7 @@ def set_feedback(job, interested, match_score=None, job_text=None):
                 raise
 
 
-def _rows(fingerprints=None):
+def _rows(fingerprints: Iterable[str] | None = None) -> list[JobFeedback]:
     """Filas de la cuenta actual, opcionalmente solo las de esas huellas."""
     query = select(JobFeedback).where(job_alerts._mine(JobFeedback))
     if fingerprints is not None:
@@ -105,7 +107,7 @@ def _rows(fingerprints=None):
         return list(session.scalars(query))
 
 
-def states(jobs):
+def states(jobs: list[Job]) -> list[bool | None]:
     """True / False / None por oferta, en el mismo orden."""
     fps = [fingerprint(job) for job in jobs]
     if not fps:
@@ -114,7 +116,7 @@ def states(jobs):
     return [known.get(fp) for fp in fps]
 
 
-def drop_rejected(jobs):
+def drop_rejected(jobs: list[Job]) -> list[Job]:
     """Las ofertas sin "no me interesa" de la cuenta actual."""
     if not jobs:
         return jobs
@@ -122,13 +124,13 @@ def drop_rejected(jobs):
     return [job for job in jobs if fingerprint(job) not in rejected]
 
 
-def examples():
+def examples() -> list[Job]:
     """Ofertas marcadas, con los campos del ranking personal y `interested`."""
     return [{'title': r.title, 'company': r.company, 'location': r.location, 'job_link': r.url,
              'interested': r.interested, 'match_score': r.match_score} for r in _rows()]
 
 
-def agreement(rows):
+def agreement(rows: list[dict[str, Any]]) -> dict[str, Any]:
     """Cuántas ofertas se marcaron de cada lado y AUC del match: probabilidad de que una "me interesa"
     tenga más match que una "no me interesa" (empates cuentan medio). None si falta un lado."""
     pos = [r['match_score'] for r in rows if r['interested'] and r.get('match_score') is not None]
@@ -141,12 +143,12 @@ def agreement(rows):
             'not_interested': sum(1 for r in rows if not r['interested']), 'match_auc': auc}
 
 
-def my_agreement():
+def my_agreement() -> dict[str, Any]:
     """`agreement` de la cuenta actual."""
     return agreement([{'interested': r.interested, 'match_score': r.match_score} for r in _rows()])
 
 
-def all_agreement():
+def all_agreement() -> dict[str, Any]:
     """`agreement` de todas las cuentas juntas (sin datos de quién marcó qué), para medir el matching."""
     with job_alerts._sessions()() as session:
         rows = session.execute(select(JobFeedback.interested, JobFeedback.match_score)).all()
@@ -161,5 +163,6 @@ def labeled_texts() -> dict[int, list[tuple[str, bool, str]]]:
     by_user: dict[int, list[tuple[str, bool, str]]] = {}
     with job_alerts._sessions()() as session:
         for user_id, fp, interested, job_text in session.execute(query):
-            by_user.setdefault(user_id, []).append((fp, interested, job_text))
+            if user_id is not None and job_text is not None:
+                by_user.setdefault(user_id, []).append((fp, interested, job_text))
     return by_user

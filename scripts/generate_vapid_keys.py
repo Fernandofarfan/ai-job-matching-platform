@@ -2,6 +2,7 @@
 
 Uso: python scripts/generate_vapid_keys.py  → copiá las dos líneas al .env (la privada es un secreto).
 """
+from typing import Any
 import base64
 
 from cryptography.hazmat.primitives import serialization
@@ -12,7 +13,7 @@ def _b64(data: bytes) -> str:
     return base64.urlsafe_b64encode(data).rstrip(b'=').decode()
 
 
-def generate() -> tuple:
+def generate() -> tuple[Any, ...]:
     """(pública, privada) en base64url: punto P-256 sin comprimir y el escalar privado de 32 bytes."""
     key = ec.generate_private_key(ec.SECP256R1())
     public = key.public_key().public_bytes(serialization.Encoding.X962, serialization.PublicFormat.UncompressedPoint)

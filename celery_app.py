@@ -2,6 +2,7 @@
 celery_app.py — Configuración central de Celery para EmpleoIA
 Permite ejecutar scrapers y tareas de IA de forma asíncrona.
 """
+from typing import Any
 import os
 import sys
 from celery import Celery
@@ -13,21 +14,18 @@ load_dotenv()
 _ROOT = os.path.dirname(os.path.abspath(__file__))
 
 
-@worker_init.connect
-def _project_on_path(**_):
+def _project_on_path(**_: Any) -> None:
     """El CLI de celery quita el cwd del path tras cargar la app; las tareas importan app, job_dispatch, etc."""
     if _ROOT not in sys.path:
         sys.path.insert(0, _ROOT)
 
-@worker_process_init.connect
-def _tracing(**_):
+def _tracing(**_: Any) -> None:
     """Trazas de las tareas (y de sus llamadas HTTP) si hay OTEL_EXPORTER_OTLP_ENDPOINT."""
     import observability
     observability.setup_tracing(celery_worker=True)
 
 
-@celeryd_init.connect
-def _error_reporting(**_):
+def _error_reporting(**_: Any) -> None:
     """Tareas que fallan a Sentry si hay SENTRY_DSN.
 
     Va en el proceso principal, antes del fork: con prefork, los hijos arman los tracers de las tareas
@@ -38,6 +36,10 @@ def _error_reporting(**_):
 
 
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+
+worker_init.connect(_project_on_path)
+worker_process_init.connect(_tracing)
+celeryd_init.connect(_error_reporting)
 
 celery = Celery(
     "empleoia",

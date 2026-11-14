@@ -1,4 +1,5 @@
 """Match entre un perfil de CV y una oferta: habilidades, años de experiencia pedidos y similitud de texto."""
+from typing import Any
 import re
 
 import pandas as pd
@@ -44,7 +45,7 @@ MAX_REQUIRED_YEARS = 20  # más años que esto en una oferta no es un requisito 
 
 
 class jobMatcher:
-    def __init__(self):
+    def __init__(self) -> None:
         self.vectorizer = TfidfVectorizer(
             stop_words='english',
             ngram_range=(1, 2),
@@ -54,7 +55,7 @@ class jobMatcher:
     
 
 
-    def calculate_experience_match(self, profile_years, job_description):
+    def calculate_experience_match(self, profile_years: Any, job_description: str) -> float:
         
         required_years = self._extract_required_experience(job_description)
         
@@ -68,9 +69,9 @@ class jobMatcher:
         elif profile_years >= required_years * 0.6: 
             return 60.0
         else:
-            return max(20.0, (profile_years / required_years) * 100)
+            return float(max(20.0, (profile_years / required_years) * 100))
     
-    def _extract_required_experience(self, job_description):
+    def _extract_required_experience(self, job_description: str) -> int:
         
         patterns = [
             r'(\d+)\+?\s*years?\s*(?:of\s*)?experience',
@@ -99,7 +100,7 @@ class jobMatcher:
         
         return min(years) if years else 0
     
-    def calculate_text_similarity(self, profile_text, job_description):
+    def calculate_text_similarity(self, profile_text: str, job_description: str) -> float:
         """Similitud 0-100: embeddings si están activos para el idioma del CV, si no (o si fallan) TF-IDF."""
         import embeddings
         semantic = embeddings.similarity(profile_text, job_description)
@@ -115,12 +116,12 @@ class jobMatcher:
             
             similarity = cosine_similarity(tfidf_matrix[0:1], tfidf_matrix[1:2])[0][0]
             
-            return similarity * 100  
+            return float(similarity * 100)
         except Exception as e:
             print(f"Error calculating text similarity: {str(e)}")
             return 0.0
     
-    def calculate_overall_match(self, profile, job_description, weights=None):
+    def calculate_overall_match(self, profile: dict[str, Any], job_description: str, weights: dict[str, float] | None = None) -> dict[str, Any]:
         
         if weights is None:
             weights = {
@@ -152,7 +153,7 @@ class jobMatcher:
             'missing_skills': self.get_missing_skills(skills, job_description),
         }
     
-    def calculate_skill_match(self, profile_skills, job_description):
+    def calculate_skill_match(self, profile_skills: list[str], job_description: str) -> float:
        
         if not profile_skills:
             return 0.0
@@ -230,7 +231,7 @@ class jobMatcher:
         return min(match_percentage, 100.0)
 
 
-    def _get_matched_skills(self, profile_skills, job_description):
+    def _get_matched_skills(self, profile_skills: list[str], job_description: str) -> list[str]:
        
         if not profile_skills:
             return []
@@ -270,7 +271,7 @@ class jobMatcher:
         return matched_skills
 
     @staticmethod
-    def get_missing_skills(profile_skills, job_description):
+    def get_missing_skills(profile_skills: list[str], job_description: str) -> list[str]:
         """Habilidades del vocabulario que pide la oferta y no están en el CV (ni como variante), hasta 8."""
         have = {skill_catalog.canonical(s) for s in profile_skills}
         for variations in SKILL_VARIATIONS.values():
@@ -280,7 +281,7 @@ class jobMatcher:
         missing = [s for s in skill_catalog.skills_in(job_description) if s not in have]
         return missing[:MAX_MISSING_SKILLS]
 
-    def process_job_dataframe(self, df, profile, job_description_column='Description'):
+    def process_job_dataframe(self, df: pd.DataFrame, profile: dict[str, Any], job_description_column: str = "Description") -> pd.DataFrame:
         """Process entire job dataframe and add match scores"""
         results = []
         
