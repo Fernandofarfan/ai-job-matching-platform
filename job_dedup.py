@@ -48,20 +48,22 @@ TITLE_WORDS = {'analyst': 'analista', 'data': 'datos', 'developer': 'desarrollad
                'manager': 'gerente', 'designer': 'disenador', 'sales': 'ventas', 'accountant': 'contador',
                'cashier': 'cajero', 'support': 'soporte', 'software': 'software', 'business': 'negocio'}
 TITLE_STOPWORDS = {'de', 'del', 'la', 'el', 'los', 'las', 'y', 'of', 'and', 'the'}
-COMPANY_CONNECTORS = {'en', 'at', 'para'}
+# Separadores entre el puesto y la empresa: "Cajero - Coto", "Cajero–Coto", "Cajero | Coto", "Cajero en Coto".
+COMPANY_SEPARATOR = re.compile(r'\s+(?:en|at|para|-|\||/)\s+|\s*[–—]\s*', re.IGNORECASE)
 
 
 def title_key(title: object, company: object = '') -> str:
     """Título normalizado: seniority unificado ("Senior" y "Sr." dan "sr"), sin el nombre de la empresa al final
-    ("Cajero - Coto", "Cajero–Coto" y "Cajero en Coto" dan "cajero") y con las palabras en inglés traducidas y
-    ordenadas ("Data Analyst" y "Analista de Datos" dan lo mismo)."""
-    words = _norm(title).split()
-    tail = company_key(company).split()
-    if tail and len(words) > len(tail) and words[-len(tail):] == tail:
-        words = words[:-len(tail)]
-        if len(words) > 1 and words[-1] in COMPANY_CONNECTORS:
-            words.pop()
-    text = ' '.join(words)
+    ("Cajero - Coto CICSA" y "Cajero en Coto" dan "cajero"; "Administrativo de Personal" no cambia) y con las
+    palabras en inglés traducidas y ordenadas ("Data Analyst" y "Analista de Datos" dan lo mismo)."""
+    raw = str(title or '')
+    company = company_key(company)
+    if company:
+        for match in reversed(list(COMPANY_SEPARATOR.finditer(raw))):
+            if raw[:match.start()].strip() and company_key(raw[match.end():]) == company:
+                raw = raw[:match.start()]
+                break
+    text = _norm(raw)
     for pattern, short in SENIORITY:
         text = re.sub(pattern, short, text)
     return ' '.join(sorted(TITLE_WORDS.get(w, w) for w in text.split() if w not in TITLE_STOPWORDS))
