@@ -20,9 +20,9 @@ GENERIC_PLACES = {'argentina', 'chile', 'uruguay', 'paraguay', 'bolivia', 'peru'
 
 
 def _norm(value: object) -> str:
-    """Minúsculas ASCII, sin puntos y con el resto de la puntuación como espacios."""
+    """Minúsculas ASCII, sin puntos y con el resto de la puntuación como espacios, salvo `+` y `#` (C++, C#)."""
     text = unicodedata.normalize('NFKD', str(value or '')).encode('ascii', 'ignore').decode().lower()
-    text = re.sub(r'[^a-z0-9 ]+', ' ', text.replace('.', ''))
+    text = re.sub(r'[^a-z0-9+# ]+', ' ', text.replace('.', ''))
     return ' '.join(text.split())
 
 

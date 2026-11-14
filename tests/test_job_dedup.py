@@ -69,3 +69,9 @@ def test_english_placeholders_are_not_real_data():
     merged = job_dedup.unify([_job('Computrabajo', Salary='Not specified', URL='https://x.example/1'),
                               _job('Bumeran', Salary='$ 1.500.000', URL='https://x.example/1')])
     assert merged[0]['Salary'] == '$ 1.500.000'
+
+
+def test_cpp_csharp_and_c_are_different_roles():
+    jobs = job_dedup.unify([_job('Bumeran', title='Developer C++'), _job('ZonaJobs', title='Developer C#'),
+                            _job('Computrabajo', title='Developer C'), _job('Indeed', title='Developer C++')])
+    assert [job['Title'] for job in jobs] == ['Developer C++', 'Developer C#', 'Developer C']
