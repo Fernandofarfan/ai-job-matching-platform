@@ -67,8 +67,12 @@ def _place_text(location: object) -> str:
 
 
 def _places(location: object) -> set[str]:
-    """Palabras de la ubicación que identifican un lugar (sin países ni "Remoto")."""
-    return set(_place_text(location).split()) - GENERIC_PLACES
+    """Palabras de la ubicación que identifican un lugar dentro de la provincia (sin países, "Remoto" ni el nombre de
+    la provincia). Capital Federal queda: es un lugar distinto del resto de la provincia de Buenos Aires."""
+    text = _place_text(location)
+    for province in PROVINCES - {'capital federal'}:
+        text = text.replace(f' {province} ', ' ')
+    return set(text.split()) - GENERIC_PLACES
 
 
 def _provinces(location: object) -> set[str]:
@@ -96,12 +100,12 @@ def _source(job: Job) -> str:
 
 
 def _compatible(a: Job, b: Job) -> bool:
-    """Ubicaciones que pueden ser la misma: alguna es genérica o comparten una palabra de lugar, sin nombrar
-    provincias distintas ("San Justo, Buenos Aires" y "San Justo, Santa Fe" no). Si nombran la misma provincia son
-    compatibles: "Ciudad Autónoma de Buenos Aires" y "Buenos Aires" no comparten palabras después del alias."""
+    """Ubicaciones que pueden ser la misma: no nombran provincias distintas ("San Justo, Buenos Aires" y "San Justo,
+    Santa Fe" no) y alguna solo dice la provincia o el país, o comparten un lugar ("Ciudad Autónoma de Buenos Aires" y
+    "Buenos Aires" sí; "CABA" y "La Plata, Buenos Aires" no)."""
     provinces_a, provinces_b = _provinces(a.get('Location')), _provinces(b.get('Location'))
-    if provinces_a and provinces_b:
-        return bool(provinces_a & provinces_b)
+    if provinces_a and provinces_b and not provinces_a & provinces_b:
+        return False
     places_a, places_b = _places(a.get('Location')), _places(b.get('Location'))
     return not places_a or not places_b or bool(places_a & places_b)
 

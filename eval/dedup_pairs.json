@@ -702,6 +702,24 @@
     "Location": "Buenos Aires",
     "URL": "https://zonajobs.example/552918"
    }
+  },
+  {
+   "case": "CABA frente a La Plata, provincia de Buenos Aires",
+   "same": false,
+   "a": {
+    "Fuente": "Bumeran",
+    "Title": "Analista Contable",
+    "Company": "Grupo Sur S.A.",
+    "Location": "CABA",
+    "URL": "https://bumeran.example/771240"
+   },
+   "b": {
+    "Fuente": "ZonaJobs",
+    "Title": "Analista Contable",
+    "Company": "Grupo Sur",
+    "Location": "La Plata, Buenos Aires",
+    "URL": "https://zonajobs.example/552977"
+   }
   }
  ]
 }
