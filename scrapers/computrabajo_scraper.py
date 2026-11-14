@@ -3,6 +3,7 @@ import random
 import logging
 import os
 import pandas as pd
+from bs4 import BeautifulSoup
 from datetime import datetime
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -11,13 +12,53 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
 from selenium.common.exceptions import TimeoutException, NoSuchElementException, ElementClickInterceptedException
 
+from scrapers.common import configure_driver, get_with_retries
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+BASE_URL = "https://www.computrabajo.com.ar"
+JOB_CARD_SELECTORS = ["article.box_offer", "div.bRS", "article[data-test='job-card']"]
+
+
+def _text(card, selector):
+    elem = card.select_one(selector)
+    return elem.get_text(" ", strip=True) if elem else None
+
+
+def parse_job_card(card, base_url=BASE_URL):
+    """Datos de una oferta a partir del HTML de su tarjeta (BeautifulSoup); None si no tiene título."""
+    from urllib.parse import urljoin
+    title_elem = card.select_one("h2.fs16 a, a.js-o-link")
+    if not title_elem or not title_elem.get_text(strip=True):
+        return None
+    salary = next((t for t in (e.get_text(" ", strip=True) for e in card.select(".salary, .fc_base"))
+                   if '$' in t or 'ARS' in t), '')
+    return {
+        'Title': title_elem.get_text(" ", strip=True),
+        'URL': urljoin(base_url, title_elem.get('href', '')),
+        'Company': _text(card, "p.fs16.fc_base.mt5, .company-name, span.company") or "Confidential",
+        'Location': _text(card, "p.fs13.fc_base, .location") or "",
+        'Salary': salary if ('$' in salary or 'ARS' in salary) else 'Not specified',
+        'Description': _text(card, "p.mt10, .description") or '',
+        'Source': 'Computrabajo',
+    }
+
+
+def parse_listing(html, base_url=BASE_URL):
+    """Todas las ofertas de una página de resultados."""
+    soup = BeautifulSoup(html, 'lxml')
+    for selector in JOB_CARD_SELECTORS:
+        cards = soup.select(selector)
+        if cards:
+            return [job for job in (parse_job_card(card, base_url) for card in cards) if job]
+    return []
+
 
 class ComputrabajoScraper:
     def __init__(self):
         """Initialize Computrabajo scraper"""
-        self.base_url = "https://www.computrabajo.com.ar"
+        self.base_url = BASE_URL
         self.driver = None
         self.wait = None
         self._setup_driver()
@@ -35,6 +76,7 @@ class ComputrabajoScraper:
                 options.add_argument('--disable-blink-features=AutomationControlled')
                 options.add_argument('--window-size=1920,1080')
                 self.driver = webdriver.Remote(command_executor=selenium_url, options=options)
+                configure_driver(self.driver)
                 self.wait = WebDriverWait(self.driver, 20)
                 logger.info(f"Connected to remote Selenium at {selenium_url}")
                 return
@@ -50,6 +92,7 @@ class ComputrabajoScraper:
         
         try:
             self.driver = webdriver.Chrome(options=options)
+            configure_driver(self.driver)
             self.driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
             self.wait = WebDriverWait(self.driver, 15)
             logger.info("Chrome driver initialized successfully")
@@ -120,7 +163,7 @@ class ComputrabajoScraper:
             
         try:
             logger.info(f"Visiting job page: {job_url}")
-            self.driver.get(job_url)
+            get_with_retries(self.driver, job_url)
             time.sleep(random.uniform(2, 4))
             
             # Look for "Postularme" button
@@ -176,7 +219,7 @@ class ComputrabajoScraper:
                 search_url = f"{self.base_url}/trabajo-de-{position_slug}"
             
             logger.info(f"Searching Computrabajo: {search_url}")
-            self.driver.get(search_url)
+            get_with_retries(self.driver, search_url)
             time.sleep(random.uniform(3, 5))
             
             page = 1
@@ -230,91 +273,21 @@ class ComputrabajoScraper:
             
     def _extract_jobs_from_page(self):
         """Extract all jobs from current page"""
-        jobs = []
+        for selector in JOB_CARD_SELECTORS:
+            try:
+                self.wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, selector)))
+                break
+            except Exception:
+                continue
         try:
-            # Wait for job listings to load
-            job_cards_selectors = ["article.box_offer", "div.bRS", "article[data-test='job-card']"]
-            
-            job_cards = None
-            for selector in job_cards_selectors:
-                try:
-                    self.wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, selector)))
-                    job_cards = self.driver.find_elements(By.CSS_SELECTOR, selector)
-                    if job_cards:
-                        break
-                except:
-                    continue
-            
-            if not job_cards:
-                logger.warning("No job cards found on page")
-                return jobs
-            
-            for card in job_cards:
-                try:
-                    job_data = self._extract_job_details(card)
-                    if job_data:
-                        jobs.append(job_data)
-                except Exception as e:
-                    logger.error(f"Error extracting job details: {e}")
-                    continue
-                    
+            jobs = parse_listing(self.driver.page_source, self.base_url)
         except Exception as e:
             logger.error(f"Error extracting jobs from page: {e}")
-            
+            return []
+        if not jobs:
+            logger.warning("No job cards found on page")
         return jobs
-        
-    def _extract_job_details(self, job_card):
-        """Extract details from a single job card"""
-        try:
-            job_data = {}
-            
-            # Title & URL
-            try:
-                title_elem = job_card.find_element(By.CSS_SELECTOR, "h2.fs16 a, a.js-o-link")
-                job_data['Title'] = title_elem.text.strip()
-                job_data['URL'] = title_elem.get_attribute('href')
-            except:
-                return None # Skip if no title/url
-            
-            # Company
-            try:
-                company_elem = job_card.find_element(By.CSS_SELECTOR, "p.fs16.fc_base.mt5, .company-name, span.company")
-                job_data['Company'] = company_elem.text.strip()
-            except:
-                job_data['Company'] = "Confidential"
-            
-            # Location
-            try:
-                location_elem = job_card.find_element(By.CSS_SELECTOR, "p.fs13.fc_base, .location")
-                job_data['Location'] = location_elem.text.strip()
-            except:
-                job_data['Location'] = ""
-            
-            # Salary
-            try:
-                salary_elem = job_card.find_element(By.CSS_SELECTOR, ".salary, .fc_base")
-                salary_text = salary_elem.text.strip()
-                if '$' in salary_text or 'ARS' in salary_text:
-                    job_data['Salary'] = salary_text
-                else:
-                    job_data['Salary'] = 'Not specified'
-            except:
-                job_data['Salary'] = 'Not specified'
-            
-            # Description
-            try:
-                desc_elem = job_card.find_element(By.CSS_SELECTOR, "p.mt10, .description")
-                job_data['Description'] = desc_elem.text.strip()
-            except:
-                job_data['Description'] = ''
-            
-            job_data['Source'] = 'Computrabajo'
-            
-            return job_data
-        except Exception as e:
-            logger.error(f"Error extracting job details: {e}")
-            return None
-            
+
     def _go_to_next_page(self):
         """Navigate to next page of results"""
         try:

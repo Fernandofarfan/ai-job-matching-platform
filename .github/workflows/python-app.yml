@@ -68,6 +68,9 @@ jobs:
             openpyxl \
             reportlab \
             SQLAlchemy==2.0.57 \
+            beautifulsoup4==4.12.2 \
+            lxml \
+            pytest-cov \
             alembic==1.20.1 \
             pytest \
             pytest-flask \
@@ -103,13 +106,8 @@ jobs:
           python -m pytest tests/ \
             -v \
             --tb=short \
-            --ignore=tests/test_resume_parser.py \
-            -x
-
-      - name: Run resume parser tests (best-effort)
-        run: |
-          python -m pytest tests/test_resume_parser.py -v --tb=short || true
-        continue-on-error: true
+            --cov=. --cov-report=term:skip-covered \
+            --cov-fail-under=20
 
   # ─── Seguridad ────────────────────────────────────────────
   security:

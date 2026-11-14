@@ -74,7 +74,6 @@ _ALL_MOCKS = [
     'selenium.webdriver.remote.errorhandler', 'selenium.webdriver.remote.file_detector',
     'selenium.webdriver.remote.shadowroot', 'selenium.webdriver.remote.switch_to',
     # BeautifulSoup / parsing
-    'bs4', 'beautifulsoup4', 'lxml', 'lxml.html',
     # Document parsing
     'pypdf', 'PyPDF2', 'docx', 'python_docx',
     # WSGI

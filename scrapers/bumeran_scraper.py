@@ -3,6 +3,7 @@ import random
 import logging
 import os
 import pandas as pd
+from bs4 import BeautifulSoup
 from datetime import datetime
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -11,13 +12,60 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
 
+from scrapers.common import configure_driver, get_with_retries
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+BASE_URL = "https://www.bumeran.com.ar"
+PROVINCES = ["Buenos Aires", "Capital Federal", "CABA", "Córdoba", "Santa Fe", "Mendoza", "Neuquén", "Rosario", "Tucumán"]
+
+
+def parse_job_card(card, base_url=BASE_URL):
+    """Datos de una oferta a partir de su <a href=".../empleos/..."> (BeautifulSoup); None si no es una oferta."""
+    from urllib.parse import urljoin
+    href = card.get('href') or ''
+    title_elem = card.find('h2')
+    if '/empleos/' not in href or not title_elem or not title_elem.get_text(strip=True):
+        return None
+    url = urljoin(base_url, href)
+    title = title_elem.get_text(" ", strip=True)
+    job = {
+        'URL': url, 'Apply_URL': url, 'Title': title,
+        'Company': "Confidencial", 'Location': "Argentina", 'Date_Posted': "Reciente",
+        'Salary': "No especificado", 'Job_Type': "Full-time", 'Level': "No especificado",
+        'Description': title, 'Source': 'Bumeran',
+    }
+    for h3 in card.find_all('h3'):
+        text = h3.get_text(" ", strip=True)
+        if not text:
+            continue
+        if any(x in text.lower() for x in ["publicado", "actualizado", "nuevo", "hoy", "ayer"]):
+            job['Date_Posted'] = text
+        elif any(x in text for x in PROVINCES):
+            job['Location'] = text
+        elif text in ["Presencial", "Híbrido", "Remoto"]:
+            job['Job_Type'] = text
+        elif len(text) < 50 and text != title and not text.replace('.', '', 1).isdigit():
+            job['Company'] = text
+    return job
+
+
+def parse_listing(html, base_url=BASE_URL):
+    """Ofertas únicas (por URL) de una página de resultados."""
+    jobs, seen = [], set()
+    for card in BeautifulSoup(html, 'lxml').select("a[href*='/empleos/']"):
+        job = parse_job_card(card, base_url)
+        if job and job['URL'] not in seen:
+            seen.add(job['URL'])
+            jobs.append(job)
+    return jobs
+
 
 class BumeranScraper:
     def __init__(self):
         """Initialize Bumeran scraper"""
-        self.base_url = "https://www.bumeran.com.ar"
+        self.base_url = BASE_URL
         self.driver = None
         self.wait = None
         self._setup_driver()
@@ -36,6 +84,7 @@ class BumeranScraper:
                 chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
                 chrome_options.add_experimental_option('useAutomationExtension', False)
                 self.driver = webdriver.Remote(command_executor=selenium_url, options=chrome_options)
+                configure_driver(self.driver)
                 self.wait = WebDriverWait(self.driver, 20)
                 logger.info(f"Connected to remote Selenium at {selenium_url}")
                 return
@@ -51,6 +100,7 @@ class BumeranScraper:
             chrome_options.add_experimental_option('useAutomationExtension', False)
             
             self.driver = webdriver.Chrome(options=chrome_options)
+            configure_driver(self.driver)
             self.driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
             self.wait = WebDriverWait(self.driver, 20)  # Increased timeout
             logger.info("Chrome driver initialized successfully")
@@ -84,7 +134,7 @@ class BumeranScraper:
                     search_url = f"{self.base_url}/empleos-busqueda-{position_slug}-pagina-{page}.html"
                 
                 logger.info(f"Searching Bumeran page {page}: {search_url}")
-                self.driver.get(search_url)
+                get_with_retries(self.driver, search_url)
                 
                 # Scroll to trigger lazy loading
                 self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight/2);")
@@ -159,7 +209,7 @@ class BumeranScraper:
         """Visit job page and extract apply URL"""
         try:
             logger.info(f"Visiting job page: {job_url}")
-            self.driver.get(job_url)
+            get_with_retries(self.driver, job_url)
             time.sleep(3) # Wait for load
             
             try:
@@ -182,100 +232,20 @@ class BumeranScraper:
 
     def _extract_jobs_from_page(self):
         """Extract all jobs from current page"""
-        jobs = []
-        
+        # Bumeran renderiza con React: se espera a que aparezca alguna tarjeta
         try:
-            # Wait for React to render completely (Bumeran uses React)
-            logger.info("Waiting for React to render...")
-            time.sleep(8)  # React needs ~8 seconds to fully render job cards
-            
-            # Try to find job cards
-            job_cards = self.driver.find_elements(By.CSS_SELECTOR, "a[href*='/empleos/']")
-            
-            if not job_cards:
-                logger.warning("No job cards found on page")
-                return jobs
-            
-            logger.info(f"Found {len(job_cards)} potential job cards")
-
-            # Filter and extract job data
-            seen_urls = set()
-            for card in job_cards:
-                try:
-                    job_data = self._extract_job_details(card)
-                    if job_data and job_data['URL'] not in seen_urls:
-                        jobs.append(job_data)
-                        seen_urls.add(job_data['URL'])
-                except Exception as e:
-                    logger.debug(f"Error extracting job details: {e}")
-                    continue
-                    
+            self.wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "a[href*='/empleos/'] h2")))
+        except Exception:
+            logger.info("Job cards did not render before the timeout")
+        try:
+            jobs = parse_listing(self.driver.page_source, self.base_url)
         except Exception as e:
             logger.error(f"Error extracting jobs from page: {e}")
-            
+            return []
+        if not jobs:
+            logger.warning("No job cards found on page")
         return jobs
-        
-    def _extract_job_details(self, job_card):
-        """Extract details from a single job card"""
-        try:
-            job_data = {}
-            
-            # URL
-            url = job_card.get_attribute('href')
-            if not url or '/empleos/' not in url:
-                return None
-            job_data['URL'] = url
-            # Default to job URL for apply URL (will be updated if logged in)
-            job_data['Apply_URL'] = url
 
-            # Title - usually in h2
-            try:
-                title_elem = job_card.find_element(By.TAG_NAME, "h2")
-                job_data['Title'] = title_elem.text.strip()
-            except:
-                # If no h2, skip this card
-                return None
-
-            # Initialize defaults
-            job_data['Company'] = "Confidencial"
-            job_data['Location'] = "Argentina"
-            job_data['Date_Posted'] = "Reciente"
-            job_data['Salary'] = "No especificado"
-            job_data['Job_Type'] = "Full-time"
-            job_data['Level'] = "No especificado"
-            job_data['Description'] = job_data['Title'] # Placeholder
-
-            # Extract other details from h3 tags
-            try:
-                h3s = job_card.find_elements(By.TAG_NAME, "h3")
-                for h3 in h3s:
-                    text = h3.text.strip()
-                    if not text:
-                        continue
-                        
-                    # Heuristics to identify fields
-                    if any(x in text.lower() for x in ["publicado", "actualizado", "nuevo", "hoy", "ayer"]):
-                        job_data['Date_Posted'] = text
-                    elif any(x in text for x in ["Buenos Aires", "Capital Federal", "CABA", "Córdoba", "Santa Fe", "Mendoza", "Neuquén", "Rosario", "Tucumán"]):
-                        job_data['Location'] = text
-                    elif text in ["Presencial", "Híbrido", "Remoto"]:
-                        job_data['Job_Type'] = text
-                    elif len(text) < 50 and text != job_data['Title']: 
-                        # Assume it's company if it's short and not one of the above
-                        # Also check if it's a number (rating)
-                        if not text.replace('.', '', 1).isdigit():
-                            job_data['Company'] = text
-            except:
-                pass
-
-            # Source
-            job_data['Source'] = 'Bumeran'
-            
-            return job_data
-                
-        except Exception as e:
-            return None
-            
     def save_to_csv(self, jobs, filename=None):
         """Save jobs to CSV file"""
         try:

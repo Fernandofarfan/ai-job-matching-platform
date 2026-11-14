@@ -70,8 +70,8 @@ class TestJobMatcher:
         matcher = jobMatcher()
         assert matcher is not None
 
-    def test_calculate_match_returns_float(self):
-        """El cálculo de match debe retornar un valor entre 0 y 1."""
+    def test_calculate_match_returns_scores(self):
+        """Devuelve puntajes entre 0 y 100 aunque el perfil no tenga raw_text."""
         if not hasattr(self.matcher, 'calculate_overall_match'):
             pytest.skip("calculate_overall_match not available")
 
@@ -80,9 +80,13 @@ class TestJobMatcher:
             'experience_years': 3,
         }
         job_description = "Looking for Python developer with SQL skills and 2+ years experience."
-        score = self.matcher.calculate_overall_match(user_profile, job_description)
-        assert isinstance(score, (int, float))
-        assert 0 <= score <= 1
+        # sklearn está mockeado en los tests: la similitud de texto se fija a 0
+        from unittest import mock
+        with mock.patch.object(self.matcher, 'calculate_text_similarity', return_value=0.0):
+            result = self.matcher.calculate_overall_match(user_profile, job_description)
+        assert isinstance(result['overall_match'], (int, float))
+        assert 0 <= result['overall_match'] <= 100
+        assert 'python' in [s.lower() for s in result['matched_skills']]
 
     def test_skill_match_empty_skills(self):
         """Con habilidades vacías el match debe ser 0."""
@@ -99,7 +103,6 @@ class TestJobMatcher:
         if not hasattr(self.matcher, 'calculate_skill_match'):
             pytest.skip("calculate_skill_match not available")
 
-        user_profile = {'skills': ['python', 'sql']}
-        job_description = "We need someone with Python and SQL skills."
-        score = self.matcher.calculate_skill_match(user_profile, job_description)
+        job_description = "We need someone with Python and SQL experience."
+        score = self.matcher.calculate_skill_match(['python', 'sql'], job_description)
         assert score > 0, "Expected positive match score"
