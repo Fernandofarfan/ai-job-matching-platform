@@ -102,12 +102,12 @@ def run_connection_requests(credentials, company_list, message_template, search_
                     bot = None
                     
                 # Add delay between items
-                if index < len(company_list) - 1:  # Don't delay after the last company
+                if index < len(items_to_process) - 1:
                     delay = random.uniform(5, 10)
                     time.sleep(delay)
             
             # Update progress
-            job_status['connection_requests']['progress'] = int(search_progress_base + 70/len(company_list))
+            job_status['connection_requests']['progress'] = int(search_progress_base + 70 / len(items_to_process))
         
         # Mark task as complete
         job_status['connection_requests']['status'] = 'completed'

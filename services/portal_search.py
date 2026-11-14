@@ -192,14 +192,15 @@ def run_linkedin_scraper_with_matching(credentials, searches, filters=None):
         try:
             # Try email/password first, fallback to token
             if linkedin_email and linkedin_password:
-                scraper = linkedinClass(email=linkedin_email, password=linkedin_password)
+                scraper_args = {'email': linkedin_email, 'password': linkedin_password}
             elif linkedin_token:
-                scraper = linkedinClass(li_at_token=linkedin_token)
+                scraper_args = {'li_at_token': linkedin_token}
             else:
                 job_status['linkedin_scraping']['status'] = 'failed'
                 job_status['linkedin_scraping']['message'] = _m('Faltan las credenciales de LinkedIn')
                 job_status['linkedin_scraping']['progress'] = 0
                 return
+            scraper = linkedinClass(**scraper_args)
         except Exception as init_error:
             logger.error(f"Failed to initialize scraper: {init_error}")
             job_status['linkedin_scraping']['status'] = 'failed'
@@ -235,7 +236,7 @@ def run_linkedin_scraper_with_matching(credentials, searches, filters=None):
                         except:
                             pass
                         time.sleep(2)
-                        scraper = linkedinClass(linkedin_token)
+                        scraper = linkedinClass(**scraper_args)
                         
             except Exception as login_error:
                 logger.error(f"Login error: {login_error}")

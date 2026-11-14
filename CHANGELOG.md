@@ -6,6 +6,12 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar] - Cobertura mínima de tests
+
+- La cobertura se mide solo sobre el código de la app (sin tests, scripts ni migraciones; config en `pyproject.toml`) y el CI exige 57%, antes 20% contando los propios tests. Tests nuevos para conexiones de LinkedIn, búsquedas de Indeed y LinkedIn, notificaciones y análisis de salarios.
+- La búsqueda general de conexiones de LinkedIn terminaba siempre como fallida (dividía por la lista de empresas, vacía en ese modo).
+- El reintento de login de la búsqueda de LinkedIn perdía el email y la contraseña y volvía a probar sin credenciales.
+
 ## [Sin publicar] - Mensajes de progreso traducidos
 
 - Los mensajes de progreso de las búsquedas y de las solicitudes de conexión se muestran en el idioma de la cuenta (español, inglés o portugués). Se guardan como texto en español más sus valores (`i18n.lazy`) y `/status` los traduce al leerlos, así que sirven igual desde un thread o desde el worker de Celery.
