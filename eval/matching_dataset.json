@@ -1,0 +1,55 @@
+{
+ "description": "CVs y ofertas etiquetadas a mano. relevance: 2 = buena opción, 1 = parcial, 0 (o sin etiqueta) = no corresponde.",
+ "jobs": {
+  "da_jr": "Junior Data Analyst. 1+ years of experience with SQL and Excel. Build dashboards in Power BI, reporting for the sales team, pivot tables and data cleaning.",
+  "da_bi": "BI Analyst. 2 years of experience with Tableau, SQL and statistics. Create dashboards and KPI reporting, hypothesis testing and A/B analysis for marketing.",
+  "de_cloud": "Data Engineer. 3+ years of experience building ETL data pipelines with Python, Apache Airflow, Spark and AWS (S3, Glue, Redshift). Data modeling in Snowflake.",
+  "de_azure": "Data Engineer Azure. 4 years of experience with Azure Data Factory, Databricks, PySpark and SQL. Design ELT pipelines and data integration.",
+  "ds_ml": "Data Scientist. 3 years of experience in machine learning, predictive modeling and classification with Python, pandas, scikit-learn and statistics.",
+  "ai_llm": "AI Engineer. 2+ years of experience with LLMs, PyTorch, TensorFlow, NLP and deploying machine learning models with Docker and REST APIs.",
+  "fe_react": "Frontend Developer. 3 years of experience with React, TypeScript, JavaScript, HTML and CSS. Build responsive UIs and consume REST APIs.",
+  "be_python": "Backend Developer Python. 4 years of experience with Django or FastAPI, PostgreSQL, REST APIs, Docker and Git. Design microservices.",
+  "be_node": "Backend Developer Node.js. 3 years of experience with JavaScript, Node.js, Express, MongoDB and REST APIs.",
+  "devops": "DevOps Engineer. 5+ years of experience with Kubernetes, Terraform, Docker, CI/CD pipelines, Linux and AWS infrastructure monitoring.",
+  "sales": "Sales Executive. 2 years of experience in B2B sales, negotiation, CRM (Salesforce) and meeting commercial targets.",
+  "accountant": "Accountant. 3 years of experience in accounting, taxes, financial statements, payroll and SAP."
+ },
+ "profiles": {
+  "data_analyst": {
+   "experience_years": 2,
+   "skills": ["SQL", "Excel", "Power BI", "Tableau", "Data Visualization", "Statistics", "Python", "Pandas"],
+   "raw_text": "Data analyst with 2 years of experience building dashboards and reports in Power BI and Tableau. SQL queries, Excel pivot tables, statistics and data cleaning with Python pandas for sales and marketing teams.",
+   "relevance": {"da_jr": 2, "da_bi": 2, "ds_ml": 1, "de_cloud": 1}
+  },
+  "data_engineer": {
+   "experience_years": 4,
+   "skills": ["Python", "SQL", "Apache Spark", "Airflow", "AWS", "ETL", "Snowflake", "Docker", "Azure"],
+   "raw_text": "Data engineer with 4 years of experience designing ETL pipelines with Python, Spark and Airflow on AWS (S3, Glue, Redshift) and Azure Data Factory. Data modeling in Snowflake, Docker.",
+   "relevance": {"de_cloud": 2, "de_azure": 2, "da_jr": 1, "be_python": 1, "ds_ml": 1, "devops": 1}
+  },
+  "ml_engineer": {
+   "experience_years": 3,
+   "skills": ["Python", "Machine Learning", "PyTorch", "TensorFlow", "NLP", "Pandas", "Docker", "Statistics"],
+   "raw_text": "Machine learning engineer with 3 years of experience training NLP and classification models with PyTorch and TensorFlow, predictive modeling with pandas and scikit-learn, deploying models with Docker.",
+   "relevance": {"ai_llm": 2, "ds_ml": 2, "de_cloud": 1, "da_bi": 1}
+  },
+  "web_developer": {
+   "experience_years": 3,
+   "skills": ["JavaScript", "React", "TypeScript", "HTML", "CSS", "Node.js", "REST API", "Git", "MongoDB"],
+   "raw_text": "Full stack web developer with 3 years of experience building React and TypeScript frontends and Node.js Express backends with MongoDB. REST APIs, HTML, CSS and Git.",
+   "relevance": {"fe_react": 2, "be_node": 2, "be_python": 1}
+  },
+  "backend_python": {
+   "experience_years": 5,
+   "skills": ["Python", "Django", "FastAPI", "PostgreSQL", "REST API", "Docker", "Git", "Kubernetes"],
+   "raw_text": "Backend developer with 5 years of experience in Python with Django and FastAPI, PostgreSQL databases, REST APIs and microservices deployed with Docker and Kubernetes.",
+   "relevance": {"be_python": 2, "be_node": 1, "devops": 1, "de_cloud": 1, "ai_llm": 1}
+  },
+  "sales_rep": {
+   "experience_years": 3,
+   "skills": ["Sales", "Negotiation", "Salesforce", "CRM", "Excel"],
+   "raw_text": "Sales representative with 3 years of experience in B2B sales, negotiation with clients, CRM management in Salesforce and reporting in Excel.",
+   "relevance": {"sales": 2}
+  }
+ }
+}

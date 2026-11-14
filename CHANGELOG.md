@@ -6,6 +6,12 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar] - Medición de la calidad del matching
+
+- `eval/matching_dataset.json`: 6 CVs y 12 ofertas etiquetadas a mano (2 = buena opción, 1 = parcial).
+- `matching_eval.py` y `python scripts/eval_matching.py [--min-ndcg X] [--json]`: ordenan las ofertas de cada CV con `jobMatcher.calculate_overall_match` y miden NDCG@5, precisión@3 y MRR. Con `MATCHING_BACKEND=embeddings` mide el matching por embeddings.
+- `tests_integration/test_matching_eval.py` falla si un cambio baja las métricas de la línea base con TF-IDF (corre con sklearn real en el job de integración).
+
 ## [Sin publicar] - Computrabajo, Bumeran y ZonaJobs en Playwright
 
 - Computrabajo, Bumeran y ZonaJobs usan Chromium de Playwright sin ventana (`scrapers/common.Browser`) en vez de Selenium: no hace falta Chrome ni Xvfb. `SCRAPER_HEADLESS=false` abre la ventana y `PLAYWRIGHT_WS_ENDPOINT` usa un navegador remoto; `SELENIUM_URL` ya no aplica a estos portales.
