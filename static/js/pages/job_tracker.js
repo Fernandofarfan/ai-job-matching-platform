@@ -370,3 +370,12 @@ function updateToggleButton(isCompact) {
     btn.innerHTML = '<i class="bi bi-list-ul me-2"></i> ' + tHtml("Vista Compacta");
   }
 }
+
+// Enter dentro del formulario guarda por la API en vez de mandar el formulario
+const addJobForm = document.getElementById('addJobForm');
+if (addJobForm) {
+  addJobForm.addEventListener('submit', (event) => {
+    event.preventDefault();
+    saveManualJob();
+  });
+}

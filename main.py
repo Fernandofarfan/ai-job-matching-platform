@@ -28,7 +28,7 @@ PUBLIC_API_PATHS = {"/api/health", "/api/ready"}
 EXTENSION_API_PATHS = {"/api/tracker/save-from-extension"}
 LOGIN_ROUTERS = [account_pages.router, account_integrations.router, security_pages.router, admin_pages.router, export_pages.router, content_pages.router,
                  profile_pages.router, alert_pages.router, scraper_pages.router, ai.router, analytics.router, pages.router]
-PUBLIC_PAGES = {"set_language", "service_worker", "health_check", "readiness_check"}
+PUBLIC_PAGES = {"set_language", "service_worker", "robots", "health_check", "readiness_check"}
 
 
 def _matches(routers, scope) -> bool:

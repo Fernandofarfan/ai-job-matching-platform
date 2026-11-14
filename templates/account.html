@@ -107,7 +107,7 @@
         {% endfor %}
       </ul>
       {% endif %}
-      <form id="passkeyForm" action="{{ url_for('passkey_register') }}" data-options-url="{{ url_for('passkey_options') }}"
+      <form id="passkeyForm" method="post" action="{{ url_for('passkey_register') }}" data-options-url="{{ url_for('passkey_options') }}"
             data-cancelled="{{ _('Se canceló la passkey') }}" data-failed="{{ _('No se pudo crear la passkey') }}"
             data-unsupported="{{ _('Este navegador no admite passkeys.') }}" class="row g-2 align-items-end">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

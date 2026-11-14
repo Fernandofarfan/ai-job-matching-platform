@@ -16,6 +16,8 @@ const STATIC_ASSETS = [
   '/static/css/tracker_premium.css',
   '/static/css/navbar_premium.css',
   '/static/css/app.css',
+  '/static/css/fonts.css',
+  '/static/fonts/inter-latin.woff2',
   // los scripts de base.html y de las páginas de arriba: sin ellos, esas páginas abren offline pero vacías
   '/static/js/csrf.js',
   '/static/js/actions.js',

@@ -99,6 +99,7 @@
       </div>
       <div class="card-body p-4">
         <form action="/upload_resume" method="post" enctype="multipart/form-data" id="uploadForm">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <div class="row g-3 mb-4">
             <div class="col-md-6">
               <label class="form-label small fw-bold text-muted">{{ _('1. Tipo de Rol') }}</label>

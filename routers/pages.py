@@ -60,6 +60,15 @@ def set_language(request: Request, code: str) -> Response:
     return response
 
 
+ROBOTS = "User-agent: *\nAllow: /login\nAllow: /register\nAllow: /terms\nAllow: /privacy\nDisallow: /\n"
+
+
+@router.get("/robots.txt", name="robots")
+async def robots() -> Response:
+    """Los buscadores solo indexan las páginas públicas; el resto es de cada cuenta."""
+    return Response(ROBOTS, media_type="text/plain")
+
+
 @router.get("/sw.js", name="service_worker")
 async def service_worker() -> Response:
     """Service worker servido desde la raíz para que su scope cubra toda la app."""

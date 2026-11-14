@@ -63,6 +63,7 @@
                             <div class="d-flex align-items-center gap-2">
                                 <span id="connection-status" class="badge bg-secondary">{{ _('Inactivo') }}</span>
                                 <form action="/stop_connection_requests" method="post" class="js-hidden d-inline" id="stop-form">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <button type="submit" class="st-199b58 btn btn-danger btn-sm py-0 px-2">
                                         <i class="bi bi-stop-circle me-1"></i> {{ _('Detener') }}
                                     </button>
@@ -77,6 +78,7 @@
                     </div>
 
                     <form id="connection-form" action="/start_connection_requests" method="post">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         
                         <ul class="nav nav-tabs mb-3" id="authTabs" role="tablist">
                             <li class="nav-item" role="presentation">
