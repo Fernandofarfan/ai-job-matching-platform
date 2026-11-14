@@ -123,6 +123,8 @@ def test_title_key_drops_company_segment():
     assert job_dedup.title_key('Cajero–Coto', 'Coto') == job_dedup.title_key('Cajero en Coto', 'Coto') == 'cajero'
     assert job_dedup.title_key('Coto', 'Coto') == 'coto'
     assert job_dedup.title_key('Cajero - Coto CICSA', 'Coto CICSA') == 'cajero'
+    assert job_dedup.title_key('Cajero-Coto', 'Coto') == job_dedup.title_key('Cajero/Coto', 'Coto') == 'cajero'
+    assert job_dedup.title_key('Desarrollador Full-Stack', 'Acme') == 'desarrollador full stack'
     assert job_dedup.title_key('Administrativo de Personal', 'Personal') != job_dedup.title_key('Administrativo', 'Personal')
     assert job_dedup.title_key('Analista en Sistemas', 'Sistemas Globales') == 'analista en sistemas'
     assert job_dedup.title_key('Analista en Sistemas', 'Acme') == 'analista en sistemas'

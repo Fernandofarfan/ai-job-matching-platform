@@ -48,8 +48,8 @@ TITLE_WORDS = {'analyst': 'analista', 'data': 'datos', 'developer': 'desarrollad
                'manager': 'gerente', 'designer': 'disenador', 'sales': 'ventas', 'accountant': 'contador',
                'cashier': 'cajero', 'support': 'soporte', 'software': 'software', 'business': 'negocio'}
 TITLE_STOPWORDS = {'de', 'del', 'la', 'el', 'los', 'las', 'y', 'of', 'and', 'the'}
-# Separadores entre el puesto y la empresa: "Cajero - Coto", "Cajero–Coto", "Cajero | Coto", "Cajero en Coto".
-COMPANY_SEPARATOR = re.compile(r'\s+(?:en|at|para|-|\||/)\s+|\s*[–—]\s*', re.IGNORECASE)
+# Separadores entre el puesto y la empresa: "Cajero - Coto", "Cajero-Coto", "Cajero–Coto", "Cajero | Coto", "Cajero en Coto".
+COMPANY_SEPARATOR = re.compile(r'\s+(?:en|at|para)\s+|\s*[-–—|/]\s*', re.IGNORECASE)
 
 
 def title_key(title: object, company: object = '') -> str:
