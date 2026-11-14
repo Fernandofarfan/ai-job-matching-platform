@@ -382,6 +382,9 @@ jobs:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     needs: lint
+    permissions:
+      contents: read
+      pull-requests: read
     services:
       mysql:
         image: mysql:8.0
@@ -461,11 +464,18 @@ jobs:
           snap . python visual_head 5002 2
           echo "VISUAL_READY=1" >> "$GITHUB_ENV"
 
+      # Las etiquetas se leen ahora y no del evento, así "Re-run" toma una 'cambio-visual' recién puesta
       - name: Comparar (con la etiqueta 'cambio-visual' solo informa)
         if: env.VISUAL_READY == '1'
-        run: >-
-          python scripts/visual_diff.py visual/base visual/head --diff visual/diff
-          ${{ contains(github.event.pull_request.labels.*.name, 'cambio-visual') && '--report-only' || '' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          mode=""
+          if gh api "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/labels" --jq '.[].name' | grep -qx cambio-visual; then
+            mode="--report-only"
+          fi
+          python scripts/visual_diff.py visual/base visual/head --diff visual/diff $mode
 
       - name: Capturas y diferencias
         if: always()

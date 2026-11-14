@@ -8,7 +8,7 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [Sin publicar] - Comparación visual en el CI
 
-- Job `visual`: en cada PR levanta la rama base y el PR con los mismos datos, saca capturas de 21 páginas (`scripts/visual_snapshots.py`) y las compara (`scripts/visual_diff.py`). Falla si una página cambia más de 0,2 % de sus píxeles o de tamaño. Con la etiqueta `cambio-visual` en el PR solo informa.
+- Job `visual`: en cada PR levanta la rama base y el PR con los mismos datos, saca capturas de 21 páginas (`scripts/visual_snapshots.py`) y las compara (`scripts/visual_diff.py`). Falla si una página cambia más de 0,2 % de sus píxeles o de tamaño. Con la etiqueta `cambio-visual` en el PR solo informa; alcanza con volver a correr el job después de ponerla.
 - Las capturas, la tabla de diferencias y las imágenes con los cambios en rojo quedan en el artefacto `visual` y en el resumen del job.
 - `data-visual-mask` tapa en la captura las fechas de sesiones, eventos y usuarios.
 - El tracker, las postulaciones y las empresas para conexiones tienen un orden fijo cuando dos filas tienen la misma fecha.
