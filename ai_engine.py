@@ -7,7 +7,7 @@ import json
 import logging
 import re
 from datetime import datetime
-from typing import Optional, List
+from typing import Any, List, Optional, cast
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field, ValidationError
 
@@ -117,7 +117,7 @@ def _call_gemini(prompt: str, temperature: float = 0.7, model: Optional[str] = N
 # 1. ANÁLISIS DE OFERTA LABORAL
 # ─────────────────────────────────────────────────────────────────────────────
 
-def analyze_job_complete(job_title: str, job_description: str, resume_text: str = "") -> dict:
+def analyze_job_complete(job_title: str, job_description: str, resume_text: str = "") -> dict[str, Any]:
     """
     Análisis completo de una oferta laboral:
     - Cultura de empresa y tono recomendado
@@ -181,7 +181,7 @@ Respondé con este JSON exacto (sin markdown, sin bloques de código):
         return fallback.model_dump()
 
 
-def rewrite_cv_bullet(bullet_point: str, job_description: str, job_title: str = "") -> dict:
+def rewrite_cv_bullet(bullet_point: str, job_description: str, job_title: str = "") -> dict[str, Any]:
     """
     Reescribe un bullet point del CV para que haga mejor match con la oferta.
     Devuelve versiones original, mejorada y explicación.
@@ -205,7 +205,7 @@ Respondé en JSON sin bloques de código:
     raw = _call_gemini(prompt, temperature=0.6)
     raw = re.sub(r'```(?:json)?\s*', '', raw).strip()
     try:
-        return json.loads(raw)
+        return cast(dict[str, Any], json.loads(raw))
     except:
         return {
             "original": bullet_point,
@@ -216,7 +216,7 @@ Respondé en JSON sin bloques de código:
         }
 
 
-def suggest_missing_skills_learning_path(missing_skills: list, job_title: str) -> dict:
+def suggest_missing_skills_learning_path(missing_skills: list[str], job_title: str) -> dict[str, Any]:
     """Sugiere un plan de aprendizaje para las skills que faltan."""
     if not missing_skills:
         return {"plan": [], "tiempo_estimado": "N/A"}
@@ -243,7 +243,7 @@ Creá un plan de aprendizaje práctico. Respondé en JSON sin bloques de código
     raw = _call_gemini(prompt, temperature=0.5)
     raw = re.sub(r'```(?:json)?\s*', '', raw).strip()
     try:
-        return json.loads(raw)
+        return cast(dict[str, Any], json.loads(raw))
     except:
         return {"plan": [], "consejo_general": raw}
 
@@ -253,7 +253,7 @@ Creá un plan de aprendizaje práctico. Respondé en JSON sin bloques de código
 # ─────────────────────────────────────────────────────────────────────────────
 
 def generate_interview_questions(job_title: str, job_description: str, resume_text: str = "",
-                                  difficulty: str = "medio") -> dict:
+                                  difficulty: str = "medio") -> dict[str, Any]:
     """Genera preguntas de entrevista personalizadas para el puesto."""
     resume_section = f"\nCV del candidato:\n{resume_text[:1500]}" if resume_text else ""
     prompt = f"""Sos un entrevistador técnico senior latinoamericano para el puesto de {job_title}.
@@ -281,12 +281,12 @@ Respondé en JSON sin bloques de código:
     raw = _call_gemini(prompt, temperature=0.7)
     raw = re.sub(r'```(?:json)?\s*', '', raw).strip()
     try:
-        return json.loads(raw)
+        return cast(dict[str, Any], json.loads(raw))
     except:
         return {"preguntas": [], "consejo_general": raw}
 
 
-def evaluate_interview_answer(question: str, answer: str, job_title: str) -> dict:
+def evaluate_interview_answer(question: str, answer: str, job_title: str) -> dict[str, Any]:
     """Evalúa la respuesta del usuario a una pregunta de entrevista."""
     prompt = f"""Sos un coach de entrevistas experimentado. Evaluá esta respuesta con honestidad constructiva.
 
@@ -309,7 +309,7 @@ Respondé en JSON sin bloques de código:
         return {"error": raw}  # sin puntaje: no es una evaluación
     raw = re.sub(r'```(?:json)?\s*', '', raw).strip()
     try:
-        return json.loads(raw)
+        return cast(dict[str, Any], json.loads(raw))
     except:
         return {
             "puntaje": 5.0,
@@ -332,8 +332,8 @@ Podés ayudar con: análisis de ofertas, mejora de CVs, preparación para entrev
 Si el usuario te pide algo fuera de tu dominio laboral, redirigilo amablemente hacia temas de búsqueda de empleo."""
 
 
-def copilot_chat(user_message: str, conversation_history: Optional[list] = None,
-                 user_context: Optional[dict] = None) -> str:
+def copilot_chat(user_message: str, conversation_history: Optional[list[dict[str, Any]]] = None,
+                 user_context: Optional[dict[str, Any]] = None) -> str:
     """
     Chat libre con el AI Copilot.
     conversation_history: lista de {"role": "user"|"assistant", "content": "..."}
@@ -363,7 +363,7 @@ Copilot:"""
 # 5. ANÁLISIS DE MERCADO SALARIAL
 # ─────────────────────────────────────────────────────────────────────────────
 
-def extract_salary_from_description(job_description: str, job_title: str) -> dict:
+def extract_salary_from_description(job_description: str, job_title: str) -> dict[str, Any]:
     """Extrae o infiere rango salarial de la descripción del trabajo."""
     prompt = f"""Analizá esta oferta laboral y extraé o inferí el rango salarial.
 Puesto: {job_title}
@@ -385,7 +385,7 @@ Si no hay info salarial, usá inferencias del mercado latinoamericano 2025 para 
     raw = _call_gemini(prompt, temperature=0.2, model=GEMINI_LIGHT_MODEL)
     raw = re.sub(r'```(?:json)?\s*', '', raw).strip()
     try:
-        return json.loads(raw)
+        return cast(dict[str, Any], json.loads(raw))
     except:
         return {
             "salario_minimo": 0, "salario_maximo": 0,
@@ -394,7 +394,7 @@ Si no hay info salarial, usá inferencias del mercado latinoamericano 2025 para 
         }
 
 
-def get_market_salary_insights(role: str, experience_level: str, location: str = "Argentina") -> dict:
+def get_market_salary_insights(role: str, experience_level: str, location: str = "Argentina") -> dict[str, Any]:
     """Obtiene insights del mercado salarial para un rol específico."""
     prompt = f"""Sos un experto en compensaciones del mercado tech latinoamericano 2025.
 Analizá el mercado salarial para este perfil.
@@ -419,7 +419,7 @@ Respondé en JSON sin bloques de código:
     raw = _call_gemini(prompt, temperature=0.3)
     raw = re.sub(r'```(?:json)?\s*', '', raw).strip()
     try:
-        data = json.loads(raw)
+        data: dict[str, Any] = json.loads(raw)
         data["generated_at"] = datetime.now().isoformat()
         return data
     except:

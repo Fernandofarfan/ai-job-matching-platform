@@ -4,6 +4,7 @@ import os
 import random
 import time
 from datetime import datetime
+from typing import Any, Callable, Optional
 
 import pandas as pd
 
@@ -11,6 +12,7 @@ import accounts
 import scraper_stats
 from i18n import lazy as _m
 from scrapers.bumeran_scraper import BumeranScraper
+from scrapers.common import Job
 from scrapers.computrabajo_scraper import ComputrabajoScraper
 from scrapers.getonboard_scraper import GetOnBoardScraper
 from scrapers.zonajobs_scraper import ZonaJobsScraper
@@ -19,7 +21,7 @@ from services.state import job_status
 logger = logging.getLogger(__name__)
 
 
-def _mark_searched():
+def _mark_searched() -> None:
     """El primer uso cuenta la búsqueda aunque no haya dejado CSV."""
     try:
         import onboarding
@@ -28,13 +30,13 @@ def _mark_searched():
         logger.warning(f"No se pudo anotar la búsqueda para el primer uso: {e}")
 
 
-def run_computrabajo_job(searches, email, password):
+def run_computrabajo_job(searches: list[dict[str, Any]], email: Optional[str], password: Optional[str]) -> None:
     try:
         scraper = ComputrabajoScraper()
-        all_jobs = []
+        all_jobs: list[Job] = []
 
         for i, search in enumerate(searches):
-            position = search.get('position')
+            position = str(search.get('position') or '')
             location = search.get('location', '')
 
             job_status['computrabajo_scraping']['progress'] = int((i / len(searches)) * 80)
@@ -77,17 +79,17 @@ def run_computrabajo_job(searches, email, password):
 
 
 
-def run_bumeran_job(searches):
+def run_bumeran_job(searches: list[dict[str, Any]]) -> None:
     try:
         # Get credentials
         email = os.getenv('BUMERAN_EMAIL')
         password = os.getenv('BUMERAN_PASSWORD')
 
         scraper = BumeranScraper()
-        all_jobs = []
+        all_jobs: list[Job] = []
 
         for i, search in enumerate(searches):
-            position = search.get('position')
+            position = str(search.get('position') or '')
             location = search.get('location', '')
 
             job_status['bumeran_scraping']['progress'] = int((i / len(searches)) * 80)
@@ -130,10 +132,10 @@ def run_bumeran_job(searches):
 
 
 
-def run_universal_job(position, location):
+def run_universal_job(position: str, location: str) -> None:
     try:
         all_results = []
-        scraper_results = {
+        scraper_results: dict[str, list[Job]] = {
             'indeed': [],
             'linkedin': [],
             'computrabajo': [],
@@ -153,21 +155,21 @@ def run_universal_job(position, location):
         bumeran_password = os.getenv('BUMERAN_PASSWORD')
 
         # Function to run Indeed scraper
-        def run_indeed():
+        def run_indeed() -> None:
             # Skipping Indeed in universal scraper - use individual scraper instead
             logger.info("Skipping Indeed in universal scraper")
             job_status['universal_scraping']['scrapers']['indeed']['status'] = 'skipped'
             job_status['universal_scraping']['scrapers']['indeed']['message'] = _m('Usá la búsqueda individual de este portal')
 
         # Function to run LinkedIn scraper
-        def run_linkedin():
+        def run_linkedin() -> None:
             # Skipping LinkedIn in universal scraper - use individual scraper instead
             logger.info("Skipping LinkedIn in universal scraper")
             job_status['universal_scraping']['scrapers']['linkedin']['status'] = 'skipped'
             job_status['universal_scraping']['scrapers']['linkedin']['message'] = _m('Usá la búsqueda individual de este portal')
 
         # Function to run Computrabajo scraper
-        def run_computrabajo():
+        def run_computrabajo() -> None:
             try:
                 job_status['universal_scraping']['scrapers']['computrabajo']['status'] = 'running'
                 job_status['universal_scraping']['message'] = _m('Buscando en %(portal)s...', portal='Computrabajo')
@@ -191,7 +193,7 @@ def run_universal_job(position, location):
                 job_status['universal_scraping']['scrapers']['computrabajo']['status'] = 'failed'
 
         # Function to run Bumeran scraper
-        def run_bumeran():
+        def run_bumeran() -> None:
             try:
                 job_status['universal_scraping']['scrapers']['bumeran']['status'] = 'running'
                 job_status['universal_scraping']['message'] = _m('Buscando en %(portal)s...', portal='Bumeran')
@@ -214,7 +216,7 @@ def run_universal_job(position, location):
                 scraper_stats.record('bumeran', None, e)
                 job_status['universal_scraping']['scrapers']['bumeran']['status'] = 'failed'
 
-        def run_without_login(name, label, make_scraper):
+        def run_without_login(name: str, label: str, make_scraper: Callable[[], Any]) -> None:
             state = job_status['universal_scraping']['scrapers'][name]
             try:
                 state['status'] = 'running'
