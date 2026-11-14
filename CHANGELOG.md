@@ -6,7 +6,12 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
-## [Sin publicar] - Alertas y prueba de carga
+## [Sin publicar] - Notificaciones push
+
+- Web Push con VAPID (`push.py`, `/api/push/*`, tabla `push_subscriptions`): cada cuenta suscribe sus dispositivos en **Mi cuenta** y recibe las alertas (canal `push`) y los recordatorios de seguimiento. Los endpoints se limitan a servicios de push conocidos (`PUSH_ALLOWED_HOSTS` agrega otros) y los que el servicio da de baja (404/410) se borran solos.
+- Una suscripción push es de la cuenta que la activó en ese navegador: al salir o al entrar con otra cuenta se da de baja, y la cuenta nueva tiene que activarla en **Mi cuenta**.
+- Íconos de la PWA (`static/icons/`), que el manifest pedía y no existían.
+
 
 - Reglas de alerta de Prometheus en `monitoring/prometheus/alerts.yml` (5xx, latencia p95, sin métricas, cola de Celery, cuota de IA al 80 % y agotada), con tests de `promtool` en el CI.
 - `terraform/monitoring.tf`: uptime check de `/api/health` y alertas de Cloud Monitoring (5xx, p95, disco de Cloud SQL), por email con `alert_email`.

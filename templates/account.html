@@ -77,6 +77,16 @@
         {% endif %}
       </div>
 
+      <h3 class="h6 fw-bold mt-4">Notificaciones push</h3>
+      <div id="push-box">
+        <p class="text-muted small" id="push-status" role="status" aria-live="polite">Revisando si este navegador las admite…</p>
+        <div class="d-flex gap-2">
+          <button type="button" class="btn btn-outline-primary btn-sm" id="push-enable" hidden>Activar en este dispositivo</button>
+          <button type="button" class="btn btn-outline-secondary btn-sm" id="push-test" hidden>Mandar una de prueba</button>
+          <button type="button" class="btn btn-outline-secondary btn-sm" id="push-disable" hidden>Desactivar en este dispositivo</button>
+        </div>
+      </div>
+
       <h3 class="h6 fw-bold mt-4">Gmail</h3>
       {% if integ.gmail %}
       <p class="text-muted small">Conectado: las invitaciones a entrevistas actualizan tu tracker.</p>

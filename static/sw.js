@@ -133,16 +133,33 @@ async function syncTrackerUpdates() {
   // Implementación básica – los clientes manejan la cola via IndexedDB
 }
 
-// ── Push Notifications (base) ────────────────────────────────
+// ── Push Notifications ──────────────────────────────────────
 self.addEventListener('push', (event) => {
-  if (!event.data) return;
-  const data = event.data.json();
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    data = { body: event.data ? event.data.text() : '' };
+  }
   event.waitUntil(
     self.registration.showNotification(data.title || 'EmpleoIA', {
-      body: data.body || 'Tienes novedades en tu búsqueda laboral.',
+      body: data.body || 'Tenés novedades en tu búsqueda laboral.',
       icon: '/static/icons/icon-192.png',
       badge: '/static/icons/badge-72.png',
-      tag: 'empleoia-notification',
+      data: { url: typeof data.url === 'string' && data.url.startsWith('/') ? data.url : '/' },
+    })
+  );
+});
+
+// Al tocar la notificación: enfoca una pestaña abierta de la app o abre la URL del aviso.
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const target = new URL((event.notification.data && event.notification.data.url) || '/', self.location.origin).href;
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windows) => {
+      const open = windows.find((w) => w.url === target);
+      if (open) return open.focus();
+      return self.clients.openWindow(target);
     })
   );
 });

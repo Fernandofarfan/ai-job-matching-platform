@@ -12,8 +12,11 @@ logger = logging.getLogger(__name__)
 
 
 def _channels_status():
+    import accounts
+    import push
     from tasks.notification_tasks import email_configured, telegram_configured
-    return {'email': email_configured(), 'telegram': telegram_configured()}
+    return {'email': email_configured(), 'telegram': telegram_configured(),
+            'push': push.available(accounts.current_user_id())}
 
 
 @app.route('/alerts', methods=['GET', 'POST'])

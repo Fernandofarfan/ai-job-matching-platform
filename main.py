@@ -3,6 +3,7 @@ from fastapi.staticfiles import StaticFiles
 import logging
 
 from routers import ai, analytics, documents, insights, tracker
+from routers import push as push_router
 
 app = FastAPI(title="EmpleoIA API", description="FastAPI Core para EmpleoIA", version="1.0.0")
 
@@ -19,6 +20,7 @@ app.include_router(analytics.router)
 app.include_router(tracker.router)
 app.include_router(insights.router)
 app.include_router(documents.router)
+app.include_router(push_router.router)
 
 import rate_limit  # noqa: E402
 from fastapi.responses import JSONResponse  # noqa: E402
