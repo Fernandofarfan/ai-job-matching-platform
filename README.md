@@ -558,11 +558,13 @@ Los valores no secretos de cada ambiente están en `terraform/envs/<env>.tfvars`
 ### Deploy automático (GitHub Actions)
 
 - **`Terraform`**: en cada PR que toca `terraform/` corre `fmt`, `validate` y `terraform test` (con un provider simulado, sin credenciales).
-- **`Deploy a GCP`**: cada push a `main` despliega en staging: build de la imagen con el SHA del commit, migraciones, `terraform apply` y smoke test de `/api/ready`. Producción se despliega con "Run workflow" eligiendo `prod`. En los PRs publica el `terraform plan` de staging en el resumen del job.
+- **`Deploy a GCP`**: cada push a `main` despliega en staging: build de la imagen con el SHA del commit, migraciones, `terraform apply` y smoke test de `/api/ready`. Producción se despliega con "Run workflow" eligiendo `prod` y un tag de versión. En los PRs publica el `terraform plan` de staging en el resumen del job.
 
 El deploy se saltea hasta que crees la variable de repositorio `GCP_DEPLOY_ENABLED=true` y configures, en cada GitHub Environment (`staging`, `prod`):
 - **Variables:** `GCP_PROJECT_ID`, `GCP_WORKLOAD_IDENTITY_PROVIDER`, `GCP_DEPLOY_SA`, `TF_STATE_BUCKET` y, opcionalmente, `GCP_REGION`.
 - **Secretos:** `DB_PASSWORD`, `GEMINI_API_KEY`, `SECRET_KEY`, `CV_ENCRYPTION_KEY` y, opcionalmente, `EXTRA_SECRETS_JSON` (p. ej. `{"TELEGRAM_BOT_TOKEN":"..."}`).
+
+Producción solo se despliega desde un tag `vX.Y.Z`: "Run workflow" con `prod` y el tag en "Use workflow from". Para volver atrás se despliega el tag anterior, sin reconstruir la imagen. Cada tag crea además un release de GitHub con las notas del CHANGELOG y la imagen en `ghcr.io` (`release.yml`). Los pasos para sacar una versión están en [docs/releases.md](docs/releases.md).
 
 Conviene exigir aprobación manual en el environment `prod`. La autenticación es por Workload Identity Federation: no hay claves JSON de cuentas de servicio.
 

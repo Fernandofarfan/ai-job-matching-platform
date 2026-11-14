@@ -64,6 +64,8 @@ def test_prepare_bumps_version_and_refuses_going_back(tmp_path, capsys):
     (tmp_path / 'CHANGELOG.md').write_text(CHANGELOG)
     assert release.main(['prepare', '1.1.9'], root=tmp_path) == 1
     assert release.main(['prepare', 'v1.3'], root=tmp_path) == 1
+    assert release.main(['prepare', '01.3.0'], root=tmp_path) == 1
+    assert release.main(['prepare', '1.\u0663.0'], root=tmp_path) == 1
     assert release.main(['prepare', '1.3.0', '--date', '2026-11-14'], root=tmp_path) == 0
     assert (tmp_path / 'VERSION').read_text() == '1.3.0\n'
     assert release.main(['prepare', '1.4.0'], root=tmp_path) == 1  # ya no queda nada sin publicar

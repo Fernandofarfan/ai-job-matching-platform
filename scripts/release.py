@@ -12,12 +12,13 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-SEMVER = re.compile(r'^(\d+)\.(\d+)\.(\d+)$')
+SEMVER = re.compile(r'^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$')
 RELEASED = re.compile(r'^## \[\d+\.\d+\.\d+\]')
 PENDING = re.compile(r'^## \[(Sin publicar|Unreleased)\](?: - (.+))?$')
 
 
 def parse(version: str) -> tuple[int, int, int]:
+    """(mayor, menor, parche) de una versión semver X.Y.Z, solo dígitos ASCII y sin ceros a la izquierda."""
     match = SEMVER.match(version)
     if not match:
         raise ValueError(f"'{version}' no es una versión X.Y.Z")
@@ -55,6 +56,7 @@ def notes(changelog: str, version: str) -> str:
 
 
 def prepare(root: Path, version: str, date: str) -> None:
+    """Sube VERSION a `version` (tiene que ser mayor) y cierra las entradas pendientes del CHANGELOG."""
     current = (root / 'VERSION').read_text(encoding='utf-8').strip()
     if parse(version) <= parse(current):
         raise ValueError(f'{version} tiene que ser mayor que la versión actual {current}')
@@ -64,6 +66,7 @@ def prepare(root: Path, version: str, date: str) -> None:
 
 
 def main(argv: list[str] | None = None, root: Path = ROOT) -> int:
+    """CLI: `prepare X.Y.Z [--date]` o `notes X.Y.Z`; devuelve 1 con un mensaje si algo no cuadra."""
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest='command', required=True)
     prep = sub.add_parser('prepare', help='sube VERSION y cierra la sección del CHANGELOG')
