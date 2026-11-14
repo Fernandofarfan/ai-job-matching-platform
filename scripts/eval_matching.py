@@ -1,13 +1,14 @@
 """Mide la calidad del matching con los CVs y ofertas etiquetadas de eval/matching_dataset.json.
 
-Uso: python scripts/eval_matching.py [--min-ndcg 0.8] [--json] [--compare]
+Uso: python scripts/eval_matching.py [--min-ndcg 0.8] [--min-profile-ndcg 0.7] [--json] [--compare]
 Con MATCHING_BACKEND=embeddings (y GEMINI_API_KEY) mide el matching por embeddings.
 --compare mide TF-IDF y embeddings sobre el mismo dataset, en total y por idioma del CV, con la diferencia
 entre ambos (embeddings necesita GEMINI_API_KEY). En GitHub lo corre el workflow "Comparar matching".
 --feedback mide con las marcas "me interesa / no me interesa" de los usuarios en vez del dataset fijo (necesita
 la base): cada cuenta con al menos --min-each marcas de cada lado ordena las ofertas que marcó con su último CV.
 Solo muestra promedios, nunca filas por cuenta.
-Sale con código 1 si el NDCG@5 promedio queda por debajo de --min-ndcg.
+Sale con código 1 si el NDCG@5 promedio queda por debajo de --min-ndcg, o si el de algún CV queda por debajo de
+--min-profile-ndcg (así un cambio no puede empeorar un perfil sin que baje el promedio).
 """
 import argparse
 import json
@@ -22,6 +23,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument('--min-ndcg', type=float, default=0.0)
+    parser.add_argument('--min-profile-ndcg', type=float, default=0.0, help='NDCG@5 mínimo de cada CV del dataset fijo')
     parser.add_argument('--json', action='store_true', help='imprimir el resultado como JSON')
     parser.add_argument('--compare', action='store_true', help='comparar TF-IDF con embeddings')
     parser.add_argument('--feedback', action='store_true', help='medir con las marcas de los usuarios')
@@ -57,7 +59,10 @@ def main(argv: list[str] | None = None) -> int:
             print(f"{name:<16} {m['ndcg@5']:>7.3f} {m['precision@3']:>5.2f} {m['mrr']:>5.2f}  {top}")
         mean = result['mean']
         print(f"{'promedio':<16} {mean['ndcg@5']:>7.3f} {mean['precision@3']:>5.2f} {mean['mrr']:>5.2f}")
-    return 1 if result['mean']['ndcg@5'] < args.min_ndcg else 0
+    below = [] if args.feedback else [name for name, m in result['profiles'].items() if m['ndcg@5'] < args.min_profile_ndcg]
+    if below and not args.json:
+        print(f"Por debajo de {args.min_profile_ndcg} de NDCG@5: {', '.join(below)}")
+    return 1 if result['mean']['ndcg@5'] < args.min_ndcg or below else 0
 
 
 def compare(min_ndcg: float = 0.0, as_json: bool = False, dataset: dict[str, Any] | None = None) -> int:
