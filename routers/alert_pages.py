@@ -1,8 +1,9 @@
 """Alertas de empleo (búsquedas guardadas) y "me interesa / no me interesa" de las ofertas, en FastAPI."""
+from typing import Any
 import json
 import logging
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, Response
 from fastapi.responses import JSONResponse
 from starlette.concurrency import run_in_threadpool
 
@@ -16,7 +17,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["content"], include_in_schema=False)
 
 
-def _channels_status() -> dict:
+def _channels_status() -> dict[str, Any]:
     """Qué canales de aviso están configurados para la cuenta."""
     import push
     from tasks.notification_tasks import email_configured, telegram_configured
@@ -25,7 +26,7 @@ def _channels_status() -> dict:
 
 
 @router.get('/alerts', name='alerts')
-def alerts(request: Request):
+def alerts(request: Request) -> Response:
     """Búsquedas guardadas de la cuenta."""
     try:
         searches, db_error = job_alerts.list_searches(), False
@@ -37,7 +38,7 @@ def alerts(request: Request):
 
 
 @router.post('/alerts', name='create_alert')
-async def create_alert(request: Request):
+async def create_alert(request: Request) -> Response:
     """Crea una búsqueda guardada con sus portales y canales."""
     form, error = await read_form(request)
     if error:
@@ -57,7 +58,7 @@ async def create_alert(request: Request):
 
 
 @router.post('/alerts/{search_id}/delete', name='delete_alert')
-async def delete_alert(request: Request, search_id: int):
+async def delete_alert(request: Request, search_id: int) -> Response:
     """Borra una búsqueda guardada de la cuenta."""
     _form, error = await read_form(request)
     if error:
@@ -68,7 +69,7 @@ async def delete_alert(request: Request, search_id: int):
 
 
 @router.post('/alerts/{search_id}/toggle', name='toggle_alert')
-async def toggle_alert(request: Request, search_id: int):
+async def toggle_alert(request: Request, search_id: int) -> Response:
     """Pausa o reanuda una búsqueda guardada."""
     _form, error = await read_form(request)
     if error:
@@ -91,7 +92,7 @@ def _start_alert(search_id: int) -> None:
 
 
 @router.post('/alerts/{search_id}/run', name='run_alert')
-async def run_alert(request: Request, search_id: int):
+async def run_alert(request: Request, search_id: int) -> Response:
     """Corre ahora una búsqueda guardada."""
     _form, error = await read_form(request)
     if error:
@@ -104,7 +105,7 @@ async def run_alert(request: Request, search_id: int):
 
 
 @router.post('/api/job_feedback', name='api_job_feedback')
-async def api_job_feedback(request: Request):
+async def api_job_feedback(request: Request) -> Response:
     """"Me interesa" (`interested: true`), "no me interesa" (`false`) o quitar la marca (`null`) en una oferta."""
     if not await _body_within(request, 16 * 1024):
         return _json_error('Pedido demasiado grande', 413)

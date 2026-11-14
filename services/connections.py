@@ -1,4 +1,5 @@
 """Solicitudes de conexión de LinkedIn a empleados de empresas elegidas o por búsqueda."""
+from typing import Any
 import logging
 import random
 import time
@@ -10,7 +11,8 @@ from services.state import job_status
 logger = logging.getLogger(__name__)
 
 
-def run_connection_requests(credentials, company_list, message_template, search_mode='companies', search_term=''):
+def run_connection_requests(credentials: dict[str, Any], company_list: list[str], message_template: str,
+                            search_mode: str = 'companies', search_term: str = '') -> None:
     try:
         job_status['connection_requests']['status'] = 'running'
         job_status['connection_requests']['progress'] = 5

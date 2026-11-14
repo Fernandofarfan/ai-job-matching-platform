@@ -1,4 +1,5 @@
 """Perfiles de CV por rol, el texto del CV guardado y los últimos resultados de la cuenta."""
+from typing import Any, Optional
 import glob
 import json
 import logging
@@ -13,14 +14,14 @@ from services.state import resume_parser
 logger = logging.getLogger(__name__)
 
 
-def get_recent_job_files():
+def get_recent_job_files() -> list[str]:
     csv_files = glob.glob(os.path.join(accounts.results_dir(), '*.csv'))
     files_with_time = [(f, os.path.getmtime(f)) for f in csv_files]
     files_with_time.sort(key=lambda x: x[1], reverse=True)
     return [os.path.basename(f[0]) for f in files_with_time[:10]]
 
 
-def get_user_profile():
+def get_user_profile() -> Optional[dict[str, Any]]:
     """Todos los perfiles por rol ({role_type: perfil}) o None si no hay."""
     try:
         return profile_store.get_all_profiles() or None
@@ -29,7 +30,7 @@ def get_user_profile():
         return None
 
 
-def save_user_profile(profile, filename):
+def save_user_profile(profile: dict[str, Any], filename: str) -> bool:
     profile_path = os.path.join('profiles', 'user_profile.json')
     profile_data = profile.copy()
     profile_data['resume_filename'] = filename
@@ -44,7 +45,7 @@ def save_user_profile(profile, filename):
         return False
 
 
-def save_user_profile_for_role(profile, filename, role_type):
+def save_user_profile_for_role(profile: dict[str, Any], filename: str, role_type: str) -> bool:
     profile_data = profile.copy()
     profile_data['resume_filename'] = filename
     profile_data['role_type'] = role_type
@@ -58,20 +59,21 @@ def save_user_profile_for_role(profile, filename, role_type):
         return False
 
 
-def get_all_user_profiles():
+def get_all_user_profiles() -> dict[str, Any]:
     try:
-        return profile_store.get_all_profiles()
+        profiles: dict[str, Any] = profile_store.get_all_profiles()
+        return profiles
     except Exception as e:
         logger.error(f"Error loading profiles: {e}")
         return {}
 
 
-def get_user_profile_by_role(role_type):
+def get_user_profile_by_role(role_type: str) -> Optional[dict[str, Any]]:
     all_profiles = get_all_user_profiles()
     return all_profiles.get(role_type)
 
 
-def delete_user_profile_by_role(role_type):
+def delete_user_profile_by_role(role_type: str) -> bool:
     try:
         removed = profile_store.delete_profile(role_type)
     except Exception as e:
@@ -86,7 +88,7 @@ def delete_user_profile_by_role(role_type):
     return True
 
 
-def delete_user_profile():
+def delete_user_profile() -> bool:
     """Borra los datos personales: perfiles de todos los roles y CVs (sin cuentas, también los documentos generados)."""
     profile_path = os.path.join('profiles', 'user_profile.json')
     try:
@@ -107,7 +109,7 @@ def delete_user_profile():
 
 
 
-def get_resume_text_from_profile():
+def get_resume_text_from_profile() -> Optional[str]:
     """Texto del CV del primer perfil disponible (cualquier rol)."""
     try:
         user_profile = profile_store.get_first_profile()
@@ -117,7 +119,8 @@ def get_resume_text_from_profile():
         if not cv_storage.exists(resume_filename):
             return None
         with cv_storage.plaintext_path(resume_filename) as resume_path:
-            return resume_parser.extract_text_from_file(resume_path)
+            text: Optional[str] = resume_parser.extract_text_from_file(resume_path)
+            return text
     except Exception as e:
         logger.error(f"Error reading resume from profile: {e}")
         return None

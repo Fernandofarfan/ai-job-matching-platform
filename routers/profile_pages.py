@@ -4,7 +4,7 @@ import os
 import secrets
 from datetime import datetime
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, Response
 from starlette.concurrency import run_in_threadpool
 from werkzeug.utils import secure_filename
 
@@ -20,7 +20,7 @@ ALLOWED_RESUME_EXTENSIONS = {'.pdf', '.docx', '.txt'}
 
 
 @router.get('/view_profile', name='view_profile')
-def view_profile(request: Request):
+def view_profile(request: Request) -> Response:
     """Lleva al perfil de CV subido más reciente."""
     profiles = services_for(request).profiles.get_all_user_profiles()
     if not profiles:
@@ -48,7 +48,7 @@ def _parse_and_save(request: Request, data: bytes, filename: str, role_type: str
 
 
 @router.post('/upload_resume', name='upload_resume')
-async def upload_resume(request: Request):
+async def upload_resume(request: Request) -> Response:
     """Sube un CV (PDF, DOCX o TXT), lo parsea y crea o reemplaza el perfil del rol."""
     form, files, error = await read_upload(request)
     if error is not None and error.status_code == 413:
@@ -83,7 +83,7 @@ async def upload_resume(request: Request):
 
 
 @router.post('/delete_profile', name='delete_profile')
-async def delete_profile(request: Request):
+async def delete_profile(request: Request) -> Response:
     """"Borrar mis datos": perfiles, CVs y documentos generados (derecho de supresión, Ley 25.326)."""
     _form, error = await read_form(request)
     if error:
@@ -96,7 +96,7 @@ async def delete_profile(request: Request):
 
 
 @router.get('/view_profile/{role_type}', name='view_profile_by_role')
-def view_profile_by_role(request: Request, role_type: str):
+def view_profile_by_role(request: Request, role_type: str) -> Response:
     """Perfil de CV de un rol."""
     profile = services_for(request).profiles.get_user_profile_by_role(role_type)
     if not profile:
@@ -107,7 +107,7 @@ def view_profile_by_role(request: Request, role_type: str):
 
 
 @router.get('/delete_profile/{role_type}', name='delete_profile_by_role')
-def delete_profile_by_role(request: Request, role_type: str):
+def delete_profile_by_role(request: Request, role_type: str) -> Response:
     """Pide confirmación antes de borrar el perfil del rol."""
     if not services_for(request).profiles.get_user_profile_by_role(role_type):
         flash(request, 'Profile not found', 'danger')
@@ -116,7 +116,7 @@ def delete_profile_by_role(request: Request, role_type: str):
 
 
 @router.post('/delete_profile/{role_type}/confirm', name='confirm_delete_profile')
-async def confirm_delete_profile(request: Request, role_type: str):
+async def confirm_delete_profile(request: Request, role_type: str) -> Response:
     """Borra el perfil de CV del rol."""
     _form, error = await read_form(request)
     if error:

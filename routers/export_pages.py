@@ -3,7 +3,7 @@ import logging
 import os
 from datetime import datetime
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, Response
 
 import accounts
 import tracker_export
@@ -21,7 +21,7 @@ def _stamp() -> str:
 
 
 @router.get("/export/tracker/excel", name="export_tracker_excel")
-def export_tracker_excel(request: Request):
+def export_tracker_excel(request: Request) -> Response:
     """Exporta el tracker de la cuenta a Excel (.xlsx)."""
     try:
         data = tracker_export.tracker_excel(services_for(request).db.get_all_tracked_jobs())
@@ -33,7 +33,7 @@ def export_tracker_excel(request: Request):
 
 
 @router.get("/export/tracker/pdf", name="export_tracker_pdf")
-def export_tracker_pdf(request: Request):
+def export_tracker_pdf(request: Request) -> Response:
     """Exporta el tracker de la cuenta a PDF."""
     try:
         data = tracker_export.tracker_pdf(services_for(request).db.get_all_tracked_jobs())
@@ -45,7 +45,7 @@ def export_tracker_pdf(request: Request):
 
 
 @router.get("/export/results/{filename}/excel", name="export_results_excel")
-def export_results_excel(request: Request, filename: str):
+def export_results_excel(request: Request, filename: str) -> Response:
     """Exporta un CSV de resultados de la cuenta como Excel."""
     path = os.path.join(accounts.results_dir(), filename)
     if filename != os.path.basename(filename) or not filename.endswith('.csv') or not os.path.isfile(path):

@@ -4,7 +4,7 @@ import logging
 import os
 import uuid
 from datetime import datetime
-from typing import Any
+from typing import Any, Optional
 
 from dotenv import dotenv_values
 from fastapi import APIRouter, Request
@@ -23,14 +23,14 @@ _PORTAL_PREFIXES = ('INDEED_', 'LINKEDIN_', 'LI_AT', 'COMPUTRABAJO_', 'BUMERAN_'
 TEST_MAX_JOBS = 20
 
 
-def _reload_portal_credentials(path=None):
+def _reload_portal_credentials(path: Optional[str] = None) -> None:
     """Relee del .env solo las credenciales de portales; no pisa SCRAPER_BACKEND ni otra config del entorno."""
     for name, value in dotenv_values(path).items():
         if value is not None and name.startswith(_PORTAL_PREFIXES):
             os.environ[name] = value
 
 
-def _searches(form: TextForm, need_location: bool) -> list:
+def _searches(form: TextForm, need_location: bool) -> list[Any]:
     """Pares cargados en position[] y location[] (la ubicación es opcional salvo en Indeed y LinkedIn)."""
     positions, locations = form.getlist('position[]'), form.getlist('location[]')
     searches = []
@@ -47,7 +47,7 @@ def _to_scraper(request: Request, message: str, category: str) -> Response:
     return redirect(request, url_for(request, 'scraper'))
 
 
-def _start(request: Request, key: str, state: dict, job: str, *args) -> None:
+def _start(request: Request, key: str, state: dict[str, Any], job: str, *args: Any) -> None:
     """Marca la búsqueda de la cuenta y la lanza en un thread o en el worker."""
     job_status = services_for(request).job_status
     job_status[key] = state
@@ -55,7 +55,7 @@ def _start(request: Request, key: str, state: dict, job: str, *args) -> None:
 
 
 @router.post('/start_indeed_scraper', name='start_indeed_scraper')
-async def start_indeed_scraper(request: Request):
+async def start_indeed_scraper(request: Request) -> Response:
     """Búsqueda de Indeed con matching contra el CV."""
     form, error = await read_form(request)
     if error:
@@ -77,7 +77,7 @@ async def start_indeed_scraper(request: Request):
 
 
 @router.post('/start_linkedin_scraper', name='start_linkedin_scraper')
-async def start_linkedin_scraper(request: Request):
+async def start_linkedin_scraper(request: Request) -> Response:
     """Búsqueda de LinkedIn (token li_at o email y contraseña del entorno) con matching."""
     form, error = await read_form(request)
     if error:
@@ -102,7 +102,7 @@ async def start_linkedin_scraper(request: Request):
 
 
 @router.post('/start_computrabajo_scraper', name='start_computrabajo_scraper')
-async def start_computrabajo_scraper(request: Request):
+async def start_computrabajo_scraper(request: Request) -> Response:
     """Búsqueda de Computrabajo."""
     form, error = await read_form(request)
     if error:
@@ -118,7 +118,7 @@ async def start_computrabajo_scraper(request: Request):
 
 
 @router.post('/start_bumeran_scraper', name='start_bumeran_scraper')
-async def start_bumeran_scraper(request: Request):
+async def start_bumeran_scraper(request: Request) -> Response:
     """Búsqueda de Bumeran."""
     form, error = await read_form(request)
     if error:
@@ -132,7 +132,7 @@ async def start_bumeran_scraper(request: Request):
 
 
 @router.post('/start_universal_scraper', name='start_universal_scraper')
-async def start_universal_scraper(request: Request):
+async def start_universal_scraper(request: Request) -> Response:
     """Búsqueda en todos los portales a la vez; consolida un CSV."""
     form, error = await read_form(request)
     if error:
@@ -149,7 +149,7 @@ async def start_universal_scraper(request: Request):
     return _to_scraper(request, 'Búsqueda universal iniciada en todas las plataformas', 'success')
 
 
-def _plain(jobs, limit: int) -> list:
+def _plain(jobs: Any, limit: int) -> list[Any]:
     """Ofertas serializables a JSON."""
     out = []
     for job in (jobs or [])[:limit]:
@@ -157,7 +157,7 @@ def _plain(jobs, limit: int) -> list:
     return out
 
 
-def _close(scraper) -> None:
+def _close(scraper: Any) -> None:
     """Cierra el navegador del scraper si tiene uno."""
     try:
         close = getattr(scraper, 'close', None)
@@ -167,7 +167,7 @@ def _close(scraper) -> None:
         pass
 
 
-def _run_linkedin_test(probe, tid: str, token: str, position: str, location: str, max_jobs: int) -> None:
+def _run_linkedin_test(probe: Any, tid: str, token: str, position: str, location: str, max_jobs: int) -> None:
     """Prueba de LinkedIn en segundo plano; el estado queda en probe.tasks y en disco (services/probe_tasks.py)."""
     from scrapers.linkedin_pw import linkedinClass
     tasks, save = probe.tasks, probe.save
@@ -231,7 +231,7 @@ def _run_test(request: Request, name: str, position: str, location: str, max_job
 
 
 @router.get('/run_test_scraper', name='run_test_scraper')
-def run_test_scraper(request: Request):
+def run_test_scraper(request: Request) -> Response:
     """Prueba un scraper: /run_test_scraper?scraper=bumeran&q=analista&location=Buenos+Aires&max=5"""
     params = request.query_params
     name = (params.get('scraper') or 'bumeran').lower()
@@ -247,8 +247,8 @@ def run_test_scraper(request: Request):
         return JSONResponse({'error': 'La prueba del scraper falló'}, status_code=500)
 
 
-@router.get('/test_task_status', name='test_task_status')
-def test_task_status(request: Request):
+@router.get('/test_task_status', name='test_task_status', response_model=None)
+def test_task_status(request: Request) -> Response | dict[str, Any]:
     """Estado y resultado de una prueba en segundo plano: /test_task_status?task_id=..."""
     task_id = request.query_params.get('task_id')
     if not task_id:
@@ -268,7 +268,7 @@ def test_task_status(request: Request):
 
 
 @router.post('/stop_connection_requests', name='stop_connection_requests')
-async def stop_connection_requests(request: Request):
+async def stop_connection_requests(request: Request) -> Response:
     """Pide frenar las solicitudes de conexión en curso de la cuenta."""
     _form, error = await read_form(request)
     if error:
@@ -282,7 +282,7 @@ async def stop_connection_requests(request: Request):
 
 
 @router.post('/start_connection_requests', name='start_connection_requests')
-async def start_connection_requests(request: Request):
+async def start_connection_requests(request: Request) -> Response:
     """Manda solicitudes de conexión de LinkedIn a empleados de las empresas elegidas o por búsqueda."""
     form, error = await read_form(request)
     if error:

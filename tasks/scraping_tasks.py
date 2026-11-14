@@ -1,4 +1,5 @@
 """tasks/scraping_tasks.py — corre en el worker de Celery las búsquedas que lanza la web (job_dispatch)."""
+from typing import Any, Optional
 import accounts
 import logging
 import copy
@@ -9,7 +10,8 @@ logger = logging.getLogger(__name__)
 
 
 @celery.task(bind=True, name="tasks.scraping_tasks.run_web_job")
-def run_web_job(self, key: str, name: str, args: list, poll_seconds: float = 2.0, user_id=None):
+def run_web_job(self: Any, key: str, name: str, args: list[Any], poll_seconds: float = 2.0,
+                user_id: Optional[int] = None) -> dict[str, Any]:
     """Corre en el worker el mismo scraper que lanza la web (como `user_id`) y publica su `job_status[key]`."""
     import job_dispatch
     from services.state import job_status as status
@@ -22,7 +24,7 @@ def run_web_job(self, key: str, name: str, args: list, poll_seconds: float = 2.0
         while worker.is_alive():
             self.update_state(state="PROGRESS", meta=copy.deepcopy(status.get(key, {})))
             worker.join(poll_seconds)
-        final = copy.deepcopy(status.get(key, {}))
+        final: dict[str, Any] = copy.deepcopy(status.get(key, {}))
     if final.get("status") in job_dispatch.ACTIVE:
         final["status"] = "completed"
     return final

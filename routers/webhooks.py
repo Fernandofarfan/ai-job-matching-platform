@@ -1,7 +1,7 @@
 """Webhooks de proveedores externos (sin sesión ni CSRF: los autentica su firma)."""
 import json
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, Response
 from fastapi.responses import JSONResponse
 from starlette.concurrency import run_in_threadpool
 
@@ -13,7 +13,7 @@ MAX_BODY = 1024 * 1024
 
 
 @router.post('/webhooks/sendgrid', name='sendgrid_events')
-async def sendgrid_events(request: Request):
+async def sendgrid_events(request: Request) -> Response:
     """Event Webhook de SendGrid: rebotes y denuncias de spam suprimen la dirección."""
     if not await _body_within(request, MAX_BODY):
         return JSONResponse({'error': 'Pedido demasiado grande'}, status_code=413)

@@ -9,7 +9,7 @@ import logging
 import os
 import re
 from datetime import date
-from typing import Optional, cast
+from typing import Any, Optional, cast
 from urllib.parse import quote
 
 from fastapi import APIRouter, Request
@@ -69,7 +69,7 @@ def _download(request: Request, data: bytes, media_type: str, filename: str, no_
 
 # ─── Mi cuenta ───────────────────────────────────────────────────────────────
 
-def _two_factor_status(user_id) -> dict:
+def _two_factor_status(user_id: int) -> dict[str, Any]:
     """Estado del segundo factor para la página; si la tabla falla, la página se muestra igual."""
     try:
         return {'enabled': two_factor.is_enabled(user_id), 'recovery_left': two_factor.recovery_codes_left(user_id)}
@@ -78,7 +78,7 @@ def _two_factor_status(user_id) -> dict:
         return {'enabled': False, 'recovery_left': 0, 'error': True}
 
 
-def _passkeys(user_id) -> dict:
+def _passkeys(user_id: int) -> dict[str, Any]:
     """Passkeys de la cuenta; si la tabla falla, la página se muestra igual."""
     try:
         return {'items': passkeys.list_for(user_id)}
@@ -92,7 +92,7 @@ def _gmail_client_file() -> str:
     return os.getenv('GMAIL_OAUTH_CLIENT_FILE', 'credentials.json')
 
 
-def render_account(request: Request, **once) -> Response:
+def render_account(request: Request, **once: Any) -> Response:
     """Página de cuenta. El QR y los códigos de recuperación se muestran una sola vez (no-store)."""
     user_id = _user_id()
     response = render(
@@ -109,7 +109,7 @@ def render_account(request: Request, **once) -> Response:
 
 
 @router.get("/account", name="account")
-def account(request: Request):
+def account(request: Request) -> Response:
     """Datos de la cuenta, cambio de contraseña y borrado."""
     if not auth.auth_enabled():
         return redirect(request, url_for(request, 'index'))
@@ -117,10 +117,12 @@ def account(request: Request):
 
 
 @router.post("/account/telegram", name="save_telegram")
-async def save_telegram(request: Request):
+async def save_telegram(request: Request) -> Response:
     """Guarda el chat de Telegram de la cuenta (vacío lo desconecta)."""
     form, error = await _form(request)
-    return error or await run_in_threadpool(_save_telegram, request, form)
+    if error:
+        return error
+    return await run_in_threadpool(_save_telegram, request, form)
 
 
 def _save_telegram(request: Request, form: TextForm) -> Response:
@@ -136,10 +138,12 @@ def _save_telegram(request: Request, form: TextForm) -> Response:
 
 
 @router.post("/account/telegram/test", name="test_telegram")
-async def test_telegram(request: Request):
+async def test_telegram(request: Request) -> Response:
     """Manda un mensaje de prueba al chat de la cuenta."""
     _form_data, error = await _form(request, '5 per minute', 'test_telegram')
-    return error or await run_in_threadpool(_test_telegram, request)
+    if error:
+        return error
+    return await run_in_threadpool(_test_telegram, request)
 
 
 def _test_telegram(request: Request) -> Response:
@@ -163,7 +167,7 @@ def _extension_page(request: Request, state: str, token: Optional[str] = None) -
 
 
 @router.get("/account/extension/link", name="link_extension")
-def link_extension(request: Request):
+def link_extension(request: Request) -> Response:
     """Confirmación para vincular la extensión que abrió esta pestaña."""
     state = request.query_params.get('state', '')
     if not auth.auth_enabled() or not EXTENSION_STATE.match(state):
@@ -172,10 +176,12 @@ def link_extension(request: Request):
 
 
 @router.post("/account/extension/link", name="confirm_link_extension")
-async def confirm_link_extension(request: Request):
+async def confirm_link_extension(request: Request) -> Response:
     """Genera el token de la extensión (reemplaza al anterior) y se lo pasa en la página, no en la URL."""
     form, error = await _form(request, '5 per minute', 'new_extension_token')
-    return error or await run_in_threadpool(_confirm_link_extension, request, form)
+    if error:
+        return error
+    return await run_in_threadpool(_confirm_link_extension, request, form)
 
 
 def _confirm_link_extension(request: Request, form: TextForm) -> Response:
@@ -189,10 +195,12 @@ def _confirm_link_extension(request: Request, form: TextForm) -> Response:
 
 
 @router.post("/account/extension_token/revoke", name="revoke_extension_token")
-async def revoke_extension_token(request: Request):
+async def revoke_extension_token(request: Request) -> Response:
     """Revoca el token de la extensión."""
     _form_data, error = await _form(request)
-    return error or await run_in_threadpool(_revoke_extension_token, request)
+    if error:
+        return error
+    return await run_in_threadpool(_revoke_extension_token, request)
 
 
 def _revoke_extension_token(request: Request) -> Response:
@@ -203,7 +211,7 @@ def _revoke_extension_token(request: Request) -> Response:
     return _to_account(request)
 
 
-def _gmail_flow(request: Request, state=None):
+def _gmail_flow(request: Request, state: Optional[str] = None) -> Any:
     """Flujo OAuth web para conectar Gmail, o None si falta el cliente o la URL pública."""
     from tasks.gmail_tracker import SCOPES
     redirect_uri = public_url(request, 'gmail_callback')
@@ -214,7 +222,7 @@ def _gmail_flow(request: Request, state=None):
 
 
 @router.post("/account/gmail/connect", name="gmail_connect")
-async def gmail_connect(request: Request):
+async def gmail_connect(request: Request) -> Response:
     """Manda a Google para autorizar la lectura de Gmail de esta cuenta."""
     _form_data, error = await _form(request)
     if error:
@@ -229,7 +237,7 @@ async def gmail_connect(request: Request):
 
 
 @router.get("/account/gmail/callback", name="gmail_callback")
-def gmail_callback(request: Request):
+def gmail_callback(request: Request) -> Response:
     """Vuelta de Google: guarda el token de Gmail de la cuenta."""
     pending = get_session(request).pop('gmail_oauth', None) or {}
     state = request.query_params.get('state', '')
@@ -254,10 +262,12 @@ def gmail_callback(request: Request):
 
 
 @router.post("/account/gmail/disconnect", name="gmail_disconnect")
-async def gmail_disconnect(request: Request):
+async def gmail_disconnect(request: Request) -> Response:
     """Desconecta Gmail de la cuenta."""
     _form_data, error = await _form(request)
-    return error or await run_in_threadpool(_gmail_disconnect, request)
+    if error:
+        return error
+    return await run_in_threadpool(_gmail_disconnect, request)
 
 
 def _gmail_disconnect(request: Request) -> Response:
@@ -269,10 +279,12 @@ def _gmail_disconnect(request: Request) -> Response:
 
 
 @router.post("/account/resend_verification", name="resend_verification")
-async def resend_verification(request: Request):
+async def resend_verification(request: Request) -> Response:
     """Reenvía el email de verificación."""
     _form_data, error = await _form(request, '3 per hour', 'resend_verification')
-    return error or await run_in_threadpool(_resend_verification, request)
+    if error:
+        return error
+    return await run_in_threadpool(_resend_verification, request)
 
 
 def _resend_verification(request: Request) -> Response:
@@ -287,7 +299,7 @@ def _resend_verification(request: Request) -> Response:
 
 
 @router.post("/account/weekly_digest", name="weekly_digest")
-async def weekly_digest(request: Request):
+async def weekly_digest(request: Request) -> Response:
     """Prende (enabled=1) o apaga el resumen semanal por email."""
     form, error = await _form(request, '20 per hour', 'weekly_digest')
     if error:
@@ -306,7 +318,7 @@ async def weekly_digest(request: Request):
 
 
 @router.post("/account/ai_consent", name="ai_consent")
-async def ai_consent(request: Request):
+async def ai_consent(request: Request) -> Response:
     """Da (granted=1) o quita el permiso para mandar el CV y las ofertas de la cuenta a Gemini."""
     form, error = await _form(request, '20 per hour', 'ai_consent')
     if error:
@@ -326,10 +338,12 @@ async def ai_consent(request: Request):
 
 
 @router.post("/account/password", name="change_password")
-async def change_password(request: Request):
+async def change_password(request: Request) -> Response:
     """Cambia la contraseña; las otras sesiones se cierran y esta sigue abierta."""
     form, error = await _form(request, '10 per minute', 'change_password')
-    return error or await run_in_threadpool(_change_password, request, form)
+    if error:
+        return error
+    return await run_in_threadpool(_change_password, request, form)
 
 
 def _change_password(request: Request, form: TextForm) -> Response:
@@ -351,10 +365,12 @@ def _change_password(request: Request, form: TextForm) -> Response:
 
 
 @router.post("/account/sessions/{session_id}/revoke", name="revoke_session")
-async def revoke_session(request: Request, session_id: int):
+async def revoke_session(request: Request, session_id: int) -> Response:
     """Cierra una sesión de la cuenta (si es la actual, también sale)."""
     _form_data, error = await _form(request)
-    return error or await run_in_threadpool(_revoke_session, request, session_id)
+    if error:
+        return error
+    return await run_in_threadpool(_revoke_session, request, session_id)
 
 
 def _revoke_session(request: Request, session_id: int) -> Response:
@@ -374,10 +390,12 @@ def _revoke_session(request: Request, session_id: int) -> Response:
 
 
 @router.post("/account/sessions/revoke_others", name="revoke_other_sessions")
-async def revoke_other_sessions(request: Request):
+async def revoke_other_sessions(request: Request) -> Response:
     """Cierra todas las sesiones de la cuenta menos esta."""
     _form_data, error = await _form(request)
-    return error or await run_in_threadpool(_revoke_other_sessions, request)
+    if error:
+        return error
+    return await run_in_threadpool(_revoke_other_sessions, request)
 
 
 def _revoke_other_sessions(request: Request) -> Response:
@@ -390,10 +408,12 @@ def _revoke_other_sessions(request: Request) -> Response:
 
 
 @router.post("/account/export", name="export_data")
-async def export_data(request: Request):
+async def export_data(request: Request) -> Response:
     """ZIP con todos los datos de la cuenta; pide la contraseña porque incluye los CVs."""
     form, error = await _form(request, '5 per hour', 'export_data')
-    return error or await run_in_threadpool(_export_data, request, form)
+    if error:
+        return error
+    return await run_in_threadpool(_export_data, request, form)
 
 
 def _export_data(request: Request, form: TextForm) -> Response:
@@ -413,10 +433,12 @@ def _export_data(request: Request, form: TextForm) -> Response:
 
 
 @router.post("/account/delete", name="delete_account")
-async def delete_account(request: Request):
+async def delete_account(request: Request) -> Response:
     """Borra la cuenta y todos sus datos (tracker, perfiles, CVs, alertas, resultados)."""
     form, error = await _form(request, '5 per minute', 'delete_account')
-    return error or await run_in_threadpool(_delete_account, request, form)
+    if error:
+        return error
+    return await run_in_threadpool(_delete_account, request, form)
 
 
 def _delete_account(request: Request, form: TextForm) -> Response:
