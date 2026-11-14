@@ -248,32 +248,15 @@ def extract_companies_from_file(filename):
 
 @app.route('/download_resume/<filename>')
 def download_resume(filename):
-    try:
-        # Check in cover_letters directory first
-        cover_letters_dir = os.path.join('temp', 'cover_letters')
-        if os.path.exists(os.path.join(cover_letters_dir, filename)):
-            mimetype = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-            return send_from_directory(
-                cover_letters_dir, 
-                filename, 
-                as_attachment=True, 
-                download_name=filename,
-                mimetype=mimetype
-            )
-        
-        # Fallback to resumes directory
-        resume_dir = os.path.join('temp', 'resumes')
-        mimetype = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-        return send_from_directory(
-            resume_dir, 
-            filename, 
-            as_attachment=True, 
-            download_name=filename,
-            mimetype=mimetype
-        )
-    except Exception as e:
-        flash(f'Error downloading resume: {str(e)}', 'danger')
-        return redirect(url_for('results'))
+    import document_batch
+    mimetype = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    for kind in document_batch.KINDS:
+        directory = document_batch.generated_dir(kind)
+        if os.path.isfile(os.path.join(directory, os.path.basename(filename))):
+            return send_from_directory(directory, filename, as_attachment=True,
+                                       download_name=filename, mimetype=mimetype)
+    flash('No se encontró el documento', 'danger')
+    return redirect(url_for('results'))
 
 @app.route('/delete_csv/<filename>')
 def delete_csv(filename):

@@ -247,7 +247,10 @@ python app.py
 > Para aprovechar el scraping asíncrono con Celery, también ejecutá en terminales separadas:
 > ```bash
 > # Terminal 2: Celery Worker
-> celery -A celery_app worker --loglevel=info -Q scraping,ai_processing
+> celery -A celery_app worker --loglevel=info -Q scraping,ai_processing,notifications
+>
+> # Con AI_BACKEND=celery, las cartas y CVs en lote también corren en el worker
+> # (GENERATED_DIR tiene que apuntar a una carpeta compartida con la web).
 >
 > # Terminal 3: Flower Dashboard (monitor de tareas)
 > celery -A celery_app flower --port=5555

@@ -109,6 +109,7 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/document_batch.js') }}"></script>
 <script>
   document.getElementById('start_optimization').addEventListener('click', function () {
     const filename = document.getElementById('job_file_select').value;
@@ -143,52 +144,26 @@
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Procesando...';
 
-    fetch('/api/batch_optimize', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ filename: filename, num_jobs: numJobs })
-    })
-      .then(response => response.json())
+    const showProgress = (pct, msg) => {
+      progressBar.style.width = `${pct}%`;
+      percentageEl.textContent = `${pct}%`;
+      messageEl.textContent = msg;
+    };
+    runDocumentBatch('/api/batch_optimize', { filename: filename, num_jobs: numJobs }, showProgress)
       .then(data => {
-        if (data.success) {
-          progressBar.style.width = '100%';
-          percentageEl.textContent = '100%';
-          progressBar.classList.remove('progress-bar-striped', 'progress-bar-animated');
-          progressBar.classList.add('bg-success');
-
-          messageEl.textContent = `¡Proceso finalizado!`;
-          statusBadge.className = 'badge bg-success bg-opacity-10 text-success border border-success border-opacity-25';
-          statusBadge.textContent = 'Completado';
-
-          let html = '';
-          data.results.forEach(result => {
-            const isSuccess = result.status === 'success';
-            html += '<tr>';
-            html += `<td class="ps-3 fw-medium">${result.job_title}</td>`;
-            html += `<td class="text-muted">${result.company}</td>`;
-            html += `<td class="text-center"><span class="badge ${isSuccess ? 'bg-success' : 'bg-danger'} bg-opacity-10 ${isSuccess ? 'text-success' : 'text-danger'} border ${isSuccess ? 'border-success' : 'border-danger'} border-opacity-25">${isSuccess ? 'Éxito' : 'Error'}</span></td>`;
-
-            if (result.filename) {
-              html += `<td class="pe-3 text-end"><a href="/download_resume/${result.filename}" class="btn btn-sm btn-primary"><i class="bi bi-download me-1"></i> Descargar</a></td>`;
-            } else {
-              html += `<td class="pe-3 text-end text-muted small">${result.error ? result.error.substring(0, 20) + '...' : 'Fallido'}</td>`;
-            }
-            html += '</tr>';
-          });
-
-          resultsList.innerHTML = html;
-          resultsDiv.style.display = 'block';
-        } else {
-          throw new Error(data.error || 'Error desconocido');
-        }
+        showProgress(100, '¡Proceso finalizado!');
+        progressBar.classList.remove('progress-bar-striped', 'progress-bar-animated');
+        progressBar.classList.add('bg-success');
+        statusBadge.className = 'badge bg-success bg-opacity-10 text-success border border-success border-opacity-25';
+        statusBadge.textContent = 'Completado';
+        renderDocumentRows(resultsList, data.results);
+        resultsDiv.style.display = 'block';
       })
       .catch(error => {
-        console.error('Error:', error);
         messageEl.textContent = 'Error: ' + error.message;
         progressBar.classList.add('bg-danger');
         statusBadge.className = 'badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25';
         statusBadge.textContent = 'Error';
-        alert('Ocurrió un error: ' + error.message);
       })
       .finally(() => {
         btn.disabled = false;

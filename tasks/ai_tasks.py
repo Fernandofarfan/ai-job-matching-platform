@@ -140,6 +140,24 @@ Máximo 300 palabras."""
         raise
 
 
+@celery.task(bind=True, name="tasks.ai_tasks.generate_documents_batch")
+def generate_documents_batch(self, kind: str, filename: str, num_jobs: int):
+    """Cartas o CVs adaptados para las primeras `num_jobs` ofertas de un CSV de results/."""
+    import document_batch
+    from app import get_resume_text_from_profile
+
+    def progress(done, total):
+        self.update_state(state="PROGRESS", meta={
+            "progress": int(done / max(total, 1) * 100),
+            "message": f"Documento {done} de {total}",
+        })
+
+    try:
+        return document_batch.run(kind, filename, num_jobs, get_resume_text_from_profile(), progress=progress)
+    except document_batch.BatchError as e:
+        return {"success": False, "error": str(e)}
+
+
 @celery.task(name="tasks.ai_tasks.cleanup_old_temp_files")
 def cleanup_old_temp_files(days: int = 7):
     """Limpia archivos temporales más viejos que N días."""

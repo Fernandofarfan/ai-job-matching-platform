@@ -8,12 +8,14 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Agregado
+- `AI_BACKEND=celery`: las cartas y los CVs adaptados en lote se generan en el worker (cola `ai_processing`) y la página muestra el progreso consultando `/api/documents/tasks/<id>`. Los documentos se guardan en `GENERATED_DIR`, que en GCP es el bucket de resultados compartido por la web y el worker.
 - Perfiles cifrados en MySQL y en el JSON de respaldo con `CV_ENCRYPTION_KEY` (incluye el texto extraído del CV). Los perfiles en texto plano se siguen leyendo y la tarea diaria de privacidad los cifra.
 - `/analytics`: rendimiento por portal (guardadas, postulaciones, respuestas y tasa de respuesta) y días promedio entre guardar y postular.
 - Verificación mensual de restauración de backups de Cloud SQL (`scripts/verify_backup_restore.sh`, `backup-restore-check.yml`, `docs/backup-restore.md`).
 - CI: accesibilidad con axe-core (WCAG 2.1 AA, sin violaciones serias ni críticas) y Lighthouse (accesibilidad >= 90, buenas prácticas >= 75).
 
 ### Corregido
+- Lotes de cartas y CVs: el nombre del archivo ya no permite leer fuera de `results/`, la cantidad se limita a 50 ofertas, los errores no exponen mensajes internos y la tabla de resultados ya no interpreta como HTML los títulos y empresas de los portales.
 - Contraste insuficiente en el indicador Online/Offline, botones outline, textos secundarios y KPIs de Analytics; el botón "Salir" era invisible (blanco sobre blanco).
 - Botón de refrescar perfiles sin nombre accesible y columnas del tracker con scroll no alcanzables con teclado.
 - `/api/analytics/advanced` ya no devuelve el mensaje interno de la excepción.
