@@ -79,6 +79,8 @@ _ALL_MOCKS = [
     'PyPDF2', 'docx', 'python_docx',
     # WSGI
     'waitress',
+    # Playwright (scrapers/linkedin_pw.py)
+    'playwright', 'playwright.sync_api', 'playwright.async_api',
 ]
 
 for _mod_name in _ALL_MOCKS:

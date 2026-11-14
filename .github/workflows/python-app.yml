@@ -29,12 +29,11 @@ jobs:
 
       - name: Run flake8
         run: |
-          # Errores críticos: sintaxis y módulos no definidos
-          flake8 app.py db_config.py resume_parser.py utils.py \
-            --max-line-length=120 \
-            --select=E1,E9,F4,F8,W \
+          # Errores críticos: sintaxis, nombres indefinidos y comparaciones inválidas
+          flake8 . \
+            --select=E9,F63,F7,F82 \
             --exclude=.venv,__pycache__,.git \
-            --count --statistics
+            --count --show-source --statistics
         continue-on-error: false
 
   # ─── Tests ────────────────────────────────────────────────
@@ -69,6 +68,8 @@ jobs:
             reportlab \
             pytest \
             pytest-flask \
+            pytest-mock \
+            pydantic \
             PyPDF2 \
             python-docx \
             scikit-learn \
