@@ -104,6 +104,18 @@
       {% endif %}
     </div>
   </div>
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-body p-4">
+      <h2 class="h5 fw-bold">Exportar mis datos</h2>
+      <p class="text-muted small">Descarga un ZIP con tu tracker, perfiles, CVs, alertas, resultados de búsquedas y documentos generados. No incluye contraseñas ni tokens.</p>
+      <form method="POST" action="{{ url_for('export_data') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label for="export-password" class="form-label">Tu contraseña</label>
+        <input type="password" class="form-control mb-3" id="export-password" name="password" required autocomplete="current-password">
+        <button type="submit" class="btn btn-outline-primary" id="exportDataBtn">Descargar mis datos</button>
+      </form>
+    </div>
+  </div>
   <div class="card border-danger shadow-sm">
     <div class="card-body p-4">
       <h2 class="h5 fw-bold text-danger">Borrar la cuenta</h2>

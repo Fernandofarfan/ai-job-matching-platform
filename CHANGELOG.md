@@ -6,6 +6,10 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar] - Privacidad y seguridad de cuentas
+
+- **Exportar mis datos** (`data_export.py`, `POST /account/export`): ZIP con todo lo que la app guarda de la cuenta (tablas propias en JSON, perfiles, CVs originales, CSV de resultados y documentos generados). Pide la contraseña, tiene límite de 5 por hora, se sirve con `Cache-Control: no-store` y deja afuera hash de contraseña, tokens y endpoints push.
+
 ## [Sin publicar] - Notificaciones push
 
 - Web Push con VAPID (`push.py`, `/api/push/*`, tabla `push_subscriptions`): cada cuenta suscribe sus dispositivos en **Mi cuenta** y recibe las alertas (canal `push`) y los recordatorios de seguimiento. Los endpoints se limitan a servicios de push conocidos (`PUSH_ALLOWED_HOSTS` agrega otros) y los que el servicio da de baja (404/410) se borran solos.

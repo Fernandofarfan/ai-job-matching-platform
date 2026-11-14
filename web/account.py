@@ -1,12 +1,16 @@
 """Cuenta: cambiar y recuperar la contraseña, verificar el email y borrar la cuenta."""
+import io
 import logging
 import os
 from urllib.parse import urlsplit
 
-from flask import flash, make_response, redirect, render_template, request, session, url_for
+from datetime import date
+
+from flask import flash, make_response, redirect, render_template, request, send_file, session, url_for
 
 import accounts
 import auth
+import data_export
 import integrations
 from app import _clear_offline_data, app, delete_user_profile, limiter
 
@@ -253,6 +257,26 @@ def change_password():
     auth.start_session(session, app.secret_key, user_id)
     flash('Contraseña cambiada; se cerraron las otras sesiones', 'success')
     return redirect(url_for('account'))
+
+
+@app.route('/account/export', methods=['POST'])
+@limiter.limit('5 per hour')
+def export_data():
+    """ZIP con todos los datos de la cuenta; pide la contraseña porque incluye los CVs."""
+    user_id = accounts.current_user_id()
+    if not accounts.check_password(user_id, request.form.get('password', '')):
+        flash('La contraseña no es correcta', 'danger')
+        return redirect(url_for('account'))
+    try:
+        data = data_export.build(user_id)
+    except Exception as e:
+        logger.error(f'No se pudo exportar la cuenta {user_id}: {e}')
+        flash('No se pudieron exportar tus datos; probá de nuevo', 'danger')
+        return redirect(url_for('account'))
+    response = send_file(io.BytesIO(data), mimetype='application/zip', as_attachment=True,
+                         download_name=f'empleoia-datos-{date.today():%Y%m%d}.zip')
+    response.headers['Cache-Control'] = 'no-store'
+    return response
 
 
 @app.route('/account/delete', methods=['POST'])
