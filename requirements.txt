@@ -24,7 +24,7 @@ redis>=5.0.0
 
 # --- Scraping ---
 playwright==1.55.0
-beautifulsoup4==4.12.2
+beautifulsoup4==4.15.0
 lxml
 requests==2.34.2
 undetected-chromedriver
