@@ -58,6 +58,7 @@ Staging se despliega en cada push a `main`; producción solo desde un tag `vX.Y.
 - Métricas en `/metrics`, tablero de Grafana y alertas: [observability.md](observability.md).
 - Errores a Sentry con `SENTRY_DSN`; trazas OpenTelemetry con `OTEL_EXPORTER_OTLP_ENDPOINT`.
 - Alertas de Cloud Monitoring (`terraform/monitoring.tf`): `/api/ready` caído, más de 5 % de 5xx, p95 mayor a 5 s y disco de Cloud SQL sobre 85 %.
+- SLOs (`terraform/slo.tf`): 99,5 % de pedidos sin 5xx y 95 % en 1 s o menos sobre 28 días, con alertas por consumo del presupuesto de errores.
 
 ## CI
 

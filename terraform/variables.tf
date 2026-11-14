@@ -157,3 +157,36 @@ variable "alert_email" {
   type        = string
   default     = ""
 }
+
+variable "slo_availability_goal" {
+  description = "Fracción de pedidos sin 5xx en 28 días (SLO de disponibilidad); 0.995 deja un presupuesto de 0,5 % de errores"
+  type        = number
+  default     = 0.995
+
+  validation {
+    condition     = var.slo_availability_goal > 0 && var.slo_availability_goal < 1
+    error_message = "slo_availability_goal debe estar entre 0 y 1, sin incluirlos."
+  }
+}
+
+variable "slo_latency_ms" {
+  description = "Latencia máxima de un pedido para contar como bueno en el SLO de latencia"
+  type        = number
+  default     = 1000
+
+  validation {
+    condition     = var.slo_latency_ms > 0
+    error_message = "slo_latency_ms debe ser mayor que 0."
+  }
+}
+
+variable "slo_latency_goal" {
+  description = "Fracción de pedidos que deben tardar hasta slo_latency_ms en 28 días; 0.95 equivale a un p95 de slo_latency_ms"
+  type        = number
+  default     = 0.95
+
+  validation {
+    condition     = var.slo_latency_goal > 0 && var.slo_latency_goal < 1
+    error_message = "slo_latency_goal debe estar entre 0 y 1, sin incluirlos."
+  }
+}

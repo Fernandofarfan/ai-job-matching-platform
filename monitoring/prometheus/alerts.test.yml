@@ -128,3 +128,57 @@ tests:
             exp_annotations:
               summary: "getonboard no devuelve ofertas"
               description: "6 búsquedas en 24 h sin ofertas: revisar el parser con scripts/scraper_health.py."
+  - interval: 1m
+    input_series:
+      # 5 % de errores sostenido: no alcanza para el consumo rápido (7,2 %) pero sí para el lento (3 %)
+      - series: 'empleoia_http_requests_total{method="GET",route="/",status="200"}'
+        values: '0+95x480'
+      - series: 'empleoia_http_requests_total{method="GET",route="/",status="500"}'
+        values: '0+5x480'
+    alert_rule_test:
+      - eval_time: 7h
+        alertname: EmpleoIASLODisponibilidadRapido
+        exp_alerts: []
+      - eval_time: 7h
+        alertname: EmpleoIASLODisponibilidadLento
+        exp_alerts:
+          - exp_labels: {severity: warning}
+            exp_annotations:
+              summary: El SLO de disponibilidad gasta su presupuesto de errores más rápido de lo que dura el mes
+              description: "5% de errores 5xx en las últimas 6 h (el SLO permite 0,5 %)."
+  - interval: 1m
+    input_series:
+      # 40 % de pedidos de más de 1 s: consumo lento (30 %) pero no rápido (72 %)
+      - series: 'empleoia_http_request_duration_seconds_bucket{method="GET",route="/",le="1.0"}'
+        values: '0+60x90'
+      - series: 'empleoia_http_request_duration_seconds_count{method="GET",route="/"}'
+        values: '0+100x90'
+    alert_rule_test:
+      - eval_time: 80m
+        alertname: EmpleoIASLOLatenciaRapido
+        exp_alerts: []
+      - eval_time: 80m
+        alertname: EmpleoIASLOLatenciaLento
+        exp_alerts:
+          - exp_labels: {severity: warning}
+            exp_annotations:
+              summary: El SLO de latencia gasta su presupuesto más rápido de lo que dura el mes
+              description: "40% de pedidos tardaron más de 1 s en las últimas 6 h (el SLO permite 5 %)."
+  - interval: 1m
+    input_series:
+      # Caída: 50 % de errores desde el minuto 30, con 30 min sanos antes
+      - series: 'empleoia_http_requests_total{method="GET",route="/",status="200"}'
+        values: '0+100x30 3000+50x60'
+      - series: 'empleoia_http_requests_total{method="GET",route="/",status="500"}'
+        values: '0x30 0+50x60'
+    alert_rule_test:
+      - eval_time: 25m
+        alertname: EmpleoIASLODisponibilidadRapido
+        exp_alerts: []
+      - eval_time: 90m
+        alertname: EmpleoIASLODisponibilidadRapido
+        exp_alerts:
+          - exp_labels: {severity: page}
+            exp_annotations:
+              summary: El SLO de disponibilidad gasta su presupuesto de errores muy rápido
+              description: "50% de errores 5xx en la última hora (el SLO permite 0,5 %)."

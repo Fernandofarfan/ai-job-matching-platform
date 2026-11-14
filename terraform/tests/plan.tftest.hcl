@@ -172,6 +172,49 @@ run "alerts" {
   }
 }
 
+run "slos" {
+  command = plan
+
+  variables {
+    environment = "staging"
+  }
+
+  assert {
+    condition     = google_monitoring_slo.availability.goal == 0.995 && google_monitoring_slo.availability.rolling_period_days == 28 && strcontains(google_monitoring_slo.availability.request_based_sli[0].good_total_ratio[0].bad_service_filter, "5xx")
+    error_message = "SLO de disponibilidad: 99,5 % de pedidos sin 5xx en 28 días"
+  }
+
+  assert {
+    condition     = google_monitoring_slo.latency.goal == 0.95 && google_monitoring_slo.latency.request_based_sli[0].distribution_cut[0].range[0].max == 1000
+    error_message = "SLO de latencia: 95 % de pedidos en 1 s o menos"
+  }
+
+  assert {
+    condition     = google_monitoring_slo.availability.display_name == "99.5 % de pedidos sin 5xx (28 días)"
+    error_message = "El nombre del SLO debe mostrar el objetivo sin decimales de más"
+  }
+
+  assert {
+    condition     = toset(keys(google_monitoring_alert_policy.slo_burn)) == toset(["availability-fast", "availability-slow", "latency-fast", "latency-slow"])
+    error_message = "Cada SLO necesita alerta de consumo rápido y lento del presupuesto"
+  }
+
+  assert {
+    condition     = google_monitoring_alert_policy.slo_burn["availability-fast"].combiner == "AND" && length(google_monitoring_alert_policy.slo_burn["availability-fast"].conditions) == 2 && google_monitoring_alert_policy.slo_burn["availability-fast"].conditions[0].condition_threshold[0].threshold_value == 14.4
+    error_message = "La alerta rápida exige burn rate > 14,4 en la ventana larga y en la corta"
+  }
+}
+
+run "rejects_invalid_slo_goal" {
+  command = plan
+
+  variables {
+    slo_availability_goal = 99.5
+  }
+
+  expect_failures = [var.slo_availability_goal]
+}
+
 run "alerts_private_without_email" {
   command = plan
 

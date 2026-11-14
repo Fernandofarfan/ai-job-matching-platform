@@ -6,6 +6,13 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar] - SLOs y presupuesto de errores
+
+- `terraform/slo.tf`: servicio de Cloud Monitoring con 2 SLOs sobre 28 días, con métricas de Cloud Run: 99,5 % de pedidos sin 5xx (`slo_availability_goal`) y 95 % en 1 s o menos (`slo_latency_goal`, `slo_latency_ms`).
+- 4 alertas por consumo del presupuesto de errores (burn rate), con ventana larga y corta: rápida (> 14,4× en 1 h y 5 min) y lenta (> 6× en 6 h y 30 min) para cada SLO.
+- Las mismas alertas en Prometheus (`EmpleoIASLO*`), con tests de promtool. `terraform test` revisa objetivos, ventanas y umbrales.
+- Sin probar contra un proyecto de GCP real.
+
 ## [Sin publicar] - mypy estricto, etapa 4
 
 - mypy estricto revisa los 39 módulos que faltaban y `scripts/`: `app`, `main`, `fastapi_web`, `db_config`, `job_matcher`, `job_alerts`, `job_feedback`, `job_ranking`, `profile_store`, `cv_storage`, `rate_limit`, `data_export`, `observability`, entre otros. Solo quedan fuera del modo estricto los tests y la prueba de carga (`loadtest/`).
