@@ -55,6 +55,43 @@ async def require_login(request: Request, call_next):
                 return RedirectResponse(f"/login?next={quote(request.url.path)}", status_code=302)
     return await call_next(request)
 
+import time  # noqa: E402
+import observability  # noqa: E402
+from fastapi import Header  # noqa: E402
+from fastapi.responses import Response  # noqa: E402
+
+
+@app.middleware("http")
+async def record_metrics(request: Request, call_next):
+    """Último middleware registrado = el más externo: también cuenta los 401 y 429."""
+    start = time.perf_counter()
+    status = 500
+    try:
+        response = await call_next(request)
+        status = response.status_code
+        return response
+    finally:
+        try:
+            from app import app as flask_app
+        except Exception:
+            flask_app = None
+        observability.observe_request(request.method, observability.route_label(app, request.scope, flask_app),
+                                      status, time.perf_counter() - start)
+
+
+@app.get("/metrics", include_in_schema=False)
+def metrics(authorization: str | None = Header(default=None)):
+    """Corre en el threadpool: render() lee Redis de forma sincrónica. Métricas Prometheus; exige `Authorization: Bearer $METRICS_TOKEN` (sin token configurado, 404)."""
+    allowed = observability.metrics_allowed(authorization)
+    if allowed is None:
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+    if not allowed:
+        return JSONResponse({"error": "No autorizado"}, status_code=401, headers={"WWW-Authenticate": "Bearer"})
+    return Response(observability.render(), media_type=observability.CONTENT_TYPE)
+
+
+observability.setup_tracing(fastapi_app=app)
+
 # ========================================================
 # WebSockets Nativos (Reemplazo de Flask-SocketIO)
 # ========================================================

@@ -5,7 +5,7 @@ Permite ejecutar scrapers y tareas de IA de forma asíncrona.
 import os
 import sys
 from celery import Celery
-from celery.signals import worker_init
+from celery.signals import worker_init, worker_process_init
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -18,6 +18,13 @@ def _project_on_path(**_):
     """El CLI de celery quita el cwd del path tras cargar la app; las tareas importan app, job_dispatch, etc."""
     if _ROOT not in sys.path:
         sys.path.insert(0, _ROOT)
+
+@worker_process_init.connect
+def _tracing(**_):
+    """Trazas de las tareas (y de sus llamadas HTTP) si hay OTEL_EXPORTER_OTLP_ENDPOINT."""
+    import observability
+    observability.setup_tracing(celery_worker=True)
+
 
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 

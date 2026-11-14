@@ -69,6 +69,11 @@ def _get(kind):
 def record(input_tokens, output_tokens):
     """Suma los tokens de una llamada al mes en curso."""
     try:
+        import observability
+        observability.observe_ai(input_tokens, output_tokens)
+    except Exception as e:
+        logger.debug(f"Métricas de IA no registradas ({e})")
+    try:
         storage = _storage()
         for kind, amount in (('input', input_tokens), ('output', output_tokens), ('calls', 1)):
             if amount:
