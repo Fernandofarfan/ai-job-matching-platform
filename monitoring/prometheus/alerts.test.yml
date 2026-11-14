@@ -1,0 +1,74 @@
+rule_files:
+  - alerts.yml
+evaluation_interval: 1m
+tests:
+  - interval: 1m
+    input_series:
+      - series: 'empleoia_http_requests_total{method="GET",route="/",status="200"}'
+        values: '0+90x30'
+      - series: 'empleoia_http_requests_total{method="GET",route="/",status="500"}'
+        values: '0+10x30'
+      - series: 'empleoia_celery_queue_length{queue="scraping"}'
+        values: '50x30'
+      - series: 'empleoia_celery_queue_length{queue="notifications"}'
+        values: '0x30'
+      - series: 'empleoia_ai_month_tokens{kind="input",instance="a"}'
+        values: '700x30'
+      - series: 'empleoia_ai_month_tokens{kind="output",instance="a"}'
+        values: '150x30'
+      - series: 'empleoia_ai_month_tokens{kind="input",instance="b"}'
+        values: '700x30'
+      - series: 'empleoia_ai_month_tokens{kind="output",instance="b"}'
+        values: '150x30'
+      - series: 'empleoia_ai_month_token_limit'
+        values: '1000x30'
+    alert_rule_test:
+      - eval_time: 25m
+        alertname: EmpleoIAErrores5xx
+        exp_alerts:
+          - exp_labels: {severity: page}
+            exp_annotations:
+              summary: Más del 5 % de los pedidos terminan en error 5xx
+              description: "10% de errores en los últimos 10 minutos."
+      - eval_time: 25m
+        alertname: EmpleoIAColaCelery
+        exp_alerts:
+          - exp_labels: {severity: warning, queue: scraping}
+            exp_annotations:
+              summary: "La cola scraping de Celery no baja"
+              description: "50 tareas esperando: el worker está caído o saturado."
+      - eval_time: 5m
+        alertname: EmpleoIACuotaIA80
+        exp_alerts:
+          - exp_labels: {severity: warning}
+            exp_annotations:
+              summary: Se usó más del 80 % del tope mensual de tokens de IA
+              description: "85% del tope AI_MONTHLY_TOKEN_LIMIT."
+      - eval_time: 5m
+        alertname: EmpleoIACuotaIAAgotada
+        exp_alerts: []
+      - eval_time: 25m
+        alertname: EmpleoIASinMetricas
+        exp_alerts: []
+  - interval: 1m
+    input_series:
+      # Sin visitas (el contador no sube) pero con raspados: no es una caída
+      - series: 'empleoia_http_requests_total{method="GET",route="/",status="200"}'
+        values: '100x70'
+    alert_rule_test:
+      - eval_time: 65m
+        alertname: EmpleoIASinMetricas
+        exp_alerts: []
+  - interval: 1m
+    input_series:
+      # La web deja de responder a los 10 min
+      - series: 'empleoia_http_requests_total{method="GET",route="/",status="200"}'
+        values: '100x10 stale'
+    alert_rule_test:
+      - eval_time: 40m
+        alertname: EmpleoIASinMetricas
+        exp_alerts:
+          - exp_labels: {severity: warning}
+            exp_annotations:
+              summary: Prometheus no recibe métricas de la web
+              description: La web está caída, no responde /metrics o cambió METRICS_TOKEN.

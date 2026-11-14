@@ -1,0 +1,63 @@
+# Reglas de alerta de Prometheus para EmpleoIA (métricas de /metrics, ver docs/observability.md).
+# Validar: promtool check rules monitoring/prometheus/alerts.yml
+#          promtool test rules monitoring/prometheus/alerts.test.yml
+groups:
+  - name: empleoia
+    rules:
+      - alert: EmpleoIAErrores5xx
+        expr: |
+          sum(rate(empleoia_http_requests_total{status=~"5.."}[10m]))
+            / sum(rate(empleoia_http_requests_total[10m])) > 0.05
+        for: 10m
+        labels:
+          severity: page
+        annotations:
+          summary: Más del 5 % de los pedidos terminan en error 5xx
+          description: "{{ $value | humanizePercentage }} de errores en los últimos 10 minutos."
+
+      - alert: EmpleoIALatenciaAlta
+        expr: |
+          histogram_quantile(0.95, sum by (le) (rate(empleoia_http_request_duration_seconds_bucket[10m]))) > 5
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: El p95 de latencia supera 5 s
+          description: "p95 = {{ $value | humanizeDuration }}."
+
+      # Los propios raspados de /metrics cuentan como pedidos: no se alerta por falta de visitas,
+      # sino cuando Prometheus deja de recibir las métricas.
+      - alert: EmpleoIASinMetricas
+        expr: absent(empleoia_http_requests_total)
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: Prometheus no recibe métricas de la web
+          description: La web está caída, no responde /metrics o cambió METRICS_TOKEN.
+
+      - alert: EmpleoIAColaCelery
+        expr: max by (queue) (empleoia_celery_queue_length) > 20
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "La cola {{ $labels.queue }} de Celery no baja"
+          description: "{{ $value }} tareas esperando: el worker está caído o saturado."
+
+      - alert: EmpleoIACuotaIA80
+        # Cada instancia expone el mismo total de Redis: max por kind para no sumarlo una vez por instancia.
+        expr: sum(max by (kind) (empleoia_ai_month_tokens)) / max(empleoia_ai_month_token_limit) > 0.8
+        labels:
+          severity: warning
+        annotations:
+          summary: Se usó más del 80 % del tope mensual de tokens de IA
+          description: "{{ $value | humanizePercentage }} del tope AI_MONTHLY_TOKEN_LIMIT."
+
+      - alert: EmpleoIACuotaIAAgotada
+        expr: sum(max by (kind) (empleoia_ai_month_tokens)) >= max(empleoia_ai_month_token_limit)
+        labels:
+          severity: page
+        annotations:
+          summary: Se agotó el tope mensual de tokens de IA
+          description: Las funciones de IA quedan bloqueadas hasta el mes que viene o hasta subir AI_MONTHLY_TOKEN_LIMIT.

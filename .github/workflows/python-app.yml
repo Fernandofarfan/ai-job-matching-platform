@@ -32,6 +32,13 @@ jobs:
       - name: Mypy (módulos tipados)
         run: mypy
 
+      - name: Reglas de alerta de Prometheus (promtool)
+        run: |
+          curl -sSfL https://github.com/prometheus/prometheus/releases/download/v2.53.2/prometheus-2.53.2.linux-amd64.tar.gz \
+            | tar xz --strip-components=1 prometheus-2.53.2.linux-amd64/promtool
+          ./promtool check rules monitoring/prometheus/alerts.yml
+          ./promtool test rules monitoring/prometheus/alerts.test.yml
+
   # ─── Tests ────────────────────────────────────────────────
   test:
     name: Tests (pytest)

@@ -6,6 +6,12 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar] - Alertas y prueba de carga
+
+- Reglas de alerta de Prometheus en `monitoring/prometheus/alerts.yml` (5xx, latencia p95, sin métricas, cola de Celery, cuota de IA al 80 % y agotada), con tests de `promtool` en el CI.
+- `terraform/monitoring.tf`: uptime check de `/api/health` y alertas de Cloud Monitoring (5xx, p95, disco de Cloud SQL), por email con `alert_email`.
+- Prueba de carga con Locust (`loadtest/locustfile.py`, `requirements-loadtest.txt`) que falla si el p95 o los errores superan el objetivo; línea base en `docs/load-testing.md`.
+
 ## [Sin publicar] - Cuentas e integraciones por cuenta
 
 - Limpieza de código muerto: Flask-SocketIO, eventlet y el WebSocket `/ws` (ninguna página los usaba), `routers/views.py` y `routers/scraping.py` (no se montaban), `job_precheck.py` (stubs que siempre aprobaban), tareas de Celery que nadie encolaba (`batch_analyze_jobs`, `batch_generate_cover_letters`, `export_tracker_to_excel`), funciones de IA y salarios sin uso, la tabla heredada `job_tracker` (ya no se crea; el tracker usa `applications`) y `scripts/test_bumeran.py`/`test_linkedin.py`. `CORS_ALLOWED_ORIGINS` ya no se usa.
