@@ -3,7 +3,7 @@ import hashlib
 import logging
 import os
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Any, Optional
 
 from sqlalchemy import DateTime, Integer, String, delete, select
 from sqlalchemy.orm import Mapped, mapped_column
@@ -92,7 +92,7 @@ def is_new_device(user_id: int, user_agent: Optional[str], days: int = 180) -> b
     return bool(devices) and device_id(user_agent) not in devices
 
 
-def recent(user_id: Optional[int], limit: int = 20) -> list:
+def recent(user_id: Optional[int], limit: int = 20) -> list[dict[str, Any]]:
     """Últimos eventos de la cuenta, del más nuevo al más viejo."""
     if not user_id:
         return []
@@ -117,7 +117,7 @@ def purge(days: Optional[int] = None) -> int:
         result = session.execute(delete(SecurityEvent).where(
             SecurityEvent.created_at < datetime.now() - timedelta(days=days)))
         session.commit()
-        return result.rowcount or 0
+        return accounts.rowcount(result) or 0
 
 
 def login_alerts_enabled() -> bool:

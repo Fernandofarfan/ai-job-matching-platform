@@ -56,7 +56,7 @@ def _decrypt(value: str) -> str:
     fernet = cv_storage.get_fernet()
     if fernet is None:
         raise TwoFactorError('El secreto del segundo factor está cifrado y falta CV_ENCRYPTION_KEY')
-    return fernet.decrypt(value.encode()).decode()
+    return str(fernet.decrypt(value.encode()).decode())
 
 
 def _hash(code: str) -> str:
@@ -64,7 +64,7 @@ def _hash(code: str) -> str:
     return hashlib.sha256(code.replace('-', '').replace(' ', '').lower().encode()).hexdigest()
 
 
-def _new_recovery_codes() -> list:
+def _new_recovery_codes() -> list[str]:
     """Códigos de 80 bits tipo `a1b2c-d3e4f-a5b6c-d7e8f`: aun con la base filtrada no se adivinan."""
     codes = (secrets.token_hex(10) for _ in range(RECOVERY_CODES))
     return ['-'.join(c[i:i + 5] for i in range(0, 20, 5)) for c in codes]
@@ -75,7 +75,8 @@ def _row(user_id: Optional[int]) -> Optional[UserTotp]:
     if not user_id:
         return None
     with accounts._sessions()() as session:
-        return session.get(UserTotp, user_id)
+        row: Optional[UserTotp] = session.get(UserTotp, user_id)
+        return row
 
 
 def is_enabled(user_id: Optional[int]) -> bool:
@@ -93,7 +94,7 @@ def start_setup(user_id: int) -> str:
         session.execute(delete(UserTotp).where(UserTotp.user_id == user_id))
         session.add(UserTotp(user_id=user_id, secret=_encrypt(secret)))
         session.commit()
-    return secret
+    return str(secret)
 
 
 def pending_secret(user_id: Optional[int]) -> Optional[str]:
@@ -104,13 +105,13 @@ def pending_secret(user_id: Optional[int]) -> Optional[str]:
 
 def provisioning_uri(email: str, secret: str) -> str:
     """URI otpauth:// para la app autenticadora."""
-    return pyotp.TOTP(secret).provisioning_uri(name=email, issuer_name=ISSUER)
+    return str(pyotp.TOTP(secret).provisioning_uri(name=email, issuer_name=ISSUER))
 
 
 def qr_svg(uri: str) -> str:
     """QR en SVG para incrustar en la página (sin servicios externos)."""
-    return segno.make(uri, error='m').svg_inline(scale=4, title='Código QR para la app autenticadora')
-
+    return str(segno.make(uri, error='m').svg_inline(scale=4, title='Código QR para la app autenticadora')
+)
 
 def _matching_step(secret: str, code: str) -> Optional[int]:
     """Paso de 30 s cuyo código coincide, dentro de la ventana permitida."""
@@ -133,10 +134,10 @@ def _consume_step(user_id: int, step: int) -> bool:
             or_(UserTotp.last_step.is_(None), UserTotp.last_step < step),
         ).values(last_step=step))
         session.commit()
-        return bool(result.rowcount)
+        return bool(accounts.rowcount(result))
 
 
-def enable(user_id: int, code: str) -> Optional[list]:
+def enable(user_id: int, code: str) -> Optional[list[str]]:
     """Confirma la configuración con un código de la app; devuelve los códigos de recuperación."""
     row = _row(user_id)
     if not row or row.enabled_at:
@@ -177,7 +178,7 @@ def verify(user_id: int, code: str) -> Optional[str]:
             UserTotp.user_id == user_id, UserTotp.recovery_hashes == row.recovery_hashes,
         ).values(recovery_hashes=remaining))
         session.commit()
-    return 'recovery' if result.rowcount else None
+    return 'recovery' if accounts.rowcount(result) else None
 
 
 def recovery_codes_left(user_id: Optional[int]) -> int:
@@ -186,7 +187,7 @@ def recovery_codes_left(user_id: Optional[int]) -> int:
     return len(json.loads(str(row.recovery_hashes or "[]"))) if row and row.enabled_at else 0
 
 
-def regenerate_recovery_codes(user_id: int) -> Optional[list]:
+def regenerate_recovery_codes(user_id: int) -> Optional[list[str]]:
     """Códigos nuevos; los anteriores dejan de valer."""
     if not is_enabled(user_id):
         return None
@@ -205,7 +206,7 @@ def disable(user_id: int) -> None:
         session.commit()
 
 
-def enabled_user_ids() -> set:
+def enabled_user_ids() -> set[int]:
     """Cuentas con el segundo factor activo (para el panel de administración)."""
     with accounts._sessions()() as session:
         return set(session.execute(select(UserTotp.user_id).where(UserTotp.enabled_at.isnot(None))).scalars())

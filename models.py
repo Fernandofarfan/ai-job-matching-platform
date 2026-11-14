@@ -5,7 +5,7 @@ ORM completo reemplazando queries SQL manuales en db_config.py
 import os
 from collections.abc import Iterator
 from datetime import date, datetime
-from typing import Optional
+from typing import Any, Optional
 from sqlalchemy import (
     create_engine, Integer, String, Text, DateTime, Date, Float, Boolean, Enum, ForeignKey, Index
 )
@@ -24,14 +24,14 @@ class Base(DeclarativeBase):
 # ── Database URL ──────────────────────────────────────────────────────────────
 def get_database_url() -> str:
     """URL de MySQL con usuario y contraseña escapados (admite '@', ':' o '/' en DB_PASSWORD)."""
-    return URL.create(
+    return str(URL.create(
         "mysql+mysqlconnector",
         username=os.getenv("DB_USER", "root"),
         password=os.getenv("DB_PASSWORD", ""),
         host=os.getenv("DB_HOST", "127.0.0.1"),
         database=os.getenv("DB_NAME", "job_tracker"),
         query={"charset": "utf8mb4"},
-    ).render_as_string(hide_password=False)
+    ).render_as_string(hide_password=False))
 
 
 # ── Engine & Session Factory ──────────────────────────────────────────────────
@@ -119,10 +119,10 @@ class Application(Base):
         Index("idx_overall_match", "overall_match"),
     )
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         return {c.name: getattr(self, c.name) for c in self.__table__.columns}
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<Application(id={self.id}, title='{self.title}', company='{self.company}', status='{self.status}')>"
 
 
@@ -143,7 +143,7 @@ class ConnectionRequest(Base):
     application_ids: Mapped[str | None] = mapped_column(Text)  # CSV of application IDs
     message_sent: Mapped[str | None] = mapped_column(Text)
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         return {c.name: getattr(self, c.name) for c in self.__table__.columns}
 
 

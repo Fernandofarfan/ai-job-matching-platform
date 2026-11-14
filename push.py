@@ -88,7 +88,7 @@ def unsubscribe(user_id: Optional[int], endpoint: str) -> bool:
         result = session.execute(delete(PushSubscription).where(
             PushSubscription.endpoint_hash == _hash(endpoint or ''), _owner_filter(user_id)))
         session.commit()
-        return bool(result.rowcount)
+        return bool(accounts.rowcount(result))
 
 
 def device_count(user_id: Optional[int]) -> int:

@@ -3,7 +3,8 @@ import hashlib
 import hmac
 import logging
 import os
-from typing import Optional
+from collections.abc import Mapping
+from typing import Any, Optional
 
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -18,13 +19,13 @@ def auth_enabled() -> bool:
     return os.getenv('LOGIN_REQUIRED', 'true').strip().lower() != 'false'
 
 
-def session_fingerprint(secret_key, user: dict) -> str:
+def session_fingerprint(secret_key: str, user: dict[str, Any]) -> str:
     """Huella del usuario y su hash de contraseña: al cambiar la contraseña, las sesiones viejas dejan de valer."""
     key = secret_key if isinstance(secret_key, bytes) else str(secret_key).encode()
     return hmac.new(key, f"{user['id']}:{user['password_hash']}".encode(), 'sha256').hexdigest()
 
 
-def start_session(session, secret_key, user_id: int, ip: Optional[str] = None, user_agent: Optional[str] = None):
+def start_session(session: Any, secret_key: str, user_id: int, ip: Optional[str] = None, user_agent: Optional[str] = None) -> None:
     """Abre la sesión de `user_id` (borra lo anterior para evitar fijación de sesión) y la registra en user_sessions."""
     user = accounts.get_user(user_id)
     if user is None:
@@ -37,7 +38,7 @@ def start_session(session, secret_key, user_id: int, ip: Optional[str] = None, u
     session.permanent = True
 
 
-def session_user_id(session_data, secret_key) -> Optional[int]:
+def session_user_id(session_data: Mapping[str, Any], secret_key: str) -> Optional[int]:
     """Id del usuario de la sesión si sigue siendo válida; None si no."""
     user_id = session_data.get('user_id')
     if not user_id:
@@ -58,7 +59,7 @@ def session_user_id(session_data, secret_key) -> Optional[int]:
         return None
 
 
-def is_session_valid(session_data, secret_key) -> bool:
+def is_session_valid(session_data: Mapping[str, Any], secret_key: str) -> bool:
     """La sesión está autenticada y corresponde a la contraseña actual del usuario."""
     return session_user_id(session_data, secret_key) is not None
 
@@ -83,12 +84,12 @@ def legacy_extension_token(candidate: str) -> bool:
             and integrations.legacy_allowed(accounts.first_user_id(), 'extension'))
 
 
-def is_local_path(target) -> bool:
+def is_local_path(target: object) -> bool:
     """Ruta de esta app (`/algo`), no una URL externa ni `//host`."""
-    return bool(target) and target.startswith('/') and not target.startswith('//') and '\\' not in target
+    return isinstance(target, str) and target.startswith('/') and not target.startswith('//') and '\\' not in target
 
 
-def load_session_cookie(web_app, cookie_value) -> dict:
+def load_session_cookie(web_app: Any, cookie_value: Optional[str]) -> dict[str, Any]:
     """Contenido de la cookie de sesión (web_settings.WebApp); {} si no vale."""
     if not cookie_value:
         return {}
@@ -100,12 +101,12 @@ def load_session_cookie(web_app, cookie_value) -> dict:
     return data if isinstance(data, dict) else {}
 
 
-def cookie_user_id(web_app, cookie_value) -> Optional[int]:
+def cookie_user_id(web_app: Any, cookie_value: Optional[str]) -> Optional[int]:
     """Usuario de la cookie de sesión, o None."""
     return session_user_id(load_session_cookie(web_app, cookie_value), web_app.secret_key)
 
 
-def check_csrf_token(session_data: dict, token: str, secret_key, time_limit=3600) -> bool:
+def check_csrf_token(session_data: Mapping[str, Any], token: str, secret_key: str, time_limit: int = 3600) -> bool:
     """Mismo chequeo que Flask-WTF: token firmado (salt wtf-csrf-token) igual al guardado en la sesión."""
     from itsdangerous import BadData, URLSafeTimedSerializer
     expected = session_data.get('csrf_token')
@@ -127,20 +128,20 @@ def verification_required() -> bool:
     return os.getenv('REQUIRE_EMAIL_VERIFICATION', 'false').strip().lower() == 'true'
 
 
-def _token_fp(purpose: str, user: dict) -> str:
+def _token_fp(purpose: str, user: dict[str, Any]) -> str:
     """Lo que invalida el enlace: la contraseña (recuperar) o el email (verificar)."""
     basis = user['password_hash'] if purpose == 'reset' else user['email']
     return hashlib.sha256(basis.encode()).hexdigest()[:16]
 
 
-def account_token(secret_key, purpose: str, user: dict) -> str:
+def account_token(secret_key: str, purpose: str, user: dict[str, Any]) -> str:
     """Enlace firmado para recuperar la contraseña o verificar el email; deja de valer al usarse."""
     from itsdangerous import URLSafeTimedSerializer
-    return URLSafeTimedSerializer(secret_key, salt=f'account-{purpose}').dumps(
-        {'uid': user['id'], 'fp': _token_fp(purpose, user)})
+    return str(URLSafeTimedSerializer(secret_key, salt=f'account-{purpose}').dumps(
+        {'uid': user['id'], 'fp': _token_fp(purpose, user)}))
 
 
-def read_account_token(secret_key, purpose: str, token: str, max_age: int) -> Optional[dict]:
+def read_account_token(secret_key: str, purpose: str, token: str, max_age: int) -> Optional[dict[str, Any]]:
     """Cuenta del enlace si es válido, no venció y no se usó; None si no."""
     from itsdangerous import BadData, URLSafeTimedSerializer
     try:
