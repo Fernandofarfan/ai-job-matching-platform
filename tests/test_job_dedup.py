@@ -82,3 +82,19 @@ def test_a_copy_matched_by_url_indexes_its_company_for_later_copies():
                             _job('Computrabajo', URL='https://x.example/1'),
                             _job('Bumeran', URL='https://bumeran.example/1')])
     assert len(jobs) == 1 and jobs[0]['Portales'] == 'Computrabajo, Bumeran'
+
+
+def test_indeed_offers_differ_by_query_id_but_not_by_tracking():
+    a = _job('Indeed', company='Andreani', URL='https://ar.indeed.com/viewjob?jk=1&from=serp')
+    b = _job('Indeed', title='Otro', company='OCA', URL='https://ar.indeed.com/viewjob?jk=2')
+    c = _job('Indeed', title='Otro más', company='', URL='https://ar.indeed.com/viewjob?vjs=3&jk=1')
+    assert [j['Company'] for j in job_dedup.unify([a, b, c])] == ['Andreani', 'OCA']
+
+
+def test_seniority_aliases_caba_and_different_provinces():
+    assert job_dedup.title_key('Desarrollador Java Senior') == job_dedup.title_key('Desarrollador Java Sr.')
+    assert job_dedup.title_key('Analista Semi Senior') == 'analista ssr'
+    assert len(job_dedup.unify([_job('Bumeran', location='Palermo, Capital Federal'),
+                                _job('Computrabajo', location='CABA')])) == 1
+    assert len(job_dedup.unify([_job('Bumeran', location='San Justo, Buenos Aires'),
+                                _job('ZonaJobs', location='San Justo, Santa Fe')])) == 2

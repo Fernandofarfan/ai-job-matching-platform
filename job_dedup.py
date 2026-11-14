@@ -1,22 +1,31 @@
 """Unifica la misma oferta publicada en varios portales (búsqueda universal).
 
 Dos ofertas son la misma si tienen la misma URL, o el mismo título y la misma empresa (sin tildes,
-mayúsculas, puntuación ni sufijos societarios) en ubicaciones compatibles. Las empresas
+mayúsculas, puntuación ni sufijos societarios, y con "Senior" igual a "Sr") en ubicaciones compatibles.
+La precisión y la cobertura se miden con los pares etiquetados de eval/dedup_pairs.json (scripts/eval_dedup.py). Las empresas
 "Confidencial" o vacías no se unifican: sin empresa no hay forma de saber si es la misma oferta.
 """
 import re
 import unicodedata
 from typing import Any, Iterable, Optional
-from urllib.parse import urlsplit
+from urllib.parse import parse_qsl, urlencode, urlsplit
 
 Job = dict[str, Any]
 
 PLACEHOLDERS = {'', 'confidencial', 'empresa confidencial', 'reservado', 'no especificado', 'no especificada',
                 'n a', 'na', 'nan', 'none', 'confidential', 'not specified', 'unknown'}
-COMPANY_SUFFIXES = {'sa', 'srl', 'sas', 'sau', 'sl', 'sacif', 'saic', 'ltda', 'inc', 'llc', 'corp', 'corporation',
+COMPANY_SUFFIXES = {'sa', 'srl', 'sas', 'sau', 'sl', 'sacif', 'saic', 'saci', 'sacifi', 'ltda', 'inc', 'llc', 'corp', 'corporation',
                     'ltd', 'limited', 'gmbh', 'cv', 'de'}
 GENERIC_PLACES = {'argentina', 'chile', 'uruguay', 'paraguay', 'bolivia', 'peru', 'colombia', 'mexico', 'brasil',
                   'brazil', 'latam', 'remoto', 'remote', 'hibrido', 'presencial', 'reciente', 'provincia', 'de', 'del'}
+PLACE_ALIASES = {'ciudad autonoma de buenos aires': 'capital federal', 'caba': 'capital federal'}
+PROVINCES = {'buenos aires', 'capital federal', 'catamarca', 'chaco', 'chubut', 'cordoba', 'corrientes', 'entre rios',
+             'formosa', 'jujuy', 'la pampa', 'la rioja', 'mendoza', 'misiones', 'neuquen', 'rio negro', 'salta',
+             'san juan', 'san luis', 'santa cruz', 'santa fe', 'santiago del estero', 'tierra del fuego', 'tucuman'}
+SENIORITY = ((r'\bsemi ?senior\b', 'ssr'), (r'\bsenior\b', 'sr'), (r'\bjunior\b', 'jr'))
+# Parámetros de seguimiento: la misma oferta llega con distintos según de dónde se abrió.
+TRACKING_PARAMS = {'trk', 'trkinfo', 'refid', 'trackingid', 'position', 'pagenum', 'from', 'src', 'ref', 'origin',
+                   'utm', 'fbclid', 'gclid', 'tk', 'vjs', 'advn', 'adid', 'sjdu', 'currentjobid', 'ebp', 'lipi'}
 
 
 def _norm(value: object) -> str:
@@ -31,6 +40,14 @@ def _known(value: object) -> bool:
     return _norm(value) not in PLACEHOLDERS
 
 
+def title_key(title: object) -> str:
+    """Título normalizado con el seniority unificado: "Senior" y "Sr." dan "sr"."""
+    text = _norm(title)
+    for pattern, short in SENIORITY:
+        text = re.sub(pattern, short, text)
+    return text
+
+
 def company_key(company: object) -> str:
     """Empresa normalizada sin sufijos societarios: "Acme S.A." y "ACME" dan "acme"; vacía si es confidencial."""
     if not _known(company):
@@ -41,18 +58,36 @@ def company_key(company: object) -> str:
     return ' '.join(words)
 
 
+def _place_text(location: object) -> str:
+    """Ubicación normalizada, con "CABA" como "capital federal"."""
+    text = f' {_norm(location)} ' if _known(location) else ''
+    for alias, name in PLACE_ALIASES.items():
+        text = text.replace(f' {alias} ', f' {name} ')
+    return text
+
+
 def _places(location: object) -> set[str]:
     """Palabras de la ubicación que identifican un lugar (sin países ni "Remoto")."""
-    return set(_norm(location).split()) - GENERIC_PLACES if _known(location) else set()
+    return set(_place_text(location).split()) - GENERIC_PLACES
+
+
+def _provinces(location: object) -> set[str]:
+    """Provincias argentinas nombradas en la ubicación; Capital Federal cuenta como Buenos Aires."""
+    text = _place_text(location)
+    found = {p for p in PROVINCES if f' {p} ' in text}
+    return {'buenos aires' if p == 'capital federal' else p for p in found}
 
 
 def _url_key(url: object) -> str:
-    """URL sin query, fragmento ni barra final; vacía si no es http(s)."""
+    """URL sin parámetros de seguimiento, fragmento ni barra final; vacía si no es http(s). Los demás parámetros
+    quedan: en Indeed (`viewjob?jk=...`) son los que distinguen una oferta de otra."""
     text = str(url or '').strip()
     if not text.startswith(('http://', 'https://')):
         return ''
     parts = urlsplit(text)
-    return f"{parts.netloc.lower()}{parts.path.rstrip('/')}"
+    query = sorted((k, v) for k, v in parse_qsl(parts.query)
+                   if k.lower() not in TRACKING_PARAMS and not k.lower().startswith('utm_'))
+    return f"{parts.netloc.lower()}{parts.path.rstrip('/')}" + (f'?{urlencode(query)}' if query else '')
 
 
 def _source(job: Job) -> str:
@@ -61,7 +96,11 @@ def _source(job: Job) -> str:
 
 
 def _compatible(a: Job, b: Job) -> bool:
-    """Ubicaciones que pueden ser la misma: alguna es genérica o comparten una palabra de lugar."""
+    """Ubicaciones que pueden ser la misma: alguna es genérica o comparten una palabra de lugar, sin nombrar
+    provincias distintas ("San Justo, Buenos Aires" y "San Justo, Santa Fe" no)."""
+    provinces_a, provinces_b = _provinces(a.get('Location')), _provinces(b.get('Location'))
+    if provinces_a and provinces_b and not provinces_a & provinces_b:
+        return False
     places_a, places_b = _places(a.get('Location')), _places(b.get('Location'))
     return not places_a or not places_b or bool(places_a & places_b)
 
@@ -94,7 +133,7 @@ def unify(jobs: Iterable[Job]) -> list[Job]:
     by_key: dict[tuple[str, str], list[int]] = {}
     for job in jobs:
         url = _url_key(job.get('URL'))
-        key = (_norm(job.get('Title')), company_key(job.get('Company')))
+        key = (title_key(job.get('Title')), company_key(job.get('Company')))
         index: Optional[int] = by_url.get(url) if url else None
         if index is None and all(key):
             index = next((i for i in by_key.get(key, []) if all(_compatible(job, other) for other in groups[i])), None)

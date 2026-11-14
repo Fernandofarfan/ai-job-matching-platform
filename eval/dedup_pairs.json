@@ -1,0 +1,689 @@
+{
+ "description": "Pares de ofertas etiquetados como la misma oferta o distintas, para medir job_dedup.unify (scripts/eval_dedup.py). Cada caso nuevo que se arregle suma un par.",
+ "pairs": [
+  {
+   "case": "Mismo título y empresa, ubicaciones con distinto detalle",
+   "same": true,
+   "a": {
+    "Fuente": "Bumeran",
+    "Title": "Desarrollador Python Sr",
+    "Company": "Acme S.A.",
+    "Location": "Capital Federal, Buenos Aires",
+    "URL": "https://bumeran.example/584569"
+   },
+   "b": {
+    "Fuente": "Computrabajo",
+    "Title": "Desarrollador Python Sr",
+    "Company": "ACME",
+    "Location": "Buenos Aires, Argentina",
+    "URL": "https://computrabajo.example/294557"
+   }
+  },
+  {
+   "case": "Tildes y mayúsculas",
+   "same": true,
+   "a": {
+    "Fuente": "ZonaJobs",
+    "Title": "Analista de Datos",
+    "Company": "Tecnología S.R.L.",
+    "Location": "Córdoba",
+    "URL": "https://zonajobs.example/540487"
+   },
+   "b": {
+    "Fuente": "Bumeran",
+    "Title": "ANALISTA DE DATOS",
+    "Company": "TECNOLOGIA",
+    "Location": "Cordoba, Argentina",
+    "URL": "https://bumeran.example/500180"
+   }
+  },
+  {
+   "case": "Puntuación en el título",
+   "same": true,
+   "a": {
+    "Fuente": "LinkedIn",
+    "Title": "Desarrollador Python Sr.",
+    "Company": "Globant",
+    "Location": "Buenos Aires",
+    "URL": "https://linkedin.example/806970"
+   },
+   "b": {
+    "Fuente": "Computrabajo",
+    "Title": "Desarrollador  Python sr",
+    "Company": "Globant",
+    "Location": "Buenos Aires",
+    "URL": "https://computrabajo.example/151869"
+   }
+  },
+  {
+   "case": "Sufijo societario en inglés",
+   "same": true,
+   "a": {
+    "Fuente": "LinkedIn",
+    "Title": "Data Engineer",
+    "Company": "Mercado Libre Inc.",
+    "Location": "Remote",
+    "URL": "https://linkedin.example/256343"
+   },
+   "b": {
+    "Fuente": "GetOnBoard",
+    "Title": "Data Engineer",
+    "Company": "Mercado Libre",
+    "Location": "Argentina",
+    "URL": "https://getonboard.example/669221"
+   }
+  },
+  {
+   "case": "Misma URL con query distinta",
+   "same": true,
+   "a": {
+    "Fuente": "LinkedIn",
+    "Title": "Backend Developer",
+    "Company": "Ualá",
+    "Location": "Buenos Aires",
+    "URL": "https://www.linkedin.com/jobs/view/123?trk=a"
+   },
+   "b": {
+    "Fuente": "LinkedIn",
+    "Title": "Backend Developer (Node)",
+    "Company": "Uala",
+    "Location": "Buenos Aires",
+    "URL": "https://www.linkedin.com/jobs/view/123/"
+   }
+  },
+  {
+   "case": "Misma URL con mayúsculas en el dominio",
+   "same": true,
+   "a": {
+    "Fuente": "Indeed",
+    "Title": "QA Automation",
+    "Company": "Naranja X",
+    "Location": "Córdoba",
+    "URL": "https://AR.Indeed.com/viewjob?jk=9"
+   },
+   "b": {
+    "Fuente": "Indeed",
+    "Title": "QA Automation",
+    "Company": "Naranja X",
+    "Location": "Córdoba",
+    "URL": "https://ar.indeed.com/viewjob?jk=9"
+   }
+  },
+  {
+   "case": "Ubicación remota contra ciudad",
+   "same": true,
+   "a": {
+    "Fuente": "GetOnBoard",
+    "Title": "DevOps Engineer",
+    "Company": "Despegar",
+    "Location": "Remoto",
+    "URL": "https://getonboard.example/358129"
+   },
+   "b": {
+    "Fuente": "LinkedIn",
+    "Title": "DevOps Engineer",
+    "Company": "Despegar",
+    "Location": "Buenos Aires",
+    "URL": "https://linkedin.example/394105"
+   }
+  },
+  {
+   "case": "Ubicación vacía",
+   "same": true,
+   "a": {
+    "Fuente": "Computrabajo",
+    "Title": "Contador Senior",
+    "Company": "Grupo Sur S.A.",
+    "Location": "",
+    "URL": "https://computrabajo.example/33144"
+   },
+   "b": {
+    "Fuente": "Bumeran",
+    "Title": "Contador Senior",
+    "Company": "Grupo Sur",
+    "Location": "Rosario, Santa Fe",
+    "URL": "https://bumeran.example/439376"
+   }
+  },
+  {
+   "case": "C++ en ambos",
+   "same": true,
+   "a": {
+    "Fuente": "LinkedIn",
+    "Title": "Developer C++",
+    "Company": "Satellogic",
+    "Location": "Buenos Aires",
+    "URL": "https://linkedin.example/839456"
+   },
+   "b": {
+    "Fuente": "Bumeran",
+    "Title": "Developer C++",
+    "Company": "Satellogic",
+    "Location": "Capital Federal, Buenos Aires",
+    "URL": "https://bumeran.example/678760"
+   }
+  },
+  {
+   "case": "C# en ambos",
+   "same": true,
+   "a": {
+    "Fuente": "Computrabajo",
+    "Title": "Desarrollador C#",
+    "Company": "Baufest",
+    "Location": "Buenos Aires",
+    "URL": "https://computrabajo.example/197474"
+   },
+   "b": {
+    "Fuente": "ZonaJobs",
+    "Title": "Desarrollador C#",
+    "Company": "Baufest S.A.",
+    "Location": "Buenos Aires",
+    "URL": "https://zonajobs.example/221054"
+   }
+  },
+  {
+   "case": "Portugués con tildes",
+   "same": true,
+   "a": {
+    "Fuente": "LinkedIn",
+    "Title": "Analista de Suporte Técnico",
+    "Company": "Stone Pagamentos",
+    "Location": "São Paulo",
+    "URL": "https://linkedin.example/296667"
+   },
+   "b": {
+    "Fuente": "Indeed",
+    "Title": "Analista de Suporte Tecnico",
+    "Company": "Stone Pagamentos S.A.",
+    "Location": "Sao Paulo, SP",
+    "URL": "https://indeed.example/898572"
+   }
+  },
+  {
+   "case": "Empresa con \"de\"",
+   "same": true,
+   "a": {
+    "Fuente": "Bumeran",
+    "Title": "Vendedor Salón",
+    "Company": "Frávega",
+    "Location": "Mendoza",
+    "URL": "https://bumeran.example/839192"
+   },
+   "b": {
+    "Fuente": "Computrabajo",
+    "Title": "Vendedor salon",
+    "Company": "Fravega SACI de",
+    "Location": "Mendoza, Mendoza",
+    "URL": "https://computrabajo.example/270491"
+   }
+  },
+  {
+   "case": "Tres portales",
+   "same": true,
+   "a": {
+    "Fuente": "ZonaJobs",
+    "Title": "Recepcionista",
+    "Company": "Hotel Alvear",
+    "Location": "Recoleta, Capital Federal",
+    "URL": "https://zonajobs.example/890435"
+   },
+   "b": {
+    "Fuente": "Bumeran",
+    "Title": "Recepcionista",
+    "Company": "Hotel Alvear S.A.",
+    "Location": "Capital Federal",
+    "URL": "https://bumeran.example/399117"
+   }
+  },
+  {
+   "case": "Barra final en la URL",
+   "same": true,
+   "a": {
+    "Fuente": "GetOnBoard",
+    "Title": "Frontend Developer",
+    "Company": "Platzi",
+    "Location": "Remote",
+    "URL": "https://www.getonbrd.com/jobs/frontend-platzi"
+   },
+   "b": {
+    "Fuente": "GetOnBoard",
+    "Title": "Front-end Developer",
+    "Company": "Platzi",
+    "Location": "Remote",
+    "URL": "https://www.getonbrd.com/jobs/frontend-platzi/"
+   }
+  },
+  {
+   "case": "Fragmento en la URL",
+   "same": true,
+   "a": {
+    "Fuente": "Computrabajo",
+    "Title": "Chofer",
+    "Company": "Andreani",
+    "Location": "Pilar",
+    "URL": "https://ar.computrabajo.com/oferta-1#apply"
+   },
+   "b": {
+    "Fuente": "Computrabajo",
+    "Title": "Chofer profesional",
+    "Company": "Andreani",
+    "Location": "Pilar",
+    "URL": "https://ar.computrabajo.com/oferta-1"
+   }
+  },
+  {
+   "case": "Seniority abreviado distinto",
+   "same": true,
+   "a": {
+    "Fuente": "Bumeran",
+    "Title": "Desarrollador Java Senior",
+    "Company": "Accenture",
+    "Location": "Buenos Aires",
+    "URL": "https://bumeran.example/667768"
+   },
+   "b": {
+    "Fuente": "LinkedIn",
+    "Title": "Desarrollador Java Sr",
+    "Company": "Accenture",
+    "Location": "Buenos Aires",
+    "URL": "https://linkedin.example/799455"
+   }
+  },
+  {
+   "case": "Guion en el título",
+   "same": true,
+   "a": {
+    "Fuente": "LinkedIn",
+    "Title": "Full Stack Developer",
+    "Company": "Avature",
+    "Location": "Buenos Aires",
+    "URL": "https://linkedin.example/515563"
+   },
+   "b": {
+    "Fuente": "Computrabajo",
+    "Title": "Full-Stack Developer",
+    "Company": "Avature",
+    "Location": "Buenos Aires",
+    "URL": "https://computrabajo.example/524633"
+   }
+  },
+  {
+   "case": "Título traducido",
+   "same": true,
+   "a": {
+    "Fuente": "LinkedIn",
+    "Title": "Data Analyst",
+    "Company": "Rappi",
+    "Location": "Buenos Aires",
+    "URL": "https://linkedin.example/145185"
+   },
+   "b": {
+    "Fuente": "Bumeran",
+    "Title": "Analista de Datos",
+    "Company": "Rappi",
+    "Location": "Buenos Aires",
+    "URL": "https://bumeran.example/524671"
+   }
+  },
+  {
+   "case": "Título con el nombre de la empresa",
+   "same": true,
+   "a": {
+    "Fuente": "ZonaJobs",
+    "Title": "Cajero - Coto",
+    "Company": "Coto CICSA",
+    "Location": "La Plata",
+    "URL": "https://zonajobs.example/811129"
+   },
+   "b": {
+    "Fuente": "Bumeran",
+    "Title": "Cajero",
+    "Company": "Coto",
+    "Location": "La Plata, Buenos Aires",
+    "URL": "https://bumeran.example/102845"
+   }
+  },
+  {
+   "case": "Barrio contra ciudad sin palabra en común",
+   "same": true,
+   "a": {
+    "Fuente": "Bumeran",
+    "Title": "Mozo",
+    "Company": "Café Martínez",
+    "Location": "Palermo, Capital Federal",
+    "URL": "https://bumeran.example/142018"
+   },
+   "b": {
+    "Fuente": "Computrabajo",
+    "Title": "Mozo",
+    "Company": "Cafe Martinez",
+    "Location": "CABA",
+    "URL": "https://computrabajo.example/460252"
+   }
+  },
+  {
+   "case": "Empresa confidencial en ambos",
+   "same": false,
+   "a": {
+    "Fuente": "Computrabajo",
+    "Title": "Administrativo",
+    "Company": "Confidencial",
+    "Location": "Buenos Aires",
+    "URL": "https://computrabajo.example/49496"
+   },
+   "b": {
+    "Fuente": "Bumeran",
+    "Title": "Administrativo",
+    "Company": "Confidencial",
+    "Location": "Buenos Aires",
+    "URL": "https://bumeran.example/49496"
+   }
+  },
+  {
+   "case": "Empresa \"Confidential\" en inglés",
+   "same": false,
+   "a": {
+    "Fuente": "Computrabajo",
+    "Title": "Vendedor",
+    "Company": "Confidential",
+    "Location": "Rosario",
+    "URL": "https://computrabajo.example/974902"
+   },
+   "b": {
+    "Fuente": "ZonaJobs",
+    "Title": "Vendedor",
+    "Company": "Confidential",
+    "Location": "Rosario",
+    "URL": "https://zonajobs.example/974902"
+   }
+  },
+  {
+   "case": "Empresa vacía",
+   "same": false,
+   "a": {
+    "Fuente": "Indeed",
+    "Title": "Operario",
+    "Company": "",
+    "Location": "Pilar",
+    "URL": "https://indeed.example/912169"
+   },
+   "b": {
+    "Fuente": "Computrabajo",
+    "Title": "Operario",
+    "Company": "",
+    "Location": "Pilar",
+    "URL": "https://computrabajo.example/912169"
+   }
+  },
+  {
+   "case": "\"Empresa confidencial\"",
+   "same": false,
+   "a": {
+    "Fuente": "Bumeran",
+    "Title": "Analista Contable",
+    "Company": "Empresa Confidencial",
+    "Location": "Córdoba",
+    "URL": "https://bumeran.example/219573"
+   },
+   "b": {
+    "Fuente": "ZonaJobs",
+    "Title": "Analista Contable",
+    "Company": "Empresa confidencial",
+    "Location": "Córdoba",
+    "URL": "https://zonajobs.example/549798"
+   }
+  },
+  {
+   "case": "C++ contra C#",
+   "same": false,
+   "a": {
+    "Fuente": "LinkedIn",
+    "Title": "Developer C++",
+    "Company": "Globant",
+    "Location": "Buenos Aires",
+    "URL": "https://linkedin.example/964157"
+   },
+   "b": {
+    "Fuente": "LinkedIn",
+    "Title": "Developer C#",
+    "Company": "Globant",
+    "Location": "Buenos Aires",
+    "URL": "https://linkedin.example/976953"
+   }
+  },
+  {
+   "case": "C contra C++",
+   "same": false,
+   "a": {
+    "Fuente": "Bumeran",
+    "Title": "Developer C",
+    "Company": "Globant",
+    "Location": "Buenos Aires",
+    "URL": "https://bumeran.example/664371"
+   },
+   "b": {
+    "Fuente": "Bumeran",
+    "Title": "Developer C++",
+    "Company": "Globant",
+    "Location": "Buenos Aires",
+    "URL": "https://bumeran.example/964157"
+   }
+  },
+  {
+   "case": "Misma empresa y título en ciudades distintas",
+   "same": false,
+   "a": {
+    "Fuente": "Bumeran",
+    "Title": "Vendedor de Salón",
+    "Company": "Frávega",
+    "Location": "Córdoba",
+    "URL": "https://bumeran.example/144042"
+   },
+   "b": {
+    "Fuente": "Computrabajo",
+    "Title": "Vendedor de Salón",
+    "Company": "Frávega",
+    "Location": "Mendoza",
+    "URL": "https://computrabajo.example/853287"
+   }
+  },
+  {
+   "case": "Misma empresa, otro puesto",
+   "same": false,
+   "a": {
+    "Fuente": "LinkedIn",
+    "Title": "Data Engineer",
+    "Company": "Mercado Libre",
+    "Location": "Buenos Aires",
+    "URL": "https://linkedin.example/977780"
+   },
+   "b": {
+    "Fuente": "LinkedIn",
+    "Title": "Data Scientist",
+    "Company": "Mercado Libre",
+    "Location": "Buenos Aires",
+    "URL": "https://linkedin.example/525834"
+   }
+  },
+  {
+   "case": "Mismo puesto, otra empresa",
+   "same": false,
+   "a": {
+    "Fuente": "Bumeran",
+    "Title": "Desarrollador Python Sr",
+    "Company": "Acme",
+    "Location": "Buenos Aires",
+    "URL": "https://bumeran.example/352828"
+   },
+   "b": {
+    "Fuente": "Bumeran",
+    "Title": "Desarrollador Python Sr",
+    "Company": "Globant",
+    "Location": "Buenos Aires",
+    "URL": "https://bumeran.example/172340"
+   }
+  },
+  {
+   "case": "Seniority distinto",
+   "same": false,
+   "a": {
+    "Fuente": "LinkedIn",
+    "Title": "Desarrollador Java Sr",
+    "Company": "Accenture",
+    "Location": "Buenos Aires",
+    "URL": "https://linkedin.example/799455"
+   },
+   "b": {
+    "Fuente": "LinkedIn",
+    "Title": "Desarrollador Java Jr",
+    "Company": "Accenture",
+    "Location": "Buenos Aires",
+    "URL": "https://linkedin.example/884621"
+   }
+  },
+  {
+   "case": "Ssr contra Sr",
+   "same": false,
+   "a": {
+    "Fuente": "Computrabajo",
+    "Title": "Analista Funcional Ssr",
+    "Company": "Baufest",
+    "Location": "Buenos Aires",
+    "URL": "https://computrabajo.example/335758"
+   },
+   "b": {
+    "Fuente": "Computrabajo",
+    "Title": "Analista Funcional Sr",
+    "Company": "Baufest",
+    "Location": "Buenos Aires",
+    "URL": "https://computrabajo.example/502384"
+   }
+  },
+  {
+   "case": "Empresas con nombre parecido",
+   "same": false,
+   "a": {
+    "Fuente": "ZonaJobs",
+    "Title": "Cajero",
+    "Company": "Coto",
+    "Location": "La Plata",
+    "URL": "https://zonajobs.example/225043"
+   },
+   "b": {
+    "Fuente": "ZonaJobs",
+    "Title": "Cajero",
+    "Company": "Coto Digital",
+    "Location": "La Plata",
+    "URL": "https://zonajobs.example/15563"
+   }
+  },
+  {
+   "case": "Mismo título en países distintos",
+   "same": false,
+   "a": {
+    "Fuente": "LinkedIn",
+    "Title": "Backend Developer",
+    "Company": "Rappi",
+    "Location": "Bogotá, Colombia",
+    "URL": "https://linkedin.example/196910"
+   },
+   "b": {
+    "Fuente": "LinkedIn",
+    "Title": "Backend Developer",
+    "Company": "Rappi",
+    "Location": "Ciudad de México, México",
+    "URL": "https://linkedin.example/667376"
+   }
+  },
+  {
+   "case": "Turno distinto",
+   "same": false,
+   "a": {
+    "Fuente": "Bumeran",
+    "Title": "Recepcionista Turno Noche",
+    "Company": "Hotel Alvear",
+    "Location": "Capital Federal",
+    "URL": "https://bumeran.example/286916"
+   },
+   "b": {
+    "Fuente": "Bumeran",
+    "Title": "Recepcionista Turno Mañana",
+    "Company": "Hotel Alvear",
+    "Location": "Capital Federal",
+    "URL": "https://bumeran.example/678673"
+   }
+  },
+  {
+   "case": "URLs distintas del mismo portal con otra empresa",
+   "same": false,
+   "a": {
+    "Fuente": "Indeed",
+    "Title": "Operario de Depósito",
+    "Company": "Andreani",
+    "Location": "Pilar",
+    "URL": "https://ar.indeed.com/viewjob?jk=1"
+   },
+   "b": {
+    "Fuente": "Indeed",
+    "Title": "Operario de Depósito",
+    "Company": "OCA",
+    "Location": "Pilar",
+    "URL": "https://ar.indeed.com/viewjob?jk=2"
+   }
+  },
+  {
+   "case": "Mismo path en dominios distintos",
+   "same": false,
+   "a": {
+    "Fuente": "Bumeran",
+    "Title": "Analista QA",
+    "Company": "Belatrix",
+    "Location": "Mendoza",
+    "URL": "https://www.bumeran.com.ar/empleos/1"
+   },
+   "b": {
+    "Fuente": "ZonaJobs",
+    "Title": "Analista de Marketing",
+    "Company": "Grupo Peñaflor",
+    "Location": "Mendoza",
+    "URL": "https://www.zonajobs.com.ar/empleos/1"
+   }
+  },
+  {
+   "case": "Pasantía contra puesto efectivo",
+   "same": false,
+   "a": {
+    "Fuente": "Computrabajo",
+    "Title": "Pasante Contable",
+    "Company": "Deloitte",
+    "Location": "Buenos Aires",
+    "URL": "https://computrabajo.example/648723"
+   },
+   "b": {
+    "Fuente": "Computrabajo",
+    "Title": "Contador",
+    "Company": "Deloitte",
+    "Location": "Buenos Aires",
+    "URL": "https://computrabajo.example/588170"
+   }
+  },
+  {
+   "case": "Provincia distinta con nombre de ciudad compartido",
+   "same": false,
+   "a": {
+    "Fuente": "Bumeran",
+    "Title": "Enfermero",
+    "Company": "Hospital Italiano",
+    "Location": "San Justo, Buenos Aires",
+    "URL": "https://bumeran.example/484406"
+   },
+   "b": {
+    "Fuente": "Bumeran",
+    "Title": "Enfermero",
+    "Company": "Hospital Italiano",
+    "Location": "San Justo, Santa Fe",
+    "URL": "https://bumeran.example/639367"
+   }
+  }
+ ]
+}

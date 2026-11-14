@@ -6,6 +6,13 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar] - Medir la unificación de ofertas repetidas
+
+- `eval/dedup_pairs.json` con 38 pares etiquetados y `scripts/eval_dedup.py` (precisión, cobertura y F1); el CI exige precisión 1,0 y cobertura ≥ 0,9. Hoy: precisión 1,0 y cobertura 0,9.
+- Fix: todas las ofertas de Indeed se unificaban en una sola, porque la URL se comparaba sin query y Indeed identifica la oferta con `viewjob?jk=...`. Ahora solo se ignoran los parámetros de seguimiento.
+- Fix: "San Justo, Buenos Aires" y "San Justo, Santa Fe" se tomaban como el mismo lugar. Provincias distintas ya no se unifican.
+- "Senior" y "Sr", "CABA" y "Capital Federal", y el sufijo "SACI" ya no impiden unificar.
+
 ## [Sin publicar] - Contrato de la API con Schemathesis
 
 - El CI prueba las 36 rutas de la API contra `/openapi.json` con Schemathesis (`scripts/api_contract.py`, `schemathesis.toml`, `requirements-contract.txt`), con la sesión de una cuenta sembrada: falla ante un error 5xx o una respuesta fuera del contrato.
