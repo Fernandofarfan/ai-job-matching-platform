@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ingresar - EmpleoIA</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+  <main class="container d-flex align-items-center justify-content-center" style="min-height: 100vh;">
+    <div class="card shadow-sm" style="max-width: 380px; width: 100%;">
+      <div class="card-body p-4">
+        <h1 class="h4 mb-3 text-center">EmpleoIA</h1>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% for category, message in messages %}
+            <div class="alert alert-{{ category }}" role="alert">{{ message }}</div>
+          {% endfor %}
+        {% endwith %}
+        <form method="POST" action="{{ url_for('login', next=next_url) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <label for="password" class="form-label">Contraseña</label>
+          <input type="password" class="form-control mb-3" id="password" name="password" required autofocus autocomplete="current-password">
+          <button type="submit" class="btn btn-primary w-100">Ingresar</button>
+        </form>
+      </div>
+    </div>
+  </main>
+  <script>
+  // Al llegar al login (p. ej. tras cerrar sesión) se borran las páginas privadas cacheadas por el service worker
+  if (window.caches) {
+    caches.keys().then((names) => names.forEach((name) => caches.delete(name)));
+  }
+  </script>
+</body>
+</html>

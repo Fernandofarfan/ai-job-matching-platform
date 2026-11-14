@@ -31,6 +31,30 @@ async def rate_limit_ai(request: Request, call_next):
             return JSONResponse({"error": "Demasiadas solicitudes de IA, probá de nuevo en un minuto"}, status_code=429)
     return await call_next(request)
 
+import auth  # noqa: E402
+from fastapi.responses import RedirectResponse  # noqa: E402
+from urllib.parse import quote  # noqa: E402
+
+PUBLIC_API_PATHS = {"/api/health"}
+
+
+@app.middleware("http")
+async def require_login(request: Request, call_next):
+    """Las rutas nativas de FastAPI exigen la misma sesión que Flask (las de Flask se validan en app.py)."""
+    if auth.auth_enabled() and request.url.path not in PUBLIC_API_PATHS:
+        is_api_route = any(
+            route.matches(request.scope)[0] != Match.NONE
+            for route in [*ai.router.routes, *analytics.router.routes]
+        )
+        if is_api_route:
+            from app import app as flask_app
+            cookie = request.cookies.get(flask_app.config.get("SESSION_COOKIE_NAME", "session"))
+            if not auth.is_authenticated_cookie(flask_app, cookie):
+                if request.url.path.startswith("/api/"):
+                    return JSONResponse({"error": "No autenticado"}, status_code=401)
+                return RedirectResponse(f"/login?next={quote(request.url.path)}", status_code=302)
+    return await call_next(request)
+
 # ========================================================
 # WebSockets Nativos (Reemplazo de Flask-SocketIO)
 # ========================================================

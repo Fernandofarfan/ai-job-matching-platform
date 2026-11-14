@@ -2,6 +2,8 @@ from flask import Flask, render_template, request, redirect, url_for, flash, jso
 import io
 from flask_limiter import Limiter
 import rate_limit
+from flask_wtf.csrf import CSRFProtect
+import auth
 from flask_limiter.util import get_remote_address
 from flask_socketio import SocketIO, emit
 from werkzeug.utils import secure_filename
@@ -42,6 +44,9 @@ if not app.secret_key:
     app.secret_key = os.urandom(24)
 app.config['MAX_CONTENT_LENGTH'] = int(os.getenv('MAX_UPLOAD_MB', '16')) * 1024 * 1024
 app.config['TEMPLATES_AUTO_RELOAD'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['SESSION_COOKIE_SECURE'] = os.getenv('SESSION_COOKIE_SECURE', '0') == '1'
+csrf = CSRFProtect(app)
 app.jinja_env.auto_reload = True
 
 # WebSockets (async_mode=threading es compatible con el servidor dev de Flask)
@@ -69,12 +74,60 @@ limiter = Limiter(
     swallow_errors=True,
 )
 
+if not auth.auth_enabled():
+    logger.warning("APP_PASSWORD no definida: la app no pide login (usala solo en local)")
+
+PUBLIC_ENDPOINTS = {'login', 'static', 'health', 'api_save_from_extension'}
+
+
+@app.before_request
+def require_login():
+    if not auth.auth_enabled() or auth.is_session_valid(session, app.secret_key) or request.endpoint in PUBLIC_ENDPOINTS:
+        return None
+    if request.path.startswith('/api/'):
+        return jsonify({'error': 'No autenticado'}), 401
+    return redirect(url_for('login', next=request.full_path if request.query_string else request.path))
+
+
+def _safe_next(target):
+    is_local = target and target.startswith('/') and not target.startswith('//') and '\\' not in target
+    return target if is_local else url_for('index')
+
+
+@app.route('/login', methods=['GET', 'POST'])
+@limiter.limit('10 per minute', methods=['POST'])
+def login():
+    next_url = request.args.get('next', '')
+    if not auth.auth_enabled():
+        return redirect(_safe_next(next_url))
+    if request.method == 'POST':
+        if auth.check_password(request.form.get('password', '')):
+            session.clear()
+            session['authenticated'] = True
+            session['auth_fp'] = auth.session_fingerprint(app.secret_key)
+            session.permanent = True
+            return redirect(_safe_next(next_url))
+        flash('Contraseña incorrecta', 'danger')
+    return render_template('login.html', next_url=next_url)
+
+
+@app.route('/logout', methods=['POST'])
+def logout():
+    session.clear()
+    return redirect(url_for('login'))
+
+
+@app.context_processor
+def inject_auth():
+    return {'auth_enabled': auth.auth_enabled()}
+
 
 @app.before_request
 def limit_ai_requests():
     """Cada llamada a /api/ai/* consume cuota de Gemini: un solo contador por IP (compartido con FastAPI)."""
     if request.path.startswith('/api/ai/') and not rate_limit.hit_ai_limit(request.remote_addr):
         return rate_limited(None)
+
 
 for folder in ['uploads', 'results', 'logs', 'profiles']:
     os.makedirs(folder, exist_ok=True)
@@ -965,11 +1018,15 @@ def api_learning_path():
 # ── Chrome Extension API ──────────────────────────────────────────────────────
 
 @app.route('/api/tracker/save-from-extension', methods=['POST'])
+@csrf.exempt
 def api_save_from_extension():
     """
     Endpoint para la extensión de Chrome.
     Recibe datos de una oferta laboral y la guarda en el Job Tracker.
     """
+    if auth.auth_enabled() and not auth.is_session_valid(session, app.secret_key) \
+            and not auth.check_extension_token(request.headers.get('X-Extension-Token', '')):
+        return jsonify({'success': False, 'error': 'Token de extensión inválido'}), 401
     data = request.get_json(force=True)
     if not data:
         return jsonify({'success': False, 'message': 'No data received'}), 400

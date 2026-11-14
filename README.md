@@ -401,6 +401,9 @@ GEMINI_API_KEY=tu_api_key_aqui
 
 # === Seguridad ===
 SECRET_KEY=            # obligatoria en producción: python -c "import secrets; print(secrets.token_hex(32))"
+APP_PASSWORD=          # activa el login; vacía = sin login (solo local). Obligatoria en Cloud Run
+EXTENSION_TOKEN=       # token que se configura en la extensión de Chrome cuando hay login
+SESSION_COOKIE_SECURE=0  # 1 detrás de HTTPS
 CORS_ALLOWED_ORIGINS=  # orígenes WebSocket permitidos, separados por coma (vacío = mismo origen)
 FLASK_HOST=127.0.0.1   # python app.py solo escucha en localhost; usá 0.0.0.0 para exponerlo
 FLASK_PORT=5000

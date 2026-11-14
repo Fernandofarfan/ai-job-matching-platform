@@ -22,6 +22,9 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 - CI: job de seguridad (Bandit, pip-audit, Gitleaks) y Dependabot semanal para pip, Actions y Docker.
 
 ### 🔐 Seguridad
+- Login de usuario único con `APP_PASSWORD` (Flask y rutas FastAPI), rate limit en `/login`, logout por POST y cookies `SameSite=Lax`.
+- Protección CSRF (Flask-WTF) en todos los formularios y `fetch` same-origin; la extensión de Chrome usa `EXTENSION_TOKEN`.
+- Terraform: `APP_PASSWORD` como secreto obligatorio del Cloud Run público.
 - `python app.py` ahora escucha en `127.0.0.1` con debug desactivado; se configura con `FLASK_HOST`, `FLASK_PORT` y `FLASK_DEBUG`.
 - `SECRET_KEY` se lee del entorno (si falta, se usa una clave temporal aleatoria). CORS de WebSockets limitado por `CORS_ALLOWED_ORIGINS`.
 - `/debug/directories` responde 404 fuera de modo debug.

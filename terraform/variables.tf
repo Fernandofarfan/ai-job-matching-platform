@@ -54,3 +54,23 @@ variable "smtp_password" {
   sensitive   = true
   default     = ""
 }
+
+variable "app_password" {
+  description = "Contraseña de acceso a la app (login de usuario único). Obligatoria porque el servicio es público."
+  type        = string
+  sensitive   = true
+  validation {
+    condition     = length(var.app_password) >= 12
+    error_message = "app_password debe tener al menos 12 caracteres (vacía dejaría el servicio sin login)."
+  }
+}
+
+variable "secret_key" {
+  description = "SECRET_KEY de Flask compartida por todas las instancias (python -c \"import secrets; print(secrets.token_hex(32))\")"
+  type        = string
+  sensitive   = true
+  validation {
+    condition     = length(var.secret_key) >= 32
+    error_message = "secret_key debe tener al menos 32 caracteres."
+  }
+}
