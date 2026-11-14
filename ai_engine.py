@@ -11,6 +11,8 @@ from typing import Optional, List
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field, ValidationError
 
+import ai_usage
+
 load_dotenv()
 logger = logging.getLogger(__name__)
 
@@ -67,6 +69,12 @@ def _call_gemini(prompt: str, temperature: float = 0.7) -> str:
     """Wrapper seguro para llamar a Gemini con manejo de errores."""
     if not GEMINI_AVAILABLE:
         return "⚠️ Gemini no está configurado. Agregá GEMINI_API_KEY al archivo .env"
+    cached = ai_usage.cache_get(GEMINI_MODEL, prompt, temperature)
+    if cached is not None:
+        return cached
+    if ai_usage.budget_exceeded():
+        logger.warning("Límite mensual de tokens de IA alcanzado (AI_MONTHLY_TOKEN_LIMIT)")
+        return "Error al contactar Gemini: se alcanzó el límite mensual de tokens (AI_MONTHLY_TOKEN_LIMIT)"
     try:
         response = _gemini_client.models.generate_content(
             model=GEMINI_MODEL,
@@ -76,7 +84,15 @@ def _call_gemini(prompt: str, temperature: float = 0.7) -> str:
                 max_output_tokens=2048,
             ),
         )
-        return response.text.strip()
+        usage = getattr(response, 'usage_metadata', None)
+        input_tokens = getattr(usage, 'prompt_token_count', 0) or 0
+        # Los tokens de razonamiento (thinking) se facturan como salida
+        output_tokens = (getattr(usage, 'candidates_token_count', 0) or 0) + (getattr(usage, 'thoughts_token_count', 0) or 0)
+        ai_usage.record(input_tokens, output_tokens)
+        logger.info(f"Gemini: {input_tokens} tokens de entrada, {output_tokens} de salida")
+        text = response.text.strip()
+        ai_usage.cache_set(GEMINI_MODEL, prompt, temperature, text)
+        return text
     except Exception as e:
         logger.error(f"Gemini API error: {e}")
         return f"Error al contactar Gemini: {str(e)}"

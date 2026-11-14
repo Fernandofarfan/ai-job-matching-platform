@@ -120,13 +120,13 @@ def optimize_resume():
         resume_text = request.form.get('resume_text', '')
         
         if not job_description:
-            flash('Job description is required', 'danger')
+            flash('Pegá la descripción de la oferta', 'danger')
             return redirect(url_for('optimize_resume_page'))
         
         if not resume_text:
             resume_text = get_resume_text_from_profile()
             if not resume_text:
-                flash('Please provide resume text or upload your resume first', 'warning')
+                flash('Pegá el texto de tu CV o subilo primero en Perfil', 'warning')
                 return redirect(url_for('optimize_resume_page'))
         
         optimizer = ResumeOptimizer()
@@ -142,7 +142,7 @@ def optimize_resume():
         
     except Exception as e:
         logger.error(f"Error optimizing resume: {e}")
-        flash(f'Error: {str(e)}', 'danger')
+        flash(f'No se pudo optimizar el CV: {e}', 'danger')
         return redirect(url_for('optimize_resume_page'))
 
 @app.route('/api/optimize_resume', methods=['POST'])

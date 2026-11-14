@@ -7,6 +7,12 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
+### Agregado
+- Control de costos de IA: cada llamada a Gemini suma sus tokens al mes en curso (compartido vía `RATELIMIT_STORAGE_URI`), `AI_MONTHLY_TOKEN_LIMIT` corta las llamadas al llegar al tope y `GET /api/ai/usage` muestra el consumo y el costo estimado.
+  Las respuestas con temperatura ≤ 0.5 se cachean `AI_CACHE_TTL` segundos.
+- Monitor diario de scrapers (`scripts/scraper_health.py` + workflow `Monitor de scrapers`): busca en Computrabajo y Bumeran y abre un issue si alguno no devuelve ofertas.
+- Página `/optimize_resume` (antes daba 500 porque faltaba la plantilla) y enlace "Optimizar CV" en el menú.
+
 ### Cambiado
 - `app.py` pasó de ~3.080 a ~820 líneas: las rutas se movieron a `web/` (un módulo por área) sin cambiar URLs, endpoints, login, CSRF ni rate limit.
 - UI: todo en español (panel de métricas, asistente Copilot) y se eliminaron las plantillas sin uso `view_jobs.html` y `view_file_original.html` (UTF-16, ~18k líneas).
