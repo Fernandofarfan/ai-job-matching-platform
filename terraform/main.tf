@@ -1,96 +1,153 @@
 /**
- * terraform/main.tf — Infraestructura de EmpleoIA en Google Cloud Platform
- * Despliega: Cloud Run (Flask + Celery), Cloud SQL (MySQL), Redis (Memorystore)
+ * terraform/main.tf — Infraestructura de EmpleoIA en Google Cloud Platform.
+ * Un ambiente (staging o prod) por estado: Cloud Run (web, worker Celery y job de migraciones),
+ * Cloud SQL MySQL con backups y PITR, Memorystore Redis, Secret Manager y bucket privado para CVs.
  */
 
-terraform {
-  required_version = ">= 1.6.0"
-  required_providers {
-    google = {
-      source  = "hashicorp/google"
-      version = "~> 5.0"
-    }
-  }
-
-  # Backend remoto (descomentá para equipos)
-  # backend "gcs" {
-  #   bucket = "empleoia-tfstate"
-  #   prefix = "terraform/state"
-  # }
-}
-
-provider "google" {
-  project = var.project_id
-  region  = var.region
-}
-
-# ── APIs a habilitar ──────────────────────────────────────────────────────────
 locals {
+  env    = var.environment
+  prod   = var.environment == "prod"
+  labels = { app = "empleoia", environment = var.environment }
+
   apis = [
-    "run.googleapis.com",
-    "sqladmin.googleapis.com",
-    "redis.googleapis.com",
-    "secretmanager.googleapis.com",
     "artifactregistry.googleapis.com",
-    "cloudbuild.googleapis.com",
+    "compute.googleapis.com",
+    "redis.googleapis.com",
+    "run.googleapis.com",
+    "secretmanager.googleapis.com",
+    "servicenetworking.googleapis.com",
+    "sqladmin.googleapis.com",
+    "storage.googleapis.com",
   ]
+
+  redis_url = var.enable_redis ? "redis://${google_redis_instance.empleoia_redis[0].host}:${google_redis_instance.empleoia_redis[0].port}/0" : ""
+
+  # Variables en texto plano comunes a web, worker y migraciones.
+  plain_env = merge(
+    {
+      DB_HOST               = google_sql_database_instance.empleoia_mysql.private_ip_address
+      DB_USER               = google_sql_user.empleoia_user.name
+      DB_NAME               = google_sql_database.job_tracker.name
+      PROFILE_STORAGE       = "mysql"
+      SESSION_COOKIE_SECURE = "1"
+      CV_RETENTION_DAYS     = tostring(var.cv_retention_days)
+      SCRAPER_BACKEND       = var.enable_worker ? "celery" : "thread"
+      LOG_LEVEL             = "INFO"
+    },
+    var.enable_redis ? { REDIS_URL = local.redis_url, RATELIMIT_STORAGE_URI = local.redis_url } : {},
+    var.extra_env,
+  )
+
+  # Nombre de variable de entorno -> valor del secreto.
+  secret_values = merge(
+    {
+      DB_PASSWORD       = var.db_password
+      SECRET_KEY        = var.secret_key
+      APP_PASSWORD      = var.app_password
+      GEMINI_API_KEY    = var.gemini_api_key
+      CV_ENCRYPTION_KEY = var.cv_encryption_key
+    },
+    var.extra_secrets,
+  )
+  secret_names = nonsensitive(toset(keys(local.secret_values)))
+
+  uploads_mount = "/app/uploads"
+  results_mount = "/app/results"
 }
 
 resource "google_project_service" "apis" {
-  for_each = toset(local.apis)
-  project  = var.project_id
-  service  = each.key
+  for_each           = toset(local.apis)
+  service            = each.key
   disable_on_destroy = false
 }
 
-# ── Artifact Registry (Docker images) ────────────────────────────────────────
+# ── Artifact Registry ─────────────────────────────────────────────────────────
 resource "google_artifact_registry_repository" "empleoia" {
   location      = var.region
-  repository_id = "empleoia"
+  repository_id = "empleoia-${local.env}"
   format        = "DOCKER"
-  description   = "EmpleoIA container images"
-  depends_on    = [google_project_service.apis]
+  description   = "Imágenes de EmpleoIA (${local.env})"
+  labels        = local.labels
+
+  cleanup_policies {
+    id     = "conservar-ultimas-20"
+    action = "KEEP"
+    most_recent_versions {
+      keep_count = 20
+    }
+  }
+
+  depends_on = [google_project_service.apis]
 }
 
-# ── VPC Network ───────────────────────────────────────────────────────────────
+# ── Red privada ───────────────────────────────────────────────────────────────
 resource "google_compute_network" "empleoia_vpc" {
-  name                    = "empleoia-vpc"
+  name                    = "empleoia-vpc-${local.env}"
   auto_create_subnetworks = false
+  depends_on              = [google_project_service.apis]
 }
 
 resource "google_compute_subnetwork" "empleoia_subnet" {
-  name          = "empleoia-subnet"
-  ip_cidr_range = "10.0.0.0/24"
+  name          = "empleoia-subnet-${local.env}"
+  ip_cidr_range = var.subnet_cidr
   region        = var.region
   network       = google_compute_network.empleoia_vpc.id
 }
 
-# ── Cloud SQL (MySQL 8.0) ─────────────────────────────────────────────────────
+# Private Services Access: necesario para la IP privada de Cloud SQL y Memorystore.
+resource "google_compute_global_address" "private_services" {
+  name          = "empleoia-psa-${local.env}"
+  purpose       = "VPC_PEERING"
+  address_type  = "INTERNAL"
+  prefix_length = 16
+  network       = google_compute_network.empleoia_vpc.id
+}
+
+resource "google_service_networking_connection" "private_services" {
+  network                 = google_compute_network.empleoia_vpc.id
+  service                 = "servicenetworking.googleapis.com"
+  reserved_peering_ranges = [google_compute_global_address.private_services.name]
+}
+
+# ── Cloud SQL (MySQL 8.0) con backups diarios y point-in-time recovery ───────
 resource "google_sql_database_instance" "empleoia_mysql" {
-  name             = "empleoia-mysql-${var.environment}"
-  database_version = "MYSQL_8_0"
-  region           = var.region
-  deletion_protection = var.environment == "prod" ? true : false
+  name                = "empleoia-mysql-${local.env}"
+  database_version    = "MYSQL_8_0"
+  region              = var.region
+  deletion_protection = local.prod
 
   settings {
-    tier              = var.environment == "prod" ? "db-n1-standard-2" : "db-f1-micro"
-    availability_type = var.environment == "prod" ? "REGIONAL" : "ZONAL"
-    disk_autoresize   = true
-    disk_size         = 20
+    edition                     = "ENTERPRISE"
+    tier                        = var.db_tier
+    availability_type           = local.prod ? "REGIONAL" : "ZONAL"
+    disk_autoresize             = true
+    disk_size                   = 20
+    deletion_protection_enabled = local.prod
+    user_labels                 = local.labels
 
     backup_configuration {
-      enabled            = true
-      binary_log_enabled = true
-      start_time         = "03:00"
+      enabled                        = true
+      binary_log_enabled             = true
+      start_time                     = "06:00" # 03:00 en Argentina
+      transaction_log_retention_days = 7
       backup_retention_settings {
-        retained_backups = 7
+        retained_backups = var.backup_retention_count
       }
+    }
+
+    maintenance_window {
+      day          = 7
+      hour         = 7
+      update_track = "stable"
     }
 
     ip_configuration {
       ipv4_enabled    = false
       private_network = google_compute_network.empleoia_vpc.id
-      require_ssl     = false
+    }
+
+    insights_config {
+      query_insights_enabled = true
     }
 
     database_flags {
@@ -99,13 +156,14 @@ resource "google_sql_database_instance" "empleoia_mysql" {
     }
   }
 
-  depends_on = [google_project_service.apis]
+  depends_on = [google_service_networking_connection.private_services]
 }
 
 resource "google_sql_database" "job_tracker" {
-  name     = "job_tracker"
-  instance = google_sql_database_instance.empleoia_mysql.name
-  charset  = "utf8mb4"
+  name      = "job_tracker"
+  instance  = google_sql_database_instance.empleoia_mysql.name
+  charset   = "utf8mb4"
+  collation = "utf8mb4_unicode_ci"
 }
 
 resource "google_sql_user" "empleoia_user" {
@@ -116,178 +174,205 @@ resource "google_sql_user" "empleoia_user" {
 
 # ── Redis (Memorystore) ───────────────────────────────────────────────────────
 resource "google_redis_instance" "empleoia_redis" {
-  count          = var.enable_redis ? 1 : 0
-  name           = "empleoia-redis-${var.environment}"
-  tier           = "BASIC"
-  memory_size_gb = 1
-  region         = var.region
-
+  count              = var.enable_redis ? 1 : 0
+  name               = "empleoia-redis-${local.env}"
+  tier               = local.prod ? "STANDARD_HA" : "BASIC"
+  memory_size_gb     = 1
+  region             = var.region
   authorized_network = google_compute_network.empleoia_vpc.id
   connect_mode       = "PRIVATE_SERVICE_ACCESS"
+  redis_version      = "REDIS_7_0"
+  display_name       = "EmpleoIA Redis (${local.env})"
+  labels             = local.labels
 
-  redis_version     = "REDIS_7_0"
-  display_name      = "EmpleoIA Redis Cache"
+  depends_on = [google_service_networking_connection.private_services]
+}
 
-  labels = {
-    app         = "empleoia"
-    environment = var.environment
+# ── Bucket privado para los CVs (montado en /app/uploads) ────────────────────
+resource "google_storage_bucket" "uploads" {
+  name                        = "${var.project_id}-empleoia-uploads-${local.env}"
+  location                    = var.region
+  uniform_bucket_level_access = true
+  public_access_prevention    = "enforced"
+  force_destroy               = !local.prod
+  labels                      = local.labels
+
+  # Sin versionado ni soft delete: un CV borrado ("Borrar mis datos" o retención) no debe poder recuperarse.
+  versioning {
+    enabled = false
+  }
+  soft_delete_policy {
+    retention_duration_seconds = 0
+  }
+
+  # Respaldo de la retención de la app por si el worker no corre.
+  dynamic "lifecycle_rule" {
+    for_each = var.cv_retention_days > 0 ? [1] : []
+    content {
+      condition {
+        age = var.cv_retention_days + 1
+      }
+      action {
+        type = "Delete"
+      }
+    }
   }
 
   depends_on = [google_project_service.apis]
 }
 
+# Resultados de búsqueda (CSV): el worker de Celery los escribe y la web los lee.
+resource "google_storage_bucket" "results" {
+  name                        = "${var.project_id}-empleoia-results-${local.env}"
+  location                    = var.region
+  uniform_bucket_level_access = true
+  public_access_prevention    = "enforced"
+  force_destroy               = !local.prod
+  labels                      = local.labels
+
+  depends_on = [google_project_service.apis]
+}
+
 # ── Secret Manager ────────────────────────────────────────────────────────────
-resource "google_secret_manager_secret" "gemini_api_key" {
-  secret_id = "empleoia-gemini-api-key"
-  replication { automatic {} }
+resource "google_secret_manager_secret" "app" {
+  for_each  = local.secret_names
+  secret_id = "empleoia-${local.env}-${lower(replace(each.key, "_", "-"))}"
+  labels    = local.labels
+  replication {
+    auto {}
+  }
   depends_on = [google_project_service.apis]
 }
 
-resource "google_secret_manager_secret_version" "gemini_api_key_v1" {
-  secret      = google_secret_manager_secret.gemini_api_key.id
-  secret_data = var.gemini_api_key
+resource "google_secret_manager_secret_version" "app" {
+  for_each    = local.secret_names
+  secret      = google_secret_manager_secret.app[each.key].id
+  secret_data = local.secret_values[each.key]
 }
 
-resource "google_secret_manager_secret" "secret_key" {
-  secret_id = "empleoia-secret-key"
-  replication { automatic {} }
-  depends_on = [google_project_service.apis]
+# ── Cuenta de servicio de la app (mínimo privilegio) ─────────────────────────
+resource "google_service_account" "app" {
+  account_id   = "empleoia-app-${local.env}"
+  display_name = "EmpleoIA app (${local.env})"
 }
 
-resource "google_secret_manager_secret_version" "secret_key_v1" {
-  secret      = google_secret_manager_secret.secret_key.id
-  secret_data = var.secret_key
+resource "google_secret_manager_secret_iam_member" "app" {
+  for_each  = local.secret_names
+  secret_id = google_secret_manager_secret.app[each.key].id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.app.email}"
 }
 
-resource "google_secret_manager_secret" "app_password" {
-  secret_id = "empleoia-app-password"
-  replication { automatic {} }
-  depends_on = [google_project_service.apis]
+resource "google_storage_bucket_iam_member" "app_uploads" {
+  bucket = google_storage_bucket.uploads.name
+  role   = "roles/storage.objectUser"
+  member = "serviceAccount:${google_service_account.app.email}"
 }
 
-resource "google_secret_manager_secret_version" "app_password_v1" {
-  secret      = google_secret_manager_secret.app_password.id
-  secret_data = var.app_password
+resource "google_storage_bucket_iam_member" "app_results" {
+  bucket = google_storage_bucket.results.name
+  role   = "roles/storage.objectUser"
+  member = "serviceAccount:${google_service_account.app.email}"
 }
 
-resource "google_secret_manager_secret" "db_password" {
-  secret_id = "empleoia-db-password"
-  replication { automatic {} }
-}
-
-resource "google_secret_manager_secret_version" "db_password_v1" {
-  secret      = google_secret_manager_secret.db_password.id
-  secret_data = var.db_password
-}
-
-# ── Cloud Run (Flask Web App) ─────────────────────────────────────────────────
-locals {
-  redis_url = var.enable_redis && length(google_redis_instance.empleoia_redis) > 0 ? \
-    "redis://${google_redis_instance.empleoia_redis[0].host}:${google_redis_instance.empleoia_redis[0].port}/0" : \
-    "redis://localhost:6379/0"
-}
-
+# ── Cloud Run: web ────────────────────────────────────────────────────────────
 resource "google_cloud_run_v2_service" "empleoia_web" {
-  name     = "empleoia-web-${var.environment}"
-  location = var.region
+  name                = "empleoia-web-${local.env}"
+  location            = var.region
+  ingress             = "INGRESS_TRAFFIC_ALL"
+  deletion_protection = local.prod
+  labels              = local.labels
 
   template {
+    service_account       = google_service_account.app.email
+    execution_environment = "EXECUTION_ENVIRONMENT_GEN2"
+    labels                = local.labels
+
     scaling {
-      min_instance_count = var.environment == "prod" ? 1 : 0
-      max_instance_count = var.environment == "prod" ? 10 : 3
+      min_instance_count = local.prod ? 1 : 0
+      max_instance_count = local.prod ? 10 : 3
     }
 
+    # Solo el tráfico a IPs privadas (MySQL, Redis) pasa por la VPC; scrapers y Gemini salen directo.
     vpc_access {
       network_interfaces {
         network    = google_compute_network.empleoia_vpc.id
         subnetwork = google_compute_subnetwork.empleoia_subnet.id
       }
-      egress = "ALL_TRAFFIC"
+      egress = "PRIVATE_RANGES_ONLY"
+    }
+
+    volumes {
+      name = "uploads"
+      gcs {
+        bucket = google_storage_bucket.uploads.name
+      }
+    }
+    volumes {
+      name = "results"
+      gcs {
+        bucket = google_storage_bucket.results.name
+      }
     }
 
     containers {
-      image = "${var.region}-docker.pkg.dev/${var.project_id}/empleoia/web:latest"
+      image = var.image
 
       resources {
         limits = {
-          cpu    = var.environment == "prod" ? "2" : "1"
-          memory = var.environment == "prod" ? "2Gi" : "512Mi"
+          cpu    = local.prod ? "2" : "1"
+          memory = local.prod ? "2Gi" : "1Gi"
         }
       }
 
-      env {
-        name  = "DB_HOST"
-        value = google_sql_database_instance.empleoia_mysql.private_ip_address
-      }
-      env {
-        name  = "DB_USER"
-        value = google_sql_user.empleoia_user.name
-      }
-      env {
-        name = "DB_PASSWORD"
-        value_source {
-          secret_key_ref {
-            secret  = google_secret_manager_secret.db_password.secret_id
-            version = "latest"
-          }
+      dynamic "env" {
+        for_each = local.plain_env
+        content {
+          name  = env.key
+          value = env.value
         }
       }
-      env {
-        name  = "DB_NAME"
-        value = "job_tracker"
-      }
-      env {
-        name  = "REDIS_URL"
-        value = local.redis_url
-      }
-      env {
-        name  = "RATELIMIT_STORAGE_URI"
-        value = var.enable_redis ? local.redis_url : "memory://"
-      }
-      env {
-        name = "SECRET_KEY"
-        value_source {
-          secret_key_ref {
-            secret  = google_secret_manager_secret.secret_key.secret_id
-            version = "latest"
-          }
-        }
-      }
-      env {
-        name = "APP_PASSWORD"
-        value_source {
-          secret_key_ref {
-            secret  = google_secret_manager_secret.app_password.secret_id
-            version = "latest"
-          }
-        }
-      }
-      env {
-        name  = "SESSION_COOKIE_SECURE"
-        value = "1"
-      }
-      env {
-        name = "GEMINI_API_KEY"
-        value_source {
-          secret_key_ref {
-            secret  = google_secret_manager_secret.gemini_api_key.secret_id
-            version = "latest"
+
+      dynamic "env" {
+        for_each = local.secret_names
+        content {
+          name = env.key
+          value_source {
+            secret_key_ref {
+              secret  = google_secret_manager_secret.app[env.key].secret_id
+              version = "latest"
+            }
           }
         }
       }
 
-      ports { container_port = 5000 }
+      volume_mounts {
+        name       = "uploads"
+        mount_path = local.uploads_mount
+      }
+      volume_mounts {
+        name       = "results"
+        mount_path = local.results_mount
+      }
+
+      ports {
+        container_port = 5000
+      }
 
       startup_probe {
-        http_get { path = "/api/health" }
-        initial_delay_seconds = 15
+        http_get {
+          path = "/api/health"
+        }
+        initial_delay_seconds = 10
         timeout_seconds       = 5
         period_seconds        = 10
-        failure_threshold     = 5
+        failure_threshold     = 6
       }
 
       liveness_probe {
-        http_get { path = "/api/health" }
+        http_get {
+          path = "/api/health"
+        }
         period_seconds    = 30
         failure_threshold = 3
       }
@@ -295,38 +380,174 @@ resource "google_cloud_run_v2_service" "empleoia_web" {
   }
 
   depends_on = [
-    google_sql_database_instance.empleoia_mysql,
-    google_project_service.apis,
+    google_secret_manager_secret_iam_member.app,
+    google_secret_manager_secret_version.app,
+    google_storage_bucket_iam_member.app_uploads,
+    google_storage_bucket_iam_member.app_results,
   ]
 }
 
-# Allow unauthenticated access (public web app)
+# La app tiene login propio (APP_PASSWORD); public_access=false exige IAM de Cloud Run para entrar.
 resource "google_cloud_run_v2_service_iam_member" "public_access" {
-  project  = var.project_id
+  count    = var.public_access ? 1 : 0
   location = var.region
   name     = google_cloud_run_v2_service.empleoia_web.name
   role     = "roles/run.invoker"
   member   = "allUsers"
 }
 
-# ── Outputs ───────────────────────────────────────────────────────────────────
-output "web_url" {
-  description = "URL pública de EmpleoIA"
-  value       = google_cloud_run_v2_service.empleoia_web.uri
+# ── Cloud Run worker pool: Celery worker + beat (scraping, alertas, retención) ──
+resource "google_cloud_run_v2_worker_pool" "celery" {
+  count               = var.enable_worker ? 1 : 0
+  name                = "empleoia-worker-${local.env}"
+  location            = var.region
+  launch_stage        = "BETA"
+  deletion_protection = false
+  labels              = local.labels
+
+  scaling {
+    scaling_mode          = "MANUAL"
+    manual_instance_count = 1 # beat corre embebido: una sola instancia evita tareas duplicadas
+  }
+
+  template {
+    service_account = google_service_account.app.email
+    labels          = local.labels
+
+    vpc_access {
+      network_interfaces {
+        network    = google_compute_network.empleoia_vpc.id
+        subnetwork = google_compute_subnetwork.empleoia_subnet.id
+      }
+      egress = "PRIVATE_RANGES_ONLY"
+    }
+
+    volumes {
+      name = "uploads"
+      gcs {
+        bucket = google_storage_bucket.uploads.name
+      }
+    }
+    volumes {
+      name = "results"
+      gcs {
+        bucket = google_storage_bucket.results.name
+      }
+    }
+
+    containers {
+      image   = var.image
+      command = ["celery"]
+      args = [
+        "-A", "celery_app", "worker", "--beat",
+        "--queues", "scraping,ai_processing,notifications",
+        "--concurrency", "2", "--loglevel", "info",
+      ]
+
+      resources {
+        limits = {
+          cpu    = "1"
+          memory = "2Gi"
+        }
+      }
+
+      dynamic "env" {
+        for_each = local.plain_env
+        content {
+          name  = env.key
+          value = env.value
+        }
+      }
+
+      dynamic "env" {
+        for_each = local.secret_names
+        content {
+          name = env.key
+          value_source {
+            secret_key_ref {
+              secret  = google_secret_manager_secret.app[env.key].secret_id
+              version = "latest"
+            }
+          }
+        }
+      }
+
+      volume_mounts {
+        name       = "uploads"
+        mount_path = local.uploads_mount
+      }
+      volume_mounts {
+        name       = "results"
+        mount_path = local.results_mount
+      }
+    }
+  }
+
+  lifecycle {
+    precondition {
+      condition     = var.enable_redis
+      error_message = "enable_worker requiere enable_redis: Celery usa Redis como broker."
+    }
+  }
+
+  depends_on = [
+    google_secret_manager_secret_iam_member.app,
+    google_secret_manager_secret_version.app,
+    google_storage_bucket_iam_member.app_uploads,
+    google_storage_bucket_iam_member.app_results,
+  ]
 }
 
-output "mysql_private_ip" {
-  description = "IP privada de MySQL"
-  value       = google_sql_database_instance.empleoia_mysql.private_ip_address
-}
+# ── Cloud Run job: migraciones de Alembic (el deploy lo ejecuta antes de actualizar la web) ──
+resource "google_cloud_run_v2_job" "migrate" {
+  name                = "empleoia-migrate-${local.env}"
+  location            = var.region
+  deletion_protection = false
+  labels              = local.labels
 
-output "redis_host" {
-  description = "Host de Redis"
-  value       = var.enable_redis ? google_redis_instance.empleoia_redis[0].host : "N/A"
-  sensitive   = false
-}
+  template {
+    task_count = 1
+    template {
+      service_account = google_service_account.app.email
+      max_retries     = 0
+      timeout         = "600s"
 
-output "docker_registry" {
-  description = "URL del Artifact Registry"
-  value       = "${var.region}-docker.pkg.dev/${var.project_id}/empleoia"
+      vpc_access {
+        network_interfaces {
+          network    = google_compute_network.empleoia_vpc.id
+          subnetwork = google_compute_subnetwork.empleoia_subnet.id
+        }
+        egress = "PRIVATE_RANGES_ONLY"
+      }
+
+      containers {
+        image   = var.image
+        command = ["alembic"]
+        args    = ["upgrade", "head"]
+
+        dynamic "env" {
+          for_each = { for k, v in local.plain_env : k => v if startswith(k, "DB_") }
+          content {
+            name  = env.key
+            value = env.value
+          }
+        }
+
+        env {
+          name = "DB_PASSWORD"
+          value_source {
+            secret_key_ref {
+              secret  = google_secret_manager_secret.app["DB_PASSWORD"].secret_id
+              version = "latest"
+            }
+          }
+        }
+      }
+    }
+  }
+
+  depends_on = [
+    google_secret_manager_secret_iam_member.app,
+    google_secret_manager_secret_version.app,
+  ]
 }

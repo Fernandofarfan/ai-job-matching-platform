@@ -80,3 +80,12 @@ chromedriver.exe
 
 .coverage
 htmlcov/
+
+# Terraform
+terraform/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+tfplan
+crash.log
+*.secret.tfvars

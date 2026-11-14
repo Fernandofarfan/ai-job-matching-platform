@@ -1,0 +1,122 @@
+name: Deploy a GCP
+
+# Push a main -> staging. Producción: "Run workflow" con environment=prod
+# (conviene exigir aprobación en Settings > Environments > prod).
+# Necesita, por GitHub Environment:
+#   variables: GCP_PROJECT_ID, GCP_REGION (opcional), GCP_WORKLOAD_IDENTITY_PROVIDER, GCP_DEPLOY_SA, TF_STATE_BUCKET
+#   secretos:  DB_PASSWORD, GEMINI_API_KEY, APP_PASSWORD, SECRET_KEY, CV_ENCRYPTION_KEY, EXTRA_SECRETS_JSON (opcional)
+# El job corre solo con la variable de repositorio GCP_DEPLOY_ENABLED=true (las variables de un
+# Environment no se ven en el `if:` del job). Sin ella se saltea y el repo funciona igual sin GCP.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Ambiente
+        type: choice
+        options: [staging, prod]
+        default: staging
+  pull_request:
+    paths: ["terraform/**", ".github/workflows/deploy.yml"]
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: deploy-${{ inputs.environment || 'staging' }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: ${{ github.event_name == 'pull_request' && 'Terraform plan' || 'Deploy' }} (${{ inputs.environment || 'staging' }})
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment || 'staging' }}
+    if: vars.GCP_DEPLOY_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    env:
+      ENVIRONMENT: ${{ inputs.environment || 'staging' }}
+      REGION: ${{ vars.GCP_REGION || 'southamerica-east1' }}
+      TF_IN_AUTOMATION: "1"
+      TF_VAR_project_id: ${{ vars.GCP_PROJECT_ID }}
+      TF_VAR_region: ${{ vars.GCP_REGION || 'southamerica-east1' }}
+      TF_VAR_db_password: ${{ secrets.DB_PASSWORD }}
+      TF_VAR_gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
+      TF_VAR_app_password: ${{ secrets.APP_PASSWORD }}
+      TF_VAR_secret_key: ${{ secrets.SECRET_KEY }}
+      TF_VAR_cv_encryption_key: ${{ secrets.CV_ENCRYPTION_KEY }}
+      TF_VAR_extra_secrets: ${{ secrets.EXTRA_SECRETS_JSON || '{}' }}
+    defaults:
+      run:
+        working-directory: terraform
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SA }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+
+      - name: Imagen a desplegar
+        run: |
+          echo "TF_VAR_image=${REGION}-docker.pkg.dev/${TF_VAR_project_id}/empleoia-${ENVIRONMENT}/web:${GITHUB_SHA}" >> "$GITHUB_ENV"
+
+      - name: terraform init
+        run: >
+          terraform init -input=false
+          -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
+          -backend-config="prefix=empleoia/${ENVIRONMENT}"
+
+      - name: terraform plan
+        if: github.event_name == 'pull_request'
+        run: |
+          terraform plan -input=false -no-color -var-file="envs/${ENVIRONMENT}.tfvars" > plan.txt
+          { echo '### terraform plan (staging)'; echo '```'; tail -c 60000 plan.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
+      # 1) Repositorio de imágenes (primer deploy) 2) build y push 3) migraciones 4) resto.
+      - name: Artifact Registry
+        if: github.event_name != 'pull_request'
+        run: >
+          terraform apply -input=false -auto-approve -var-file="envs/${ENVIRONMENT}.tfvars"
+          -target=google_artifact_registry_repository.empleoia
+
+      - name: Build y push de la imagen
+        if: github.event_name != 'pull_request'
+        working-directory: .
+        run: |
+          gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+          docker build -t "$TF_VAR_image" .
+          docker push "$TF_VAR_image"
+
+      - name: Migraciones de Alembic
+        if: github.event_name != 'pull_request'
+        run: |
+          terraform apply -input=false -auto-approve -var-file="envs/${ENVIRONMENT}.tfvars" \
+            -target=google_cloud_run_v2_job.migrate
+          gcloud run jobs execute "$(terraform output -raw migrate_job)" --region "$REGION" --wait
+
+      - name: terraform apply
+        if: github.event_name != 'pull_request'
+        run: terraform apply -input=false -auto-approve -var-file="envs/${ENVIRONMENT}.tfvars"
+
+      - name: Smoke test
+        if: github.event_name != 'pull_request'
+        run: |
+          url="$(terraform output -raw web_url)"
+          if [ "$(terraform output -raw public_access)" != "true" ]; then
+            # Servicio privado: sin token de IAM Cloud Run responde 403; terraform apply ya esperó la revisión lista.
+            echo "Servicio privado: se omite el smoke test HTTP"
+            exit 0
+          fi
+          for i in 1 2 3 4 5; do
+            curl -fsS "$url/api/health" && exit 0
+            sleep 10
+          done
+          exit 1

@@ -1,3 +1,7 @@
 # Valores de prueba ya reemplazados por secrets.token_* en tests_integration/conftest.py
 52059e5cfecf3b408240c03a36ae30493e662951:tests_integration/conftest.py:generic-api-key:16
 52059e5cfecf3b408240c03a36ae30493e662951:tests_integration/conftest.py:generic-api-key:51
+# Valores ficticios del test de Terraform con provider simulado (no se despliegan)
+5836eb18a7ac1841dd83cd6f4bf1aebaf10c766f:terraform/tests/plan.tftest.hcl:hashicorp-tf-password:19
+5836eb18a7ac1841dd83cd6f4bf1aebaf10c766f:terraform/tests/plan.tftest.hcl:hashicorp-tf-password:21
+5836eb18a7ac1841dd83cd6f4bf1aebaf10c766f:terraform/tests/plan.tftest.hcl:generic-api-key:22

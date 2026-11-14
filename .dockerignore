@@ -1,0 +1,25 @@
+.git
+.github
+.env
+.env.*
+!.env.example
+**/__pycache__
+*.py[cod]
+.pytest_cache
+.mypy_cache
+.ruff_cache
+venv
+.venv
+uploads/*
+!uploads/.gitkeep
+profiles/*.json
+profiles/*.migrated
+temp/*
+results/*
+logs/*
+terraform
+tests
+tests_integration
+chrome_extension
+# Credenciales que google-github-actions/auth deja en el workspace durante el deploy
+gha-creds-*.json

@@ -1,5 +1,6 @@
 /**
- * terraform/variables.tf — Variables de configuración de EmpleoIA en GCP
+ * terraform/variables.tf — Variables de configuración de EmpleoIA en GCP.
+ * Los valores no secretos van en envs/<ambiente>.tfvars; los secretos, como TF_VAR_* (nunca en el repo).
  */
 
 variable "project_id" {
@@ -10,55 +11,107 @@ variable "project_id" {
 variable "region" {
   description = "Región de GCP donde se despliegan los recursos"
   type        = string
-  default     = "southamerica-east1"  # São Paulo — más cercano a Argentina
+  default     = "southamerica-east1" # São Paulo, la más cercana a Argentina
 }
 
 variable "environment" {
-  description = "Ambiente de despliegue: dev, staging, prod"
+  description = "Ambiente de despliegue: dev, staging o prod"
   type        = string
-  default     = "dev"
+  default     = "staging"
 
   validation {
     condition     = contains(["dev", "staging", "prod"], var.environment)
-    error_message = "environment debe ser dev, staging o prod"
+    error_message = "environment debe ser dev, staging o prod."
   }
 }
 
-variable "db_password" {
-  description = "Contraseña para el usuario de MySQL"
+variable "image" {
+  description = "Imagen completa a desplegar (p. ej. <región>-docker.pkg.dev/<proyecto>/empleoia-staging/web:<sha>)"
   type        = string
-  sensitive   = true
 }
 
-variable "gemini_api_key" {
-  description = "API Key de Google Gemini"
+variable "subnet_cidr" {
+  description = "Rango de la subred de Cloud Run (distinto por ambiente si comparten proyecto)"
   type        = string
-  sensitive   = true
+  default     = "10.0.0.0/24"
+}
+
+variable "db_tier" {
+  description = "Tipo de máquina de Cloud SQL"
+  type        = string
+  default     = "db-f1-micro"
+}
+
+variable "backup_retention_count" {
+  description = "Cantidad de backups diarios de Cloud SQL que se conservan"
+  type        = number
+  default     = 7
+
+  validation {
+    condition     = var.backup_retention_count >= 1 && var.backup_retention_count <= 365
+    error_message = "backup_retention_count debe estar entre 1 y 365."
+  }
 }
 
 variable "enable_redis" {
-  description = "Si se debe crear una instancia de Redis (Memorystore). Desactivar para ahorrar costos en dev."
+  description = "Crear Memorystore Redis (rate limit compartido, caché y broker de Celery)"
   type        = bool
   default     = true
 }
 
-variable "smtp_user" {
-  description = "Email SMTP para notificaciones"
-  type        = string
-  default     = ""
+variable "enable_worker" {
+  description = "Crear el worker de Celery (scraping, alertas y retención de CVs); requiere enable_redis"
+  type        = bool
+  default     = true
 }
 
-variable "smtp_password" {
-  description = "Contraseña SMTP para notificaciones"
+variable "public_access" {
+  description = "Permitir el acceso sin IAM de Google (la app igual pide APP_PASSWORD)"
+  type        = bool
+  default     = true
+}
+
+variable "cv_retention_days" {
+  description = "Días que se conservan los CVs subidos; 0 = sin borrado automático"
+  type        = number
+  default     = 0
+
+  validation {
+    condition     = var.cv_retention_days >= 0
+    error_message = "cv_retention_days no puede ser negativo."
+  }
+}
+
+variable "extra_env" {
+  description = "Variables de entorno adicionales no secretas (MATCHING_BACKEND, SMTP_HOST, APP_BASE_URL, ...)"
+  type        = map(string)
+  default     = {}
+}
+
+# ── Secretos (pasarlos como TF_VAR_*) ─────────────────────────────────────────
+
+variable "db_password" {
+  description = "Contraseña del usuario de MySQL"
   type        = string
   sensitive   = true
-  default     = ""
+
+  validation {
+    condition     = length(var.db_password) >= 16
+    error_message = "db_password debe tener al menos 16 caracteres."
+  }
+}
+
+variable "gemini_api_key" {
+  description = "API key de Google Gemini"
+  type        = string
+  sensitive   = true
 }
 
 variable "app_password" {
   description = "Contraseña de acceso a la app (login de usuario único). Obligatoria porque el servicio es público."
   type        = string
   sensitive   = true
+
   validation {
     condition     = length(var.app_password) >= 12
     error_message = "app_password debe tener al menos 12 caracteres (vacía dejaría el servicio sin login)."
@@ -69,8 +122,27 @@ variable "secret_key" {
   description = "SECRET_KEY de Flask compartida por todas las instancias (python -c \"import secrets; print(secrets.token_hex(32))\")"
   type        = string
   sensitive   = true
+
   validation {
     condition     = length(var.secret_key) >= 32
     error_message = "secret_key debe tener al menos 32 caracteres."
   }
+}
+
+variable "cv_encryption_key" {
+  description = "Clave Fernet para cifrar los CVs (python -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\")"
+  type        = string
+  sensitive   = true
+
+  validation {
+    condition     = length(var.cv_encryption_key) == 44
+    error_message = "cv_encryption_key debe ser una clave Fernet (44 caracteres base64)."
+  }
+}
+
+variable "extra_secrets" {
+  description = "Secretos adicionales como variables de entorno (TELEGRAM_BOT_TOKEN, SMTP_PASSWORD, SENTRY_DSN, ...)"
+  type        = map(string)
+  sensitive   = true
+  default     = {}
 }
