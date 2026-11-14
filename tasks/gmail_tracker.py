@@ -1,25 +1,25 @@
 import os
-import pickle
 import logging
 from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
+from google.oauth2.credentials import Credentials
 from celery_app import celery
 
 logger = logging.getLogger(__name__)
 
 # Scope for read-only access to Gmail
 SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
+TOKEN_FILE = 'token.json'
 
 def get_gmail_service():
     """Confirgura y retorna la conexion (servicio) a Gmail API usando OAuth."""
     creds = None
-    # El archivo token.pickle almacena el token de acceso del usuario 
+    # token.json almacena el token de acceso del usuario
     # después de la primera vez que inicia sesión con éxito
-    if os.path.exists('token.pickle'):
-        with open('token.pickle', 'rb') as token:
-            creds = pickle.load(token)
-            
+    if os.path.exists(TOKEN_FILE):
+        creds = Credentials.from_authorized_user_file(TOKEN_FILE, SCOPES)
+
     # Si no hay credenciales, forzar el login (Abre Google Auth en navegador local)
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
@@ -31,8 +31,8 @@ def get_gmail_service():
             flow = InstalledAppFlow.from_client_secrets_file('credentials.json', SCOPES)
             creds = flow.run_local_server(port=0)
             
-        with open('token.pickle', 'wb') as token:
-            pickle.dump(creds, token)
+        with open(TOKEN_FILE, 'w') as token:
+            token.write(creds.to_json())
 
     return build('gmail', 'v1', credentials=creds)
 

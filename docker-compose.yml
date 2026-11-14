@@ -20,6 +20,7 @@ services:
       - DB_PASSWORD=${DB_PASSWORD:-empleoia_pass}
       - DB_NAME=job_tracker
       - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=${SECRET_KEY:-}
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
       - SMTP_HOST=${SMTP_HOST:-smtp.gmail.com}
       - SMTP_PORT=${SMTP_PORT:-587}
@@ -105,7 +106,7 @@ services:
     image: mher/flower:2.0.0
     command: celery flower --broker=redis://redis:6379/0 --port=5555
     ports:
-      - "5555:5555"
+      - "127.0.0.1:5555:5555"
     depends_on:
       - redis
       - celery_worker
@@ -120,7 +121,7 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     volumes:
       - redis_data:/data
     command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
@@ -137,7 +138,7 @@ services:
   mysql:
     image: mysql:8.0
     ports:
-      - "3307:3306"
+      - "127.0.0.1:3307:3306"
     environment:
       - MYSQL_ROOT_PASSWORD=${DB_PASSWORD:-empleoia_pass}
       - MYSQL_DATABASE=job_tracker

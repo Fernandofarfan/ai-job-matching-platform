@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session, send_from_directory, send_file
 import io
 from flask_socketio import SocketIO, emit
+from werkzeug.utils import secure_filename
 import os
 import threading
 import logging
@@ -32,13 +33,17 @@ from resume_parser import resumeParser, jobMatcher
 from document_generators import CoverLetterGenerator, ResumeOptimizer
 
 app = Flask(__name__)
-app.secret_key = os.urandom(24)
+app.secret_key = os.getenv('SECRET_KEY')
+if not app.secret_key:
+    logging.getLogger(__name__).warning("SECRET_KEY no definida: se usa una clave temporal y las sesiones se pierden al reiniciar")
+    app.secret_key = os.urandom(24)
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 app.jinja_env.auto_reload = True
 
 # WebSockets (async_mode=threading es compatible con el servidor dev de Flask)
-socketio = SocketIO(app, async_mode='threading', cors_allowed_origins='*')
+_cors_origins = [o.strip() for o in os.getenv('CORS_ALLOWED_ORIGINS', '').split(',') if o.strip()] or None
+socketio = SocketIO(app, async_mode='threading', cors_allowed_origins=_cors_origins)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -1324,6 +1329,9 @@ def view_profile():
                          profile=user_profile, 
                          resume_filename=user_profile.get('resume_filename'))
 
+ALLOWED_RESUME_EXTENSIONS = {'.pdf', '.docx', '.txt'}
+
+
 @app.route('/upload_resume', methods=['POST'])
 def upload_resume():
     if 'resume' not in request.files:
@@ -1346,8 +1354,14 @@ def upload_resume():
         uploads_dir = 'uploads'
         os.makedirs(uploads_dir, exist_ok=True)
         
+        original_name = secure_filename(file.filename)
+        extension = os.path.splitext(original_name)[1].lower()
+        if extension not in ALLOWED_RESUME_EXTENSIONS:
+            flash('Formato no soportado. Subí un archivo PDF, DOCX o TXT', 'danger')
+            return redirect(url_for('profile'))
+
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        filename = f"resume_{role_type}_{timestamp}_{file.filename}"
+        filename = f"resume_{secure_filename(role_type)}_{timestamp}_{original_name}"
         filepath = os.path.join(uploads_dir, filename)
         file.save(filepath)
         
@@ -1440,6 +1454,8 @@ def api_profile_summary():
 
 @app.route('/debug/directories')
 def debug_directories():
+    if not app.debug:
+        return jsonify({'error': 'Not found'}), 404
     directories = {
         'uploads': os.path.exists('uploads'),
         'results': os.path.exists('results'),
@@ -3022,4 +3038,10 @@ def emit_scraper_progress(scraper_key: str):
 
 
 if __name__ == '__main__':
-    socketio.run(app, host='0.0.0.0', debug=True, allow_unsafe_werkzeug=True)
+    socketio.run(
+        app,
+        host=os.getenv('FLASK_HOST', '127.0.0.1'),
+        port=int(os.getenv('FLASK_PORT', '5000')),
+        debug=os.getenv('FLASK_DEBUG', '0') == '1',
+        allow_unsafe_werkzeug=True,
+    )

@@ -14,6 +14,14 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 - Gamificación: Sistema de logros y estadísticas personales
 - Mobile App: Aplicación nativa iOS/Android
 
+### 🔐 Seguridad
+- `python app.py` ahora escucha en `127.0.0.1` con debug desactivado; se configura con `FLASK_HOST`, `FLASK_PORT` y `FLASK_DEBUG`.
+- `SECRET_KEY` se lee del entorno (si falta, se usa una clave temporal aleatoria). CORS de WebSockets limitado por `CORS_ALLOWED_ORIGINS`.
+- `/debug/directories` responde 404 fuera de modo debug.
+- Subida de CV: solo PDF/DOCX/TXT y nombre de archivo sanitizado (evita path traversal).
+- Token de Gmail guardado como `token.json` en lugar de `pickle`.
+- `docker-compose.yml`: MySQL, Redis y Flower publicados solo en `127.0.0.1`. `init_db.py` ya no trae contraseña por defecto.
+
 ### 🔧 Correcciones Recientes de Entorno (Local/Docker)
 - 🐛 **Dockerfile Oficial**: Creación de `Dockerfile` principal asado en `mcr.microsoft.com/playwright/python:v1.42.0-jammy` listo para correr Selenium y Playwright, solventando problemas con C++ Build Tools en host.
 - 🐛 **Resolución de Puertos MySQL**: Modificado `docker-compose.yml` para exponer MySQL en el puerto `3307` del host, evitando el choque `bind: Only one usage of each socket address` con instalaciones locales.
