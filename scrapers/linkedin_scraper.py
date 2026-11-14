@@ -4,10 +4,7 @@ import ssl
 import re
 import time
 import random
-import pandas as pd
-import json
 import sys
-from datetime import datetime
 from typing import List, Dict, Optional
 
 # Fix SSL Certificate issues
@@ -20,18 +17,14 @@ import undetected_chromedriver as uc
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.common.keys import Keys
 from selenium import webdriver
-from selenium.common.exceptions import TimeoutException, NoSuchElementException
-from selenium.webdriver.common.action_chains import ActionChains
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.remote.webelement import WebElement
 import logging
 
 # Import the pre-check module
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from job_precheck import quick_precheck_job, classify_job_role
+from job_precheck import quick_precheck_job
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -48,9 +41,6 @@ class linkedinClass:
     def setup_driver(self):
         """Enhanced driver setup with better error handling"""
         import platform
-        from selenium import webdriver
-        from webdriver_manager.chrome import ChromeDriverManager
-        from selenium.webdriver.chrome.service import Service
         
         # Kill any existing driver instance
         if hasattr(self, 'driver'):
@@ -131,7 +121,7 @@ class linkedinClass:
             
             try:
                 system = platform.system()
-                machine = platform.machine()
+                platform.machine()
                 
                 regular_options = webdriver.ChromeOptions()
                 # apply same user-agent to regular options
@@ -819,7 +809,7 @@ class linkedinClass:
                         job_info = self.extract_job_details_from_card(fresh_card)
                         
                         if job_info is None:
-                            print(f"Job skipped (Easy Apply, citizenship requirements, or >3 years experience)")
+                            print("Job skipped (Easy Apply, citizenship requirements, or >3 years experience)")
                             continue
                         
                         if job_info is not None:
@@ -895,7 +885,7 @@ class linkedinClass:
                             job_info = self.extract_job_details_from_card(fresh_card)
                             
                             if job_info is None:
-                                print(f"Job skipped (Easy Apply, citizenship requirements, or >3 years experience)")
+                                print("Job skipped (Easy Apply, citizenship requirements, or >3 years experience)")
                                 continue
                             
                             if job_info is not None:
@@ -953,9 +943,9 @@ class linkedinClass:
                 print(f"Error processing page: {str(e)}")
                 break
 
-        print(f"\n🎉 SCRAPING COMPLETE!")
+        print("\n🎉 SCRAPING COMPLETE!")
         print(f"📊 Total jobs collected: {len(jobs)} (Target was {target_jobs})")
-        print(f"🔗 All jobs have external company URLs (not LinkedIn)")
+        print("🔗 All jobs have external company URLs (not LinkedIn)")
         return jobs
     def _wait_for_job_cards(self):
         """Wait for job cards using multiple selectors with enhanced debugging"""
@@ -1087,7 +1077,7 @@ class linkedinClass:
             
             # Check for Easy Apply and skip if found
             if self._has_easy_apply(card):
-                print(f"Skipping Easy Apply job")
+                print("Skipping Easy Apply job")
                 return None
             
             # Extract basic info using layered selectors
@@ -1262,12 +1252,12 @@ class linkedinClass:
                     buttons = self.driver.find_elements(By.CSS_SELECTOR, selector)
                     for button in buttons:
                         if button.is_displayed():
-                            aria_label = button.get_attribute("aria-label")
+                            button.get_attribute("aria-label")
                             
                             # Try multiple click methods
                             return self._try_multiple_click_methods(button)
                                 
-                except Exception as e:
+                except Exception:
                     continue
             
             # Fallback: try any apply button
@@ -1281,7 +1271,7 @@ class linkedinClass:
                     buttons = self.driver.find_elements(By.CSS_SELECTOR, selector)
                     for button in buttons:
                         if button.is_displayed():
-                            aria_label = button.get_attribute("aria-label")
+                            button.get_attribute("aria-label")
                             return self._try_multiple_click_methods(button)
                 except:
                     continue
@@ -1331,7 +1321,7 @@ class linkedinClass:
             
             return "Not specified"
             
-        except Exception as e:
+        except Exception:
             return "Not specified"
     
     def _try_company_website_in_description(self) -> str:
@@ -1394,7 +1384,7 @@ class linkedinClass:
                         if any(keyword in href.lower() for keyword in ["jobs", "careers", "apply", "workday", "greenhouse", "lever", "bamboohr"]):
                             return href
                         
-                except Exception as e:
+                except Exception:
                     continue
             
             return "Not specified"

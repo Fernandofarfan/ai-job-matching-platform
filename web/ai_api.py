@@ -247,5 +247,4 @@ def api_salary_analyze_csv():
         logger.error(f"Salary analysis error: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
-import mysql.connector
 from db_config import db_manager

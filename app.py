@@ -668,7 +668,7 @@ def run_connection_requests(credentials, company_list, message_template, search_
                         login_success = True
                         
                 if not login_success:
-                    job_status['connection_requests']['message'] = f"Login failed. Stopping process."
+                    job_status['connection_requests']['message'] = "Login failed. Stopping process."
                     logger.error("Login failed. Aborting remaining items.")
                     break
                     

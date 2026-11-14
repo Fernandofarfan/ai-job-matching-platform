@@ -8,6 +8,8 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Agregado
+- Lint con Ruff (pyflakes + bugbear) y mypy sobre los módulos nuevos (`pyproject.toml`), en CI y en `.pre-commit-config.yaml` (con gitleaks). Se limpiaron 111 avisos: imports y variables sin uso, f-strings vacíos y redefiniciones.
+- `resume_parser` suma sus llamadas a Gemini al contador mensual y respeta `AI_MONTHLY_TOKEN_LIMIT`.
 - Control de costos de IA: cada llamada a Gemini suma sus tokens al mes en curso (compartido vía `RATELIMIT_STORAGE_URI`), `AI_MONTHLY_TOKEN_LIMIT` corta las llamadas al llegar al tope y `GET /api/ai/usage` muestra el consumo y el costo estimado.
   Las respuestas con temperatura ≤ 0.5 se cachean `AI_CACHE_TTL` segundos.
 - Monitor diario de scrapers (`scripts/scraper_health.py` + workflow `Monitor de scrapers`): busca en Computrabajo y Bumeran y abre un issue si alguno no devuelve ofertas.

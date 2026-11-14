@@ -7,8 +7,7 @@ import logging
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from datetime import datetime, date, timedelta
-from typing import Optional
+from datetime import datetime, date
 
 from celery_app import celery
 

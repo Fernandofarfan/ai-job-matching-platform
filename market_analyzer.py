@@ -2,12 +2,8 @@
 market_analyzer.py — Análisis del Mercado Salarial
 Extrae y analiza datos salariales de los CSVs scrapeados y los enriquece con IA.
 """
-import os
-import json
 import logging
 import re
-from typing import Optional
-from datetime import datetime
 
 import pandas as pd
 import numpy as np

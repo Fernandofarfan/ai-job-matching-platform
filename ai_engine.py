@@ -157,7 +157,7 @@ Respondé con este JSON exacto (sin markdown, sin bloques de código):
         validated = JobAnalysisSchema(**data)
         return validated.model_dump()
     except json.JSONDecodeError:
-        logger.warning(f"Could not parse Gemini JSON response, returning raw text")
+        logger.warning("Could not parse Gemini JSON response, returning raw text")
         fallback = JobAnalysisSchema(resumen_ejecutivo=raw, error="No se pudo parsear la respuesta de IA JSONDecodeError")
         return fallback.model_dump()
     except ValidationError as e:

@@ -5,7 +5,6 @@ Interfaz de alto nivel para enviar notificaciones y gestionar preferencias.
 import os
 import logging
 from datetime import datetime, date
-from typing import Optional, List
 
 logger = logging.getLogger(__name__)
 

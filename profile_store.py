@@ -21,7 +21,7 @@ _session_factory = None
 _last_failure = 0.0
 
 
-class UserProfile(Base):
+class UserProfile(Base):  # type: ignore[misc,valid-type]
     """Un perfil (CV parseado) por tipo de rol."""
     __tablename__ = 'user_profiles'
 

@@ -1,7 +1,6 @@
 """
 test_export.py – Tests de los endpoints de exportación Excel/PDF.
 """
-import pytest
 
 
 class TestExportTracker:

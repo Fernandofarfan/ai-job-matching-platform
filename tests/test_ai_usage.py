@@ -82,3 +82,36 @@ def test_usage_endpoint(client):
     ai_usage.record(10, 5)
     data = client.get('/api/ai/usage').get_json()
     assert data['success'] and data['usage']['total_tokens'] == 15
+
+
+def _ai_parser(response):
+    """resumeParser con IA activa y un cliente de Gemini simulado."""
+    from resume_parser import resumeParser
+    parser = resumeParser.__new__(resumeParser)
+    parser.use_ai = True
+    parser.model_name = 'gemini-test'
+    parser.client = mock.Mock()
+    parser.client.models.generate_content.return_value = response
+    return parser
+
+
+def test_resume_parser_records_tokens():
+    """parse_with_ai suma entrada, salida y razonamiento al contador mensual."""
+    response = SimpleNamespace(
+        text='```json\n{"skills": ["python"]}\n```',
+        usage_metadata=SimpleNamespace(
+            prompt_token_count=200, candidates_token_count=30, thoughts_token_count=20,
+        ),
+    )
+    assert _ai_parser(response).parse_with_ai('CV') == {'skills': ['python']}
+    usage = ai_usage.summary()
+    assert (usage['input_tokens'], usage['output_tokens']) == (200, 50)
+
+
+def test_resume_parser_skips_ai_over_budget(monkeypatch):
+    """Con el tope alcanzado no se llama a Gemini y se usa el parser local."""
+    monkeypatch.setenv('AI_MONTHLY_TOKEN_LIMIT', '100')
+    ai_usage.record(90, 20)
+    parser = _ai_parser(SimpleNamespace(text='{}', usage_metadata=None))
+    assert parser.parse_with_ai('CV') is None
+    parser.client.models.generate_content.assert_not_called()

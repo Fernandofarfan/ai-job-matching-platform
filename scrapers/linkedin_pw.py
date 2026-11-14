@@ -1,8 +1,7 @@
 import os
 import time
-import json
 import logging
-from typing import List, Dict, Optional
+from typing import List, Dict
 from playwright.sync_api import sync_playwright
 
 logging.basicConfig(level=logging.INFO)

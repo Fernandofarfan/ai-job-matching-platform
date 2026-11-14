@@ -1,0 +1,17 @@
+[tool.ruff]
+target-version = "py311"
+extend-exclude = ["alembic/versions", "chrome_extension", "static"]
+
+[tool.ruff.lint]
+# Errores reales (pyflakes + bugbear); estilo y formato quedan fuera por ahora
+select = ["E9", "F", "B"]
+ignore = ["B904", "B007", "B008"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["B011", "B017"]
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
+follow_imports = "silent"
+files = ["ai_usage.py", "auth.py", "rate_limit.py", "profile_store.py", "scripts/scraper_health.py"]

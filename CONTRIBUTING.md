@@ -182,6 +182,8 @@ Antes de enviar tu PR, asegurate de que:
 
 ## 🧪 Testing
 
+Instalá los hooks una vez (`pip install pre-commit && pre-commit install`): en cada commit corren Ruff, mypy y gitleaks. A mano: `ruff check .` y `mypy`.
+
 Antes de enviar un PR, ejecutá los tests:
 
 ```bash
@@ -249,7 +251,7 @@ Algunas áreas donde podés contribuir:
 #### Refactoring
 - **Modularización**: Separar lógica de negocio de rutas de Flask
 - **Type Hints**: Agregar type hints completos en todo el código Python
-- **Code Quality**: Implementar linters (pylint, flake8, black)
+- **Code Quality**: Ruff y mypy ya corren en CI y en pre-commit (`pre-commit install`); falta sumar formateo automático
 - **Arquitectura**: Migrar a arquitectura más escalable (microservicios, API REST)
 
 ### 🆕 Ideas Innovadoras

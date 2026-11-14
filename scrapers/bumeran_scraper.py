@@ -1,5 +1,4 @@
 import time
-import random
 import logging
 import os
 import pandas as pd
@@ -10,7 +9,6 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
-from selenium.common.exceptions import TimeoutException, NoSuchElementException
 
 from scrapers.common import configure_driver, get_with_retries
 

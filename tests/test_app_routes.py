@@ -2,7 +2,6 @@
 test_app_routes.py – Tests de rutas principales de la app Flask.
 """
 import json
-import pytest
 
 
 class TestMainRoutes:
