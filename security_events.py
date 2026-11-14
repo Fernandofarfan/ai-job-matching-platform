@@ -16,6 +16,9 @@ LABELS = {
     'register': 'Cuenta creada',
     'login': 'Inicio de sesión',
     'login_google': 'Inicio de sesión con Google',
+    'login_passkey': 'Inicio de sesión con passkey',
+    'passkey_added': 'Passkey agregada',
+    'passkey_removed': 'Passkey borrada',
     'login_failed': 'Contraseña incorrecta',
     'password_changed': 'Contraseña cambiada',
     'password_reset': 'Contraseña recuperada por email',
@@ -41,7 +44,7 @@ LABELS = {
     'ai_consent_given': 'Permiso para usar la IA activado',
     'ai_consent_revoked': 'Permiso para usar la IA quitado',
 }
-LOGIN_KINDS = ('login', 'login_google')
+LOGIN_KINDS = ('login', 'login_google', 'login_passkey')
 
 
 class SecurityEvent(accounts.Base):

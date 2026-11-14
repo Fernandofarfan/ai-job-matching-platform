@@ -511,5 +511,21 @@
  "⭐⭐⭐ (Medio)": "⭐⭐⭐ (Medium)",
  "⭐⭐⭐⭐ (Alto)": "⭐⭐⭐⭐ (High)",
  "⭐⭐⭐⭐⭐ (Muy Alto)": "⭐⭐⭐⭐⭐ (Very high)",
- "📄 Otros": "📄 Other"
+ "📄 Otros": "📄 Other",
+ "Passkeys": "Passkeys",
+ "Entrá sin contraseña con la huella, la cara o el PIN de tu dispositivo. Una passkey no se puede usar en sitios falsos.": "Sign in without a password using your device fingerprint, face or PIN. A passkey cannot be used on fake sites.",
+ "Creada el %(date)s": "Created on %(date)s",
+ "Último uso: %(date)s": "Last used: %(date)s",
+ "Borrar la passkey %(name)s": "Delete passkey %(name)s",
+ "Se canceló la passkey": "The passkey was cancelled",
+ "No se pudo crear la passkey": "The passkey could not be created",
+ "Este navegador no admite passkeys.": "This browser does not support passkeys.",
+ "Nombre (p. ej. \"Notebook\")": "Name (e.g. \"Laptop\")",
+ "Agregar passkey": "Add passkey",
+ "Entrar con una passkey": "Sign in with a passkey",
+ "No se pudo entrar con la passkey": "Could not sign in with the passkey",
+ "Inicio de sesión con passkey": "Sign-in with passkey",
+ "Passkey agregada": "Passkey added",
+ "Passkey borrada": "Passkey deleted",
+ "Esa passkey no existe": "That passkey does not exist"
 }

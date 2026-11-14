@@ -88,6 +88,45 @@
       {% endif %}
     </div>
   </div>
+  <div class="card border-0 shadow-sm mb-4" id="passkeys">
+    <div class="card-body p-4">
+      <h2 class="h5 fw-bold">{{ _('Passkeys') }}</h2>
+      <p class="text-muted small">{{ _('Entrá sin contraseña con la huella, la cara o el PIN de tu dispositivo. Una passkey no se puede usar en sitios falsos.') }}</p>
+      {% if passkeys.error %}<p class="text-danger small">{{ _('No se pudo leer el estado; probá de nuevo más tarde.') }}</p>{% endif %}
+      {% if passkeys['items'] %}
+      <ul class="list-group mb-3" id="passkeyList">
+        {% for pk in passkeys['items'] %}
+        <li class="list-group-item d-flex justify-content-between align-items-center">
+          <span><span class="fw-semibold">{{ pk.name }}</span><br>
+            <span class="small text-muted">{{ _('Creada el %(date)s', date=pk.created_at.strftime('%Y-%m-%d') if pk.created_at else '-') }}{% if pk.last_used_at %} · {{ _('Último uso: %(date)s', date=pk.last_used_at.strftime('%Y-%m-%d %H:%M')) }}{% endif %}</span></span>
+          <form method="POST" action="{{ url_for('passkey_delete', passkey_id=pk.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-sm btn-outline-danger" aria-label="{{ _('Borrar la passkey %(name)s', name=pk.name) }}">{{ _('Borrar') }}</button>
+          </form>
+        </li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+      <form id="passkeyForm" action="{{ url_for('passkey_register') }}" data-options-url="{{ url_for('passkey_options') }}"
+            data-cancelled="{{ _('Se canceló la passkey') }}" data-failed="{{ _('No se pudo crear la passkey') }}"
+            data-unsupported="{{ _('Este navegador no admite passkeys.') }}" class="row g-2 align-items-end">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="col-sm-5">
+          <label for="passkey-name" class="form-label small">{{ _('Nombre (p. ej. "Notebook")') }}</label>
+          <input type="text" class="form-control" id="passkey-name" name="name" maxlength="100">
+        </div>
+        <div class="col-sm-4">
+          <label for="passkey-password" class="form-label small">{{ _('Contraseña actual') }}</label>
+          <input type="password" class="form-control" id="passkey-password" name="password" required autocomplete="current-password">
+        </div>
+        <div class="col-sm-3">
+          <button type="submit" class="btn btn-outline-primary w-100" id="addPasskeyBtn">{{ _('Agregar passkey') }}</button>
+        </div>
+      </form>
+      <p class="text-danger small mt-2 mb-0 d-none" id="passkeyStatus" role="alert"></p>
+      <script src="{{ url_for('static', filename='js/passkeys.js') }}"></script>
+    </div>
+  </div>
   <div class="card border-0 shadow-sm mb-4">
     <div class="card-body p-4">
       <h2 class="h5 fw-bold">{{ _('Integraciones') }}</h2>

@@ -11,7 +11,7 @@ from typing import Optional, cast
 from urllib.parse import quote
 
 from fastapi import APIRouter, Request
-from fastapi.responses import Response
+from fastapi.responses import JSONResponse, Response
 from markupsafe import Markup
 from starlette.concurrency import run_in_threadpool
 
@@ -22,12 +22,13 @@ import data_export
 import integrations
 import security_events
 import tracker_export
+import passkeys
 import two_factor
 import user_sessions
 from fastapi_web import (TextForm, clear_offline_data, client_info, flash, web_app_for, get_session, hit_limit, services_for,
                          limit_key, public_url, read_form, redirect, render, safe_next, save_session,
                          too_many_requests, url_for)
-from routers.auth_pages import audit, send_verification
+from routers.auth_pages import audit, passkey_json, request_origin, send_verification
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["account"], include_in_schema=False)
@@ -78,6 +79,15 @@ def _two_factor_status(user_id) -> dict:
         return {'enabled': False, 'recovery_left': 0, 'error': True}
 
 
+def _passkeys(user_id) -> dict:
+    """Passkeys de la cuenta; si la tabla falla, la página se muestra igual."""
+    try:
+        return {'items': passkeys.list_for(user_id)}
+    except Exception as e:
+        logger.error(f'No se pudieron leer las passkeys de la cuenta {user_id}: {e}')
+        return {'items': [], 'error': True}
+
+
 def _gmail_client_file() -> str:
     """Cliente OAuth "aplicación web" de Google (descargado de la consola de GCP)."""
     return os.getenv('GMAIL_OAUTH_CLIENT_FILE', 'credentials.json')
@@ -93,7 +103,7 @@ def render_account(request: Request, new_token=None, **once) -> Response:
         events=security_events.recent(user_id),
         open_sessions=user_sessions.active(user_id, get_session(request).get('sid')),
         two_factor=_two_factor_status(user_id), totp_setup=once.get('totp_setup'),
-        recovery_codes=once.get('recovery_codes'))
+        recovery_codes=once.get('recovery_codes'), passkeys=_passkeys(user_id))
     if new_token or once:
         response.headers['Cache-Control'] = 'no-store'
     return response
@@ -698,3 +708,65 @@ def export_results_excel(request: Request, filename: str):
         flash(request, 'No se pudo exportar; probá de nuevo', 'danger')
         return redirect(request, url_for(request, 'results'))
     return _download(request, data, tracker_export.XLSX, f'{filename[:-4]}_export.xlsx')
+
+
+# ─── Passkeys ────────────────────────────────────────────────────────────────
+
+@router.post("/account/passkeys/options", name="passkey_options")
+async def passkey_options(request: Request):
+    """Desafío para registrar una passkey; pide la contraseña, como el segundo factor."""
+    data, error = await passkey_json(request, '5 per minute', 'passkey_options', limit_key(request))
+    return error or await run_in_threadpool(_passkey_options, request, data or {})
+
+
+def _passkey_options(request: Request, data: dict) -> Response:
+    """Comprueba la contraseña y devuelve las opciones de `navigator.credentials.create`."""
+    user_id = _user_id()
+    user = accounts.get_user(user_id)
+    if user is None or not accounts.check_password(user_id, str(data.get('password') or '')):
+        return JSONResponse({'error': 'La contraseña no es correcta'}, status_code=400)
+    challenge = passkeys.new_challenge(get_session(request), 'register', user_id)
+    return save_session(request, Response(
+        passkeys.registration_options(user_id, user['email'], request_origin(request), challenge),
+        media_type='application/json'))
+
+
+@router.post("/account/passkeys", name="passkey_register")
+async def passkey_register(request: Request):
+    """Guarda la passkey que creó el navegador."""
+    data, error = await passkey_json(request, '10 per minute', 'passkey_register', limit_key(request))
+    return error or await run_in_threadpool(_passkey_register, request, data or {})
+
+
+def _passkey_register(request: Request, data: dict) -> Response:
+    """Verifica la respuesta del navegador con el desafío de la sesión."""
+    user_id = _user_id()
+    challenge = passkeys.take_challenge(get_session(request), 'register', user_id)
+    if challenge is None:
+        return save_session(request, JSONResponse({'error': 'El pedido venció: probá de nuevo'}, status_code=400))
+    try:
+        saved = passkeys.register(user_id, data.get('credential') or {}, challenge, request_origin(request),
+                                  str(data.get('name') or ''))
+    except passkeys.PasskeyError as e:
+        return save_session(request, JSONResponse({'error': str(e)}, status_code=400))
+    audit(request, user_id, 'passkey_added')
+    flash(request, 'Passkey agregada', 'success')
+    return save_session(request, JSONResponse({'success': True, 'passkey': saved}))
+
+
+@router.post("/account/passkeys/{passkey_id}/delete", name="passkey_delete")
+async def passkey_delete(request: Request, passkey_id: int):
+    """Borra una passkey de la cuenta."""
+    form, error = await _form(request, '10 per minute', 'passkey_delete')
+    return error or await run_in_threadpool(_passkey_delete, request, passkey_id)
+
+
+def _passkey_delete(request: Request, passkey_id: int) -> Response:
+    """Solo borra passkeys de la cuenta actual."""
+    user_id = _user_id()
+    if passkeys.delete(user_id, passkey_id):
+        audit(request, user_id, 'passkey_removed')
+        flash(request, 'Passkey borrada', 'success')
+    else:
+        flash(request, 'Esa passkey no existe', 'warning')
+    return _to_account(request)

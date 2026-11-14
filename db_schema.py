@@ -4,7 +4,7 @@ import importlib
 # Módulos con su propia Base declarativa
 BASE_MODULES = ('models', 'accounts', 'job_alerts', 'profile_store')
 # Módulos cuyos modelos heredan de accounts.Base: se importan para registrarlos
-ACCOUNT_MODULES = ('integrations', 'push', 'security_events', 'two_factor', 'user_sessions', 'email_delivery')
+ACCOUNT_MODULES = ('integrations', 'push', 'security_events', 'two_factor', 'user_sessions', 'email_delivery', 'passkeys')
 # Módulos cuyos modelos heredan de job_alerts.Base
 ALERT_MODULES = ('job_feedback',)
 # Tablas sin modelo: el historial se usa con SQL directo (db_config.py) y `job_tracker` es la
