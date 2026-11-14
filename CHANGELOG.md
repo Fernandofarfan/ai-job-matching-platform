@@ -6,6 +6,13 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar] - Borrado de cuentas inactivas con aviso previo
+
+- `ACCOUNT_INACTIVITY_DAYS` (0 = apagado): una tarea diaria avisa por email a las cuentas sin entrar
+  y, si siguen sin entrar `ACCOUNT_INACTIVITY_NOTICE_DAYS` después, las borra con sus CVs y datos.
+  Entrar anula el aviso; sin aviso enviado no se borra; la primera cuenta no se borra.
+- `users.last_active_at` e `users.inactivity_notice_at` (migración 0021, con la última sesión de cada cuenta).
+
 ## [Sin publicar] - Dataset de evaluación con las marcas de los usuarios
 
 - "Me interesa / no me interesa" guarda la descripción de la oferta (`job_feedback.job_text`, migración 0020),

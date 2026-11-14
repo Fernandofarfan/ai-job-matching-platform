@@ -1,4 +1,5 @@
-"""Privacidad de CVs: cifrado de los archivos y perfiles viejos y retención (CV_RETENTION_DAYS)."""
+"""Privacidad: cifrado de CVs y perfiles viejos, retención de CVs (CV_RETENTION_DAYS) y borrado de cuentas inactivas."""
+from datetime import datetime, timedelta
 from typing import Any
 import logging
 import os
@@ -53,3 +54,78 @@ def enforce_cv_retention() -> dict[str, Any]:
                 f"{deleted_generated} documentos generados")
     return {"encrypted": encrypted, "deleted_cvs": deleted_cvs,
             "deleted_profiles": deleted_profiles, "deleted_generated": deleted_generated}
+
+
+def _inactivity_days() -> tuple[int, int]:
+    """(ACCOUNT_INACTIVITY_DAYS, días de aviso); el aviso es como mucho la mitad del plazo."""
+    days = int(os.getenv("ACCOUNT_INACTIVITY_DAYS", "0") or 0)
+    notice = int(os.getenv("ACCOUNT_INACTIVITY_NOTICE_DAYS", "30") or 30)
+    return days, max(1, min(notice, days // 2))
+
+
+# Una reserva de aviso sin confirmar más vieja que esto es de un worker que se cortó antes de mandar el email.
+STALE_CLAIM = timedelta(hours=1)
+
+
+def _delete_inactive(user_id: int, notice_at: datetime) -> bool:
+    """Borra la cuenta si sigue con el aviso `notice_at` (entrar lo anula) y después sus perfiles y CVs."""
+    import accounts
+    import cv_storage
+    import profile_store
+
+    try:
+        with accounts.as_user(user_id):
+            resumes = {p.get("resume_filename") for p in profile_store.get_all_profiles().values()} - {None, ""}
+        if not accounts.delete_account(user_id, notice_at=notice_at):
+            return False
+    except Exception as e:
+        logger.error(f"No se pudo borrar la cuenta inactiva {user_id}: {e}")
+        return False
+    # la cuenta ya no existe y ninguna corrida va a volver a mirarla: cada CV se intenta aunque falle otro paso,
+    # y el que no se borra queda en el log con su nombre para borrarlo a mano.
+    with accounts.as_user(user_id):
+        for name in resumes:
+            try:
+                cv_storage.delete(name)
+            except Exception as e:
+                logger.error(f"Cuenta inactiva {user_id} borrada, pero no se pudo borrar el CV {name}: {e}")
+        try:
+            profile_store.delete_all()
+        except Exception as e:
+            logger.error(f"Cuenta inactiva {user_id} borrada, pero quedaron perfiles: {e}")
+    return True
+
+
+@celery.task(name="tasks.privacy_tasks.enforce_account_inactivity")
+def enforce_account_inactivity() -> dict[str, Any]:
+    """Avisa por email a las cuentas sin entrar hace ACCOUNT_INACTIVITY_DAYS menos el aviso, y borra las que siguen
+    sin entrar al vencer el aviso. Sin aviso enviado no se borra nada; la primera cuenta (administradora) no se toca."""
+    import account_notify
+    import accounts
+    import profile_store
+
+    days, notice = _inactivity_days()
+    if days <= 0:
+        return {"notified": 0, "deleted": 0}
+    if not profile_store.primary_available():
+        logger.warning("Borrado de cuentas inactivas postergado: MySQL no responde")
+        return {"notified": 0, "deleted": 0}
+    now = datetime.now().replace(microsecond=0)  # MySQL guarda DATETIME sin microsegundos; si no, == nunca coincide
+    first = accounts.first_user_id()
+    notified = deleted = 0
+    for user in accounts.inactive_accounts(now - timedelta(days=days - notice)):
+        if user["id"] == first:
+            continue
+        stale = not user["notice_sent"] and user["notice_at"] is not None and user["notice_at"] <= now - STALE_CLAIM
+        if user["notice_at"] is None or stale:
+            # se reserva antes de mandar: si dos workers corren a la vez, uno solo manda el email.
+            # Una reserva vieja sin confirmar es de un worker que se cortó: se vuelve a mandar.
+            if accounts.set_inactivity_notice(user["id"], now, previous=user["notice_at"] if stale else None):
+                if account_notify.send_inactivity_notice(user, now + timedelta(days=notice)):
+                    notified += accounts.confirm_inactivity_notice(user["id"], now)
+                else:
+                    accounts.clear_inactivity_notice(user["id"], now)
+        elif user["notice_sent"] and user["notice_at"] <= now - timedelta(days=notice):
+            deleted += _delete_inactive(user["id"], user["notice_at"])
+    logger.info(f"Cuentas inactivas ({days} días, aviso de {notice}): {notified} avisadas, {deleted} borradas")
+    return {"notified": notified, "deleted": deleted}

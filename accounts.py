@@ -11,7 +11,7 @@ from contextlib import contextmanager
 from datetime import datetime
 from typing import Any, Callable, Iterable, Iterator, Optional, cast
 
-from sqlalchemy import CursorResult, DateTime, Integer, Result, String, select, update
+from sqlalchemy import Boolean, CursorResult, DateTime, Integer, Result, String, false, func, select, update
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -48,6 +48,11 @@ class User(Base):
     # Resumen tomado y todavía sin confirmar: si el worker muere antes de mandarlo, se vuelve al anterior
     weekly_digest_claimed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     weekly_digest_claimed_from: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # último login o uso de la web (las sesiones se borran a los 62 días; esto queda) y aviso de borrado por inactividad
+    last_active_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    inactivity_notice_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    inactivity_notice_sent: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False,
+                                                         server_default=false())
 
 
 class AccountError(ValueError):
@@ -467,14 +472,78 @@ def ai_consent_missing() -> bool:
         return True
 
 
-def delete_account(user_id: int) -> None:
-    """Borra la cuenta, todas sus filas y sus carpetas de resultados (los CVs los borra quien llama)."""
+def mark_active(user_id: int, session: Optional[Session] = None) -> None:
+    """Anota que la cuenta usó la web y anula el aviso de borrado por inactividad."""
+    query = update(User).where(User.id == user_id).values(last_active_at=datetime.now(), inactivity_notice_at=None,
+                                                   inactivity_notice_sent=False)
+    if session is not None:
+        session.execute(query)
+        return
+    with _sessions()() as own:
+        own.execute(query)
+        own.commit()
+
+
+def inactive_accounts(since: datetime) -> list[dict[str, Any]]:
+    """Cuentas sin actividad desde `since` (las nunca usadas cuentan desde el alta), con el estado del aviso."""
+    last = func.coalesce(User.last_active_at, User.created_at)
+    with _sessions()() as session:
+        rows = session.execute(select(User.id, User.email, User.inactivity_notice_at, User.inactivity_notice_sent)
+                               .where(last < since).order_by(User.id))
+        return [{'id': uid, 'email': email, 'notice_at': notice, 'notice_sent': bool(sent)}
+                for uid, email, notice, sent in rows]
+
+
+def set_inactivity_notice(user_id: int, when: datetime, previous: Optional[datetime] = None) -> bool:
+    """Reserva el aviso de borrado (todavía sin enviar); False si la cuenta volvió a entrar u otro worker lo tomó.
+
+    `previous` retoma una reserva que quedó sin enviar (el worker se cortó antes de mandar el email).
+    """
+    pending = (User.inactivity_notice_at.is_(None) if previous is None else
+               (User.inactivity_notice_at == previous) & User.inactivity_notice_sent.is_(False))
+    with _sessions()() as session:
+        result = session.execute(update(User).where(User.id == user_id, pending)
+                                 .values(inactivity_notice_at=when, inactivity_notice_sent=False))
+        session.commit()
+        return bool(rowcount(result))
+
+
+def confirm_inactivity_notice(user_id: int, when: datetime) -> bool:
+    """Marca como enviado el aviso reservado en `when`; desde ahí corre el plazo para borrar."""
+    with _sessions()() as session:
+        result = session.execute(update(User).where(User.id == user_id, User.inactivity_notice_at == when)
+                                 .values(inactivity_notice_sent=True))
+        session.commit()
+        return bool(rowcount(result))
+
+
+def clear_inactivity_notice(user_id: int, when: datetime) -> None:
+    """Deshace el aviso reservado en `when` (el email no salió): se vuelve a intentar en la próxima corrida."""
+    with _sessions()() as session:
+        session.execute(update(User).where(User.id == user_id, User.inactivity_notice_at == when,
+                                           User.inactivity_notice_sent.is_(False))
+                        .values(inactivity_notice_at=None))
+        session.commit()
+
+
+def delete_account(user_id: int, notice_at: Optional[datetime] = None) -> bool:
+    """Borra la cuenta, todas sus filas y sus carpetas de resultados (los CVs los borra quien llama).
+
+    Con `notice_at`, solo si la cuenta sigue con ese aviso de inactividad enviado: la fila queda bloqueada
+    hasta el commit, así un login que llega a la vez (que anula el aviso) espera y no se pierde. False si no borró.
+    """
     import shutil
     from sqlalchemy import delete, inspect, text
     with _sessions()() as session:
+        if notice_at is not None and session.execute(
+                select(User.id).where(User.id == user_id, User.inactivity_notice_at == notice_at,
+                                      User.inactivity_notice_sent.is_(True)).with_for_update()).first() is None:
+            session.rollback()
+            return False
         for table in _owned_tables(inspect(session.get_bind())):
             session.execute(text(f'DELETE FROM {table} WHERE user_id = :uid'), {'uid': user_id})
         session.execute(delete(User).where(User.id == user_id))
         session.commit()
     shutil.rmtree(os.path.join(RESULTS_ROOT, f'u{user_id}'), ignore_errors=True)
     shutil.rmtree(os.path.join(os.getenv('GENERATED_DIR', 'temp'), f'u{user_id}'), ignore_errors=True)
+    return True

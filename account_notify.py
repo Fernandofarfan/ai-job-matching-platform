@@ -4,6 +4,7 @@ Las rutas pasan la IP, el navegador y la URL base de su pedido.
 """
 import logging
 import os
+from datetime import datetime
 from typing import Callable, Optional
 from urllib.parse import urlsplit
 
@@ -50,6 +51,19 @@ def send_reset(user: dict, link: Optional[str]) -> bool:
     return deliver(user['email'], 'Recuperar tu contraseña de EmpleoIA',
                                   '<p>Entrá al enlace para elegir una contraseña nueva. Vence en 1 hora. '
                                   'Si no lo pediste, ignorá este email.</p>', link, 'Elegir contraseña')
+
+
+def send_inactivity_notice(user: dict, delete_on: datetime) -> bool:
+    """Email que avisa que la cuenta inactiva se borra el `delete_on` si no se entra antes."""
+    base = os.getenv('PUBLIC_BASE_URL', '').rstrip('/')
+    if not base:
+        logger.error('Definí PUBLIC_BASE_URL para avisar el borrado de las cuentas inactivas')
+        return False
+    return deliver(user['email'], 'Tu cuenta de EmpleoIA se va a borrar por inactividad',
+                   f'<p>Hace mucho que no entrás a EmpleoIA. El {delete_on:%d/%m/%Y} se borran tu cuenta, '
+                   'tus CVs, tu tracker y tus alertas. Para conservarlos, solo tenés que entrar antes de esa fecha. '
+                   'Si querés, antes podés descargar tus datos desde Mi cuenta.</p>',
+                   f'{base}/login', 'Entrar y conservar mi cuenta')
 
 
 def audit(user_id, kind: str, ip: Optional[str], agent: Optional[str]) -> bool:

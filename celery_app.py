@@ -110,6 +110,11 @@ celery.conf.beat_schedule = {
         "task": "tasks.privacy_tasks.enforce_cv_retention",
         "schedule": 86400,
     },
+    # Avisa y borra las cuentas sin entrar hace ACCOUNT_INACTIVITY_DAYS
+    "enforce-account-inactivity": {
+        "task": "tasks.privacy_tasks.enforce_account_inactivity",
+        "schedule": 86400,
+    },
     # Limpiar archivos tmp antiguos cada semana
     "cleanup-old-temp-files": {
         "task": "tasks.ai_tasks.cleanup_old_temp_files",
