@@ -10,11 +10,11 @@ PASSWORD = 'clave-larga-1'
 
 
 @pytest.fixture
-def bob_client(app, client, accounts_db, monkeypatch):
+def bob_client(app, client, accounts_db, monkeypatch, make_client):
     """Ana (primera cuenta, administradora) en `client`; Bob con su propia sesión."""
     monkeypatch.setenv('ALLOW_SIGNUP', 'true')
     client.post('/register', data={'email': 'ana@example.com', 'password': PASSWORD, 'confirm': PASSWORD})
-    bob = app.test_client()
+    bob = make_client()
     bob.post('/register', data={'email': 'bob@example.com', 'password': PASSWORD, 'confirm': PASSWORD})
     return bob
 

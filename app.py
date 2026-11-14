@@ -1,8 +1,8 @@
 import job_dispatch
-from flask import (Flask, render_template, request, redirect, url_for, flash, jsonify, session, send_from_directory,
-                   make_response, g)
+from flask import (Flask, render_template, request, redirect, url_for, flash, jsonify, session, make_response, g)
 from sqlalchemy.exc import SQLAlchemyError
 from flask_limiter import Limiter
+from werkzeug.routing import Rule
 import rate_limit
 import cv_storage
 import profile_store
@@ -115,12 +115,8 @@ def require_login():
 limiter.init_app(app)
 
 
-def _is_local_path(target):
-    return bool(target) and target.startswith('/') and not target.startswith('//') and '\\' not in target
-
-
 def _safe_next(target):
-    is_local = _is_local_path(target)
+    is_local = auth.is_local_path(target)
     loops = is_local and target.split('?')[0].rstrip('/') in ('/login', '/logout', '/register')
     return target if is_local and not loops else url_for('index')
 
@@ -226,18 +222,8 @@ def inject_auth():
     user = accounts.get_user(g.get('user_id')) if auth.auth_enabled() and g.get('user_id') else None
     return {'auth_enabled': auth.auth_enabled(), 'current_user_email': user['email'] if user else '',
             'current_user_is_admin': bool(user) and accounts.is_admin(user['id']),
-            'current_lang': i18n.get_locale(), 'languages': i18n.LANGUAGES}
-
-
-@app.route('/lang/<code>')
-def set_language(code):
-    """Guarda el idioma elegido en una cookie y vuelve a la página donde estaba."""
-    target = request.args.get('next', '')
-    response = redirect(target if _is_local_path(target) else url_for('index'))
-    if code in i18n.LANGUAGES:
-        response.set_cookie(i18n.COOKIE, code, max_age=365 * 24 * 3600, samesite='Lax',
-                            secure=request.is_secure, httponly=True)
-    return response
+            'current_lang': i18n.get_locale(), 'languages': i18n.LANGUAGES,
+            'current_path': request.full_path if request.query_string else request.path}
 
 
 @app.before_request
@@ -873,21 +859,6 @@ try:
 except ImportError:
     notification_manager = None
 
-# Routes
-@app.route('/api/health')
-def health():
-    """Health check del servidor Flask."""
-    return jsonify({'status': 'ok', 'gemini': bool(AI_AVAILABLE)})
-
-
-@app.route('/sw.js')
-def service_worker():
-    """Service worker servido desde la raíz para que su scope cubra toda la app."""
-    resp = send_from_directory(app.static_folder, 'sw.js', mimetype='application/javascript')
-    resp.headers['Cache-Control'] = 'no-cache'
-    return resp
-
-
 @app.errorhandler(413)
 def file_too_large(e):
     """Responde a uploads que superan MAX_CONTENT_LENGTH."""
@@ -913,10 +884,15 @@ def server_error(e):
     return render_template('error.html', code=500, message=str(e)), 500
 
 
+# Páginas que ya atiende FastAPI (routers/pages.py): Flask solo las usa para armar URLs con url_for
+for _rule, _endpoint in [('/', 'index'), ('/scraper', 'scraper'), ('/results', 'results'), ('/profile', 'profile'),
+                         ('/mock-interview', 'mock_interview'), ('/tracker', 'tracker'),
+                         ('/lang/<code>', 'set_language'), ('/sw.js', 'service_worker'), ('/api/health', 'health')]:
+    app.url_map.add(Rule(_rule, endpoint=_endpoint, build_only=True))
+
 # Las rutas viven en web/ y se registran sobre `app` al importarse
 from web import (  # noqa: E402,F401
-    account, admin, alerts, analytics, documents, exports, files, google_login, pages, profiles, scrapers, second_factor,
-    tracker,
+    account, admin, alerts, analytics, documents, exports, files, google_login, profiles, scrapers, second_factor,
 )
 
 

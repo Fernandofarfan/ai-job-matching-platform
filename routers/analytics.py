@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
+
+from fastapi_web import render
 
 try:
     from models import orm_manager, Application
@@ -9,32 +10,13 @@ except ImportError:
     orm_manager = None
 
 router = APIRouter(tags=["analytics"])
-templates = Jinja2Templates(directory="templates")
 
-from jinja2 import pass_context
-
-import i18n
-
-# Override url_for for FastAPI to match Flask's syntax
-@pass_context
-def custom_url_for(context, name: str, **kwargs):
-    if name == 'static' and 'filename' in kwargs:
-        kwargs['path'] = kwargs.pop('filename')
-    request = context.get('request')
-    return request.url_for(name, **kwargs) if request else ""
-
-templates.env.globals['url_for'] = custom_url_for
-# base.html usa helpers de Flask que no existen en el Jinja de FastAPI
-templates.env.globals['get_flashed_messages'] = lambda **kwargs: []
-templates.env.globals['_'] = i18n.jinja_gettext
 
 @router.get("/analytics", response_class=HTMLResponse)
-async def dashboard_view(request: Request):
+def dashboard_view(request: Request):
     """Vista principal del Dashboard de Funnel de Conversión."""
-    lang = i18n.negotiate(request.cookies.get(i18n.COOKIE), request.headers.get('accept-language'))
-    i18n.set_locale(lang)
-    return templates.TemplateResponse(request=request, name="dashboard.html",
-                                      context={'current_lang': lang, 'languages': i18n.LANGUAGES})
+    return render(request, "dashboard.html")
+
 
 def _owned():
     """Filtro de las postulaciones de la cuenta actual."""

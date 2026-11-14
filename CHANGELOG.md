@@ -6,6 +6,12 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar] - Páginas de Flask a FastAPI (1/5)
+
+- `fastapi_web.py`: sesión, CSRF, avisos (`flash`) y `url_for` para páginas servidas por FastAPI, compatibles con la cookie de Flask (no hace falta volver a entrar).
+- FastAPI sirve `/`, `/scraper`, `/results`, `/profile`, `/mock-interview`, `/tracker`, `/lang/<code>` y `/sw.js` (`routers/pages.py`). Sin sesión redirigen a `/login`.
+- `main.create_app(flask_app)` arma la app; los tests usan la app completa (FastAPI + Flask) como en producción.
+
 ## [Sin publicar] - Python 3.12 y dependencias
 
 - Python 3.12 en todo el proyecto (CI, Docker, Ruff `py312`, mypy); los 385 tests unitarios pasan en 3.12.

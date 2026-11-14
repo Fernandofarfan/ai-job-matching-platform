@@ -132,6 +132,8 @@ def app():
 
     # Fuera del patch.dict para que app y los tests compartan el mismo módulo (y su JSON_PATH temporal)
     import profile_store  # noqa: F401
+    # numpy no se puede cargar dos veces: si entra dentro del patch.dict, main.py (WebClient) falla al reimportarlo
+    import numpy, pandas  # noqa: F401,E401
     # Modelos sobre accounts.Base: reimportarlos duplicaría sus índices en la metadata
     import integrations, push, security_events, two_factor, user_sessions  # noqa: F401,E401
 
@@ -165,10 +167,89 @@ def _no_login_by_default(monkeypatch, tmp_path):
     profile_store.configure(None)
 
 
+class _Response:
+    """Respuesta de httpx con la interfaz del cliente de pruebas de Flask que usan los tests."""
+
+    def __init__(self, response):
+        self._r = response
+        self.status_code = response.status_code
+        self.headers = response.headers
+        self.data = response.content
+        self.text = response.text
+        self.content_type = response.headers.get('content-type', '')
+        self.mimetype = self.content_type.split(';')[0]
+        self.location = response.headers.get('location')
+
+    def get_data(self, as_text=False):
+        return self.text if as_text else self.data
+
+    def get_json(self, silent=False):
+        try:
+            return self._r.json()
+        except ValueError:
+            if silent:
+                return None
+            raise
+
+    @property
+    def json(self):
+        return self.get_json(silent=True)
+
+
+class WebClient:
+    """Cliente sobre main.create_app (FastAPI + Flask montado) con la API de app.test_client()."""
+
+    def __init__(self, flask_app):
+        from fastapi.testclient import TestClient
+        import main
+        self.app = main.create_app(flask_app)
+        self._c = TestClient(self.app, base_url='http://localhost')
+
+    def open(self, method, path, data=None, json=None, query_string=None, headers=None,
+             follow_redirects=False, content_type=None, **kwargs):
+        files, form = None, data
+        if isinstance(data, dict) and any(isinstance(v, tuple) for v in data.values()):
+            files = {k: (v[1], v[0]) for k, v in data.items() if isinstance(v, tuple)}
+            form = {k: v for k, v in data.items() if not isinstance(v, tuple)}
+        headers = dict(headers or {})
+        if content_type and not files and content_type != 'multipart/form-data':
+            headers['Content-Type'] = content_type
+        kw = {'content': form} if isinstance(form, (str, bytes)) else {'data': form}
+        return _Response(self._c.request(method, path, params=query_string, json=json, files=files,
+                                         headers=headers, follow_redirects=follow_redirects, **kw, **kwargs))
+
+    def get(self, path, **kw):
+        return self.open('GET', path, **kw)
+
+    def post(self, path, **kw):
+        return self.open('POST', path, **kw)
+
+    def put(self, path, **kw):
+        return self.open('PUT', path, **kw)
+
+    def delete(self, path, **kw):
+        return self.open('DELETE', path, **kw)
+
+    def patch(self, path, **kw):
+        return self.open('PATCH', path, **kw)
+
+    def set_cookie(self, key, value='', **_):
+        self._c.cookies.set(key, value)
+
+    def delete_cookie(self, key, **_):
+        self._c.cookies.delete(key)
+
+
 @pytest.fixture
 def client(app):
-    """Cliente HTTP de prueba."""
-    return app.test_client()
+    """Cliente HTTP de prueba sobre la app completa (FastAPI + Flask), como en producción."""
+    return WebClient(app)
+
+
+@pytest.fixture
+def make_client(app):
+    """Otro navegador (cookies propias) contra la misma app."""
+    return lambda: WebClient(app)
 
 
 @pytest.fixture
@@ -182,7 +263,7 @@ def mock_db(app):
 @pytest.fixture
 def tracker_db(app):
     """Mock del DatabaseManager que usan las rutas (el mismo que ven las vistas de Flask)."""
-    return app.view_functions['index'].__globals__['db_manager']
+    return app.view_functions['logout'].__globals__['db_manager']
 
 
 @pytest.fixture
@@ -193,7 +274,7 @@ def api(app, tracker_db):
 
     from routers import ai, documents, insights, tracker
     from routers import push as push_router
-    flask_globals = app.view_functions['index'].__globals__['get_user_profile'].__globals__
+    flask_globals = app.view_functions['logout'].__globals__
     fastapi_app = FastAPI()
     fastapi_app.include_router(tracker.router)
     fastapi_app.include_router(insights.router)

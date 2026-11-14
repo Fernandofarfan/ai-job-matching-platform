@@ -349,7 +349,7 @@
                 <div class="dropdown ms-2">
                     <button class="btn btn-sm btn-light dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="{{ _('Idioma') }}"><i class="bi bi-translate" aria-hidden="true"></i> {{ current_lang|default('es')|upper }}</button>
                     <ul class="dropdown-menu dropdown-menu-end">
-                        {% for code, name in (languages or {}).items() %}<li><a class="dropdown-item{{ ' active' if code == current_lang }}" lang="{{ code }}" href="/lang/{{ code }}?next={{ (request.full_path if request.query_string else request.path)|urlencode }}">{{ name }}</a></li>{% endfor %}
+                        {% for code, name in (languages or {}).items() %}<li><a class="dropdown-item{{ ' active' if code == current_lang }}" lang="{{ code }}" href="/lang/{{ code }}?next={{ current_path|urlencode }}">{{ name }}</a></li>{% endfor %}
                     </ul>
                 </div>
                 <!-- Indicador de estado de red -->

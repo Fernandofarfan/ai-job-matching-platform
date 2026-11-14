@@ -2,7 +2,6 @@
 from datetime import datetime, timedelta
 
 import pytest
-from flask.testing import FlaskClient
 
 import accounts
 import user_sessions
@@ -17,7 +16,7 @@ def two_browsers(client, app, accounts_db):
     """La misma cuenta abierta en dos navegadores (dos clientes con cookies separadas)."""
     client.post('/register', data={'email': 'ana@example.com', 'password': PASSWORD, 'confirm': PASSWORD},
                 headers={'User-Agent': CHROME})
-    other = FlaskClient(app, use_cookies=True)
+    other = type(client)(app)
     other.post('/login', data={'email': 'ana@example.com', 'password': PASSWORD}, headers={'User-Agent': FIREFOX})
     return client, other
 
@@ -74,7 +73,7 @@ def test_logout_and_password_change_close_sessions(two_browsers):
     chrome, firefox = two_browsers
     firefox.post('/logout')
     assert len(user_sessions.active(_uid())) == 1
-    other = FlaskClient(chrome.application, use_cookies=True)
+    other = type(chrome)(chrome.app.state.flask_app)
     other.post('/login', data={'email': 'ana@example.com', 'password': PASSWORD})
     chrome.post('/account/password', data={'current': PASSWORD, 'password': 'otra-clave-larga',
                                            'confirm': 'otra-clave-larga'})
