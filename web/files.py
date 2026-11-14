@@ -3,6 +3,7 @@ import os
 import pandas as pd
 from db_config import db_manager
 from flask import flash, jsonify, redirect, render_template, request, send_file, send_from_directory, session, url_for
+from werkzeug.exceptions import HTTPException
 
 import job_dispatch
 from app import (  # noqa: F401
@@ -122,9 +123,11 @@ def api_save_applications():
             'companies': list(companies)
         })
         
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error saving applications: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': 'Error interno del servidor'}), 500
 
 @app.route('/exclude_company_from_networking', methods=['POST'])
 def exclude_company_from_networking():

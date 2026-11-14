@@ -42,12 +42,17 @@ def test_keywords_skip_stopwords_and_accents():
     assert 'gestion' in ats_score.job_keywords("gestión")
 
 
-def test_ats_routes(client, app, monkeypatch):
-    module = app.view_functions['api_ats_score'].__globals__
-    monkeypatch.setitem(module, 'get_resume_text_from_profile', lambda: GOOD_CV)
-    resp = client.post('/api/ats_score', json={'job_description': JOB})
-    assert resp.status_code == 200, resp.get_data(as_text=True)
-    assert resp.get_json()['score'] >= 75
+def test_ats_routes(client, api, app, monkeypatch):
+    from routers import documents
+    api.app.dependency_overrides[documents.get_resume_text] = lambda: lambda: GOOD_CV
+    resp = api.post('/api/ats_score', json={'job_description': JOB})
+    assert resp.status_code == 200, resp.text
+    assert resp.json()['score'] >= 75
+    assert api.post('/api/ats_score', json={'resume_text': ''}).status_code == 200
+    api.app.dependency_overrides[documents.get_resume_text] = lambda: lambda: None
+    assert api.post('/api/ats_score', json={'job_description': JOB}).status_code == 400
+    monkeypatch.setitem(app.view_functions['ats_score_page'].__globals__, 'get_resume_text_from_profile',
+                        lambda: GOOD_CV)
     page = client.post('/ats_score', data={'job_description': JOB})
     assert page.status_code == 200 and 'Puntaje ATS' in page.get_data(as_text=True)
     assert 'kubernetes' in page.get_data(as_text=True)

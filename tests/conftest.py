@@ -191,17 +191,19 @@ def api(app, tracker_db):
     from fastapi import FastAPI
     from fastapi.testclient import TestClient
 
-    from routers import ai, insights, tracker
+    from routers import ai, documents, insights, tracker
     flask_globals = app.view_functions['index'].__globals__['get_user_profile'].__globals__
     fastapi_app = FastAPI()
     fastapi_app.include_router(tracker.router)
     fastapi_app.include_router(insights.router)
     fastapi_app.include_router(ai.router)
     fastapi_app.include_router(ai.extras)
+    fastapi_app.include_router(documents.router)
     fastapi_app.dependency_overrides[tracker.get_db] = lambda: tracker_db
     fastapi_app.dependency_overrides[tracker.get_flask_app] = lambda: app
     fastapi_app.dependency_overrides[ai.get_ai] = lambda: SimpleNamespace(
         available=False, engine=None, notifier=None, resume_text=lambda: None, profile=lambda: None)
+    fastapi_app.dependency_overrides[documents.get_resume_text] = lambda: lambda: None
     fastapi_app.dependency_overrides[insights.get_profiles] = lambda: (
         flask_globals['get_all_user_profiles'], flask_globals['get_user_profile'])
     return TestClient(fastapi_app)
