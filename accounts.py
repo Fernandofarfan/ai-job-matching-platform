@@ -11,7 +11,7 @@ from contextlib import contextmanager
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import DateTime, Integer, String, select
+from sqlalchemy import DateTime, Integer, String, select, update
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -42,6 +42,9 @@ class User(Base):
     terms_accepted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     # permiso para mandar el CV y las ofertas a Gemini; sin él las funciones de IA no se llaman
     ai_consent_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # cuándo apagó el resumen semanal por email (None = lo recibe)
+    weekly_digest_off_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    weekly_digest_sent_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
 class AccountError(ValueError):
@@ -156,7 +159,10 @@ def get_user(user_id) -> Optional[dict]:
             return None
         return {'id': user.id, 'email': user.email, 'password_hash': user.password_hash,
                 'email_verified': user.email_verified_at is not None, 'disabled': user.disabled_at is not None,
-                'terms_accepted': user.terms_accepted_at is not None, 'ai_consent': user.ai_consent_at is not None}
+                'terms_accepted': user.terms_accepted_at is not None, 'ai_consent': user.ai_consent_at is not None,
+                'weekly_digest': user.weekly_digest_off_at is None,
+                'weekly_digest_since': user.weekly_digest_sent_at or user.created_at,
+                'weekly_digest_sent_at': user.weekly_digest_sent_at}
 
 
 def is_admin(user_id) -> bool:
@@ -379,6 +385,35 @@ def set_ai_consent(user_id: int, granted: bool):
         user = session.get(User, user_id)
         if user is not None:
             user.ai_consent_at = datetime.now() if granted else None
+            session.commit()
+
+
+def set_weekly_digest(user_id: int, enabled: bool):
+    """Prende o apaga el resumen semanal por email de la cuenta."""
+    with _sessions()() as session:
+        user = session.get(User, user_id)
+        if user is not None:
+            user.weekly_digest_off_at = None if enabled else datetime.now()
+            session.commit()
+
+
+def claim_weekly_digest(user_id: int, previous: Optional[datetime], when: datetime) -> bool:
+    """Toma el resumen de la cuenta: anota `when` solo si el último envío sigue siendo `previous`.
+    Si dos ejecuciones se pisan, solo una gana y manda el email."""
+    last = User.weekly_digest_sent_at
+    with _sessions()() as session:
+        result = session.execute(update(User).where(User.id == user_id, last.is_(None) if previous is None
+                                                    else last == previous).values(weekly_digest_sent_at=when))
+        session.commit()
+        return bool(getattr(result, 'rowcount', 0))
+
+
+def mark_weekly_digest(user_id: int, when: Optional[datetime]):
+    """Anota hasta cuándo cubrió el último resumen semanal de la cuenta (el próximo arranca ahí)."""
+    with _sessions()() as session:
+        user = session.get(User, user_id)
+        if user is not None:
+            user.weekly_digest_sent_at = when
             session.commit()
 
 

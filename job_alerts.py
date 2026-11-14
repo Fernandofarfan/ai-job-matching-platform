@@ -10,7 +10,7 @@ import unicodedata
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import JSON, Boolean, DateTime, Float, Integer, String, UniqueConstraint, select
+from sqlalchemy import JSON, Boolean, DateTime, Float, Integer, String, UniqueConstraint, func, select
 
 import accounts
 import scraper_stats
@@ -227,6 +227,18 @@ def find_new(jobs):
             select(SeenJob.fingerprint).where(_mine(SeenJob), SeenJob.fingerprint.in_(list(batch)))
         ))
     return [job for fp, job in batch.items() if fp not in seen]
+
+
+def seen_since(since: datetime, limit: int = 10,
+               until: datetime | None = None) -> tuple[int, list[dict]]:
+    """Ofertas que las alertas de la cuenta encontraron desde `since` (y antes de `until`):
+    total y las más recientes."""
+    with _sessions()() as session:
+        mine = (_mine(SeenJob), SeenJob.first_seen_at >= since,
+                *(() if until is None else (SeenJob.first_seen_at < until,)))
+        total = session.scalar(select(func.count()).select_from(SeenJob).where(*mine)) or 0
+        rows = session.scalars(select(SeenJob).where(*mine).order_by(SeenJob.first_seen_at.desc()).limit(limit))
+        return total, [{'title': r.title, 'company': r.company, 'url': r.url, 'source': r.source} for r in rows]
 
 
 def mark_seen(jobs, search_id=None):

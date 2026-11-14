@@ -255,6 +255,25 @@ def _resend_verification(request: Request) -> Response:
     return _to_account(request)
 
 
+@router.post("/account/weekly_digest", name="weekly_digest")
+async def weekly_digest(request: Request):
+    """Prende (enabled=1) o apaga el resumen semanal por email."""
+    form, error = await _form(request, '20 per hour', 'weekly_digest')
+    if error:
+        return error
+    user_id = _user_id()
+    enabled = form.get('enabled') == '1'
+    try:
+        await run_in_threadpool(accounts.set_weekly_digest, user_id, enabled)
+    except Exception as e:
+        logger.error(f'No se pudo guardar el resumen semanal de la cuenta {user_id}: {e}')
+        flash(request, 'No se pudo guardar el cambio: probá de nuevo', 'danger')
+        return _to_account(request)
+    flash(request, 'Listo: te llega el resumen cada semana' if enabled else 'Listo: no te mandamos más el resumen semanal',
+          'success')
+    return _to_account(request)
+
+
 @router.post("/account/ai_consent", name="ai_consent")
 async def ai_consent(request: Request):
     """Da (granted=1) o quita el permiso para mandar el CV y las ofertas de la cuenta a Gemini."""

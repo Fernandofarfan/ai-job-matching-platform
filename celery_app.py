@@ -99,6 +99,12 @@ celery.conf.beat_schedule = {
         "task": "tasks.notification_tasks.run_job_alerts",
         "schedule": float(os.getenv("ALERTS_INTERVAL_HOURS", "6")) * 3600,
     },
+    # Resumen semanal por email: corre cada hora y manda a las cuentas cuyo último resumen tiene 7 días
+    # (beat no guarda el horario entre reinicios, así que un intervalo de 7 días se correría con cada deploy)
+    "send-weekly-digests": {
+        "task": "tasks.notification_tasks.send_weekly_digests",
+        "schedule": 3600,
+    },
     # Cifra CVs viejos y aplica CV_RETENTION_DAYS
     "enforce-cv-retention": {
         "task": "tasks.privacy_tasks.enforce_cv_retention",

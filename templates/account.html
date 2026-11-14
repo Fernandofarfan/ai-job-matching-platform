@@ -215,6 +215,24 @@
       {% endif %}
     </div>
   </div>
+  <div class="card border-0 shadow-sm mb-4" id="weekly">
+    <div class="card-body p-4">
+      <h2 class="h5 fw-bold">{{ _('Resumen semanal por email') }}</h2>
+      <p class="text-muted small">{{ _('Una vez por semana: ofertas nuevas de tus alertas, postulaciones sin respuesta y próximos pasos del tracker. Si no hay novedades, no se manda.') }}</p>
+      <form method="POST" action="{{ url_for('weekly_digest') }}" class="d-flex align-items-center gap-3">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        {% if user.weekly_digest %}
+        <span class="badge text-bg-success">{{ _('Activado') }}</span>
+        <input type="hidden" name="enabled" value="0">
+        <button type="submit" class="btn btn-outline-secondary btn-sm" id="weeklyDigestBtn">{{ _('Apagar') }}</button>
+        {% else %}
+        <span class="badge text-bg-secondary">{{ _('Desactivado') }}</span>
+        <input type="hidden" name="enabled" value="1">
+        <button type="submit" class="btn btn-primary btn-sm" id="weeklyDigestBtn">{{ _('Prender') }}</button>
+        {% endif %}
+      </form>
+    </div>
+  </div>
   <div class="card border-0 shadow-sm mb-4">
     <div class="card-body p-4">
       <h2 class="h5 fw-bold">{{ _('Permiso para usar la IA') }}</h2>
