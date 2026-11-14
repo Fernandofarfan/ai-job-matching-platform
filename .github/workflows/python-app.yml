@@ -376,6 +376,115 @@ jobs:
             uvicorn.log
           if-no-files-found: ignore
 
+  # ─── Comparación visual contra la rama base ───────────────
+  visual:
+    name: Visual (capturas contra la rama base)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    needs: lint
+    permissions:
+      contents: read
+      pull-requests: read
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+        ports: ["3306:3306"]
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+      redis:
+        image: redis:7
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    env:
+      DB_HOST: 127.0.0.1
+      DB_PORT: "3306"
+      DB_USER: root
+      DB_PASSWORD: root
+      LOGIN_REQUIRED: "true"
+      ALLOW_SIGNUP: "true"
+      SCRAPER_BACKEND: thread
+      # mismo orden de sets y dicts en las dos versiones
+      PYTHONHASHSEED: "0"
+      VISUAL_EMAIL: visual@example.com
+      ADMIN_EMAIL: visual@example.com
+    steps:
+      - name: Checkout del PR
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
+
+      - name: Checkout de la rama base
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: .visual-base
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5.6.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies (PR y base, cada una en su entorno)
+        run: |
+          python -m pip install --upgrade pip
+          pip install --require-hashes -r requirements.txt
+          python -m playwright install --with-deps chromium
+          python -m venv .venv-base
+          .venv-base/bin/pip install --require-hashes -r .visual-base/requirements.txt
+
+      - name: Secretos efímeros
+        run: |
+          echo "VISUAL_PASSWORD=$(python -c 'import secrets; print(secrets.token_urlsafe(16))')" >> "$GITHUB_ENV"
+          echo "SECRET_KEY=$(python -c 'import secrets; print(secrets.token_hex(32))')" >> "$GITHUB_ENV"
+          echo "CV_ENCRYPTION_KEY=$(python -c 'import base64, secrets; print(base64.urlsafe_b64encode(secrets.token_bytes(32)).decode())')" >> "$GITHUB_ENV"
+
+      # Cada versión con su base de datos, su Redis y los mismos datos de loadtest/seed.py
+      - name: Capturas de la base y del PR
+        run: |
+          if [ ! -f .visual-base/loadtest/seed.py ]; then
+            echo "La rama base no tiene loadtest/seed.py: no hay con qué comparar"; exit 0
+          fi
+          mkdir -p visual
+          snap() {
+            local dir=$1 py=$2 db=$3 port=$4 redis_db=$5
+            mysql -h 127.0.0.1 -uroot -proot -e "CREATE DATABASE $db"
+            export DB_NAME=$db REDIS_URL=redis://127.0.0.1:6379/$redis_db
+            export CELERY_BROKER_URL=$REDIS_URL CELERY_RESULT_BACKEND=$REDIS_URL
+            (cd "$dir" && mkdir -p uploads results logs profiles && "$py" -m alembic upgrade head \
+              && LOADTEST_EMAIL=$VISUAL_EMAIL LOADTEST_PASSWORD=$VISUAL_PASSWORD "$py" loadtest/seed.py --jobs 30)
+            (cd "$dir" && "$py" -m uvicorn main:app --host 127.0.0.1 --port "$port" > "$GITHUB_WORKSPACE/visual/uvicorn-$db.log" 2>&1 &)
+            for i in $(seq 1 60); do curl -fs "http://127.0.0.1:$port/api/health" > /dev/null && break; sleep 1; done
+            python scripts/visual_snapshots.py --base-url "http://127.0.0.1:$port" --out "visual/${db#visual_}"
+          }
+          snap .visual-base "$GITHUB_WORKSPACE/.venv-base/bin/python" visual_base 5001 1
+          snap . python visual_head 5002 2
+          echo "VISUAL_READY=1" >> "$GITHUB_ENV"
+
+      # Las etiquetas se leen ahora y no del evento, así "Re-run" toma una 'cambio-visual' recién puesta
+      - name: Comparar (con la etiqueta 'cambio-visual' solo informa)
+        if: env.VISUAL_READY == '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          mode=""
+          if gh api "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/labels" --jq '.[].name' | grep -qx cambio-visual; then
+            mode="--report-only"
+          fi
+          python scripts/visual_diff.py visual/base visual/head --diff visual/diff $mode
+
+      - name: Capturas y diferencias
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
+        with:
+          name: visual
+          path: visual/
+          if-no-files-found: ignore
+
   # ─── Cobertura: unitarios + integración ───────────────────
   coverage:
     name: Cobertura (mínimo 70%)
@@ -405,7 +514,7 @@ jobs:
   summary:
     name: CI Summary
     runs-on: ubuntu-latest
-    needs: [lint, test, security, integration, image, coverage, loadtest]
+    needs: [lint, test, security, integration, image, coverage, loadtest, visual]
     if: always()
     steps:
       - name: Print CI Result
@@ -419,4 +528,5 @@ jobs:
           echo "Image: ${{ needs.image.result }}"
           echo "Coverage: ${{ needs.coverage.result }}"
           echo "Load test: ${{ needs.loadtest.result }}"
+          echo "Visual: ${{ needs.visual.result }}"
           echo "================================================="

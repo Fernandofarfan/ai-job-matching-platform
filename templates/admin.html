@@ -48,8 +48,8 @@
           <tr>
             <td>{{ u.email }}{% if u.is_admin %} <span class="badge text-bg-primary">{{ _('Administrador') }}</span>{% endif %}
               {% if not u.email_verified %}<br><span class="small text-muted">{{ _('Email sin confirmar') }}</span>{% endif %}</td>
-            <td class="small">{{ u.created_at.strftime('%d/%m/%Y') if u.created_at else '—' }}</td>
-            <td class="small">{{ u.last_seen.strftime('%d/%m/%Y %H:%M') if u.last_seen else '—' }}</td>
+            <td class="small" data-visual-mask>{{ u.created_at.strftime('%d/%m/%Y') if u.created_at else '—' }}</td>
+            <td class="small" data-visual-mask>{{ u.last_seen.strftime('%d/%m/%Y %H:%M') if u.last_seen else '—' }}</td>
             <td>{{ _('Sí') if u.two_factor else _('No') }}</td>
             <td class="small">{{ _('%(n)s tokens', n='{:,}'.format(u.ai.total_tokens)) }} · {{ _('%(n)s llamadas', n=u.ai.calls) }}</td>
             <td>{% if u.disabled %}<span class="badge text-bg-danger">{{ _('Bloqueada') }}</span>{% else %}<span class="badge text-bg-success">{{ _('Activa') }}</span>{% endif %}</td>

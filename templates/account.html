@@ -196,8 +196,8 @@
           <div class="small text-break">
             <div class="fw-semibold">{{ s.user_agent or _('Navegador desconocido') }}
               {% if s.current %}<span class="badge text-bg-success ms-1">{{ _('Este navegador') }}</span>{% endif %}</div>
-            <div class="text-muted">IP {{ s.ip or '?' }} · {{ _('iniciada') }} {{ s.created_at.strftime('%d/%m/%Y %H:%M') if s.created_at else '' }}
-              · {{ _('última actividad') }} {{ s.last_seen_at.strftime('%d/%m/%Y %H:%M') if s.last_seen_at else '' }}</div>
+            <div class="text-muted">IP {{ s.ip or '?' }} · {{ _('iniciada') }} <span data-visual-mask>{{ s.created_at.strftime('%d/%m/%Y %H:%M') if s.created_at else '' }}</span>
+              · {{ _('última actividad') }} <span data-visual-mask>{{ s.last_seen_at.strftime('%d/%m/%Y %H:%M') if s.last_seen_at else '' }}</span></div>
           </div>
           <form method="POST" action="{{ url_for('revoke_session', session_id=s.id) }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -228,7 +228,7 @@
           <tbody>
           {% for e in events %}
             <tr class="{{ 'table-warning' if e.kind == 'login_failed' else '' }}">
-              <td class="text-nowrap">{{ e.created_at.strftime('%d/%m/%Y %H:%M') if e.created_at else '' }}</td>
+              <td class="text-nowrap" data-visual-mask>{{ e.created_at.strftime('%d/%m/%Y %H:%M') if e.created_at else '' }}</td>
               <td>{{ _(e.label) }}</td>
               <td>{{ e.ip or '' }}</td>
               <td class="st-c98962 text-truncate" title="{{ e.user_agent or '' }}">{{ e.user_agent or '' }}</td>
