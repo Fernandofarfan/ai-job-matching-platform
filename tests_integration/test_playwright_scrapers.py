@@ -15,13 +15,26 @@ def portal_server():
     pages = {
         '/trabajo-de-python': FIXTURES / 'computrabajo_listing.html',
         '/empleos-busqueda-python.html': FIXTURES / 'bumeran_listing.html',
+        '/jobs': FIXTURES / 'indeed_listing.html',
+        '/search/results/people/': FIXTURES / 'linkedin_people.html',
     }
 
     class Handler(http.server.BaseHTTPRequestHandler):
         def do_GET(self):
-            path = pages.get(self.path)
+            route, _, query = self.path.partition('?')
+            if route == '/viewjob':
+                description = (FIXTURES / 'indeed_description.txt').read_text(encoding='utf-8')
+                self._send(200, f'<div id="jobDescriptionText">{description}</div>'
+                                '<a href="https://acme.example/apply">Apply on company site</a>'.encode())
+                return
+            path = pages.get(route) if route in ('/jobs', '/search/results/people/') or not query else None
+            if route == '/search/results/people/' and 'page=' in query:
+                path = None
             body = path.read_bytes() if path else '<title>404</title>Página no encontrada'.encode()
-            self.send_response(200 if path else 404)
+            self._send(200 if path else 404, body)
+
+        def _send(self, status, body):
+            self.send_response(status)
             self.send_header('Content-Type', 'text/html; charset=utf-8')
             self.end_headers()
             self.wfile.write(body)
@@ -62,3 +75,39 @@ def test_bumeran_with_playwright(portal_server):
     jobs = _in_thread(lambda: _search(BumeranScraper, portal_server))
     assert [job['Company'] for job in jobs] == ['TechCo', 'Confidencial']
     assert all(job['URL'].startswith(portal_server) for job in jobs)
+
+
+def test_indeed_with_playwright(portal_server):
+    from scrapers.indeed_scraper import indeedScraper
+
+    def search():
+        scraper = indeedScraper()
+        scraper.base_url = portal_server
+        try:
+            return scraper.search_jobs('Data Engineer', 'Remote', max_jobs_per_search=5)
+        finally:
+            scraper.close()
+    jobs = _in_thread(search)
+    assert [job['Title'] for job in jobs] == ['Data Engineer']
+    assert jobs[0]['Company'] == 'Acme Analytics' and jobs[0]['Job_Link'] == f'{portal_server}/viewjob?jk=abc123'
+    assert jobs[0]['Experience_Category'] == 'Early Career (2-3 years)'
+
+
+def test_linkedin_connections_with_playwright(portal_server, monkeypatch):
+    from scrapers import linkedin_connection as lc
+    monkeypatch.setattr(lc, 'people_search_url',
+                        lambda keywords, page=1: f'{portal_server}/search/results/people/?keywords={keywords}'
+                                                 + (f'&page={page}' if page > 1 else ''))
+    monkeypatch.setattr(lc.random, 'randint', lambda a, b: b)
+
+    def run():
+        bot = lc.linkedinConnections()
+        try:
+            ok = bot.process_company('Acme', 'Hola {name}', max_pages=2)
+            return ok, bot.total_connections_sent, bot.page.evaluate('window.sent'), bot.processed_profiles
+        finally:
+            bot.cleanup()
+    ok, total, clicked, profiles = _in_thread(run)
+    # Ana se invita; Beto tiene una invitación pendiente; Carolina no trabaja en Acme
+    assert ok and total == 1 and clicked == 1
+    assert profiles == {'https://www.linkedin.com/in/ana-perez', 'https://www.linkedin.com/in/beto'}

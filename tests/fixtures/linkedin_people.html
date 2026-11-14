@@ -1,0 +1,29 @@
+<html><body>
+<ul class="reusable-search__entity-result-list">
+  <li class="reusable-search__result-container">
+    <a href="https://www.linkedin.com/in/ana-perez?mini=1"><span>Ana Pérez</span></a>
+    <div class="t-14">Data Engineer en Acme</div>
+    <button aria-label="Invitar a Ana Pérez a conectar">Conectar</button>
+  </li>
+  <li class="reusable-search__result-container">
+    <a href="https://www.linkedin.com/in/beto"><span>Beto Gómez</span></a>
+    <div class="t-14">Recruiter en Acme</div>
+    <button aria-label="Pendiente, retirar invitación">Pendiente</button>
+  </li>
+  <li class="reusable-search__result-container">
+    <a href="https://www.linkedin.com/in/caro"><span>Carolina Ruiz</span></a>
+    <div class="t-14">Analista en Globex</div>
+    <button>Conectar</button>
+  </li>
+</ul>
+<div id="artdeco-modal-outlet"></div>
+<script>
+  window.sent = 0;
+  document.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+    if (b.innerText.trim() !== 'Conectar') return;
+    const modal = document.getElementById('artdeco-modal-outlet');
+    modal.innerHTML = '<div role="dialog" class="artdeco-modal"><button aria-label="Enviar sin nota">Enviar sin nota</button></div>';
+    modal.querySelector('button').addEventListener('click', () => { window.sent += 1; modal.innerHTML = ''; });
+  }));
+</script>
+</body></html>
