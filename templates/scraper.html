@@ -106,6 +106,7 @@
         </div>
 
         <form action="/start_universal_scraper" method="post" class="mt-4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <div class="row g-3">
             <div class="col-md-6">
               <label class="form-label">{{ _('Puesto / Palabras Clave') }}</label>
@@ -159,6 +160,7 @@
         </div>
 
         <form action="/start_indeed_scraper" method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <div id="indeed-search-params">
             <div class="search-row mb-3 p-3 bg-light rounded-3 position-relative border border-light">
               <div class="mb-2">
@@ -216,6 +218,7 @@
         </div>
 
         <form action="/start_linkedin_scraper" method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <div id="linkedin-search-params">
             <div class="search-row mb-3 p-3 bg-light rounded-3 position-relative border border-light">
               <div class="mb-2">
@@ -286,6 +289,7 @@
         </div>
 
         <form action="/start_computrabajo_scraper" method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <div id="computrabajo-search-params">
             <div class="search-row mb-3 p-3 bg-light rounded-3 position-relative border border-light">
               <div class="mb-2">
@@ -342,6 +346,7 @@
         </div>
 
         <form action="/start_bumeran_scraper" method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <div id="bumeran-search-params">
             <div class="search-row mb-3 p-3 bg-light rounded-3 position-relative border border-light">
               <div class="mb-2">

@@ -1,0 +1,7 @@
+# Reglas del baseline de ZAP: FAIL corta el CI, WARN/IGNORE no. Cada IGNORE dice por qué.
+10027	IGNORE	(Comentarios sospechosos: 'user' en comentarios de JavaScript, sin datos)
+10031	IGNORE	(Atributo controlado por el usuario: Jinja escapa todo; next se valida con is_local_path)
+10049	IGNORE	(Contenido no cacheable: las páginas de cada cuenta van con no-store a propósito)
+10109	IGNORE	(Aplicación web moderna: informativo)
+10111	IGNORE	(Pedido de autenticación identificado: informativo)
+10112	IGNORE	(Respuesta de manejo de sesión identificada: informativo)

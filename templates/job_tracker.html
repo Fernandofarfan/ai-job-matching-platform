@@ -142,7 +142,8 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ _('Cerrar') }}"></button>
       </div>
       <div class="modal-body p-4">
-        <form id="addJobForm">
+        <form id="addJobForm" method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <div class="row g-3">
             <div class="col-md-6">
               <label class="form-label small fw-bold text-muted">{{ _('Puesto *') }}</label>

@@ -5,8 +5,6 @@ import secrets
 from fastapi import Request
 
 CDN = "https://cdn.jsdelivr.net"
-FONTS_CSS = "https://fonts.googleapis.com"
-FONTS = "https://fonts.gstatic.com"
 HSTS = "max-age=31536000; includeSubDomains"
 
 
@@ -23,8 +21,8 @@ def content_security_policy(script_nonce: str) -> str:
     directives = {
         "default-src": "'self'",
         "script-src": f"'self' 'nonce-{script_nonce}' {CDN}",
-        "style-src": f"'self' 'nonce-{script_nonce}' {CDN} {FONTS_CSS}",
-        "font-src": f"'self' data: {CDN} {FONTS}",
+        "style-src": f"'self' 'nonce-{script_nonce}' {CDN}",
+        "font-src": f"'self' data: {CDN}",
         "img-src": "'self' data: blob:",
         "connect-src": "'self'",
         "worker-src": "'self'",
@@ -65,6 +63,8 @@ def apply(request: Request, response):
         "Referrer-Policy": "strict-origin-when-cross-origin",
         "Permissions-Policy": "camera=(), geolocation=(), payment=(), usb=(), microphone=(self)",
         "Cross-Origin-Opener-Policy": "same-origin",
+        "Cross-Origin-Resource-Policy": "same-origin",
+        "Cross-Origin-Embedder-Policy": "require-corp",
     }
     if is_https(request):
         headers["Strict-Transport-Security"] = HSTS

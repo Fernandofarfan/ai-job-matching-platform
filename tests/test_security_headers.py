@@ -37,6 +37,7 @@ def test_common_headers_on_api_and_errors(client):
         assert response.headers['x-frame-options'] == 'DENY'
         assert response.headers['referrer-policy'] == 'strict-origin-when-cross-origin'
         assert 'microphone=(self)' in response.headers['permissions-policy']
+        assert response.headers['cross-origin-resource-policy'] == 'same-origin'
         assert 'content-security-policy' in response.headers
 
 
@@ -192,3 +193,40 @@ def test_no_inline_style_attributes():
     offenders += [str(p) for p in TEMPLATES.rglob('*.html')
                   if re.search(r'<style(?![^>]*nonce=)', p.read_text(encoding='utf-8'))]
     assert offenders == []
+
+
+def test_fonts_are_self_hosted():
+    """Sin Google Fonts: cada visita le pasaba la IP del usuario a Google y la hoja no admite SRI."""
+    sources = [*TEMPLATES.glob('*.html'), *(TEMPLATES.parent / 'static' / 'css').glob('*.css')]
+    assert [p.name for p in sources if 'fonts.googleapis.com' in p.read_text(encoding='utf-8')] == []
+    fonts = TEMPLATES.parent / 'static' / 'fonts'
+    for url in re.findall(r"url\('\.\./fonts/([^']+)'\)", (TEMPLATES.parent / 'static' / 'css' / 'fonts.css').read_text()):
+        assert (fonts / url).is_file()
+
+
+def test_robots_only_allows_public_pages(client):
+    response = client.get('/robots.txt')
+    assert response.status_code == 200 and response.headers['content-type'].startswith('text/plain')
+    assert 'Disallow: /\n' in response.text and 'Allow: /login' in response.text
+
+
+def test_logout_form_carries_csrf_token_without_javascript():
+    base = (TEMPLATES / 'base.html').read_text(encoding='utf-8')
+    form = base[base.index("action=\"{{ url_for('logout') }}\""):]
+    assert 'name="csrf_token"' in form[:form.index('</form>')]
+
+
+def test_post_forms_carry_csrf_token_and_no_form_falls_back_to_get():
+    """Sin JavaScript, un formulario sin method manda los campos por GET (contraseña en la URL y en los logs)."""
+    missing = []
+    for path in TEMPLATES.glob('*.html'):
+        html = path.read_text(encoding='utf-8')
+        for match in re.finditer(r'<form\b[^>]*>', html):
+            body = html[match.end():html.find('</form>', match.end())]
+            if 'method="post"' not in match.group(0).lower() and 'method="get"' not in match.group(0).lower():
+                missing.append(f'{path.name}: sin method')
+            elif 'method="post"' in match.group(0).lower() and 'csrf_token' not in body:
+                missing.append(f'{path.name}: sin csrf_token')
+            elif 'type="password"' in body and 'method="post"' not in match.group(0).lower():
+                missing.append(f'{path.name}: contraseña por GET')
+    assert missing == []

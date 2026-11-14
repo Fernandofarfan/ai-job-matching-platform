@@ -6,6 +6,15 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar] - OWASP ZAP sobre la app levantada
+
+- Job `zap`: levanta la app con MySQL y Redis, entra con una cuenta con datos y corre el baseline de ZAP (spider + reglas pasivas) con la sesión iniciada (`scripts/zap_scan.sh`). La imagen de ZAP va fijada por digest. Cualquier alerta WARN o FAIL corta el CI; las aceptadas están en `.zap/rules.tsv`, cada una con su motivo. El reporte queda en el artefacto `zap` y en el resumen del job.
+- Fix: 9 formularios POST (subir CV, los 5 de búsqueda, los 2 de conexiones y cerrar sesión) mandaban el token CSRF solo por JavaScript; ahora lo llevan en el HTML.
+- Fix: el formulario de passkeys y el de agregar postulación no tenían `method`; sin JavaScript mandaban la contraseña en la URL. Un test exige `method` y token en todos los formularios.
+- Inter se sirve desde la app (`static/fonts`, licencia OFL): ya no se le pasa la IP de cada visita a Google Fonts y la CSP deja de permitir sus dominios.
+- Headers `Cross-Origin-Opener-Policy`, `Cross-Origin-Resource-Policy` y `Cross-Origin-Embedder-Policy`.
+- `/robots.txt`: los buscadores solo indexan login, registro, términos y privacidad.
+
 ## [Sin publicar] - Comparación visual en el CI
 
 - Job `visual`: en cada PR levanta la rama base y el PR con los mismos datos, saca capturas de 21 páginas (`scripts/visual_snapshots.py`) y las compara (`scripts/visual_diff.py`). Falla si una página cambia más de 0,2 % de sus píxeles o de tamaño. Con la etiqueta `cambio-visual` en el PR solo informa; alcanza con volver a correr el job después de ponerla.
