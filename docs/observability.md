@@ -47,6 +47,8 @@ Prometheus (`monitoring/prometheus/prometheus.yml`) raspa `web:5000/metrics` con
 | `EmpleoIASinMetricas` | Prometheus no recibe métricas durante 10 min (web caída o `METRICS_TOKEN` cambiado) |
 | `EmpleoIAColaCelery` | Más de 20 tareas esperando en una cola durante 15 min |
 | `EmpleoIACuotaIA80` / `EmpleoIACuotaIAAgotada` | Consumo de IA del mes ≥ 80 % / 100 % de `AI_MONTHLY_TOKEN_LIMIT` |
+| `EmpleoIASLODisponibilidadRapido` / `...Lento` | Los 5xx gastan el presupuesto del SLO a 14,4× (1 h y 5 min) / 6× (6 h y 30 min) |
+| `EmpleoIASLOLatenciaRapido` / `...Lento` | Los pedidos de más de 1 s gastan el presupuesto a 14,4× / 6×, con las mismas ventanas |
 
 ```bash
 promtool check rules monitoring/prometheus/alerts.yml
@@ -67,6 +69,26 @@ rule_files:
 - Disco de Cloud SQL > 85 %.
 
 Con `alert_email` en el `.tfvars` llegan por email; vacío, las políticas se crean sin canal y se ven en la consola.
+
+## SLOs y presupuesto de errores
+
+`terraform/slo.tf` crea en Cloud Monitoring un servicio con 2 SLOs sobre 28 días, calculados con las métricas de Cloud Run:
+
+| SLO | Objetivo | Variable | Presupuesto de errores en 28 días |
+|---|---|---|---|
+| Disponibilidad | 99,5 % de pedidos sin 5xx | `slo_availability_goal` | 0,5 % de los pedidos (≈ 3,4 h de caída total) |
+| Latencia | 95 % de pedidos en 1 s o menos (p95 ≤ 1 s) | `slo_latency_goal`, `slo_latency_ms` | 5 % de los pedidos |
+
+Las alertas no son por umbral fijo sino por velocidad de consumo del presupuesto (burn rate), con una ventana larga y una corta que tienen que superarse a la vez:
+
+| Alerta | Burn rate | Ventanas | Significa |
+|---|---|---|---|
+| Rápida | > 14,4 | 1 h y 5 min | Se gastó el 2 % del presupuesto del mes en una hora: a ese ritmo se agota en 2 días |
+| Lenta | > 6 | 6 h y 30 min | Se gastó el 5 % en 6 horas: se agota en 5 días |
+
+La ventana corta hace que la alerta se apague apenas se corrige el problema. En la consola (Monitoring → SLOs) se ve cuánto presupuesto queda en el período. Con el presupuesto agotado conviene frenar los deploys de funciones nuevas y priorizar estabilidad hasta que se recupere.
+
+Las alertas de Prometheus `EmpleoIASLO*` usan los mismos objetivos con las métricas de `/metrics`.
 
 Los counters son por instancia: en Cloud Run con varias instancias, sumalos con `sum(...)`.
 

@@ -36,6 +36,8 @@ En los comandos, `<env>` es `staging` o `prod` y la región es `southamerica-eas
 
 ### Errores 5xx o latencia alta
 
+Las alertas de SLO (consumo del presupuesto de errores) llevan acá. La rápida pide actuar ya; la lenta, revisar en el día. Cuánto presupuesto queda: Monitoring → SLOs, servicio `empleoia-web-<entorno>`.
+
 - Sentry muestra la excepción y la release. Si coincide con un deploy, volvé atrás.
 - p95 alto sin errores: mirá en Grafana qué ruta sube; las páginas de resultados con CSV grandes y la IA son las más lentas.
 - 429 masivos: un cliente supera `API_RATE_LIMIT` o `AI_RATE_LIMIT`. Con varias instancias, `RATELIMIT_STORAGE_URI` tiene que apuntar a Redis.

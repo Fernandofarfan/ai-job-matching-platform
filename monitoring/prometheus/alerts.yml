@@ -25,6 +25,61 @@ groups:
           summary: El p95 de latencia supera 5 s
           description: "p95 = {{ $value | humanizeDuration }}."
 
+      # SLOs (los mismos de terraform/slo.tf): 99,5 % de pedidos sin 5xx y 95 % en 1 s o menos.
+      # Avisan por velocidad de consumo del presupuesto de errores, con ventana larga y corta (SRE Workbook):
+      # rápido = 14,4× el presupuesto (2 % en 1 h), lento = 6× (5 % en 6 h).
+      - alert: EmpleoIASLODisponibilidadRapido
+        expr: |
+          (
+            sum(rate(empleoia_http_requests_total{status=~"5.."}[1h])) / sum(rate(empleoia_http_requests_total[1h])) > 14.4 * 0.005
+          ) and (
+            sum(rate(empleoia_http_requests_total{status=~"5.."}[5m])) / sum(rate(empleoia_http_requests_total[5m])) > 14.4 * 0.005
+          )
+        labels:
+          severity: page
+        annotations:
+          summary: El SLO de disponibilidad gasta su presupuesto de errores muy rápido
+          description: "{{ $value | humanizePercentage }} de errores 5xx en la última hora (el SLO permite 0,5 %)."
+
+      - alert: EmpleoIASLODisponibilidadLento
+        expr: |
+          (
+            sum(rate(empleoia_http_requests_total{status=~"5.."}[6h])) / sum(rate(empleoia_http_requests_total[6h])) > 6 * 0.005
+          ) and (
+            sum(rate(empleoia_http_requests_total{status=~"5.."}[30m])) / sum(rate(empleoia_http_requests_total[30m])) > 6 * 0.005
+          )
+        labels:
+          severity: warning
+        annotations:
+          summary: El SLO de disponibilidad gasta su presupuesto de errores más rápido de lo que dura el mes
+          description: "{{ $value | humanizePercentage }} de errores 5xx en las últimas 6 h (el SLO permite 0,5 %)."
+
+      - alert: EmpleoIASLOLatenciaRapido
+        expr: |
+          (
+            1 - sum(rate(empleoia_http_request_duration_seconds_bucket{le="1.0"}[1h])) / sum(rate(empleoia_http_request_duration_seconds_count[1h])) > 14.4 * 0.05
+          ) and (
+            1 - sum(rate(empleoia_http_request_duration_seconds_bucket{le="1.0"}[5m])) / sum(rate(empleoia_http_request_duration_seconds_count[5m])) > 14.4 * 0.05
+          )
+        labels:
+          severity: page
+        annotations:
+          summary: El SLO de latencia gasta su presupuesto muy rápido
+          description: "{{ $value | humanizePercentage }} de pedidos tardaron más de 1 s en la última hora (el SLO permite 5 %)."
+
+      - alert: EmpleoIASLOLatenciaLento
+        expr: |
+          (
+            1 - sum(rate(empleoia_http_request_duration_seconds_bucket{le="1.0"}[6h])) / sum(rate(empleoia_http_request_duration_seconds_count[6h])) > 6 * 0.05
+          ) and (
+            1 - sum(rate(empleoia_http_request_duration_seconds_bucket{le="1.0"}[30m])) / sum(rate(empleoia_http_request_duration_seconds_count[30m])) > 6 * 0.05
+          )
+        labels:
+          severity: warning
+        annotations:
+          summary: El SLO de latencia gasta su presupuesto más rápido de lo que dura el mes
+          description: "{{ $value | humanizePercentage }} de pedidos tardaron más de 1 s en las últimas 6 h (el SLO permite 5 %)."
+
       # Los propios raspados de /metrics cuentan como pedidos: no se alerta por falta de visitas,
       # sino cuando Prometheus deja de recibir las métricas.
       - alert: EmpleoIASinMetricas
