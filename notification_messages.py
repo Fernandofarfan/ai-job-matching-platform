@@ -2,6 +2,7 @@
 
 Funciones puras (sin envío ni base): las tareas de Celery de tasks/notification_tasks.py las arman y las mandan.
 """
+from typing import Any
 import os
 from datetime import date, datetime, timedelta
 
@@ -55,7 +56,7 @@ FOLLOWUP_DAYS = int(os.getenv("FOLLOWUP_DAYS", "7"))
 WEEKLY_DAYS = 7
 
 
-def weekly_digest_data(jobs: list, new_total: int, new_offers: list, today: date) -> dict:
+def weekly_digest_data(jobs: list[Any], new_total: int, new_offers: list[Any], today: date) -> dict[str, Any]:
     """Qué entra en el resumen semanal: ofertas nuevas, postulaciones sin respuesta y próximos pasos."""
     waiting, upcoming = [], []
     horizon = today + timedelta(days=WEEKLY_DAYS)
@@ -73,16 +74,16 @@ def weekly_digest_data(jobs: list, new_total: int, new_offers: list, today: date
             "interviewing": sum(1 for j in jobs if j.get("status") == "interviewing")}
 
 
-def weekly_digest_empty(data: dict) -> bool:
+def weekly_digest_empty(data: dict[str, Any]) -> bool:
     """Sin nada para contar no se manda el email (las entrevistas en curso solas no son novedad)."""
     return not (data["new_total"] or data["waiting"] or data["upcoming"])
 
 
-def weekly_digest_html(data: dict) -> str:
+def weekly_digest_html(data: dict[str, Any]) -> str:
     """Email del resumen semanal (texto escapado; los enlaces solo si son http/https)."""
     from html import escape
 
-    def card(job, detail):
+    def card(job: dict[str, Any], detail: str) -> str:
         title = escape(str(job.get("title") or ""))
         url = str(job.get("url") or job.get("job_link") or "")
         head = f'<a href="{escape(url)}" style="color:#e2e8f0;">{title}</a>' if url.startswith(("http://", "https://")) else title
@@ -113,7 +114,7 @@ def weekly_digest_html(data: dict) -> str:
     return _get_email_template("📈 Tu semana en EmpleoIA", body, f"{base_url}/tracker", "Abrir el tracker")
 
 
-def _as_date(value):
+def _as_date(value: object) -> date | None:
     """date de un date/datetime/str ISO; None si no hay."""
     if isinstance(value, datetime):
         return value.date()
@@ -124,7 +125,7 @@ def _as_date(value):
     return None
 
 
-def due_followups(jobs: list, today: date, default_days: int = FOLLOWUP_DAYS) -> list:
+def due_followups(jobs: list[Any], today: date, default_days: int = FOLLOWUP_DAYS) -> list[Any]:
     """Postulaciones a recordar hoy: con fecha de seguimiento vencida o, sin fecha, `default_days`
     después de postular (0 lo desactiva). Una vez avisada, no se repite hasta una fecha nueva."""
     due = []
@@ -139,7 +140,7 @@ def due_followups(jobs: list, today: date, default_days: int = FOLLOWUP_DAYS) ->
     return due
 
 
-def followup_telegram_text(jobs: list) -> str:
+def followup_telegram_text(jobs: list[Any]) -> str:
     """Resumen de seguimientos para Telegram."""
     from html import escape
     lines = [f"⏰ <b>{len(jobs)} postulaciones para hacer seguimiento</b>"]
@@ -151,7 +152,7 @@ def followup_telegram_text(jobs: list) -> str:
     return "\n".join(lines)
 
 
-def followup_email_html(jobs: list) -> str:
+def followup_email_html(jobs: list[Any]) -> str:
     """Resumen de seguimientos por email."""
     from html import escape
     items = "".join(
@@ -171,7 +172,7 @@ def followup_email_html(jobs: list) -> str:
 TELEGRAM_MAX_CHARS = 4096
 
 
-def _telegram_chunks(text: str, size: int = TELEGRAM_MAX_CHARS) -> list:
+def _telegram_chunks(text: str, size: int = TELEGRAM_MAX_CHARS) -> list[Any]:
     """Parte el texto en mensajes de hasta `size` caracteres, cortando entre ofertas (líneas '• ')."""
     chunks: list[str] = []
     current = ""
@@ -189,15 +190,17 @@ def _telegram_chunks(text: str, size: int = TELEGRAM_MAX_CHARS) -> list:
     return chunks
 
 
-def _job_line(job: dict) -> tuple:
+def _job_line(job: dict[str, Any]) -> tuple[Any, ...]:
     """(título, empresa, ubicación, url, match) escapados para HTML."""
     from html import escape
-    get = lambda k: escape(str(job.get(k.capitalize()) or job.get(k.upper()) or job.get(k) or ""))  # noqa: E731
+
+    def get(k: str) -> str:
+        return escape(str(job.get(k.capitalize()) or job.get(k.upper()) or job.get(k) or ""))
     match = job.get("match_percent")
     return get("title"), get("company"), get("location"), get("url"), match
 
 
-def alert_telegram_text(search: dict, jobs: list, limit: int = 15) -> str:
+def alert_telegram_text(search: dict[str, Any], jobs: list[Any], limit: int = 15) -> str:
     """Mensaje de Telegram con las ofertas nuevas de una búsqueda (máx. `limit`)."""
     from html import escape
     lines = [f"🔔 <b>{len(jobs)} ofertas nuevas</b> · {escape(search['name'])}"]
@@ -209,7 +212,7 @@ def alert_telegram_text(search: dict, jobs: list, limit: int = 15) -> str:
     return "\n".join(lines)
 
 
-def alert_email_html(search: dict, jobs: list, limit: int = 15) -> str:
+def alert_email_html(search: dict[str, Any], jobs: list[Any], limit: int = 15) -> str:
     """Email con las ofertas nuevas de una búsqueda (máx. `limit`)."""
     from html import escape
     items = ""

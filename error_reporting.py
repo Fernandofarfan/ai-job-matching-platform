@@ -4,11 +4,15 @@ Se reportan las excepciones no atrapadas de la web (500) y las tareas de Celery 
 Los eventos llevan solo el id de la cuenta: sin cookies, cabeceras de autenticación,
 cuerpos de pedidos, query strings ni emails.
 """
+from typing import TYPE_CHECKING, Any, cast
 import logging
 import os
 import re
 
 import version
+
+if TYPE_CHECKING:
+    from sentry_sdk.types import Event, Hint
 
 logger = logging.getLogger(__name__)
 
@@ -23,12 +27,17 @@ def enabled() -> bool:
     return _enabled
 
 
-def _scrub_text(value):
+def _scrub_text(value: Any) -> Any:
     return _EMAIL.sub('[email]', value) if isinstance(value, str) else value
 
 
-def before_send(event, hint=None):
+def before_send(event: "Event", hint: "Hint | None" = None) -> "Event":
     """Saca datos personales del evento y le pone solo el id de la cuenta actual."""
+    return cast("Event", _scrub_event(cast(dict[str, Any], event)))
+
+
+def _scrub_event(event: dict[str, Any]) -> dict[str, Any]:
+    """`before_send` sobre el evento como dict: el TypedDict de Sentry no deja editar claves anidadas."""
     request = event.get('request')
     if isinstance(request, dict):
         headers = request.get('headers') or {}
@@ -55,7 +64,7 @@ def before_send(event, hint=None):
     return event
 
 
-def _float_env(name, default):
+def _float_env(name: str, default: str | float) -> float:
     try:
         return float(os.getenv(name, default))
     except ValueError:
@@ -91,7 +100,7 @@ def setup(component: str) -> bool:
     return True
 
 
-def identify(user_id) -> None:
+def identify(user_id: int | None) -> None:
     """Deja el id de la cuenta en el scope del pedido (sobrevive a los middlewares que corren en otra tarea)."""
     if not _enabled:
         return

@@ -3,6 +3,7 @@
 El formato de la cookie y del token CSRF es el que usaban Flask y Flask-WTF (ver web_settings.py),
 así las sesiones abiertas antes de quitar Flask siguen valiendo.
 """
+from collections.abc import Iterable, Iterator, Mapping
 import logging
 import os
 import secrets
@@ -31,7 +32,7 @@ templates = Jinja2Templates(directory=os.path.join(os.path.dirname(os.path.abspa
 QUERY_SAFE = "!$'()*,/:;?@"
 
 
-def web_app_for(request: Request):
+def web_app_for(request: Request) -> Any:
     """Clave, config y globals de la web (web_settings.WebApp de app.py, o la de los tests)."""
     web_app = getattr(request.app.state, 'web_app', None)
     if web_app is None:
@@ -39,18 +40,18 @@ def web_app_for(request: Request):
     return web_app
 
 
-class WebSession(dict):
+class WebSession(dict[str, Any]):
     """Contenido de la cookie de sesión; `modified` indica si hay que volver a escribirla."""
 
-    def __init__(self, data: dict):
+    def __init__(self, data: dict[str, Any]) -> None:
         super().__init__(data)
         self.modified = False
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key: str, value: Any) -> None:
         self.modified = True
         super().__setitem__(key, value)
 
-    def __delitem__(self, key):
+    def __delitem__(self, key: str) -> None:
         self.modified = True
         super().__delitem__(key)
 
@@ -64,12 +65,12 @@ class WebSession(dict):
         """Marca la sesión como permanente o de navegador."""
         self['_permanent'] = bool(value)
 
-    def pop(self, key, *default):
+    def pop(self, key: str, *default: Any) -> Any:
         if key in self:
             self.modified = True
         return super().pop(key, *default)
 
-    def clear(self):
+    def clear(self) -> None:
         self.modified = True
         super().clear()
 
@@ -80,7 +81,8 @@ def get_session(request: Request) -> WebSession:
         web_app = web_app_for(request)
         cookie = request.cookies.get(web_app.config.get('SESSION_COOKIE_NAME', 'session'))
         request.state.web_session = WebSession(auth.load_session_cookie(web_app, cookie))
-    return request.state.web_session
+    session: WebSession = request.state.web_session
+    return session
 
 
 ResponseT = TypeVar('ResponseT', bound=Response)
@@ -127,12 +129,12 @@ def flash(request: Request, message: str, category: str = 'message') -> None:
     session['_flashes'] = [*session.get('_flashes', []), (category, message)]
 
 
-def get_flashed_messages(request: Request, with_categories: bool = False) -> list:
+def get_flashed_messages(request: Request, with_categories: bool = False) -> list[Any]:
     flashes = get_session(request).pop('_flashes', []) or []
     return [tuple(f) for f in flashes] if with_categories else [f[1] for f in flashes]
 
 
-def all_routes(routes):
+def all_routes(routes: Iterable[Any]) -> Iterator[Any]:
     """Rutas de la app, incluidas las de los include_router (FastAPI >= 0.13x los agrupa)."""
     for route in routes:
         nested = getattr(route, 'original_router', None)
@@ -142,7 +144,7 @@ def all_routes(routes):
             yield route
 
 
-def url_for(request: Request, endpoint: str, **values) -> str:
+def url_for(request: Request, endpoint: str, **values: Any) -> str:
     """Como el url_for de Flask: la ruta con ese nombre, y lo que sobra va en la query."""
     if endpoint == 'static':
         return str(request.app.url_path_for('static', path=values.pop('filename', values.pop('path', ''))))
@@ -161,23 +163,23 @@ def current_user_id() -> Optional[int]:
 
 
 @pass_context
-def _url_for(context, endpoint: str, **values):
+def _url_for(context: Mapping[str, Any], endpoint: str, **values: Any) -> str:
     return url_for(context['request'], endpoint, **values)
 
 
 @pass_context
-def _csrf_token(context):
+def _csrf_token(context: Mapping[str, Any]) -> str:
     return csrf_token(context['request'])
 
 
 @pass_context
-def _csp_nonce(context):
+def _csp_nonce(context: Mapping[str, Any]) -> str:
     """Nonce de la CSP del pedido, para los <script> inline de las plantillas."""
     return security_headers.nonce(context['request'])
 
 
 @pass_context
-def _get_flashed_messages(context, with_categories=False, **_):
+def _get_flashed_messages(context: Mapping[str, Any], with_categories: bool = False, **_: Any) -> list[Any]:
     return get_flashed_messages(context['request'], with_categories)
 
 
@@ -191,7 +193,7 @@ def select_language(request: Request) -> str:
     return lang
 
 
-def render(request: Request, name: str, status_code: int = 200, **context) -> HTMLResponse:
+def render(request: Request, name: str, status_code: int = 200, **context: Any) -> HTMLResponse:
     """Plantilla con el contexto que Flask agrega a todas (cuenta, idioma) y la sesión guardada."""
     lang = select_language(request)
     user_id = current_user_id()
@@ -210,7 +212,7 @@ def redirect(request: Request, target: str, status_code: int = 302) -> RedirectR
     return save_session(request, RedirectResponse(target, status_code=status_code))
 
 
-def services_for(request: Request):
+def services_for(request: Request) -> Any:
     """Servicios de la app (base, job_status, perfiles, búsquedas, conexiones) que arma app.py."""
     return web_app_for(request).extensions['empleoia_services']
 
@@ -283,7 +285,7 @@ def csrf_error(request: Request) -> Response:
     return render(request, 'error.html', 400, code=400, message='The CSRF token is missing or invalid.')
 
 
-async def _parse(request: Request, max_bytes: int, max_files: int) -> tuple[TextForm, dict, Optional[Response]]:
+async def _parse(request: Request, max_bytes: int, max_files: int) -> tuple[TextForm, dict[str, Any], Optional[Response]]:
     """Cuerpo limitado a `max_bytes`, campos de texto, archivos y error (413/400) si corresponde."""
     if not await _body_within(request, max_bytes):
         return TextForm(), {}, render(request, 'error.html', 413, code=413, message='Request Entity Too Large')
@@ -306,7 +308,7 @@ def upload_max_bytes(request: Request) -> int:
     return int(web_app_for(request).config.get('MAX_CONTENT_LENGTH') or 16 * 1024 * 1024)
 
 
-async def read_upload(request: Request) -> tuple[TextForm, dict, Optional[Response]]:
+async def read_upload(request: Request) -> tuple[TextForm, dict[str, Any], Optional[Response]]:
     """Formulario con un archivo (hasta MAX_CONTENT_LENGTH): campos, {nombre: UploadFile} y error (413/400)."""
     return await _parse(request, upload_max_bytes(request), 1)
 
@@ -324,7 +326,7 @@ def safe_next(target: str) -> str:
     return target if is_local and not loops else '/'
 
 
-def public_url(request: Request, endpoint: str, **values) -> Optional[str]:
+def public_url(request: Request, endpoint: str, **values: Any) -> Optional[str]:
     """URL absoluta para los emails (ver account_notify.public_base)."""
     base = account_notify.public_base(request.headers.get('host', ''), str(request.base_url))
     return base + url_for(request, endpoint, **values) if base else None

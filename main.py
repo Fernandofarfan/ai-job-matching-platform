@@ -2,6 +2,7 @@
 import logging
 import os
 import time
+from collections.abc import Awaitable, Callable, Iterable
 from typing import Any
 from urllib.parse import quote
 
@@ -26,6 +27,7 @@ from routers import (account_integrations, account_pages, admin_pages, ai, alert
 from routers import push as push_router
 from routers import webhooks
 
+CallNext = Callable[[Request], Awaitable[Response]]
 PUBLIC_API_PATHS = {"/api/health", "/api/ready"}
 EXTENSION_API_PATHS = {"/api/tracker/save-from-extension"}
 LOGIN_ROUTERS = [account_pages.router, account_integrations.router, security_pages.router, admin_pages.router, export_pages.router, content_pages.router,
@@ -33,12 +35,12 @@ LOGIN_ROUTERS = [account_pages.router, account_integrations.router, security_pag
 PUBLIC_PAGES = {"set_language", "service_worker", "robots", "health_check", "readiness_check"}
 
 
-def _matches(routers, scope) -> bool:
+def _matches(routers: Iterable[Any], scope: Any) -> bool:
     return any(route.matches(scope)[0] != Match.NONE for r in routers for route in r.routes
                if getattr(route, "name", None) not in PUBLIC_PAGES)
 
 
-async def rate_limit_ai(request: Request, call_next):
+async def rate_limit_ai(request: Request, call_next: CallNext) -> Response:
     """Límites por cuenta (o por IP sin sesión): API_RATE_LIMIT para todo /api/* y AI_RATE_LIMIT para la IA.
 
     Corre dentro de require_login, que ya fijó la cuenta.
@@ -64,7 +66,7 @@ async def rate_limit_ai(request: Request, call_next):
             return JSONResponse({"error": "Demasiadas solicitudes de IA, probá de nuevo en un minuto"}, status_code=429)
     return await call_next(request)
 
-async def require_login(request: Request, call_next):
+async def require_login(request: Request, call_next: CallNext) -> Response:
     """Fija el usuario de la sesión para las capas de datos; las rutas nativas de FastAPI exigen login."""
     web_app = request.app.state.web_app
     cookie = request.cookies.get(web_app.config.get("SESSION_COOKIE_NAME", "session"))
@@ -79,7 +81,7 @@ async def require_login(request: Request, call_next):
         return RedirectResponse(f"/login?next={quote(target)}", status_code=302)
     return await call_next(request)
 
-async def record_metrics(request: Request, call_next):
+async def record_metrics(request: Request, call_next: CallNext) -> Response:
     """Último middleware registrado = el más externo: también cuenta los 401 y 429."""
     start = time.perf_counter()
     status = 500
@@ -92,7 +94,7 @@ async def record_metrics(request: Request, call_next):
             request.method, observability.route_label(request.app, request.scope),
             status, time.perf_counter() - start)
 
-def metrics(authorization: str | None = Header(default=None)):
+def metrics(authorization: str | None = Header(default=None)) -> Response:
     """Corre en el threadpool: render() lee Redis de forma sincrónica. Métricas Prometheus; exige `Authorization: Bearer $METRICS_TOKEN` (sin token configurado, 404)."""
     allowed = observability.metrics_allowed(authorization)
     if allowed is None:
@@ -101,13 +103,13 @@ def metrics(authorization: str | None = Header(default=None)):
         return JSONResponse({"error": "No autorizado"}, status_code=401, headers={"WWW-Authenticate": "Bearer"})
     return Response(observability.render(), media_type=observability.CONTENT_TYPE)
 
-async def health_check():
+async def health_check() -> dict[str, Any]:
     """Para verificar si los contenedores/FastAPI están vivos."""
     return {"status": "ok", "service": "EmpleoIA API (FastAPI Mode)",
             "version": version.__version__, "commit": version.commit()}
 
 
-def _check_database():
+def _check_database() -> None:
     """`SELECT 1` contra la base; levanta si no responde."""
     from sqlalchemy import text
 
@@ -116,7 +118,7 @@ def _check_database():
         conn.execute(text("SELECT 1"))
 
 
-def _check_redis():
+def _check_redis() -> None:
     """`PING` al Redis de los límites de pedidos, si `RATELIMIT_STORAGE_URI` es redis://; levanta si no responde.
 
     Es el único Redis sin el que la web no atiende: sin él, login y APIs fallan. `REDIS_URL` (Celery, cachés,
@@ -131,7 +133,7 @@ def _check_redis():
             client.close()
 
 
-def readiness_check():
+def readiness_check() -> JSONResponse:
     """Lista para recibir pedidos: la base responde y, si los límites usan Redis, también. 503 si algo falla.
     /api/health solo dice que el proceso está vivo (liveness); esta es la de startup y del uptime check."""
     checks, ok = {}, True
@@ -145,14 +147,14 @@ def readiness_check():
     return JSONResponse({"status": "ok" if ok else "error", "checks": checks}, status_code=200 if ok else 503)
 
 
-async def http_error(request: Request, exc: StarletteHTTPException):
+async def http_error(request: Request, exc: StarletteHTTPException) -> Response:
     """Errores HTTP: JSON en /api/* y en los 405; página de error en el resto (404 sin detalles internos)."""
     if request.url.path.startswith("/api/") or exc.status_code != 404:
         return await http_exception_handler(request, exc)
     return fastapi_web.render(request, "error.html", 404, code=404, message="Página no encontrada")
 
 
-async def server_error(request: Request, exc: Exception):
+async def server_error(request: Request, exc: Exception) -> Response:
     """500 sin el mensaje interno (queda en el log y, con SENTRY_DSN, en Sentry)."""
     logging.exception(f"500 en {request.url.path}: {exc}")
     error_reporting.capture(exc)
@@ -176,7 +178,7 @@ DOCUMENTED_ERRORS: dict[int | str, dict[str, Any]] = {
 }
 
 
-def create_app(web_app=None) -> FastAPI:
+def create_app(web_app: Any = None) -> FastAPI:
     """FastAPI con sus routers; `web_app` (por defecto la de app.py) tiene la clave, la config y los globals."""
     error_reporting.setup("web")
     docs = os.getenv("ENABLE_API_DOCS", "0") == "1"

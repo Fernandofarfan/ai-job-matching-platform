@@ -1,4 +1,5 @@
 """Metadata de todos los modelos y comparación con el esquema real (Alembic y CI)."""
+from typing import Any
 import importlib
 
 # Módulos con su propia Base declarativa
@@ -12,23 +13,24 @@ ALERT_MODULES = ('job_feedback',)
 UNMODELED_TABLES = {'application_status_history', 'job_tracker', 'alembic_version'}
 
 
-def metadata_list():
+def metadata_list() -> list[Any]:
     """MetaData de cada Base declarativa, con todos sus modelos registrados."""
     for name in ACCOUNT_MODULES + ALERT_MODULES:
         importlib.import_module(name)
     return [importlib.import_module(name).Base.metadata for name in BASE_MODULES]
 
 
-def include_object(obj, name, type_, reflected, compare_to):
+def include_object(obj: Any, name: str | None, type_: str, reflected: bool, compare_to: Any) -> bool:
     """Deja afuera de la comparación las tablas sin modelo."""
     return not (type_ == 'table' and name in UNMODELED_TABLES)
 
 
-def schema_diff(connection):
+def schema_diff(connection: Any) -> Any:
     """Diferencias entre la base y los modelos (lista vacía = sin drift)."""
     from alembic.autogenerate import compare_metadata
     from alembic.migration import MigrationContext
     context = MigrationContext.configure(connection, opts={
         'compare_type': True, 'include_object': include_object, 'target_metadata': metadata_list(),
     })
-    return compare_metadata(context, metadata_list())
+    # Alembic acepta una lista de MetaData (como target_metadata), aunque la firma diga MetaData.
+    return compare_metadata(context, metadata_list())  # type: ignore[arg-type]

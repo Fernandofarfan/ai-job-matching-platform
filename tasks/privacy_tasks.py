@@ -77,7 +77,7 @@ def _delete_inactive(user_id: int, notice_at: datetime) -> bool:
 
     try:
         with accounts.as_user(user_id):
-            resumes = {p.get("resume_filename") for p in profile_store.get_all_profiles().values()} - {None, ""}
+            resumes = {name for p in profile_store.get_all_profiles().values() if (name := p.get("resume_filename"))}
         if not account_lifecycle.delete_account(user_id, notice_at=notice_at):
             return False
     except Exception as e:

@@ -6,6 +6,13 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar] - mypy estricto, etapa 4
+
+- mypy estricto revisa los 39 módulos que faltaban y `scripts/`: `app`, `main`, `fastapi_web`, `db_config`, `job_matcher`, `job_alerts`, `job_feedback`, `job_ranking`, `profile_store`, `cv_storage`, `rate_limit`, `data_export`, `observability`, entre otros. Ya no queda código fuera del modo estricto.
+- Al activarlo marcó 730 errores; quedan 0. Solo hay 3 `type: ignore`, cada uno con su motivo (librerías sin tipos o con firmas más estrechas que su uso real).
+- `run_job_alerts` declaraba devolver un dict y devuelve una lista por búsqueda; `scraper_stats.record` declaraba no devolver nada y devuelve el resultado. Las firmas ahora dicen lo que pasa.
+- Las señales de Celery se conectan con `signal.connect(func)` en vez del decorador, que dejaba las funciones sin tipos. El comportamiento no cambia.
+
 ## [Sin publicar] - Medir la unificación de ofertas repetidas
 
 - `eval/dedup_pairs.json` con 40 pares etiquetados y `scripts/eval_dedup.py` (precisión, cobertura y F1); el CI exige precisión 1,0 y cobertura ≥ 0,9. Hoy: precisión 1,0 y cobertura 0,905.

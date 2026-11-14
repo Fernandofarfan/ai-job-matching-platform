@@ -5,6 +5,7 @@
 La cuenta tiene que existir (loadtest/seed.py la crea con datos fijos). Los elementos con
 `data-visual-mask` se tapan en la captura: usalo para fechas, contadores u otros datos que cambian solos.
 """
+from typing import Any
 import argparse
 import os
 import sys
@@ -22,7 +23,7 @@ def shot_name(path: str) -> str:
     return (path.strip('/').replace('/', '_') or 'index') + '.png'
 
 
-def _capture(page, path: str, out: Path) -> None:
+def _capture(page: Any, path: str, out: Path) -> None:
     """Abre la ruta, espera a que no haya pedidos pendientes y guarda la página entera."""
     page.goto(path)
     page.mouse.move(0, 0)

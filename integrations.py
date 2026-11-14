@@ -3,7 +3,7 @@ import hashlib
 import re
 import secrets
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 
 from sqlalchemy import Boolean, DateTime, Integer, String, Text, select
 from sqlalchemy.orm import Mapped, mapped_column
@@ -37,7 +37,7 @@ def _hash(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
 
 
-def _update(user_id: int, **values):
+def _update(user_id: int, **values: Any) -> None:
     """Crea o actualiza la fila de la cuenta."""
     with accounts._sessions()() as session:
         row = session.get(UserIntegration, user_id) or UserIntegration(user_id=user_id)
@@ -54,7 +54,7 @@ def _row(user_id: Optional[int]) -> Optional[UserIntegration]:
         return session.get(UserIntegration, user_id)
 
 
-def status(user_id: Optional[int]) -> dict:
+def status(user_id: Optional[int]) -> dict[str, Any]:
     """Qué tiene conectado la cuenta (sin secretos)."""
     row = _row(user_id)
     return {
@@ -64,7 +64,7 @@ def status(user_id: Optional[int]) -> dict:
     }
 
 
-def set_telegram_chat(user_id: int, chat_id: str):
+def set_telegram_chat(user_id: int, chat_id: str) -> None:
     """Guarda el chat de Telegram de la cuenta ('' lo borra)."""
     chat_id = (chat_id or '').strip()
     if chat_id and not CHAT_ID.match(chat_id):
@@ -85,7 +85,7 @@ def new_extension_token(user_id: int) -> str:
     return token
 
 
-def revoke_extension_token(user_id: int):
+def revoke_extension_token(user_id: int) -> None:
     """La extensión deja de poder guardar en esta cuenta."""
     _update(user_id, extension_token_hash=None, legacy_extension_off=True)
 
@@ -111,7 +111,7 @@ def user_for_extension_token(token: str) -> Optional[int]:
                                .where(UserIntegration.extension_token_hash == _hash(token))).scalar_one_or_none()
 
 
-def save_gmail_token(user_id: int, token_json: str):
+def save_gmail_token(user_id: int, token_json: str) -> None:
     """Guarda el token OAuth de Gmail (cifrado si hay CV_ENCRYPTION_KEY)."""
     import cv_storage
     fernet = cv_storage.get_fernet()
@@ -133,12 +133,12 @@ def gmail_token(user_id: int) -> Optional[str]:
     return fernet.decrypt(value.encode()).decode()
 
 
-def clear_gmail(user_id: int):
+def clear_gmail(user_id: int) -> None:
     """Desconecta Gmail de la cuenta."""
     _update(user_id, gmail_token='')
 
 
-def gmail_user_ids() -> list:
+def gmail_user_ids() -> list[Any]:
     """Cuentas con Gmail conectado."""
     with accounts._sessions()() as session:
         return list(session.execute(select(UserIntegration.user_id)

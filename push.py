@@ -4,7 +4,7 @@ import json
 import logging
 import os
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 from urllib.parse import urlsplit
 
 from sqlalchemy import DateTime, Integer, String, Text, delete, select
@@ -61,12 +61,12 @@ def _allowed_endpoint(endpoint: str) -> bool:
             and any(host == h or host.endswith('.' + h) for h in PUSH_HOSTS + extra))
 
 
-def _owner_filter(user_id: Optional[int]):
+def _owner_filter(user_id: Optional[int]) -> Any:
     col = PushSubscription.user_id
     return col.is_(None) if user_id is None else col == user_id
 
 
-def subscribe(user_id: Optional[int], endpoint: str, p256dh: str, auth: str):
+def subscribe(user_id: Optional[int], endpoint: str, p256dh: str, auth: str) -> None:
     """Guarda el dispositivo para la cuenta; si ya estaba suscripto con otra cuenta, pasa a esta."""
     endpoint = (endpoint or '').strip()
     if not _allowed_endpoint(endpoint):
@@ -106,7 +106,7 @@ def available(user_id: Optional[int]) -> bool:
     return configured() and device_count(user_id) > 0
 
 
-def _webpush(**kwargs):
+def _webpush(**kwargs: Any) -> Any:
     from pywebpush import webpush
     return webpush(**kwargs)
 

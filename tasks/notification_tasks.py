@@ -333,10 +333,10 @@ def notify_alert(search: dict[str, Any], jobs: list[Any]) -> dict[str, Any]:
 
 
 @celery.task(name="tasks.notification_tasks.run_job_alerts")
-def run_job_alerts() -> dict[str, Any]:
+def run_job_alerts() -> list[dict[str, Any]]:
     """Corre todas las búsquedas guardadas activas (Celery Beat)."""
     import job_alerts
-    summary: dict[str, Any] = job_alerts.run_all(notify_alert)
+    summary: list[dict[str, Any]] = job_alerts.run_all(notify_alert)
     return summary
 
 

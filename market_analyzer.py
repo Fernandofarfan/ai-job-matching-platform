@@ -30,7 +30,7 @@ _CURRENCY_PATTERNS = {
 }
 
 
-def extract_salary_from_text(text: str) -> dict:
+def extract_salary_from_text(text: str) -> dict[str, Any]:
     """Extrae rango salarial de texto libre usando regex."""
     if not text or len(str(text)) < 3:
         return {"min": None, "max": None, "avg": None, "currency": None, "raw": None, "confidence": "none"}
@@ -82,7 +82,7 @@ def extract_salary_from_text(text: str) -> dict:
 
 
 def analyze_salary_distribution(jobs_df: pd.DataFrame,
-                                 salary_col: str = "Salary") -> dict:
+                                 salary_col: str = "Salary") -> dict[str, Any]:
     """
     Analiza la distribución salarial de un DataFrame de trabajos.
     Retorna estadísticas y datos para graficar.
@@ -162,7 +162,7 @@ def analyze_salary_distribution(jobs_df: pd.DataFrame,
     return result
 
 
-def _create_histogram_data(values: list, bins: int = 10) -> dict:
+def _create_histogram_data(values: list[Any], bins: int = 10) -> dict[str, Any]:
     """Crea datos de histograma para Chart.js."""
     if not values:
         return {"labels": [], "counts": []}
@@ -178,7 +178,7 @@ def _create_histogram_data(values: list, bins: int = 10) -> dict:
 def get_salary_by_company(jobs_df: pd.DataFrame,
                            title_col: str = "Title",
                            company_col: str = "Company",
-                           salary_col: str = "Salary") -> list:
+                           salary_col: str = "Salary") -> list[Any]:
     """Retorna ranking de empresas por salario promedio."""
     results: list[dict[str, Any]] = []
 

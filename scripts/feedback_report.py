@@ -11,7 +11,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
-def main(argv=None):
+def main(argv: list[str] | None = None) -> int:
     """Imprime el resultado; sale con 1 si el AUC queda bajo --min-auc."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--json', action='store_true', help='Salida en JSON')

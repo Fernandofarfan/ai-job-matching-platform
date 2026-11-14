@@ -4,7 +4,7 @@ import logging
 import os
 import threading
 import time
-from typing import Optional
+from typing import Any, Optional
 from collections import OrderedDict
 from datetime import datetime, timezone
 
@@ -17,12 +17,12 @@ CACHE_MAX_ENTRIES = 256
 # Por encima de esta temperatura se esperan respuestas distintas (entrevistas, chat): no se cachean
 CACHE_MAX_TEMPERATURE = 0.5
 
-_state: dict = {}
-_cache: OrderedDict = OrderedDict()
+_state: dict[str, Any] = {}
+_cache: OrderedDict[str, tuple[float, str]] = OrderedDict()
 _lock = threading.Lock()
 
 
-def _storage():
+def _storage() -> Any:
     """Mismo storage que el rate limit: con redis:// el contador es compartido entre instancias."""
     with _lock:
         if 'storage' not in _state:
@@ -30,7 +30,7 @@ def _storage():
         return _state['storage']
 
 
-def _redis():
+def _redis() -> Any:
     """Cliente Redis si RATELIMIT_STORAGE_URI es redis://: caché compartida entre instancias."""
     uri = os.getenv('RATELIMIT_STORAGE_URI', '')
     if not uri.startswith(('redis://', 'rediss://')):
@@ -42,21 +42,21 @@ def _redis():
         return _state['redis']
 
 
-def _month():
+def _month() -> str:
     return datetime.now(timezone.utc).strftime('%Y-%m')
 
 
-def _key(kind, month=None, user=None):
+def _key(kind: str, month: str | None = None, user: int | None = None) -> str:
     scope = '' if user is None else f':u{user}'
     return f"ai_usage:{month or _month()}{scope}:{kind}"
 
 
-def _uid():
+def _uid() -> int | None:
     import accounts
     return accounts.current_user_id()
 
 
-def _env_int(name, default=0):
+def _env_int(name: str, default: int = 0) -> int:
     try:
         return int(os.getenv(name, default) or default)
     except ValueError:
@@ -64,7 +64,7 @@ def _env_int(name, default=0):
         return default
 
 
-def _env_float(name):
+def _env_float(name: str) -> float:
     try:
         return float(os.getenv(name, '') or 0)
     except ValueError:
@@ -72,17 +72,17 @@ def _env_float(name):
         return 0.0
 
 
-def monthly_limit():
+def monthly_limit() -> int:
     """AI_MONTHLY_TOKEN_LIMIT; 0 o vacío = sin tope."""
     return max(_env_int('AI_MONTHLY_TOKEN_LIMIT'), 0)
 
 
-def user_monthly_limit():
+def user_monthly_limit() -> int:
     """AI_USER_MONTHLY_TOKEN_LIMIT: tope por cuenta; 0 o vacío = sin tope."""
     return max(_env_int('AI_USER_MONTHLY_TOKEN_LIMIT'), 0)
 
 
-def _get(kind, user=None):
+def _get(kind: str, user: int | None = None) -> int:
     try:
         return int(_storage().get(_key(kind, user=user)) or 0)
     except Exception as e:
@@ -117,13 +117,13 @@ def budget_exceeded() -> bool:
     return uid is not None and bool(user_limit) and _get('input', uid) + _get('output', uid) >= user_limit
 
 
-def account_usage(user_id) -> dict:
+def account_usage(user_id: int) -> dict[str, int]:
     """Llamadas y tokens del mes en curso de una cuenta (panel de administración)."""
     tokens_in, tokens_out = _get('input', user_id), _get('output', user_id)
     return {'calls': _get('calls', user_id), 'total_tokens': tokens_in + tokens_out}
 
 
-def summary():
+def summary() -> dict[str, Any]:
     """Consumo del mes en curso, con costo estimado si se configuraron los precios."""
     input_tokens, output_tokens = _get('input'), _get('output')
     data = {
@@ -153,15 +153,15 @@ def summary():
     return data
 
 
-def _cache_key(model, prompt, temperature):
+def _cache_key(model: str, prompt: str, temperature: float) -> str:
     return hashlib.sha256(f"{model}\0{temperature}\0{prompt}".encode('utf-8')).hexdigest()
 
 
-def _cache_ttl():
+def _cache_ttl() -> int:
     return max(_env_int('AI_CACHE_TTL', 3600), 0)
 
 
-def _remember(key, text, ttl):
+def _remember(key: str, text: str, ttl: float) -> None:
     with _lock:
         _cache[key] = (time.monotonic() + ttl, text)
         _cache.move_to_end(key)
@@ -169,7 +169,7 @@ def _remember(key, text, ttl):
             _cache.popitem(last=False)
 
 
-def _count_hit():
+def _count_hit() -> None:
     try:
         _storage().incr(_key('cache_hits'), MONTH_SECONDS)
     except Exception as e:
@@ -225,7 +225,7 @@ def cache_set(model: str, prompt: str, temperature: float, text: str) -> None:
         logger.warning(f"Caché de IA en Redis no disponible ({e})")
 
 
-def reset():
+def reset() -> None:
     """Descarta contadores, caché y configuración (tests)."""
     with _lock:
         _state.clear()

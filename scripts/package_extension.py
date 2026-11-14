@@ -2,6 +2,7 @@
 
 Uso: python scripts/package_extension.py [--out dist]
 """
+from typing import Any
 import argparse
 import json
 import os
@@ -13,7 +14,7 @@ EXT_DIR = os.path.join(ROOT, 'chrome_extension')
 ALLOWED_SUFFIXES = ('.js', '.json', '.html', '.css', '.png')
 
 
-def manifest_files(manifest):
+def manifest_files(manifest: dict[str, Any]) -> set[str]:
     """Archivos que el manifest referencia y tienen que existir dentro del paquete."""
     files = set(manifest.get('icons', {}).values())
     action = manifest.get('action', {})
@@ -27,7 +28,7 @@ def manifest_files(manifest):
     return files
 
 
-def build(out_dir):
+def build(out_dir: str) -> str:
     """Valida el manifest y escribe empleoia-saver-<versión>.zip; devuelve la ruta."""
     with open(os.path.join(EXT_DIR, 'manifest.json'), encoding='utf-8') as f:
         manifest = json.load(f)
