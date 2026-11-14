@@ -3,7 +3,7 @@ import re
 import os
 import pandas as pd
 import docx
-import PyPDF2
+import pypdf
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 try:
@@ -108,7 +108,7 @@ class resumeParser:
         try:
             if file_extension == '.pdf':
                 with open(file_path, 'rb') as file:
-                    pdf_reader = PyPDF2.PdfReader(file)
+                    pdf_reader = pypdf.PdfReader(file)
                     for page in pdf_reader.pages:
                         text += page.extract_text() + "\n"
             
