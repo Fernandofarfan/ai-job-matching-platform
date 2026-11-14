@@ -720,6 +720,24 @@
     "Location": "La Plata, Buenos Aires",
     "URL": "https://zonajobs.example/552977"
    }
+  },
+  {
+   "case": "Ciudad de Córdoba contra otra ciudad de la provincia",
+   "same": false,
+   "a": {
+    "Fuente": "Bumeran",
+    "Title": "Vendedor",
+    "Company": "Arcor",
+    "Location": "Córdoba, Córdoba",
+    "URL": "https://bumeran.example/553201"
+   },
+   "b": {
+    "Fuente": "Computrabajo",
+    "Title": "Vendedor",
+    "Company": "Arcor S.A.",
+    "Location": "Villa Carlos Paz, Córdoba",
+    "URL": "https://computrabajo.example/88412"
+   }
   }
  ]
 }
