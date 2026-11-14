@@ -8,6 +8,8 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Cambiado
+- UI: todo en español (panel de métricas, asistente Copilot) y se eliminaron las plantillas sin uso `view_jobs.html` y `view_file_original.html` (UTF-16, ~18k líneas).
+- Accesibilidad: enlace "Saltar al contenido", landmark `<main>`, `aria-label` en la navegación, el botón de menú, los botones de cerrar y en los 32 campos de formulario sin etiqueta asociada.
 - Scrapers de Computrabajo y Bumeran: el parseo de tarjetas pasa a `parse_listing(html)` (BeautifulSoup) con tests sobre HTML guardado en `tests/fixtures/`.
   La carga de páginas usa `get_with_retries` (3 intentos con espera exponencial) y timeout de página `SCRAPER_PAGE_TIMEOUT` (30 s).
 - El salario de Computrabajo se toma del primer elemento con `$`/`ARS` (antes casi siempre quedaba "Not specified").

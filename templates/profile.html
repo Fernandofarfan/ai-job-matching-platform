@@ -102,7 +102,7 @@
           <div class="row g-3 mb-4">
             <div class="col-md-6">
               <label class="form-label small fw-bold text-muted">1. Tipo de Rol</label>
-              <select class="form-select" id="role_type" name="role_type" required>
+              <select aria-label="Tipo de rol" class="form-select" id="role_type" name="role_type" required>
                 <option value="">Seleccionar Rol...</option>
                 <option value="data_analyst">📊 Data Analyst</option>
                 <option value="data_engineer">⚙️ Data Engineer</option>
@@ -114,7 +114,7 @@
 
             <div class="col-md-6">
               <label class="form-label small fw-bold text-muted">3. Habilidades Adicionales (Opcional)</label>
-              <input type="text" class="form-control" id="additional_skills" name="additional_skills"
+              <input aria-label="Habilidades adicionales (opcional)" type="text" class="form-control" id="additional_skills" name="additional_skills"
                 placeholder="ej. AWS, Docker, Kubernetes" />
               <div class="form-text small">Se sumarán a las detectadas automáticamente.</div>
             </div>
@@ -124,7 +124,7 @@
           <div class="mb-4">
             <label class="form-label small fw-bold text-muted">2. Archivo (PDF/DOCX)</label>
             <div id="dropZone" class="drop-zone">
-              <input type="file" class="d-none" id="resume" name="resume" accept=".pdf,.docx,.txt" required />
+              <input aria-label="Archivo del CV (PDF, DOCX o TXT)" type="file" class="d-none" id="resume" name="resume" accept=".pdf,.docx,.txt" required />
               <div id="dropZoneContent" class="drop-zone-content">
                 <i class="bi bi-cloud-arrow-up display-1 text-primary mb-3"></i>
                 <h5 class="fw-bold mb-2">Arrastra tu CV aquí</h5>

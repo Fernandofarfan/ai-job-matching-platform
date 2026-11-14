@@ -30,7 +30,7 @@
                 </div>
                 <div class="card-body-premium">
                     <label class="form-label text-muted mb-2">Desde tu Job Tracker:</label>
-                    <select class="form-select form-select-dark mb-3" id="tracker-job-select">
+                    <select aria-label="Desde tu Job Tracker" class="form-select form-select-dark mb-3" id="tracker-job-select">
                         <option value="">— Seleccioná un trabajo guardado —</option>
                         {% for job in tracked_jobs %}
                         <option value="{{ job.id }}"
@@ -44,11 +44,11 @@
 
                     <div class="divider-text my-3">— o ingresá manualmente —</div>
 
-                    <input type="text" id="manual-title" class="form-control form-control-dark mb-2"
+                    <input aria-label="Título del puesto (ej: Data Analyst)" type="text" id="manual-title" class="form-control form-control-dark mb-2"
                            placeholder="Título del puesto (ej: Data Analyst)">
-                    <input type="text" id="manual-company" class="form-control form-control-dark mb-2"
+                    <input aria-label="Empresa (ej: Mercado Libre)" type="text" id="manual-company" class="form-control form-control-dark mb-2"
                            placeholder="Empresa (ej: Mercado Libre)">
-                    <textarea id="manual-description" class="form-control form-control-dark"
+                    <textarea aria-label="Pegá la descripción del trabajo aquí (opcional pero mejora la calidad de las preguntas)" id="manual-description" class="form-control form-control-dark"
                               rows="4"
                               placeholder="Pegá la descripción del trabajo aquí (opcional pero mejora la calidad de las preguntas)"></textarea>
                 </div>
@@ -79,7 +79,7 @@
 
                     <label class="form-label text-muted">Número de preguntas:</label>
                     <div class="d-flex align-items-center gap-3 mb-4">
-                        <input type="range" class="form-range" id="questions-count"
+                        <input aria-label="Número de preguntas" type="range" class="form-range" id="questions-count"
                                min="5" max="15" value="10" step="5">
                         <span class="badge bg-primary-gradient px-3 py-2" id="questions-label">10</span>
                     </div>
@@ -168,7 +168,7 @@
                                     <i class="bi bi-mic me-1"></i> Hablar
                                 </button>
                             </label>
-                            <textarea id="user-answer" class="form-control form-control-dark answer-textarea"
+                            <textarea aria-label="Tu respuesta" id="user-answer" class="form-control form-control-dark answer-textarea"
                                       rows="6" placeholder="Escribí tu respuesta aquí, o usá el micrófono para dictarla..."></textarea>
                         </div>
 
