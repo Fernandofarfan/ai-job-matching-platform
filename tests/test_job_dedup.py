@@ -111,6 +111,8 @@ def test_seniority_aliases_caba_and_different_provinces():
     assert len(job_dedup.unify([_job('Bumeran', location='Córdoba, Córdoba'),
                                 _job('ZonaJobs', location='Córdoba Capital')])) == 1
     assert len(job_dedup.unify([_job('Bumeran', location='Córdoba Capital'),
+                                _job('ZonaJobs', location='Capital, Córdoba')])) == 1
+    assert len(job_dedup.unify([_job('Bumeran', location='Córdoba Capital'),
                                 _job('ZonaJobs', location='Villa Carlos Paz, Córdoba')])) == 2
     assert len(job_dedup.unify([_job('Bumeran', location='Gran Buenos Aires, Buenos Aires'),
                                 _job('ZonaJobs', location='CABA')])) == 2

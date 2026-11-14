@@ -68,13 +68,15 @@ def _place_text(location: object) -> str:
 
 def _places(location: object) -> set[str]:
     """Palabras de la ubicación que identifican un lugar dentro de la provincia (sin países ni "Remoto"). De la provincia
-    se quita solo la última mención: en "Córdoba, Córdoba" la primera es la ciudad, igual que "Córdoba Capital". La ciudad de Buenos Aires es Capital
-    Federal, que queda: es un lugar distinto del resto de la provincia de Buenos Aires."""
+    se quita solo la última mención: en "Córdoba, Córdoba" la primera es la ciudad. "Capital" junto a una provincia es
+    esa ciudad ("Córdoba Capital", "Capital, Córdoba"). La ciudad de Buenos Aires es Capital Federal, que queda: es un
+    lugar distinto del resto de la provincia de Buenos Aires."""
     text = _place_text(location)
     for province in PROVINCES - {'capital federal'}:
-        text = re.sub(rf'(?<= ){province} capital(?= )', f'{province} {province}', text)
         matches = list(re.finditer(rf'(?<= ){province}(?= )', text))
         if matches:
+            text = re.sub(r'(?<= )capital(?= )(?! federal )', province, text)
+            matches = list(re.finditer(rf'(?<= ){province}(?= )', text))
             text = text[:matches[-1].start()] + text[matches[-1].end():]
     words = set(text.split()) - GENERIC_PLACES
     return {'capital', 'federal'} if words == {'buenos', 'aires'} else words
