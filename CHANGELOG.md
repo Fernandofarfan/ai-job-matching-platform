@@ -8,7 +8,7 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [Sin publicar] - mypy estricto, etapa 4
 
-- mypy estricto revisa los 39 módulos que faltaban y `scripts/`: `app`, `main`, `fastapi_web`, `db_config`, `job_matcher`, `job_alerts`, `job_feedback`, `job_ranking`, `profile_store`, `cv_storage`, `rate_limit`, `data_export`, `observability`, entre otros. Ya no queda código fuera del modo estricto.
+- mypy estricto revisa los 39 módulos que faltaban y `scripts/`: `app`, `main`, `fastapi_web`, `db_config`, `job_matcher`, `job_alerts`, `job_feedback`, `job_ranking`, `profile_store`, `cv_storage`, `rate_limit`, `data_export`, `observability`, entre otros. Solo quedan fuera del modo estricto los tests y la prueba de carga (`loadtest/`).
 - Al activarlo marcó 730 errores; quedan 0. Solo hay 3 `type: ignore`, cada uno con su motivo (librerías sin tipos o con firmas más estrechas que su uso real).
 - `run_job_alerts` declaraba devolver un dict y devuelve una lista por búsqueda; `scraper_stats.record` declaraba no devolver nada y devuelve el resultado. Las firmas ahora dicen lo que pasa.
 - Las señales de Celery se conectan con `signal.connect(func)` en vez del decorador, que dejaba las funciones sin tipos. El comportamiento no cambia.
