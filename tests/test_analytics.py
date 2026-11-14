@@ -72,7 +72,7 @@ class TestAnalyticsAdvanced:
         content = response.data.decode('utf-8')
         # /analytics lo sirve FastAPI con dashboard.html
         assert 'Embudo de Conversión' in content
-        assert 'portalStats' in content or 'loadPortalStats' in content
+        assert '/static/js/pages/dashboard.js' in content
 
     def test_tracker_stats_counts_by_status(self, api):
         """El endpoint /api/tracker/stats agrupa bien por estado."""

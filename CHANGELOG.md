@@ -6,6 +6,16 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar] - JavaScript de las plantillas en archivos estáticos
+
+- Los 15 scripts en línea de 13 plantillas pasan a `static/js/` (`csrf.js`, `copilot.js`, `clear-sw-cache.js` y
+  `static/js/pages/*.js`): se cachean, se pueden testear y la CSP ya no depende del nonce para ejecutar código.
+- Los textos traducidos llegan en `<script type="application/json" data-i18n>` y se leen con `t()` / `tHtml()`
+  de `static/js/i18n.js`; los datos de la página, en bloques JSON como `#viewFileData`.
+- Un test exige que las plantillas no tengan JavaScript en línea (solo datos JSON) y otro que cada archivo de
+  `static/js` compile en Chromium.
+
+
 ## [Sin publicar] - Tests del JavaScript del navegador
 
 - `tests_integration/test_browser_js.py`: 20 tests en Chromium para `actions.js`, `passkeys.js`, `push.js`,

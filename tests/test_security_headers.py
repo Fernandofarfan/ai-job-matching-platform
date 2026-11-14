@@ -12,7 +12,7 @@ def _csp(response):
 
 
 def test_html_page_has_csp_with_matching_nonce(client):
-    response = client.get('/')
+    response = client.get('/tracker')  # trae un bloque de datos JSON en línea
     csp = _csp(response)
     nonce = re.search(r"'nonce-([^']+)'", csp).group(1)
     scripts = re.findall(r'<script(?![^>]*\bsrc=)([^>]*)>', response.get_data(as_text=True))
@@ -69,7 +69,7 @@ def test_api_docs_disabled_by_default(app, monkeypatch):
 
 
 def test_templates_have_no_inline_handlers_or_javascript_urls():
-    files = [*TEMPLATES.glob('*.html'), *(TEMPLATES.parent / 'static' / 'js').glob('*.js')]
+    files = [*TEMPLATES.glob('*.html'), *(TEMPLATES.parent / 'static' / 'js').rglob('*.js')]
     offenders = [f'{p.name}:{n}' for p in files
                  for n, line in enumerate(p.read_text(encoding='utf-8').splitlines(), 1)
                  if INLINE_HANDLER.search(line) or 'javascript:' in line]
@@ -83,6 +83,22 @@ def test_inline_scripts_carry_the_nonce():
     assert missing == []
 
 
+def test_templates_have_no_inline_javascript():
+    """El JavaScript va en static/js (se cachea, se testea y se lintea); en línea solo quedan datos JSON."""
+    inline = [f'{p.name}: {attrs.strip()[:60]}' for p in TEMPLATES.glob('*.html')
+              for attrs in re.findall(r'<script(?![^>]*\bsrc=)([^>]*)>', p.read_text(encoding='utf-8'))
+              if 'type="application/json"' not in attrs]
+    assert inline == []
+
+
+def test_template_scripts_exist():
+    static = TEMPLATES.parent / 'static'
+    missing = [f'{p.name}: {name}' for p in TEMPLATES.glob('*.html')
+               for name in re.findall(r"url_for\('static', filename='(js/[^']+)'\)", p.read_text(encoding='utf-8'))
+               if not (static / name).is_file()]
+    assert missing == []
+
+
 def test_cdn_resources_are_pinned_with_sri():
     unpinned = [f'{p.name}: {tag[:80]}' for p in TEMPLATES.glob('*.html')
                 for tag in re.findall(r'<(?:script|link)[^>]*cdn\.jsdelivr\.net[^>]*>', p.read_text(encoding='utf-8'))
@@ -91,17 +107,21 @@ def test_cdn_resources_are_pinned_with_sri():
 
 
 def test_declared_actions_exist():
-    """Cada data-on*="fn" apunta a una función global de la misma plantilla, de base.html o de actions.js."""
-    shared = (TEMPLATES / 'base.html').read_text(encoding='utf-8') + (
-        TEMPLATES.parent / 'static' / 'js' / 'actions.js').read_text(encoding='utf-8')
+    """Cada data-on*="fn" apunta a una función global de un script que carga la plantilla o base.html."""
+    def with_scripts(text: str) -> str:
+        names = re.findall(r"url_for\('static', filename='(js/[^']+)'\)", text)
+        return text + ''.join((TEMPLATES.parent / 'static' / n).read_text(encoding='utf-8') for n in names)
+
+    shared = with_scripts((TEMPLATES / 'base.html').read_text(encoding='utf-8'))
     missing = []
     for p in TEMPLATES.glob('*.html'):
-        text = p.read_text(encoding='utf-8')
-        for name in set(re.findall(r'data-on(?:click|change|input|keydown)="(\w+)"', text)):
+        template = p.read_text(encoding='utf-8')
+        text = with_scripts(template)
+        for name in set(re.findall(r'data-on(?:click|change|input|keydown)="(\w+)"', template)):
             pattern = rf'(function\s+{name}\s*\(|window\.{name}\s*=)'
             if not re.search(pattern, text) and not re.search(pattern, shared):
                 missing.append(f'{p.name}: {name}')
-        for args in re.findall(r"data-args='([^']*)'", text):
+        for args in re.findall(r"data-args='([^']*)'", template):
             if '{{' not in args:
                 assert isinstance(json.loads(args), list)
     assert missing == []
@@ -148,3 +168,13 @@ def test_server_error_keeps_security_headers(app):
         assert 'detalle-secreto' not in response.text
         assert "frame-ancestors 'none'" in response.headers['content-security-policy']
         assert response.headers['x-frame-options'] == 'DENY'
+
+
+def test_precached_pages_have_their_scripts_precached():
+    """El service worker guarda /tracker y /analytics para abrirlos offline: también tiene que guardar sus scripts."""
+    sw = (TEMPLATES.parent / 'static' / 'sw.js').read_text(encoding='utf-8')
+    precached = set(re.findall(r"'(/static/js/[^']+)'", sw.split('];')[0]))
+    needed = {f'/static/{name}' for page in ('base.html', 'job_tracker.html', 'dashboard.html')
+              for name in re.findall(r"url_for\('static', filename='(js/[^']+)'\)",
+                                     (TEMPLATES / page).read_text(encoding='utf-8'))}
+    assert needed - precached == set()
