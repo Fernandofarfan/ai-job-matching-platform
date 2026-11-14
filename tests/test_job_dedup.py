@@ -98,3 +98,5 @@ def test_seniority_aliases_caba_and_different_provinces():
                                 _job('Computrabajo', location='CABA')])) == 1
     assert len(job_dedup.unify([_job('Bumeran', location='San Justo, Buenos Aires'),
                                 _job('ZonaJobs', location='San Justo, Santa Fe')])) == 2
+    assert len(job_dedup.unify([_job('Bumeran', location='Ciudad Autónoma de Buenos Aires'),
+                                _job('ZonaJobs', location='Buenos Aires')])) == 1

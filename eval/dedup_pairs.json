@@ -684,6 +684,24 @@
     "Location": "San Justo, Santa Fe",
     "URL": "https://bumeran.example/639367"
    }
+  },
+  {
+   "case": "CABA escrita completa frente a Buenos Aires",
+   "same": true,
+   "a": {
+    "Fuente": "Bumeran",
+    "Title": "Analista Contable",
+    "Company": "Grupo Sur S.A.",
+    "Location": "Ciudad Autónoma de Buenos Aires",
+    "URL": "https://bumeran.example/771203"
+   },
+   "b": {
+    "Fuente": "ZonaJobs",
+    "Title": "Analista Contable",
+    "Company": "Grupo Sur",
+    "Location": "Buenos Aires",
+    "URL": "https://zonajobs.example/552918"
+   }
   }
  ]
 }

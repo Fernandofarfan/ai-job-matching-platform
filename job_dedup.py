@@ -97,10 +97,11 @@ def _source(job: Job) -> str:
 
 def _compatible(a: Job, b: Job) -> bool:
     """Ubicaciones que pueden ser la misma: alguna es genérica o comparten una palabra de lugar, sin nombrar
-    provincias distintas ("San Justo, Buenos Aires" y "San Justo, Santa Fe" no)."""
+    provincias distintas ("San Justo, Buenos Aires" y "San Justo, Santa Fe" no). Si nombran la misma provincia son
+    compatibles: "Ciudad Autónoma de Buenos Aires" y "Buenos Aires" no comparten palabras después del alias."""
     provinces_a, provinces_b = _provinces(a.get('Location')), _provinces(b.get('Location'))
-    if provinces_a and provinces_b and not provinces_a & provinces_b:
-        return False
+    if provinces_a and provinces_b:
+        return bool(provinces_a & provinces_b)
     places_a, places_b = _places(a.get('Location')), _places(b.get('Location'))
     return not places_a or not places_b or bool(places_a & places_b)
 
