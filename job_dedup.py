@@ -12,7 +12,7 @@ from urllib.parse import urlsplit
 Job = dict[str, Any]
 
 PLACEHOLDERS = {'', 'confidencial', 'empresa confidencial', 'reservado', 'no especificado', 'no especificada',
-                'n a', 'na', 'nan', 'none'}
+                'n a', 'na', 'nan', 'none', 'confidential', 'not specified', 'unknown'}
 COMPANY_SUFFIXES = {'sa', 'srl', 'sas', 'sau', 'sl', 'sacif', 'saic', 'ltda', 'inc', 'llc', 'corp', 'corporation',
                     'ltd', 'limited', 'gmbh', 'cv', 'de'}
 GENERIC_PLACES = {'argentina', 'chile', 'uruguay', 'paraguay', 'bolivia', 'peru', 'colombia', 'mexico', 'brasil',
@@ -20,9 +20,9 @@ GENERIC_PLACES = {'argentina', 'chile', 'uruguay', 'paraguay', 'bolivia', 'peru'
 
 
 def _norm(value: object) -> str:
-    """Minúsculas ASCII, sin puntos y con el resto de la puntuación como espacios."""
+    """Minúsculas ASCII, sin puntos y con el resto de la puntuación como espacios, salvo `+` y `#` (C++, C#)."""
     text = unicodedata.normalize('NFKD', str(value or '')).encode('ascii', 'ignore').decode().lower()
-    text = re.sub(r'[^a-z0-9 ]+', ' ', text.replace('.', ''))
+    text = re.sub(r'[^a-z0-9+# ]+', ' ', text.replace('.', ''))
     return ' '.join(text.split())
 
 
@@ -101,9 +101,9 @@ def unify(jobs: Iterable[Job]) -> list[Job]:
         if index is None:
             index = len(groups)
             groups.append([])
-            if all(key):
-                by_key.setdefault(key, []).append(index)
         groups[index].append(job)
+        if all(key) and index not in by_key.setdefault(key, []):
+            by_key[key].append(index)
         if url:
             by_url.setdefault(url, index)
     return [_merge(group) for group in groups]
