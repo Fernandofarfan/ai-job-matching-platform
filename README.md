@@ -454,7 +454,8 @@ AI_MONTHLY_TOKEN_LIMIT=0        # tope mensual de tokens de Gemini (0 = sin tope
 AI_USER_MONTHLY_TOKEN_LIMIT=0   # tope mensual por cuenta (0 = sin tope); cada cuenta ve su consumo en GET /api/ai/usage.
 MATCHING_BACKEND=tfidf          # embeddings = match CV-oferta por significado con Gemini (cuenta en el tope); tfidf = palabras en común.
                                 # Al llegar al tope, la carga de CV sigue funcionando con el parser local (regex + spaCy), sin IA
-AI_CACHE_TTL=3600               # caché de respuestas de IA deterministas (temperatura ≤ 0.5); 0 la apaga
+AI_CACHE_TTL=3600               # caché de respuestas de IA deterministas (temperatura ≤ 0.5), compartida en Redis si RATELIMIT_STORAGE_URI es redis://; 0 la apaga
+GEMINI_LIGHT_MODEL=gemini-2.5-flash-lite  # modelo barato para extraer salarios y clasificar correos de Gmail; vacío = GEMINI_MODEL
 AI_PRICE_INPUT_PER_MTOK=        # USD por millón de tokens, para el costo estimado (opcional)
 AI_PRICE_OUTPUT_PER_MTOK=
 SCRAPER_PAGE_TIMEOUT=30  # segundos máximos de carga de cada página en los scrapers

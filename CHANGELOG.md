@@ -6,6 +6,12 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar] - Caché de IA compartida y modelo barato para tareas simples
+
+- La caché de respuestas de Gemini (temperatura ≤ 0.5, `AI_CACHE_TTL`) se guarda también en Redis cuando `RATELIMIT_STORAGE_URI` es `redis://`: una respuesta generada en una instancia de Cloud Run o en el worker sirve para las demás. Si Redis falla, sigue la caché en memoria.
+- `GEMINI_LIGHT_MODEL` (por defecto `gemini-2.5-flash-lite`) se usa para extraer salarios y para asociar correos de Gmail a una empresa del tracker; esa clasificación pasa a temperatura 0 y queda en caché. Vacío = `GEMINI_MODEL`.
+- `/api/ai/usage` suma `cache_hits`: llamadas del mes resueltas desde la caché.
+
 ## [Sin publicar] - Modelos `Mapped[...]` y SQLAlchemy 2.1
 
 - Todos los modelos (`models.py`, `accounts.py`, `job_alerts.py`, `profile_store.py`, `two_factor.py`, `user_sessions.py`, `security_events.py`, `push.py`, `integrations.py`) usan `DeclarativeBase` y `Mapped[...] = mapped_column(...)` en vez de `declarative_base()` y `Column`. El esquema que generan es idéntico (mismas columnas, nulos, índices y defaults).

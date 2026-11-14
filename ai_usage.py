@@ -29,6 +29,18 @@ def _storage():
         return _state['storage']
 
 
+def _redis():
+    """Cliente Redis si RATELIMIT_STORAGE_URI es redis://: caché compartida entre instancias."""
+    uri = os.getenv('RATELIMIT_STORAGE_URI', '')
+    if not uri.startswith(('redis://', 'rediss://')):
+        return None
+    with _lock:
+        if 'redis' not in _state:
+            import redis
+            _state['redis'] = redis.Redis.from_url(uri, socket_timeout=1)
+        return _state['redis']
+
+
 def _month():
     return datetime.now(timezone.utc).strftime('%Y-%m')
 
@@ -121,6 +133,7 @@ def summary():
         'total_tokens': input_tokens + output_tokens,
         'monthly_token_limit': monthly_limit() or None,
         'cached_responses': len(_cache),
+        'cache_hits': _get('cache_hits'),
     }
     uid = _uid()
     if uid is not None:
@@ -147,31 +160,68 @@ def _cache_ttl():
     return max(_env_int('AI_CACHE_TTL', 3600), 0)
 
 
+def _remember(key, text, ttl):
+    with _lock:
+        _cache[key] = (time.monotonic() + ttl, text)
+        _cache.move_to_end(key)
+        while len(_cache) > CACHE_MAX_ENTRIES:
+            _cache.popitem(last=False)
+
+
+def _count_hit():
+    try:
+        _storage().incr(_key('cache_hits'), MONTH_SECONDS)
+    except Exception as e:
+        logger.debug(f"Acierto de caché no registrado ({e})")
+
+
 def cache_get(model, prompt, temperature):
-    if temperature > CACHE_MAX_TEMPERATURE or not _cache_ttl():
+    """Respuesta guardada para el mismo modelo, prompt y temperatura (memoria o Redis), o None."""
+    ttl = _cache_ttl()
+    if temperature > CACHE_MAX_TEMPERATURE or not ttl:
         return None
     key = _cache_key(model, prompt, temperature)
     with _lock:
         entry = _cache.get(key)
-        if not entry:
-            return None
-        expires, text = entry
-        if expires < time.monotonic():
+        if entry and entry[0] < time.monotonic():
             del _cache[key]
-            return None
-        _cache.move_to_end(key)
-        return text
+            entry = None
+        if entry:
+            _cache.move_to_end(key)
+    if entry:
+        _count_hit()
+        return entry[1]
+    try:
+        client = _redis()
+        shared, remaining = None, 0
+        if client:
+            name = f'ai_cache:{key}'
+            shared, remaining = client.pipeline().get(name).ttl(name).execute()
+    except Exception as e:
+        logger.warning(f"Caché de IA en Redis no disponible ({e})")
+        shared, remaining = None, 0
+    if shared is None:
+        return None
+    text = shared.decode('utf-8') if isinstance(shared, bytes) else shared
+    if remaining and remaining > 0:
+        _remember(key, text, min(remaining, ttl))  # vence junto con la copia de Redis
+    _count_hit()
+    return text
 
 
 def cache_set(model, prompt, temperature, text):
+    """Guarda la respuesta en memoria y, con Redis, para las demás instancias (AI_CACHE_TTL s)."""
     ttl = _cache_ttl()
     if temperature > CACHE_MAX_TEMPERATURE or not ttl:
         return
-    with _lock:
-        _cache[_cache_key(model, prompt, temperature)] = (time.monotonic() + ttl, text)
-        _cache.move_to_end(_cache_key(model, prompt, temperature))
-        while len(_cache) > CACHE_MAX_ENTRIES:
-            _cache.popitem(last=False)
+    key = _cache_key(model, prompt, temperature)
+    _remember(key, text, ttl)
+    try:
+        client = _redis()
+        if client:
+            client.setex(f'ai_cache:{key}', ttl, text)
+    except Exception as e:
+        logger.warning(f"Caché de IA en Redis no disponible ({e})")
 
 
 def reset():

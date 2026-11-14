@@ -1,4 +1,5 @@
 """Tests del contador de tokens, el tope mensual y la caché de Gemini."""
+import time
 from types import SimpleNamespace
 from unittest import mock
 
@@ -54,6 +55,46 @@ def test_low_temperature_responses_are_cached(monkeypatch):
     ai_engine._call_gemini('analizá esto', temperature=0.3)
     ai_engine._call_gemini('analizá esto', temperature=0.3)
     assert client.models.generate_content.call_count == 1
+
+
+def test_cache_is_shared_through_redis(monkeypatch):
+    shared = {}
+    fake = mock.Mock()
+    fake.setex.side_effect = lambda k, ttl, v: shared.__setitem__(k, v.encode())
+    fake.pipeline.return_value.get.return_value.ttl.return_value.execute.side_effect = (
+        lambda: (next(iter(shared.values()), None), 5)
+    )
+    monkeypatch.setattr(ai_usage, '_redis', lambda: fake)
+    client = _fake_gemini(monkeypatch)
+    ai_engine._call_gemini('analizá esto', temperature=0.3)
+    ai_usage._cache.clear()  # otra instancia: sin memoria local, con el mismo Redis
+    assert ai_engine._call_gemini('analizá esto', temperature=0.3) == 'respuesta'
+    assert client.models.generate_content.call_count == 1
+    assert ai_usage.summary()['cache_hits'] == 1
+    expires, _ = next(iter(ai_usage._cache.values()))
+    # la copia local vence con la de Redis, no con un TTL nuevo
+    assert expires - time.monotonic() <= 5
+
+
+def test_redis_errors_do_not_break_calls(monkeypatch):
+    fake = mock.Mock()
+    fake.pipeline.side_effect = fake.setex.side_effect = ConnectionError('caído')
+    monkeypatch.setattr(ai_usage, '_redis', lambda: fake)
+    client = _fake_gemini(monkeypatch)
+    assert ai_engine._call_gemini('analizá esto', temperature=0.3) == 'respuesta'
+    assert ai_engine._call_gemini('analizá esto', temperature=0.3) == 'respuesta'
+    assert client.models.generate_content.call_count == 1
+
+
+def test_simple_tasks_use_light_model(monkeypatch):
+    client = _fake_gemini(monkeypatch, text='{"salario_min": 1000}')
+    monkeypatch.setattr(ai_engine, 'GEMINI_LIGHT_MODEL', 'gemini-lite')
+    with mock.patch('accounts.ai_consent_missing', return_value=False):
+        ai_engine.extract_salary_from_description('Pagamos 1000 USD', 'Dev')
+        ai_engine._call_gemini('analizá esto', temperature=0.3)
+    models = [c.kwargs['model'] for c in client.models.generate_content.call_args_list]
+    assert models == ['gemini-lite', ai_engine.GEMINI_MODEL]
+
 
 
 def test_creative_responses_are_not_cached(monkeypatch):
