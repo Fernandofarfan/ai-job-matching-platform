@@ -40,7 +40,7 @@ def main(argv: list[str] | None = None) -> int:
         if not args.json:
             print(f"{len(dataset['profiles'])} cuentas, {len(dataset['jobs'])} ofertas marcadas")
     if args.compare:
-        return compare(args.min_ndcg, args.json, dataset)
+        return compare(args.min_ndcg, args.json, dataset, args.min_profile_ndcg)
     result = matching_eval.evaluate(dataset)
     if args.feedback:
         result = {'accounts': len((dataset or {}).get('profiles', {})), 'mean': result['mean'], 'by_language': result['by_language']}
@@ -59,21 +59,23 @@ def main(argv: list[str] | None = None) -> int:
             print(f"{name:<16} {m['ndcg@5']:>7.3f} {m['precision@3']:>5.2f} {m['mrr']:>5.2f}  {top}")
         mean = result['mean']
         print(f"{'promedio':<16} {mean['ndcg@5']:>7.3f} {mean['precision@3']:>5.2f} {mean['mrr']:>5.2f}")
-    below = [] if args.feedback else [name for name, m in result['profiles'].items() if m['ndcg@5'] < args.min_profile_ndcg]
+    below = [] if args.feedback else _below(result, args.min_profile_ndcg)
     if below and not args.json:
         print(f"Por debajo de {args.min_profile_ndcg} de NDCG@5: {', '.join(below)}")
     return 1 if result['mean']['ndcg@5'] < args.min_ndcg or below else 0
 
 
-def compare(min_ndcg: float = 0.0, as_json: bool = False, dataset: dict[str, Any] | None = None) -> int:
+def compare(min_ndcg: float = 0.0, as_json: bool = False, dataset: dict[str, Any] | None = None,
+            min_profile_ndcg: float = 0.0) -> int:
     """Promedios con cada backend de similitud de texto; sin GEMINI_API_KEY solo mide TF-IDF.
-    Sale con 1 si algún backend medido queda por debajo de `min_ndcg`."""
+    Sale con 1 si algún backend medido queda por debajo de `min_ndcg`, o algún CV por debajo de `min_profile_ndcg`."""
     import embeddings
     import matching_eval
     previous = os.environ.get('MATCHING_BACKEND')
     # el backend por idioma mezclaría los dos backends en cada fila: se compara cada uno puro
     by_language = os.environ.pop('MATCHING_BACKEND_BY_LANGUAGE', None)
     results: dict[str, dict[str, Any]] = {}
+    below: dict[str, list[str]] = {}
     try:
         for backend in ('tfidf', 'embeddings'):
             os.environ['MATCHING_BACKEND'] = backend
@@ -83,6 +85,7 @@ def compare(min_ndcg: float = 0.0, as_json: bool = False, dataset: dict[str, Any
             if backend == 'tfidf':
                 result = matching_eval.evaluate(dataset)
                 results[backend] = {'mean': result['mean'], 'by_language': result['by_language']}
+                below[backend] = _below(result, min_profile_ndcg)
                 continue
             # si Gemini falla o se agota el tope, el matcher vuelve a TF-IDF en silencio: se cuentan esos casos
             fallbacks = 0
@@ -102,6 +105,8 @@ def compare(min_ndcg: float = 0.0, as_json: bool = False, dataset: dict[str, Any
                 embeddings.similarity = original
             results[backend] = ({'skipped': f'{fallbacks} comparaciones cayeron a TF-IDF: no se mide'} if fallbacks
                                 else {'mean': result['mean'], 'by_language': result['by_language']})
+            if not fallbacks:
+                below[backend] = _below(result, min_profile_ndcg)
     finally:
         if previous is None:
             os.environ.pop('MATCHING_BACKEND', None)
@@ -127,8 +132,16 @@ def compare(min_ndcg: float = 0.0, as_json: bool = False, dataset: dict[str, Any
             for lang, m in [('todos', row['mean']), *row['by_language'].items()]:
                 print(f"{backend:<12} {lang:<8} {m['ndcg@5']:>{sign}7.3f} {m['precision@3']:>{sign}6.2f} "
                       f"{m['mrr']:>{sign}6.2f}")
+        for backend, names in below.items():
+            if names:
+                print(f"{backend}: por debajo de {min_profile_ndcg} de NDCG@5: {', '.join(names)}")
     measured = [row['mean']['ndcg@5'] for name, row in results.items() if 'mean' in row and name != 'delta']
-    return 1 if any(ndcg < min_ndcg for ndcg in measured) else 0
+    return 1 if any(ndcg < min_ndcg for ndcg in measured) or any(below.values()) else 0
+
+
+def _below(result: dict[str, Any], min_profile_ndcg: float) -> list[str]:
+    """CVs con NDCG@5 menor que `min_profile_ndcg`."""
+    return [name for name, m in result['profiles'].items() if m['ndcg@5'] < min_profile_ndcg]
 
 
 def _diff(a: dict[str, float], b: dict[str, float]) -> dict[str, float]:
