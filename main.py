@@ -2,7 +2,7 @@ from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 import logging
 
-from routers import ai, analytics, tracker
+from routers import ai, analytics, insights, tracker
 
 app = FastAPI(title="EmpleoIA API", description="FastAPI Core para EmpleoIA", version="1.0.0")
 
@@ -16,6 +16,7 @@ except Exception as e:
 app.include_router(ai.router)
 app.include_router(analytics.router)
 app.include_router(tracker.router)
+app.include_router(insights.router)
 
 import rate_limit  # noqa: E402
 from fastapi.responses import JSONResponse  # noqa: E402

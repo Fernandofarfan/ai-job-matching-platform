@@ -13,13 +13,13 @@ def test_without_app_password_no_login_required(client, monkeypatch):
     assert client.get('/tracker').status_code == 200
 
 
-def test_pages_redirect_to_login_when_enabled(client, monkeypatch):
+def test_pages_redirect_to_login_when_enabled(client, api, monkeypatch):
     """Con APP_PASSWORD, las páginas redirigen a /login y las APIs devuelven 401."""
     monkeypatch.setenv('APP_PASSWORD', 'secreta')
     response = client.get('/tracker')
     assert response.status_code == 302
     assert '/login' in response.headers['Location']
-    assert client.get('/api/tracker/stats').status_code == 401
+    assert api.get('/api/tracker/stats').status_code == 401
     assert client.get('/api/health').status_code == 200
 
 

@@ -174,3 +174,28 @@ def mock_db(app):
     """Acceso directo al mock del DatabaseManager."""
     import app as flask_app
     return flask_app.db_manager
+
+
+
+@pytest.fixture
+def tracker_db(app):
+    """Mock del DatabaseManager que usan las rutas (el mismo que ven las vistas de Flask)."""
+    return app.view_functions['tracker'].__globals__['db_manager']
+
+
+@pytest.fixture
+def api(app, tracker_db):
+    """Cliente de las APIs FastAPI (tracker e insights) con el mock de la base y la app Flask de los tests."""
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    from routers import insights, tracker
+    flask_globals = app.view_functions['index'].__globals__['get_user_profile'].__globals__
+    fastapi_app = FastAPI()
+    fastapi_app.include_router(tracker.router)
+    fastapi_app.include_router(insights.router)
+    fastapi_app.dependency_overrides[tracker.get_db] = lambda: tracker_db
+    fastapi_app.dependency_overrides[tracker.get_flask_app] = lambda: app
+    fastapi_app.dependency_overrides[insights.get_profiles] = lambda: (
+        flask_globals['get_all_user_profiles'], flask_globals['get_user_profile'])
+    return TestClient(fastapi_app)

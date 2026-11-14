@@ -4,7 +4,7 @@ import os
 import pandas as pd
 from datetime import datetime
 from db_config import db_manager
-from flask import jsonify, render_template
+from flask import render_template
 
 from app import (  # noqa: F401
     app,
@@ -128,21 +128,6 @@ def analytics():
     )
 
 
-@app.route('/api/tracker/stats')
-def tracker_stats():
-    """Devuelve conteos por estado para el embudo del Job Tracker."""
-    try:
-        from collections import defaultdict
-        all_jobs = db_manager.get_all_tracked_jobs()
-        counts   = defaultdict(int)
-        for job in all_jobs:
-            counts[job.get('status', 'unknown')] += 1
-        return jsonify({'success': True, 'stats': dict(counts)})
-    except Exception as e:
-        logger.error(f"Error in tracker stats: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-
 # ─────────────────────────────────────────────────────────────
 # ANALYTICS AVANZADO – endpoint JSON (para llamadas AJAX)
 # ─────────────────────────────────────────────────────────────
@@ -201,116 +186,96 @@ def avg_days_to_apply(jobs):
     return round(sum(days) / len(days), 1) if days else None
 
 
-@app.route('/api/ranking')
-def api_ranking():
-    """Qué aprendió el ranking personal del tracker (palabras, empresas y portales que suben o bajan)."""
-    import job_ranking
-    model = job_ranking.load_model()
-    if model is None:
-        return jsonify({'success': True, 'enabled': False,
-                        'message': f'Hacen falta al menos {job_ranking.MIN_EXAMPLES} postulaciones y '
-                                   f'{job_ranking.MIN_EXAMPLES} ofertas guardadas sin postular'})
-    return jsonify({'success': True, 'enabled': True, 'positives': model['n_pos'],
-                    'negatives': model['n_neg'], **job_ranking.top_signals(model)})
-
-
-@app.route('/api/analytics/advanced')
-def api_analytics_advanced():
+def advanced_stats(all_jobs):
     """Métricas avanzadas: tiempos promedio por etapa, tasa respuesta, heatmap."""
     from collections import defaultdict
 
-    try:
-        all_jobs = db_manager.get_all_tracked_jobs()
 
-        # ── Conteos por estado ──
-        by_status = defaultdict(int)
-        by_weekday = defaultdict(int)  # 0=Lun … 6=Dom
-        total = len(all_jobs)
+    # ── Conteos por estado ──
+    by_status = defaultdict(int)
+    by_weekday = defaultdict(int)  # 0=Lun … 6=Dom
+    total = len(all_jobs)
 
-        applied = interviewing = accepted = rejected = 0
+    applied = interviewing = accepted = rejected = 0
 
-        for job in all_jobs:
-            st = job.get('status', 'unknown')
-            by_status[st] += 1
+    for job in all_jobs:
+        st = job.get('status', 'unknown')
+        by_status[st] += 1
 
-            # Detección de día de la semana de postulación
-            raw_date = job.get('applied_date') or job.get('date_saved')
-            if raw_date:
-                try:
-                    if hasattr(raw_date, 'weekday'):
-                        by_weekday[raw_date.weekday()] += 1
-                    else:
-                        from datetime import datetime as _dt
-                        parsed = _dt.strptime(str(raw_date)[:10], '%Y-%m-%d')
-                        by_weekday[parsed.weekday()] += 1
-                except Exception:
-                    pass
+        # Detección de día de la semana de postulación
+        raw_date = job.get('applied_date') or job.get('date_saved')
+        if raw_date:
+            try:
+                if hasattr(raw_date, 'weekday'):
+                    by_weekday[raw_date.weekday()] += 1
+                else:
+                    from datetime import datetime as _dt
+                    parsed = _dt.strptime(str(raw_date)[:10], '%Y-%m-%d')
+                    by_weekday[parsed.weekday()] += 1
+            except Exception:
+                pass
 
-            if st == 'applied':     applied += 1
-            if st == 'interviewing': interviewing += 1
-            if st == 'accepted':    accepted += 1
-            if st == 'rejected':    rejected += 1
+        if st == 'applied':     applied += 1
+        if st == 'interviewing': interviewing += 1
+        if st == 'accepted':    accepted += 1
+        if st == 'rejected':    rejected += 1
 
-        # ── Tasas (evitar divisiones por cero) ──
-        response_rate   = round(interviewing / applied * 100, 1) if applied  > 0 else 0
-        success_rate    = round(accepted / total * 100, 1)       if total    > 0 else 0
-        rejection_rate  = round(rejected / total * 100, 1)       if total    > 0 else 0
+    # ── Tasas (evitar divisiones por cero) ──
+    response_rate   = round(interviewing / applied * 100, 1) if applied  > 0 else 0
+    success_rate    = round(accepted / total * 100, 1)       if total    > 0 else 0
+    rejection_rate  = round(rejected / total * 100, 1)       if total    > 0 else 0
 
-        # ── Heatmap por día de semana ──
-        weekday_labels = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
-        heatmap = [{'day': weekday_labels[i], 'count': by_weekday.get(i, 0)} for i in range(7)]
+    # ── Heatmap por día de semana ──
+    weekday_labels = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+    heatmap = [{'day': weekday_labels[i], 'count': by_weekday.get(i, 0)} for i in range(7)]
 
-        # ── Insights automáticos ──
-        insights = []
-        if response_rate >= 20:
-            insights.append({'icon': '🎯', 'type': 'success', 'text': f'Excelente tasa de respuesta ({response_rate}%). ¡Tus cartas de presentación están funcionando!'})
-        elif response_rate > 0:
-            insights.append({'icon': '💡', 'type': 'warning', 'text': f'Tasa de respuesta del {response_rate}%. Considera personalizar más tu CV para cada empresa.'})
-        else:
-            insights.append({'icon': '📝', 'type': 'info', 'text': 'Comienza a postularte para ver métricas de respuesta.'})
+    # ── Insights automáticos ──
+    insights = []
+    if response_rate >= 20:
+        insights.append({'icon': '🎯', 'type': 'success', 'text': f'Excelente tasa de respuesta ({response_rate}%). ¡Tus cartas de presentación están funcionando!'})
+    elif response_rate > 0:
+        insights.append({'icon': '💡', 'type': 'warning', 'text': f'Tasa de respuesta del {response_rate}%. Considera personalizar más tu CV para cada empresa.'})
+    else:
+        insights.append({'icon': '📝', 'type': 'info', 'text': 'Comienza a postularte para ver métricas de respuesta.'})
 
-        if by_status.get('bookmarked', 0) > by_status.get('applied', 0):
-            insights.append({'icon': '🚀', 'type': 'info', 'text': 'Tienes más empleos guardados que postulaciones. ¡Es momento de aplicar!'})
+    if by_status.get('bookmarked', 0) > by_status.get('applied', 0):
+        insights.append({'icon': '🚀', 'type': 'info', 'text': 'Tienes más empleos guardados que postulaciones. ¡Es momento de aplicar!'})
 
-        best_day = max(by_weekday, key=lambda k: by_weekday[k], default=None)
-        if best_day is not None and by_weekday[best_day] > 0:
-            insights.append({'icon': '📅', 'type': 'info', 'text': f'Tu día más activo es el {weekday_labels[best_day]}.'})
+    best_day = max(by_weekday, key=lambda k: by_weekday[k], default=None)
+    if best_day is not None and by_weekday[best_day] > 0:
+        insights.append({'icon': '📅', 'type': 'info', 'text': f'Tu día más activo es el {weekday_labels[best_day]}.'})
 
-        # ── Embudo detallado con conversiones ──
-        funnel = []
-        stages = [
-            ('bookmarked',  'Guardados'),
-            ('applying',    'Aplicando'),
-            ('applied',     'Postulados'),
-            ('interviewing','Entrevistas'),
-            ('negotiating', 'Negociando'),
-            ('accepted',    'Aceptados'),
-        ]
-        prev_count = total if total > 0 else 1
-        for key, label in stages:
-            count = by_status.get(key, 0)
-            conversion = round(count / prev_count * 100, 1) if prev_count > 0 else 0
-            funnel.append({'key': key, 'label': label, 'count': count, 'conversion': conversion})
-            if count > 0:
-                prev_count = count
+    # ── Embudo detallado con conversiones ──
+    funnel = []
+    stages = [
+        ('bookmarked',  'Guardados'),
+        ('applying',    'Aplicando'),
+        ('applied',     'Postulados'),
+        ('interviewing','Entrevistas'),
+        ('negotiating', 'Negociando'),
+        ('accepted',    'Aceptados'),
+    ]
+    prev_count = total if total > 0 else 1
+    for key, label in stages:
+        count = by_status.get(key, 0)
+        conversion = round(count / prev_count * 100, 1) if prev_count > 0 else 0
+        funnel.append({'key': key, 'label': label, 'count': count, 'conversion': conversion})
+        if count > 0:
+            prev_count = count
 
-        return jsonify({
-            'success': True,
-            'total': total,
-            'response_rate': response_rate,
-            'success_rate': success_rate,
-            'rejection_rate': rejection_rate,
-            'by_status': dict(by_status),
-            'heatmap': heatmap,
-            'funnel': funnel,
-            'insights': insights,
-            'by_portal': portal_stats(all_jobs),
-            'avg_days_to_apply': avg_days_to_apply(all_jobs),
-        })
+    return {
+        'total': total,
+        'response_rate': response_rate,
+        'success_rate': success_rate,
+        'rejection_rate': rejection_rate,
+        'by_status': dict(by_status),
+        'heatmap': heatmap,
+        'funnel': funnel,
+        'insights': insights,
+        'by_portal': portal_stats(all_jobs),
+        'avg_days_to_apply': avg_days_to_apply(all_jobs),
+    }
 
-    except Exception as e:
-        logger.error(f"Error in advanced analytics: {e}")
-        return jsonify({'success': False, 'error': 'Error interno del servidor'}), 500
 
 
 # ─────────────────────────────────────────────────────────────
