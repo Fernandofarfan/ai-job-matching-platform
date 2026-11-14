@@ -119,7 +119,7 @@ jobs:
           python -m pytest tests/ \
             -v \
             --tb=short \
-            --cov --cov-report=term --cov-fail-under=60
+            --cov --cov-report=term --cov-fail-under=80
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
         with:
@@ -648,7 +648,7 @@ jobs:
           path: contract/
 
   coverage:
-    name: Cobertura (mínimo 70%)
+    name: Cobertura (mínimo 80%)
     runs-on: ubuntu-latest
     needs: [test, integration]
     steps:
