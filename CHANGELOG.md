@@ -6,61 +6,81 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
-## [Sin publicar] - Pruebas de mutación
+## [4.0.0] - 2026-11-14
 
+### Para actualizar desde 3.0.0
+- Versión mayor porque `REDIS_PASSWORD` pasa a ser obligatoria: agregala al `.env` (solo letras y números, va dentro de una URL).
+
+### Pruebas de mutación
 - mutmut sobre `auth.py`, `accounts.py`, `rate_limit.py` y `job_dedup.py`: 80,1 % de mutantes detectados (988 de 1233). Corre los lunes y a mano (`.github/workflows/mutation.yml`), con un reporte por módulo (`scripts/mutation_report.py`). No frena PRs.
 - `tests/test_account_rules.py`: reglas de registro, administrador, bloqueo de cuentas, verificación de email, huella de la sesión y límites de pedidos que ningún test detectaba al cambiarlas. Subió el puntaje de 67,7 % a 80,1 %.
 - `tests/test_mutmut_config.py` avisa si un módulo nuevo de la raíz falta en `also_copy`. Explicado en `docs/mutation-testing.md`.
 
-## [Sin publicar] - Política de seguridad y CODEOWNERS
+### Tests de flujos de los scrapers
+- Computrabajo, Bumeran y LinkedIn (`linkedin_pw`) se prueban sin navegador: login, paginación, link de postulación, CSV y errores. La cobertura unitaria pasa de 22 %, 35 % y 41 % a 96 %, 94 % y 94 %.
+
+### Dataset de matching ampliado y mínimo por CV
+- `eval/matching_dataset.json` pasa a 24 CVs y 38 ofertas, con mobile, ciberseguridad, marketing, logística, producto, contabilidad y atención al cliente.
+- `scripts/eval_matching.py --min-profile-ndcg` y el CI exigen NDCG@5 ≥ 0,70 y MRR = 1 en cada CV. La línea base del promedio baja a NDCG@5 0,89 porque los CVs nuevos son más difíciles.
+
+### Ofertas repetidas con títulos traducidos o con la empresa
+- "Data Analyst" y "Analista de Datos" se unifican, igual que "Cajero - Coto" y "Cajero" en Coto CICSA. 46 pares etiquetados: precisión y cobertura 1,0.
+
+### Cobertura mínima del 80 %
+- El CI falla si la cobertura combinada baja del 80 % (antes 70 %).
+
+### Más reglas de Ruff
+- Ruff 0.17.5 revisa imports, sintaxis moderna, simplificaciones, seguridad (bandit) y complejidad ciclomática (máximo 15).
+
+### Política de seguridad y CODEOWNERS
 
 - `SECURITY.md`: cómo reportar una vulnerabilidad en privado (formulario de GitHub), plazos de respuesta, versiones con soporte y qué entra.
 - `.github/CODEOWNERS`: @Fernandofarfan queda como revisor pedido en todos los PRs.
 
-## [Sin publicar] - SLOs y presupuesto de errores
+### SLOs y presupuesto de errores
 
 - `terraform/slo.tf`: servicio de Cloud Monitoring con 2 SLOs sobre 28 días, con métricas de Cloud Run: 99,5 % de pedidos sin 5xx (`slo_availability_goal`) y 95 % en 1 s o menos (`slo_latency_goal`, `slo_latency_ms`).
 - 4 alertas por consumo del presupuesto de errores (burn rate), con ventana larga y corta: rápida (> 14,4× en 1 h y 5 min) y lenta (> 6× en 6 h y 30 min) para cada SLO.
 - Las mismas alertas en Prometheus (`EmpleoIASLO*`), con tests de promtool. `terraform test` revisa objetivos, ventanas y umbrales.
 - Sin probar contra un proyecto de GCP real.
 
-## [Sin publicar] - mypy estricto, etapa 4
+### mypy estricto, etapa 4
 
 - mypy estricto revisa los 39 módulos que faltaban y `scripts/`: `app`, `main`, `fastapi_web`, `db_config`, `job_matcher`, `job_alerts`, `job_feedback`, `job_ranking`, `profile_store`, `cv_storage`, `rate_limit`, `data_export`, `observability`, entre otros. Solo quedan fuera del modo estricto los tests y la prueba de carga (`loadtest/`).
 - Al activarlo marcó 730 errores; quedan 0. Solo hay 3 `type: ignore`, cada uno con su motivo (librerías sin tipos o con firmas más estrechas que su uso real).
 - `run_job_alerts` declaraba devolver un dict y devuelve una lista por búsqueda; `scraper_stats.record` declaraba no devolver nada y devuelve el resultado. Las firmas ahora dicen lo que pasa.
 - Las señales de Celery se conectan con `signal.connect(func)` en vez del decorador, que dejaba las funciones sin tipos. El comportamiento no cambia.
 
-## [Sin publicar] - Medir la unificación de ofertas repetidas
+### Medir la unificación de ofertas repetidas
 
 - `eval/dedup_pairs.json` con 41 pares etiquetados y `scripts/eval_dedup.py` (precisión, cobertura y F1); el CI exige precisión 1,0 y cobertura ≥ 0,9. Hoy: precisión 1,0 y cobertura 0,905.
 - Fix: todas las ofertas de Indeed se unificaban en una sola, porque la URL se comparaba sin query y Indeed identifica la oferta con `viewjob?jk=...`. Ahora solo se ignoran los parámetros de seguimiento.
 - Fix: "San Justo, Buenos Aires" y "San Justo, Santa Fe" se tomaban como el mismo lugar. Provincias distintas ya no se unifican.
 - "Senior" y "Sr", "CABA" y "Capital Federal", y el sufijo "SACI" ya no impiden unificar.
 
-## [Sin publicar] - Contrato de la API con Schemathesis
+### Contrato de la API con Schemathesis
 
 - El CI prueba las 36 rutas de la API contra `/openapi.json` con Schemathesis (`scripts/api_contract.py`, `schemathesis.toml`, `requirements-contract.txt`), con la sesión de una cuenta sembrada: falla ante un error 5xx o una respuesta fuera del contrato.
 - El OpenAPI documenta los errores 400, 401, 403, 404, 409, 413, 429 y 503.
 - Fix: cambiar a un estado inexistente o borrar o cambiar una postulación que no existe daba error 500. Ahora responde 400 o 404.
 
-## [Sin publicar] - Deploy sin tráfico y vuelta atrás automática
+### Deploy sin tráfico y vuelta atrás automática
 
 - `deploy.yml` crea la revisión nueva de la web sin tráfico, con la etiqueta `candidate`, prueba `/api/ready` en su URL y recién ahí le pasa el tráfico. Si `/api/ready` falla después del pase, el tráfico vuelve a la revisión anterior.
 - Terraform: variable `serving_revision` (vacía: todo el tráfico a la última, como antes) y output `web_service`.
 
-## [Sin publicar] - Arquitectura y runbook
+### Arquitectura y runbook
 
 - `docs/architecture.md`: componentes, flujos de búsqueda, CV y alertas, despliegue local y en GCP, observabilidad y CI.
 - `docs/runbook.md`: primeros pasos ante un incidente y qué hacer si se cae la base, Redis o el worker, si falla un scraper, con 5xx o latencia alta, con la IA, los emails o una sospecha de seguridad, y cómo volver a la versión anterior.
 
-## [Sin publicar] - Ofertas repetidas entre portales
+### Ofertas repetidas entre portales
 
 - La búsqueda universal unifica la misma oferta publicada en varios portales (`job_dedup.unify`): misma URL, o mismo título y empresa sin tildes, puntuación ni sufijos societarios, en ubicaciones compatibles. Se queda la copia con la descripción más larga y completa los datos que le falten con las otras.
 - Cada oferta trae `Portales` ("Bumeran, Computrabajo") y `Otros_enlaces`; la tabla de resultados muestra la columna "Portales".
 - Las ofertas de empresa "Confidencial" o vacía no se unifican por título.
 
-## [Sin publicar] - Versiones y releases
+### Versiones y releases
 
 - `VERSION` es la versión de la app (semver). `/api/health` muestra la versión y el commit de la imagen, y Sentry reporta `empleoia@X.Y.Z+<commit>`.
 - `scripts/release.py prepare X.Y.Z` sube `VERSION` y junta las entradas "Sin publicar" del CHANGELOG bajo la versión; `notes X.Y.Z` imprime sus notas.
@@ -68,7 +88,7 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 - `deploy.yml`: producción solo se despliega desde un tag. Volver atrás es desplegar el tag anterior; si la imagen de ese commit ya existe, no se reconstruye.
 - `docs/releases.md`: cuándo sube cada número, cómo sacar una versión y cómo volver a la anterior.
 
-## [Sin publicar] - OWASP ZAP sobre la app levantada
+### OWASP ZAP sobre la app levantada
 
 - Job `zap`: levanta la app con MySQL y Redis, entra con una cuenta con datos y corre el baseline de ZAP (spider + reglas pasivas) con la sesión iniciada (`scripts/zap_scan.sh`). La imagen de ZAP va fijada por digest. Cualquier alerta WARN o FAIL corta el CI; las aceptadas están en `.zap/rules.tsv`, cada una con su motivo. El reporte queda en el artefacto `zap` y en el resumen del job.
 - Fix: 9 formularios POST (subir CV, los 5 de búsqueda, los 2 de conexiones y cerrar sesión) mandaban el token CSRF solo por JavaScript; ahora lo llevan en el HTML.
@@ -77,35 +97,35 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 - Headers `Cross-Origin-Opener-Policy`, `Cross-Origin-Resource-Policy` y `Cross-Origin-Embedder-Policy`.
 - `/robots.txt`: los buscadores solo indexan login, registro, términos y privacidad.
 
-## [Sin publicar] - Comparación visual en el CI
+### Comparación visual en el CI
 
 - Job `visual`: en cada PR levanta la rama base y el PR con los mismos datos, saca capturas de 21 páginas (`scripts/visual_snapshots.py`) y las compara (`scripts/visual_diff.py`). Falla si una página cambia más de 0,2 % de sus píxeles o de tamaño. Con la etiqueta `cambio-visual` en el PR solo informa; alcanza con volver a correr el job después de ponerla.
 - Las capturas, la tabla de diferencias y las imágenes con los cambios en rojo quedan en el artefacto `visual` y en el resumen del job.
 - `data-visual-mask` tapa en la captura las fechas de sesiones, eventos y usuarios.
 - El tracker, las postulaciones y las empresas para conexiones tienen un orden fijo cuando dos filas tienen la misma fecha.
 
-## [Sin publicar] - Cuentas y rutas de login partidas
+### Cuentas y rutas de login partidas
 
 - `accounts.py` deja en `account_lifecycle.py` el resumen semanal, la actividad, el aviso por inactividad y el borrado.
 - `routers/auth_pages.py` deja en `routers/login_providers.py` el login con passkey y con Google.
 - `routers/account_pages.py` deja en `routers/account_integrations.py` Telegram, la extensión de Chrome y Gmail.
 - Las rutas, sus nombres y el comportamiento no cambian.
 
-## [Sin publicar] - CSP sin estilos inline
+### CSP sin estilos inline
 
 - `style-src` ya no permite `'unsafe-inline'`: un HTML inyectado no puede cambiar cómo se ve la página. Los 74
   atributos `style="..."` pasan a clases de `static/css/app.css` y los bloques `<style>` llevan el nonce del pedido.
 - Las barras de progreso que calcula el servidor usan `data-progress-width`; los elementos ocultos hasta que el
   JavaScript los muestra usan la clase `js-hidden`.
 
-## [Sin publicar] - Todas las páginas en inglés y portugués
+### Todas las páginas en inglés y portugués
 
 - Entrevista simulada, optimizar CV, optimizar en lote, cartas en lote, conexiones, panel de métricas, ver perfil y
   confirmar borrado se muestran en el idioma de la cuenta, incluidos los mensajes de su JavaScript.
 - Fix: la entrevista simulada insertaba como HTML las fortalezas, mejoras y preguntas que devuelve la IA. Ahora se
   escapan.
 
-## [Sin publicar] - Dependencias actualizadas
+### Dependencias actualizadas
 
 - `python-docx` 0.8.11 → 1.2.0, `pywebpush` 1.14.1 → 2.5.0, `webauthn` 2.7.1 → 3.0.1, `google-genai` 2.33.0 → 3.3.0,
   `beautifulsoup4` 4.12.2 → 4.15.0, `pyotp` 2.9.0 → 2.10.0 y `sentry-sdk` 2.74.0 → 2.75.0.
@@ -114,7 +134,7 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 - `pywebpush` 2 suma `aiohttp` como dependencia. También dejó de aceptar las claves GCM/FCM viejas, que la app no usa:
   manda con VAPID.
 
-## [Sin publicar] - Tests de los scrapers y de los errores de la base
+### Tests de los scrapers y de los errores de la base
 
 - Computrabajo, Bumeran y LinkedIn se prueban en Chromium con login, varias páginas, enlace de postulación y CSV.
   Las URLs se interceptan, así que ningún test sale a internet.
@@ -122,13 +142,13 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
   página de la oferta y no en el listado.
 - `db_config.py`: cada consulta devuelve su valor de error si la base falla.
 
-## [Sin publicar] - Terraform con el provider de Google 8.x
+### Terraform con el provider de Google 8.x
 
 - Provider `hashicorp/google` de `~> 6.50` a `~> 8.11`. Ninguno de los cambios incompatibles de 7.0 y 8.0 toca los recursos del proyecto.
 - Cloud Run (web y worker) monta los buckets de CVs y resultados con `uid=1000,gid=1000`: la imagen corre sin root
   y sin esto no podía escribir en `/app/uploads` ni `/app/results`.
 
-## [Sin publicar] - Contenedores endurecidos
+### Contenedores endurecidos
 
 - La imagen corre con un usuario sin privilegios (UID/GID 1000, configurables con `APP_UID`/`APP_GID`); el código queda
   de root y solo `uploads/`, `results/`, `profiles/`, `temp/` y `logs/` son escribibles. Si esos directorios quedaron
@@ -139,7 +159,7 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 - Celery beat guarda su agenda en `temp/celerybeat-schedule`.
 - Sin spaCy: el modelo se cargaba pero nunca se usaba (y la imagen no lo traía). Salen spaCy y 20 dependencias indirectas.
 
-## [Sin publicar] - Indeed sin descripción (opcional)
+### Indeed sin descripción (opcional)
 
 - `INDEED_SAVE_WITHOUT_DESCRIPTION=true`: si Indeed pide login para ver una oferta, esa y las siguientes de la búsqueda
   se guardan con el resumen del listado, sin abrirlas y sin los filtros de experiencia y visa. Apagado por defecto:
@@ -147,14 +167,14 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 - La búsqueda de Indeed desde la web ya no exige `INDEED_EMAIL`/`INDEED_PASSWORD` (el formulario no los tiene y el
   scraper no los usa desde Playwright): antes fallaba con "Please provide Indeed email and password" si no estaban en `.env`.
 
-## [Sin publicar] - Borrado de cuentas inactivas con aviso previo
+### Borrado de cuentas inactivas con aviso previo
 
 - `ACCOUNT_INACTIVITY_DAYS` (0 = apagado): una tarea diaria avisa por email a las cuentas sin entrar
   y, si siguen sin entrar `ACCOUNT_INACTIVITY_NOTICE_DAYS` después, las borra con sus CVs y datos.
   Entrar anula el aviso; sin aviso enviado no se borra; la primera cuenta no se borra.
 - `users.last_active_at` e `users.inactivity_notice_at` (migración 0021, con la última sesión de cada cuenta).
 
-## [Sin publicar] - Dataset de evaluación con las marcas de los usuarios
+### Dataset de evaluación con las marcas de los usuarios
 
 - "Me interesa / no me interesa" guarda la descripción de la oferta (`job_feedback.job_text`, migración 0020),
   que la API busca en el CSV de resultados de la cuenta.
@@ -164,7 +184,7 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 - La política de privacidad menciona ese uso de las marcas.
 
 
-## [Sin publicar] - JavaScript de las plantillas en archivos estáticos
+### JavaScript de las plantillas en archivos estáticos
 
 - Los 15 scripts en línea de 13 plantillas pasan a `static/js/` (`csrf.js`, `copilot.js`, `clear-sw-cache.js` y
   `static/js/pages/*.js`): se cachean, se pueden testear y la CSP ya no depende del nonce para ejecutar código.
@@ -174,7 +194,7 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
   `static/js` compile en Chromium.
 
 
-## [Sin publicar] - Tests del JavaScript del navegador
+### Tests del JavaScript del navegador
 
 - `tests_integration/test_browser_js.py`: 20 tests en Chromium para `actions.js`, `passkeys.js`, `push.js`,
   `offline-cache.js` y `document_batch.js`. Sirven una página mínima con los scripts reales y respuestas fijas de la
@@ -183,7 +203,7 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
   sincronización reemplaza lo guardado.
 
 
-## [Sin publicar] - mypy estricto, etapa 2
+### mypy estricto, etapa 2
 
 - `services.*`, `routers.*` y `tasks.*` tienen todas las funciones tipadas, genéricos con parámetros y no devuelven
   `Any` (override en `pyproject.toml`). En `tasks.*` no se exige `disallow_untyped_decorators`: Celery no trae tipos.
@@ -191,7 +211,7 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 - Sin cambios de comportamiento: los 662 tests unitarios y los 60 de integración pasan igual.
 
 
-## [Sin publicar] - Habilidades que coinciden y que faltan en cada oferta
+### Habilidades que coinciden y que faltan en cada oferta
 
 - La tabla de resultados tiene la columna "Habilidades": en verde, las del CV que pide la oferta; en gris, "Te falta",
   hasta 8 habilidades que la oferta pide y el CV no tiene (ni como variante: Postgres cuenta como PostgreSQL).
@@ -199,14 +219,14 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
   "R" y "Go" no se leen en ofertas, porque aparecen en "R&D" o "go to market".
 
 
-## [Sin publicar] - Prueba de carga en el CI
+### Prueba de carga en el CI
 
 - Job `loadtest` del CI: MySQL y Redis reales, una cuenta con 85 postulaciones y marcas (`loadtest/seed.py`) y Locust
   con 20 usuarios durante 90 s. Falla si el p95 pasa de 800 ms o los errores del 1 %; los CSV quedan como artefacto.
 - `requirements-loadtest.txt` generado con hashes desde `requirements-loadtest.in`, igual que `requirements.txt`.
 
 
-## [Sin publicar] - Backend de matching por idioma del CV
+### Backend de matching por idioma del CV
 
 - `MATCHING_BACKEND_BY_LANGUAGE` (ej. `es=embeddings,pt=embeddings`) elige el backend según el idioma del CV, por
   encima de `MATCHING_BACKEND`. Vacío por defecto: nada cambia hasta activarlo, y sin `GEMINI_API_KEY` sigue TF-IDF.
@@ -214,7 +234,7 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
   nuevas; acierta en los 16 CVs del dataset de evaluación.
 - `scripts/eval_matching.py --compare` ignora la variable para medir cada backend puro.
 
-## [Sin publicar] - Extensión de Chrome vinculada desde Mi cuenta
+### Extensión de Chrome vinculada desde Mi cuenta
 
 - La extensión (1.2.0) se vincula con "Vincular con mi cuenta": abre `/account/extension/link?state=…`, se confirma
   en la app y el service worker lee el token de esa página solo si el `state` es el que generó. No se copia ningún
@@ -224,7 +244,7 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 - Se quita "Generar token" de Mi cuenta (lo reemplaza la vinculación) y se registra el evento `extension_linked`.
 - E2E con Chromium y la extensión cargada: vinculación, state ajeno, migración desde `sync` y botón del popup.
 
-## [Sin publicar] - Primeros pasos y embudo de activación
+### Primeros pasos y embudo de activación
 
 - La portada muestra "Primeros pasos" (subí tu CV → primera búsqueda → creá una alerta) con el avance y un botón al
   paso que falta; desaparece cuando la cuenta completa los 3. Los pasos salen de lo que ya está guardado (perfiles,
@@ -232,7 +252,7 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 - Administración muestra el embudo de activación: cuántas cuentas llegaron a cada paso, en orden, y qué porcentaje
   del paso anterior. Así se ve en qué paso abandonan las cuentas nuevas.
 
-## [Sin publicar] - mypy estricto, etapa 1
+### mypy estricto, etapa 1
 
 - `accounts`, `auth`, `models`, `passkeys`, `security_events`, `two_factor` y `user_sessions` cumplen las reglas de `--strict`
   (override en `pyproject.toml`): todas las funciones tipadas, genéricos con parámetros y sin devolver `Any`.
@@ -241,7 +261,7 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
   `created_at` ni `last_seen_at`, y `is_local_path` con algo que no es texto. Antes daban error 500; ahora se
   rechazan.
 
-## [Sin publicar] - Archivos grandes partidos
+### Archivos grandes partidos
 
 Sin cambios de comportamiento: mismas rutas, mismos nombres de ruta y mismos nombres de tareas de Celery.
 
@@ -250,20 +270,20 @@ Sin cambios de comportamiento: mismas rutas, mismos nombres de ruta y mismos nom
 - `routers/content_pages.py` (602) → `content_pages.py` (resultados y documentos), `profile_pages.py` y `alert_pages.py`.
 - `tasks/notification_tasks.py` (561) → las tareas y el envío quedan ahí; los textos de emails y de Telegram pasan a `notification_messages.py`.
 
-## [Sin publicar] - Peso del ranking aprendido de "me interesa / no me interesa"
+### Peso del ranking aprendido de "me interesa / no me interesa"
 
 - `job_ranking.learn_weight()`: con al menos `MIN_TUNING` (5) ofertas marcadas con match de cada lado, elige por cuenta el peso del ranking frente al match (0 a 0,8) que maximiza el AUC de "me interesa" sobre "no me interesa". La preferencia de cada oferta marcada sale de un modelo entrenado sin ella. A igual AUC gana el peso más cercano a `RANKING_WEIGHT`.
 - `rank()` usa ese peso; sin marcas suficientes sigue `RANKING_WEIGHT`.
 - `/api/ranking` devuelve `weight` y `tuning` (`auc`, `match_auc`, `examples`).
 
-## [Sin publicar] - Acciones e imagen base fijadas por hash
+### Acciones e imagen base fijadas por hash
 
 - Todas las GitHub Actions se usan por SHA de commit, con la versión en un comentario (`actions/checkout@11d5960…  # v4.4.0`). Una etiqueta como `@v4` la puede mover quien controle la acción, y el CI correría ese código con acceso a los secretos.
 - La imagen base del `Dockerfile` se fija por digest (`@sha256:…`).
 - Dependabot ya actualiza los dos (`github-actions` y `docker`) y mantiene el comentario de versión.
 - `tests/test_supply_chain.py` falla si se agrega una acción o un `FROM` sin hash.
 
-## [Sin publicar] - Indeed en el monitor de scrapers
+### Indeed en el monitor de scrapers
 
 - `scripts/scraper_health.py` revisa también Indeed: cuenta las tarjetas de la primera página del listado público (`indeedScraper.listing`), sin abrir descripciones ni guardar CSV. Ubicación con `SCRAPER_HEALTH_INDEED_LOCATION` (por defecto `Remote`).
 - Si un portal muestra un captcha, el resultado sale con `"blocked": true` y no abre el issue: un bloqueo no indica que el HTML haya cambiado. Nueva excepción `scrapers.common.PortalBlocked`.
@@ -271,19 +291,19 @@ Sin cambios de comportamiento: mismas rutas, mismos nombres de ruta y mismos nom
 - Indeed cambió el título de las tarjetas de `<h2>` a `<h3>` y el scraper no encontraba ninguna oferta; ahora se busca por la clase `.jobTitle`.
 - Si Indeed manda al login en vez de mostrar una oferta (`from=bot-detection`), la búsqueda se corta con lo encontrado en vez de esperar 10 s por cada oferta.
 
-## [Sin publicar] - Comparación de embeddings con TF-IDF por idioma
+### Comparación de embeddings con TF-IDF por idioma
 
 - `python scripts/eval_matching.py --compare` muestra NDCG@5, P@3 y MRR en total y por idioma del CV (`en`, `es`, `pt`), y la fila `delta` (embeddings − TF-IDF) cuando se midieron los dos backends. `matching_eval.evaluate()` devuelve también `by_language`.
 - Workflow "Comparar matching" (`.github/workflows/matching-compare.yml`): los lunes y a pedido, con el secreto `GEMINI_API_KEY`; deja el JSON como artefacto y en el resumen del job. Sin el secreto mide solo TF-IDF.
 
-## [Sin publicar] - Indeed y conexiones de LinkedIn en Playwright
+### Indeed y conexiones de LinkedIn en Playwright
 
 - `scrapers/indeed_scraper.py` y `scrapers/linkedin_connection.py` usan Playwright (`scrapers.common.Browser`, Chromium sin ventana, `PLAYWRIGHT_WS_ENDPOINT`/`PROXY_SERVER`). Salen del proyecto Selenium, `webdriver-manager` y `undetected-chromedriver`.
 - Indeed busca por URL pública, sin login: `date_posted`, `experience_level`, `remote_work` y `salary_range` pasan a parámetros de Indeed; `education_level` se ignora. Ante un captcha la búsqueda se corta y devuelve lo que juntó. El CSV va a la carpeta de resultados de la cuenta.
 - Conexiones de LinkedIn: búsqueda de personas en Argentina por URL; solo invita a quien nombra la empresa en su tarjeta; saltea pendientes y perfiles repetidos; "Enviar sin nota".
 - Probado con HTML guardado y Chromium; no contra los portales reales.
 
-## [Sin publicar] - Passkeys (WebAuthn)
+### Passkeys (WebAuthn)
 
 - Mi cuenta → **Passkeys**: agregar (pide la contraseña actual), ver nombre, alta y último uso, y borrar. Hasta 10 por cuenta.
 - Login → **Entrar con una passkey**: sin email ni contraseña (passkeys guardadas en el dispositivo). Se exige verificación del usuario en el dispositivo, así que no pide además el código de la app. Respeta bloqueo de cuenta y email sin confirmar, y registra `login_passkey` en los eventos de seguridad (con aviso de navegador nuevo).
@@ -291,7 +311,7 @@ Sin cambios de comportamiento: mismas rutas, mismos nombres de ruta y mismos nom
 - Tabla `passkeys` (migración `0019_passkeys`), borrada con la cuenta.
 - E2E con Chromium y un autenticador virtual (CDP WebAuthn).
 
-## [Sin publicar] - Emails por proveedor, con reintentos y rebotes
+### Emails por proveedor, con reintentos y rebotes
 
 - `email_delivery.py`: `EMAIL_PROVIDER=smtp` (por defecto; sirve para SES SMTP) o `sendgrid` (`SENDGRID_API_KEY`, `EMAIL_FROM`). Todos los emails pasan por ahí.
 - Reintentos: las fallas temporales (SMTP 4xx o conexión caída, HTTP 429/5xx) se reintentan `EMAIL_MAX_ATTEMPTS` veces (3 por defecto), con espera creciente desde `EMAIL_RETRY_SECONDS`. Antes un email que fallaba se perdía sin reintento.
@@ -299,7 +319,7 @@ Sin cambios de comportamiento: mismas rutas, mismos nombres de ruta y mismos nom
 - Resumen semanal: si el worker se corta entre tomar el resumen y mandarlo, a los `WEEKLY_DIGEST_CLAIM_MINUTES` minutos (60 por defecto) se vuelve a mandar. Antes esa semana se perdía.
 - Migración `0018_email_delivery`.
 
-## [Sin publicar] - "Me interesa / no me interesa" en las ofertas
+### "Me interesa / no me interesa" en las ofertas
 
 - Resultados: cada oferta tiene "me interesa" y "no me interesa"; tocar la marca activa la quita. Se guarda por cuenta en la tabla nueva `job_feedback` (migración `0017_job_feedback`), identificada por título y empresa, así que vale para la misma oferta en otro portal. `POST /api/job_feedback`.
 - El ranking personal usa esas marcas con peso doble que las del tracker, y se recalcula apenas marcás una oferta.
@@ -308,112 +328,112 @@ Sin cambios de comportamiento: mismas rutas, mismos nombres de ruta y mismos nom
 - Fix: el ranking personal guardaba en caché un solo modelo para todos, así que durante 10 minutos una cuenta podía ver sus resultados ordenados con lo que eligió otra. Ahora hay uno por cuenta.
 - Borrar la cuenta y exportar mis datos incluyen `job_feedback`.
 
-## [Sin publicar] - E2E del recorrido completo
+### E2E del recorrido completo
 
 - `tests_integration/test_main_flow.py`: con Chromium contra la app levantada, una cuenta nueva se registra, sube su CV, marca una oferta de sus resultados como postulada, la ve en el tracker, lo exporta a Excel y sale. Corre en el job `integration`.
 - Fix: "Guardar" en la página de resultados no guardaba nada en MySQL (respondía `saved: 0`), porque la fecha llegaba como `2026-11-12T17:04:46.496Z`. Ahora se convierte a UTC.
 
-## [Sin publicar] - Chequeo de que la app está lista
+### Chequeo de que la app está lista
 
 - `GET /api/ready`: 200 si la base responde a `SELECT 1` y, si `RATELIMIT_STORAGE_URI` es Redis, ese Redis a `PING` (sin él no andan login ni APIs; `REDIS_URL` tiene respaldo local); 503 si algo falla, sin el error interno. `/api/health` sigue diciendo solo que el proceso está vivo.
 - Cloud Run: el startup probe y el uptime check usan `/api/ready`; el liveness sigue en `/api/health`, así una caída de la base no reinicia las instancias en loop.
 - Docker Compose: healthcheck de `web` contra `/api/ready`.
 
-## [Sin publicar] - Dependencias con hash, Trivy y SBOM
+### Dependencias con hash, Trivy y SBOM
 
 - `requirements.in` tiene las dependencias directas; `requirements.txt` sale de `pip-compile --generate-hashes` con todas las dependencias (también las indirectas) y su hash. Docker y el CI instalan con `--require-hashes`: si un paquete cambia en PyPI, la instalación se corta.
 - CI: falla si `requirements.txt` no coincide con `requirements.in`.
 - CI, job nuevo `image`: arma la imagen Docker, falla con vulnerabilidades críticas que ya tienen parche (Trivy) y sube el SBOM CycloneDX como artefacto `sbom`.
 
-## [Sin publicar] - Tablero de Grafana
+### Tablero de Grafana
 
 - `monitoring/grafana/dashboards/empleoia.json`: estado del servicio, costo de IA y salud de los scrapers, con los umbrales de las alertas.
 - `docker compose --profile monitoring up`: Prometheus (con `alerts.yml`) y Grafana con el datasource y el tablero ya cargados. Sin el perfil, el compose no cambia.
 
-## [Sin publicar] - Más casos para medir el matching
+### Más casos para medir el matching
 
 - `eval/matching_dataset.json`: de 6 CVs y 12 ofertas a 16 CVs y 25 ofertas, con CVs y ofertas en español y portugués, y ofertas que piden más años de los que tiene el CV.
 - `resume_parser`: los años de experiencia pedidos también se leen en español y portugués ("3 años de experiencia", "2 anos de experiência", "mínimo 4 años", "pelo menos 5 anos"). Antes esas ofertas contaban como sin requisito.
 - `python scripts/eval_matching.py --compare`: mide TF-IDF y embeddings sobre el mismo dataset (embeddings necesita `GEMINI_API_KEY`).
 - Línea base del CI: precisión@3 mínima 0,70 (varios CVs nuevos tienen una sola oferta buena).
 
-## [Sin publicar] - Resumen semanal por email
+### Resumen semanal por email
 
 - Tarea semanal `send_weekly_digests` en Celery beat: un email por cuenta activa con las ofertas nuevas de sus alertas, las postulaciones sin respuesta y los próximos pasos del tracker. Si no hay novedades, no se manda. Beat la corre cada hora y cada cuenta recibe el resumen 7 días después del anterior (`users.weekly_digest_sent_at`), así los reinicios del worker no lo postergan y las ofertas no se repiten. Las entrevistas en curso solas no disparan el email.
 - Mi cuenta: prender o apagar el resumen (`users.weekly_digest_off_at`, migración `0016_weekly_digest`).
 
-## [Sin publicar] - mypy en todo el proyecto
+### mypy en todo el proyecto
 
 - mypy revisa todo el código y los tests (antes 36 archivos elegidos a mano); solo quedan afuera las migraciones de Alembic.
 - Indeed: `search_jobs` llamaba a `apply_filters`, que no existe, y cortaba cada búsqueda sin filtros; si no encontraba el campo de ubicación, fallaba con un error en vez de reintentar.
 - Las rutas de Mi cuenta usan `accounts.require_user_id()`, que falla claro si no hay cuenta en el pedido en vez de pasar `None`.
 
-## [Sin publicar] - Cobertura mínima de tests
+### Cobertura mínima de tests
 
 - La cobertura se mide solo sobre el código de la app (sin tests, scripts ni migraciones; config en `pyproject.toml`) y el CI exige 57%, antes 20% contando los propios tests. Tests nuevos para conexiones de LinkedIn, búsquedas de Indeed y LinkedIn, notificaciones y análisis de salarios.
 - La búsqueda general de conexiones de LinkedIn terminaba siempre como fallida (dividía por la lista de empresas, vacía en ese modo).
 - El reintento de login de la búsqueda de LinkedIn perdía el email y la contraseña y volvía a probar sin credenciales.
 
-## [Sin publicar] - Mensajes de progreso traducidos
+### Mensajes de progreso traducidos
 
 - Los mensajes de progreso de las búsquedas y de las solicitudes de conexión se muestran en el idioma de la cuenta (español, inglés o portugués). Se guardan como texto en español más sus valores (`i18n.lazy`) y `/status` los traduce al leerlos, así que sirven igual desde un thread o desde el worker de Celery.
 
-## [Sin publicar] - Errores de producción en Sentry
+### Errores de producción en Sentry
 
 - Con `SENTRY_DSN`, los errores 500 de la web y las tareas de Celery que fallan llegan a Sentry, con el entorno (`SENTRY_ENVIRONMENT`, que Terraform pone en staging/prod), la versión (`SENTRY_RELEASE` o `K_REVISION` de Cloud Run) y el componente (`web` o `worker`). Antes Sentry solo se iniciaba en la web, y los 500 que atrapaba el manejador de errores no llegaban.
 - Los eventos no llevan cookies, cabeceras de autenticación, cuerpos de pedidos, query strings ni emails: solo el id de la cuenta. Los `logger.error` quedan como contexto, no como eventos.
 
-## [Sin publicar] - Todo el esquema de la base en Alembic
+### Todo el esquema de la base en Alembic
 
 - Alembic crea y actualiza todas las tablas: `0000_core_tables` crea las que antes creaba `setup_database.sql` y `0015_core_schema` lleva cada tabla a la forma de los modelos, venga la base del script viejo o de `create_all`. Se eliminaron `setup_database.sql` e `init_db.py`.
 - La app ya no corre `create_all` al arrancar: hay que correr `alembic upgrade head` antes (Docker Compose lo hace con el servicio `migrate`; en Cloud Run, el job `empleoia-migrate-<env>`).
 - Los modelos de `connection_requests`, `networking_exclusions` y `processed_files` suman `user_id` y los únicos por cuenta que ya tenía la base; `connection_requests.status` acepta `declined`.
 - Nuevo test de drift (`tests_integration/test_schema.py`): en el CI compara la base migrada con los modelos, partiendo de una base vacía y de una creada con el script viejo. Falla si un modelo cambia sin su migración.
 
-## [Sin publicar] - Caché de IA compartida y modelo barato para tareas simples
+### Caché de IA compartida y modelo barato para tareas simples
 
 - La caché de respuestas de Gemini (temperatura ≤ 0.5, `AI_CACHE_TTL`) se guarda también en Redis cuando `RATELIMIT_STORAGE_URI` es `redis://`: una respuesta generada en una instancia de Cloud Run o en el worker sirve para las demás. Si Redis falla, sigue la caché en memoria.
 - `GEMINI_LIGHT_MODEL` (por defecto `gemini-2.5-flash-lite`) se usa para extraer salarios y para asociar correos de Gmail a una empresa del tracker; esa clasificación pasa a temperatura 0 y queda en caché. Vacío = `GEMINI_MODEL`.
 - `/api/ai/usage` suma `cache_hits`: llamadas del mes resueltas desde la caché.
 
-## [Sin publicar] - Modelos `Mapped[...]` y SQLAlchemy 2.1
+### Modelos `Mapped[...]` y SQLAlchemy 2.1
 
 - Todos los modelos (`models.py`, `accounts.py`, `job_alerts.py`, `profile_store.py`, `two_factor.py`, `user_sessions.py`, `security_events.py`, `push.py`, `integrations.py`) usan `DeclarativeBase` y `Mapped[...] = mapped_column(...)` en vez de `declarative_base()` y `Column`. El esquema que generan es idéntico (mismas columnas, nulos, índices y defaults).
 - SQLAlchemy sube de 2.0.57 a 2.1.8. `models.py`, `accounts.py`, `push.py` e `integrations.py` pasan a revisarse con mypy.
 - `session.query(Model).get(id)`, obsoleto, pasa a `session.get(Model, id)`.
 
-## [Sin publicar] - Medición de la calidad del matching
+### Medición de la calidad del matching
 
 - `eval/matching_dataset.json`: 6 CVs y 12 ofertas etiquetadas a mano (2 = buena opción, 1 = parcial).
 - `matching_eval.py` y `python scripts/eval_matching.py [--min-ndcg X] [--json]`: ordenan las ofertas de cada CV con `jobMatcher.calculate_overall_match` y miden NDCG@5, precisión@3 y MRR. Con `MATCHING_BACKEND=embeddings` mide el matching por embeddings.
 - `tests_integration/test_matching_eval.py` falla si un cambio baja las métricas de la línea base con TF-IDF (corre con sklearn real en el job de integración).
 
-## [Sin publicar] - Computrabajo, Bumeran y ZonaJobs en Playwright
+### Computrabajo, Bumeran y ZonaJobs en Playwright
 
 - Computrabajo, Bumeran y ZonaJobs usan Chromium de Playwright sin ventana (`scrapers/common.Browser`) en vez de Selenium: no hace falta Chrome ni Xvfb. `SCRAPER_HEADLESS=false` abre la ventana y `PLAYWRIGHT_WS_ENDPOINT` usa un navegador remoto; `SELENIUM_URL` ya no aplica a estos portales.
 - Se borra `scrapers/linkedin_scraper.py` (Selenium, sin uso: la búsqueda de LinkedIn ya corre en `linkedin_pw.py`); sus helpers de experiencia y ciudadanía pasan a `linkedin_pw`.
 - Fix: al reintentar el login de LinkedIn o terminar la búsqueda se cerraba `scraper.driver`, que el scraper de Playwright no tiene; ahora se cierra el navegador con `close()`.
 - Indeed y las solicitudes de conexión de LinkedIn siguen en Selenium.
 
-## [Sin publicar] - app.py partido en servicios
+### app.py partido en servicios
 
 - `app.py` queda en ~90 líneas: arma la web y un `AppServices` tipado. La lógica pasa a `services/`: `profiles.py` (perfiles y CV), `portal_search.py` (Indeed y LinkedIn), `connections.py` (solicitudes de LinkedIn), `probe_tasks.py` (pruebas de scrapers) y `state.py` (`job_status`, parser y matcher).
 - Las páginas usan `fastapi_web.services_for(request)` en vez del diccionario de globals de `app.py`; el worker y `scraping_jobs.py` ya no importan `app`.
 
-## [Sin publicar] - Aviso cuando un portal deja de devolver ofertas
+### Aviso cuando un portal deja de devolver ofertas
 
 - Cada búsqueda anota su resultado por portal (`ok`, `empty`, `error`) en el storage compartido (`RATELIMIT_STORAGE_URI`), así cuentan también las del worker y las alertas de empleo. `/metrics` lo expone como `empleoia_scraper_runs_total{portal,outcome}`.
 - Alerta `EmpleoIAPortalSinOfertas`: un portal con 3 o más búsquedas en 24 h y ninguna con ofertas (cambió el HTML o bloquea al scraper). Con test de `promtool`.
 - Tests de los helpers de texto de Indeed y LinkedIn con una descripción guardada.
 
-## [Sin publicar] - Términos, Privacidad y permiso para usar la IA
+### Términos, Privacidad y permiso para usar la IA
 
 - Páginas públicas `/terms` y `/privacy` en español, inglés y portugués, enlazadas desde el login, el registro y el pie de cada página. `LEGAL_OPERATOR_NAME` y `LEGAL_CONTACT_EMAIL` (por defecto `ADMIN_EMAIL`) completan los textos; revisalos con un abogado antes de abrir el registro.
 - Crear una cuenta exige aceptar los Términos y la Privacidad (`users.terms_accepted_at`); entrar por primera vez con Google lo acepta, como avisa el login.
 - Las funciones de IA (cartas, CVs, Copilot, entrevista, parseo del CV y embeddings) no mandan nada a Gemini sin el permiso de la cuenta (`users.ai_consent_at`). Se da desde un aviso en todas las páginas o en Mi cuenta, y se puede quitar; sin permiso, el matching usa TF-IDF. Sin login (modo local) no hace falta.
 - La exportación incluye las fechas de aceptación y del permiso. Migración `0014_legal_consent`.
 
-## [Sin publicar] - Cabeceras de seguridad y accesibilidad en todas las páginas
+### Cabeceras de seguridad y accesibilidad en todas las páginas
 
 - Todas las respuestas llevan CSP con nonce por pedido (sin `'unsafe-inline'` en scripts), `X-Content-Type-Options`, `X-Frame-Options: DENY`, `Referrer-Policy`, `Permissions-Policy` y `Cross-Origin-Opener-Policy`; HSTS solo bajo HTTPS (`X-Forwarded-Proto` o `SESSION_COOKIE_SECURE=1`). `CSP_REPORT_ONLY=1` solo informa y `CSP_REPORT_URI` recibe los reportes.
 - Se quitan los `onclick`/`onchange` del HTML: `static/js/actions.js` los reemplaza con `data-onclick` y `data-confirm`. Bootstrap, sus íconos y Chart.js se cargan con versión fija e integridad (SRI).
@@ -422,45 +442,45 @@ Sin cambios de comportamiento: mismas rutas, mismos nombres de ruta y mismos nom
 - axe revisa todas las páginas (antes 7); se corrigen contrastes y barras de progreso sin nombre en búsquedas, conexiones, entrevista y Administración.
 - Arreglos: `/connections`, excluir empresas y guardar postulaciones daban 500 (faltaba `db_manager`); búsqueda en lote sin archivos tiraba un error de JavaScript.
 
-## [Sin publicar] - Sin Flask (6/6)
+### Sin Flask (6/6)
 
 - Se quitan Flask, Flask-WTF, Flask-Limiter y pytest-flask. `web_settings.py` guarda la config (`SECRET_KEY`, `MAX_UPLOAD_MB`, cookies) y firma la cookie `session` con el mismo formato que Flask: las sesiones y los tokens CSRF abiertos antes siguen valiendo.
 - Los límites de las páginas (login, registro, Mi cuenta, Administración) usan `rate_limit.py` (librería `limits`, `RATELIMIT_STORAGE_URI`), igual que las APIs.
 - Una página que no existe muestra la página de error 404; un 500 ya no muestra el error interno; `/api/*` sigue respondiendo JSON.
 - Las métricas de Prometheus etiquetan solo con rutas de FastAPI.
 
-## [Sin publicar] - Páginas de Flask a FastAPI (5/6): búsquedas y conexiones
+### Páginas de Flask a FastAPI (5/6): búsquedas y conexiones
 
 - FastAPI sirve el arranque de las búsquedas, la prueba de scrapers y las solicitudes de conexión (`routers/scraper_pages.py`); las tareas de Computrabajo, Bumeran y universal pasan a `scraping_jobs.py`. Se quita la carpeta `web/`: Flask ya no tiene vistas.
 - `/test_task_status` solo acepta un UUID (antes leía cualquier `.json` con `../`) y solo muestra pruebas de la cuenta.
 - `/run_test_scraper` limita `max` a 20 y los errores ya no muestran el mensaje interno.
 
-## [Sin publicar] - Páginas de Flask a FastAPI (4/5): resultados, documentos, perfiles y alertas
+### Páginas de Flask a FastAPI (4/5): resultados, documentos, perfiles y alertas
 
 - FastAPI sirve ver/descargar/borrar resultados, empresas y conexiones, `/api/save_applications`, cartas y CV optimizado, puntaje ATS, perfiles de CV (subida hasta `MAX_UPLOAD_MB`) y alertas (`routers/content_pages.py`).
 - Borrar un CSV ahora es un POST con CSRF (antes un GET) y solo borra `.csv` de la carpeta de la cuenta.
 - Los avisos de error ya no muestran el error interno.
 - `tracker_stats.py` reemplaza a `web/analytics.py` (se quita la vista vieja de `/analytics`, que ya servía FastAPI).
 
-## [Sin publicar] - Páginas de Flask a FastAPI (3/5): Mi cuenta, Administración y exportación
+### Páginas de Flask a FastAPI (3/5): Mi cuenta, Administración y exportación
 
 - FastAPI sirve Mi cuenta (integraciones, contraseña, sesiones, segundo factor, exportar y borrar), `/admin` y `/export/*` (`routers/account_pages.py`), con los mismos límites por cuenta, CSRF y `Cache-Control: no-store`.
 - `tracker_export.py` arma los Excel/PDF sin depender del framework. Si la exportación falla, el aviso ya no muestra el error interno.
 - Se quitan `web/account.py`, `web/admin.py`, `web/second_factor.py` y `web/exports.py`.
 
-## [Sin publicar] - Páginas de Flask a FastAPI (2/5): login y cuentas
+### Páginas de Flask a FastAPI (2/5): login y cuentas
 
 - FastAPI sirve login, registro, salir, recuperar contraseña, verificar email, verificación en dos pasos y login con Google (`routers/auth_pages.py`), con los mismos límites por IP, email y login pendiente, CSRF y `Clear-Site-Data`.
 - `account_notify.py` (emails y eventos de seguridad) y `google_oauth.py` (OAuth con PKCE) no dependen del framework: los usan Flask y FastAPI.
 - Nueva dependencia `python-multipart` para leer formularios en FastAPI.
 
-## [Sin publicar] - Páginas de Flask a FastAPI (1/5)
+### Páginas de Flask a FastAPI (1/5)
 
 - `fastapi_web.py`: sesión, CSRF, avisos (`flash`) y `url_for` para páginas servidas por FastAPI, compatibles con la cookie de Flask (no hace falta volver a entrar).
 - FastAPI sirve `/`, `/scraper`, `/results`, `/profile`, `/mock-interview`, `/tracker`, `/lang/<code>` y `/sw.js` (`routers/pages.py`). Sin sesión redirigen a `/login`.
 - `main.create_app(flask_app)` arma la app; los tests usan la app completa (FastAPI + Flask) como en producción.
 
-## [Sin publicar] - Python 3.12 y dependencias
+### Python 3.12 y dependencias
 
 - Python 3.12 en todo el proyecto (CI, Docker, Ruff `py312`, mypy); los 385 tests unitarios pasan en 3.12.
 - `requirements.txt` con versiones exactas (antes había 25 sin fijar) y el job de tests del CI usa las mismas. SQLAlchemy queda en 2.0.57: la 2.1 rompe los tipos de mypy con los modelos `Column` actuales.
@@ -468,7 +488,7 @@ Sin cambios de comportamiento: mismas rutas, mismos nombres de ruta y mismos nom
 - Se quitan dependencias que nada importaba: `waitress`, `nltk`, `Flask-SQLAlchemy` y `APScheduler`.
 - `pip-audit` sin vulnerabilidades conocidas.
 
-## [Sin publicar] - Privacidad y seguridad de cuentas
+### Privacidad y seguridad de cuentas
 
 - **Interfaz en inglés y portugués** (`i18n.py`, `translations/en.json`, `translations/pt.json`): selector de idioma en la barra y en las pantallas de ingreso (cookie `lang`, si no `Accept-Language`). Traducidos la barra, el Copilot, inicio, ingreso/registro/recuperación, verificación en dos pasos, Mi cuenta, Administración, errores, mensajes flash y eventos de seguridad. Lo no traducido sigue en español; un test exige que cada texto marcado con `_()` tenga traducción.
 - **Panel de administración** (`web/admin.py`, `/admin`, migración `0013_user_disabled`): para la cuenta de `ADMIN_EMAIL` (o la primera). Cuentas con alta, última actividad, segundo factor y tokens de IA del mes; bloquear/desbloquear (`users.disabled_at`: corta login con contraseña y Google, sesiones, token de la extensión y avisos periódicos), quitar el segundo factor y borrar la cuenta (estas dos piden la contraseña del administrador). Todo queda en los eventos de seguridad.
@@ -479,7 +499,7 @@ Sin cambios de comportamiento: mismas rutas, mismos nombres de ruta y mismos nom
 - `accounts.delete_account` y `claim_orphans` inspeccionan las tablas antes de escribir (en SQLite la inspección descartaba los borrados pendientes).
 - **Exportar mis datos** (`data_export.py`, `POST /account/export`): ZIP con todo lo que la app guarda de la cuenta (tablas propias en JSON, perfiles, CVs originales, CSV de resultados y documentos generados). Pide la contraseña, tiene límite de 5 por hora, se sirve con `Cache-Control: no-store` y deja afuera hash de contraseña, tokens y endpoints push.
 
-## [Sin publicar] - Notificaciones push
+### Notificaciones push
 
 - Web Push con VAPID (`push.py`, `/api/push/*`, tabla `push_subscriptions`): cada cuenta suscribe sus dispositivos en **Mi cuenta** y recibe las alertas (canal `push`) y los recordatorios de seguimiento. Los endpoints se limitan a servicios de push conocidos (`PUSH_ALLOWED_HOSTS` agrega otros) y los que el servicio da de baja (404/410) se borran solos.
 - Una suscripción push es de la cuenta que la activó en ese navegador: al salir o al entrar con otra cuenta se da de baja, y la cuenta nueva tiene que activarla en **Mi cuenta**.
@@ -490,7 +510,7 @@ Sin cambios de comportamiento: mismas rutas, mismos nombres de ruta y mismos nom
 - `terraform/monitoring.tf`: uptime check de `/api/health` y alertas de Cloud Monitoring (5xx, p95, disco de Cloud SQL), por email con `alert_email`.
 - Prueba de carga con Locust (`loadtest/locustfile.py`, `requirements-loadtest.txt`) que falla si el p95 o los errores superan el objetivo; línea base en `docs/load-testing.md`.
 
-## [Sin publicar] - Cuentas e integraciones por cuenta
+### Cuentas e integraciones por cuenta
 
 - Limpieza de código muerto: Flask-SocketIO, eventlet y el WebSocket `/ws` (ninguna página los usaba), `routers/views.py` y `routers/scraping.py` (no se montaban), `job_precheck.py` (stubs que siempre aprobaban), tareas de Celery que nadie encolaba (`batch_analyze_jobs`, `batch_generate_cover_letters`, `export_tracker_to_excel`), funciones de IA y salarios sin uso, la tabla heredada `job_tracker` (ya no se crea; el tracker usa `applications`) y `scripts/test_bumeran.py`/`test_linkedin.py`. `CORS_ALLOWED_ORIGINS` ya no se usa.
 - Un lote de cartas o CVs que estaba generándose cuando se borró la cuenta se corta y no vuelve a crear sus archivos.
@@ -501,7 +521,7 @@ Sin cambios de comportamiento: mismas rutas, mismos nombres de ruta y mismos nom
 - "Mi cuenta": cambiar la contraseña (cierra las otras sesiones), recuperar la contraseña por email (enlace de 1 hora y un solo uso), verificar el email (`REQUIRE_EMAIL_VERIFICATION`, migración `0007_email_verification`) y borrar la cuenta. Los enlaces usan `PUBLIC_BASE_URL`.
 - Integraciones por cuenta (`user_integrations`, migración `0008_user_integrations`): chat de Telegram, token de la extensión de Chrome (solo se guarda el hash, revocable) y Gmail conectado por OAuth web (token cifrado con `CV_ENCRYPTION_KEY`). `TELEGRAM_CHAT_ID`, `EXTENSION_TOKEN` y `token.json` quedan como los de la primera cuenta hasta que los cambie o desconecte.
 
-## [Sin publicar] - Multiusuario
+### Multiusuario
 
 - Cuentas con email y contraseña (hash de Werkzeug) en la tabla `users` (migración `0005_users`); reemplazan a `APP_PASSWORD`.
 - La primera cuenta se crea en `/register` (con `ADMIN_EMAIL`, solo con ese email) y se queda con los datos previos; después el registro requiere `ALLOW_SIGNUP=true`.
@@ -510,15 +530,15 @@ Sin cambios de comportamiento: mismas rutas, mismos nombres de ruta y mismos nom
 - "Borrar mis datos" borra solo los perfiles y CVs de la cuenta. Telegram, Gmail y `EXTENSION_TOKEN` son de la primera cuenta.
 - `LOGIN_REQUIRED=false` desactiva el login (solo uso local). Terraform: `admin_email` reemplaza a `app_password`.
 
-## [Unreleased]
+### Otros cambios
 
-### Cambiado
+#### Cambiado
 - `db_config.DatabaseManager` usa el engine SQLAlchemy de `models.py` (un solo pool para tracker, perfiles y alertas) en lugar de su pool propio de `mysql.connector`; las consultas y los valores devueltos no cambian.
 - Las APIs de documentos (`/api/batch_cover_letters`, `/api/batch_optimize`, `/api/documents/tasks/<id>`, `/api/ats_score`, `/api/optimize_resume`) pasan a FastAPI (`routers/documents.py`); las páginas siguen en Flask. `/api/optimize_resume` y `/api/save_applications` ya no devuelven el mensaje interno del error.
 - La API de IA (`/api/ai/*`), notificaciones y `/api/salary/analyze-csv` pasan a FastAPI (`routers/ai.py`); se elimina `web/ai_api.py`. El copiloto vuelve a recibir los conteos del tracker, `/api/salary/analyze-csv` ya no lee archivos fuera de `results/` y los errores de IA no devuelven el mensaje interno.
 - `/api/tracker/stats`, `/api/analytics/advanced`, `/api/get_applications`, `/api/all_profiles`, `/api/profile_summary` y `/api/ranking` pasan de Flask a FastAPI (`routers/insights.py`), con el mismo login y formato de error que la API del tracker; los errores internos ya no devuelven el mensaje de la excepción.
 
-### Agregado
+#### Agregado
 - Ranking personal (`job_ranking.py`): Naive Bayes entrenado con el tracker (postuladas vs. guardadas sin postular) que reordena las alertas y los resultados de búsqueda, con columna "Afinidad" y `/api/ranking` para ver qué aprendió.
 - Extensión de Chrome lista para el Web Store: íconos y `content.css` que faltaban (Chrome no la cargaba), permiso `contextMenus` (el service worker fallaba al registrarse), botones del popup sin `onclick` inline (la CSP de MV3 los bloqueaba), soporte de ZonaJobs, GetOnBoard y `computrabajo.com.ar`, datos desde JSON-LD, permisos de host mínimos con acceso opcional al servidor configurado, `scripts/package_extension.py` y tests estáticos y E2E con la extensión cargada en Chromium.
 - Métricas Prometheus en `/metrics` (protegidas con `METRICS_TOKEN`): pedidos y latencia por ruta, tokens de Gemini, consumo mensual de IA y tareas esperando en cada cola de Celery. Trazas OpenTelemetry opcionales para la web, el worker y las llamadas HTTP salientes (`OTEL_EXPORTER_OTLP_ENDPOINT`). Ver `docs/observability.md`.
@@ -528,18 +548,18 @@ Sin cambios de comportamiento: mismas rutas, mismos nombres de ruta y mismos nom
 - Verificación mensual de restauración de backups de Cloud SQL (`scripts/verify_backup_restore.sh`, `backup-restore-check.yml`, `docs/backup-restore.md`).
 - CI: accesibilidad con axe-core (WCAG 2.1 AA, sin violaciones serias ni críticas) y Lighthouse (accesibilidad >= 90, buenas prácticas >= 75).
 
-### Seguridad
+#### Seguridad
 - `/view/<archivo>` escapa el título, la empresa y el enlace de las ofertas scrapeadas: antes se insertaban como HTML.
 - Auto-Apply de LinkedIn apagado por defecto (`AUTO_APPLY_ENABLED`), sin envío salvo `AUTO_APPLY_SUBMIT=true`, limitado a 10 URLs `https://*.linkedin.com/jobs/`, con tope de pasos en el formulario y el token tomado del entorno en vez del mensaje de Celery.
 
-### Corregido
+#### Corregido
 - `tasks/gmail_tracker.py` usaba `trackerDbClass`, `fetch_all_tracked` y `move_to_stage`, que no existen; ahora mueve la postulación a `interviewing`, y una respuesta vacía de Gemini ya no marca todas las empresas.
 - Lotes de cartas y CVs: el nombre del archivo ya no permite leer fuera de `results/`, la cantidad se limita a 50 ofertas, los errores no exponen mensajes internos y la tabla de resultados ya no interpreta como HTML los títulos y empresas de los portales.
 - Contraste insuficiente en el indicador Online/Offline, botones outline, textos secundarios y KPIs de Analytics; el botón "Salir" era invisible (blanco sobre blanco).
 - Botón de refrescar perfiles sin nombre accesible y columnas del tracker con scroll no alcanzables con teclado.
 - `/api/analytics/advanced` ya no devuelve el mensaje interno de la excepción.
 
-### Agregado
+#### Agregado
 - API JSON del tracker (`/api/tracker/jobs`, `/api/tracker/job/...`, `/api/tracker/save-from-extension`) migrada de Flask a FastAPI (`routers/tracker.py`) con modelos Pydantic. Usa la misma cookie de sesión y el mismo token CSRF de Flask; los errores internos ya no devuelven el mensaje de la excepción.
 - Portales ZonaJobs (reutiliza el parser de Bumeran) y GetOnBoard (API JSON pública) en búsqueda universal, alertas y monitor de scrapers. El parser de Bumeran ya no toma "Apto discapacidad" como empresa.
 - Puntaje ATS sin IA (`ats_score.py`): página en `/optimize_resume` y `POST /api/ats_score`.
@@ -557,12 +577,12 @@ Sin cambios de comportamiento: mismas rutas, mismos nombres de ruta y mismos nom
 - Monitor diario de scrapers (`scripts/scraper_health.py` + workflow `Monitor de scrapers`): busca en Computrabajo y Bumeran y abre un issue si alguno no devuelve ofertas.
 - Página `/optimize_resume` (antes daba 500 porque faltaba la plantilla) y enlace "Optimizar CV" en el menú.
 
-### Corregido
+#### Corregido
 - Tracker: `applications.status` acepta los estados del kanban (`bookmarked`, `applying`, `negotiating`); antes MySQL rechazaba esas altas. Migración Alembic `0003_tracker_status`.
 - Modo offline: el service worker se sirve en `/sw.js` (antes `/static/sw.js` no podía tomar el scope `/` y nunca se registraba). Los assets son network-first, así un deploy nuevo se ve sin limpiar caché, y `/login` y `/logout` envían `Clear-Site-Data` para que sin sesión no queden páginas ni datos del tracker guardados en el navegador.
 - Se quitaron de `base.html` `css/main.css` y `js/main.js`, que no existen y daban 404 en todas las páginas.
 
-### Cambiado
+#### Cambiado
 - `/delete_profile` ("Borrar mis datos") solo acepta POST con CSRF; antes un GET borraba todo.
 - `app.py` pasó de ~3.080 a ~820 líneas: las rutas se movieron a `web/` (un módulo por área) sin cambiar URLs, endpoints, login, CSRF ni rate limit.
 - UI: todo en español (panel de métricas, asistente Copilot) y se eliminaron las plantillas sin uso `view_jobs.html` y `view_file_original.html` (UTF-16, ~18k líneas).
@@ -576,21 +596,21 @@ Sin cambios de comportamiento: mismas rutas, mismos nombres de ruta y mismos nom
   Sin MySQL (o con `PROFILE_STORAGE=json`) se sigue usando el JSON.
 - Primera migración de Alembic (`alembic upgrade head`); se eliminó `utils.py`, que duplicaba la lógica de perfiles y no se usaba.
 
-### Planeado
+#### Planeado
 - Auto-Apply: Postulación automática a trabajos "Easy Apply" de LinkedIn con Playwright
 - Email Tracking: Detección de respuestas vía Gmail/Outlook API
 - API REST Pública con FastAPI y documentación OpenAPI/Swagger
 - Gamificación: Sistema de logros y estadísticas personales
 - Mobile App: Aplicación nativa iOS/Android
 
-### ⚙️ Mantenimiento
+#### ⚙️ Mantenimiento
 - Migración de `google-generativeai` (sin soporte) a `google-genai`; modelo configurable con `GEMINI_MODEL` (por defecto `gemini-2.5-flash`).
 - Rate limit en `/api/ai/*` con Flask-Limiter (`AI_RATE_LIMIT`), límite de upload configurable (`MAX_UPLOAD_MB`) y respuesta 413 amigable.
 - `/api/health` también disponible en Flask; `LOG_LEVEL` y Sentry opcional (`SENTRY_DSN`).
 - Imagen Docker y Playwright 1.55 (Ubuntu noble, Python 3.12); CI en Python 3.12 para todos los PRs.
 - CI: job de seguridad (Bandit, pip-audit, Gitleaks) y Dependabot semanal para pip, Actions y Docker.
 
-### 🔐 Seguridad
+#### 🔐 Seguridad
 - Login de usuario único con `APP_PASSWORD` (Flask y rutas FastAPI), rate limit en `/login`, logout por POST y cookies `SameSite=Lax`.
 - Protección CSRF (Flask-WTF) en todos los formularios y `fetch` same-origin; la extensión de Chrome usa `EXTENSION_TOKEN`.
 - Terraform: `APP_PASSWORD` como secreto obligatorio del Cloud Run público.
@@ -601,7 +621,7 @@ Sin cambios de comportamiento: mismas rutas, mismos nombres de ruta y mismos nom
 - Token de Gmail guardado como `token.json` en lugar de `pickle`.
 - `docker-compose.yml`: MySQL, Redis y Flower publicados solo en `127.0.0.1`. `init_db.py` ya no trae contraseña por defecto.
 
-### 🔧 Correcciones Recientes de Entorno (Local/Docker)
+#### 🔧 Correcciones Recientes de Entorno (Local/Docker)
 - 🐛 **Dockerfile Oficial**: Creación de `Dockerfile` principal asado en `mcr.microsoft.com/playwright/python:v1.42.0-jammy` listo para correr Selenium y Playwright, solventando problemas con C++ Build Tools en host.
 - 🐛 **Resolución de Puertos MySQL**: Modificado `docker-compose.yml` para exponer MySQL en el puerto `3307` del host, evitando el choque `bind: Only one usage of each socket address` con instalaciones locales.
 - 🐛 **Dependencias Omitidas**: Añadidos dinámicamente `undetected-chromedriver`, `selenium` y `webdriver-manager` a `requirements.txt` tras rastrear `ModuleNotFoundError` que pausaba el contenedor `web`.
