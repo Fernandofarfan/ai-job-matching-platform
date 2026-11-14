@@ -56,6 +56,7 @@ def notes(changelog: str, version: str) -> str:
 
 
 def prepare(root: Path, version: str, date: str) -> None:
+    """Sube VERSION a `version` (tiene que ser mayor) y cierra las entradas pendientes del CHANGELOG."""
     current = (root / 'VERSION').read_text(encoding='utf-8').strip()
     if parse(version) <= parse(current):
         raise ValueError(f'{version} tiene que ser mayor que la versión actual {current}')
@@ -65,6 +66,7 @@ def prepare(root: Path, version: str, date: str) -> None:
 
 
 def main(argv: list[str] | None = None, root: Path = ROOT) -> int:
+    """CLI: `prepare X.Y.Z [--date]` o `notes X.Y.Z`; devuelve 1 con un mensaje si algo no cuadra."""
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest='command', required=True)
     prep = sub.add_parser('prepare', help='sube VERSION y cierra la sección del CHANGELOG')
