@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   scrapers:
-    name: Computrabajo, Bumeran, ZonaJobs y GetOnBoard devuelven ofertas
+    name: Computrabajo, Bumeran, ZonaJobs, GetOnBoard e Indeed devuelven ofertas
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -24,7 +24,7 @@ jobs:
 
       - name: Instalar dependencias de los scrapers
         run: |
-          pip install playwright==1.65.1 beautifulsoup4 lxml pandas python-dotenv requests
+          pip install --require-hashes -r requirements.txt
           python -m playwright install --with-deps chromium
 
       - name: Correr el monitor

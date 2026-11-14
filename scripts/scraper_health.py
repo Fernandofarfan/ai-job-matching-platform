@@ -2,7 +2,8 @@
 
 Uso: python scripts/scraper_health.py [--query python] [--min-jobs 1]
 Sale con código 1 si algún portal devuelve menos de --min-jobs ofertas o lanza un error.
-LinkedIn e Indeed quedan afuera: requieren login o bloquean navegadores automatizados.
+Si un portal muestra un captcha se informa como `blocked` y no hace fallar la corrida: eso dice
+que bloquea al navegador, no que haya cambiado su HTML. LinkedIn queda afuera porque requiere login.
 """
 import argparse
 import json
@@ -33,18 +34,45 @@ def _getonboard():
     return GetOnBoardScraper()
 
 
-PORTALS = {'computrabajo': _computrabajo, 'bumeran': _bumeran, 'zonajobs': _zonajobs, 'getonboard': _getonboard}
+class _IndeedListing:
+    """Indeed con la interfaz del monitor: solo cuenta las tarjetas del listado público."""
+
+    def __init__(self, location=''):
+        """Abre el navegador recién en la primera búsqueda."""
+        from scrapers.indeed_scraper import indeedScraper
+        self.scraper = indeedScraper()
+        self.location = location
+
+    def search_jobs(self, query, max_jobs=5):
+        """Tarjetas de la primera página; `PortalBlocked` si aparece un captcha."""
+        return self.scraper.listing(query, self.location, max_jobs)
+
+    def close(self):
+        """Cierra el navegador."""
+        self.scraper.close()
+
+
+def _indeed():
+    """Indeed con la ubicación de SCRAPER_HEALTH_INDEED_LOCATION."""
+    return _IndeedListing(os.getenv('SCRAPER_HEALTH_INDEED_LOCATION', 'Remote'))
+
+
+PORTALS = {'computrabajo': _computrabajo, 'bumeran': _bumeran, 'zonajobs': _zonajobs, 'getonboard': _getonboard,
+           'indeed': _indeed}
 
 
 def check_portal(name, factory, query, max_jobs):
-    """Resultado de un portal: {'portal', 'jobs', 'error'}."""
+    """Resultado de un portal: {'portal', 'jobs', 'error', 'blocked'}."""
+    from scrapers.common import PortalBlocked
     scraper = None
     try:
         scraper = factory()
         jobs = scraper.search_jobs(query, max_jobs=max_jobs) or []
-        return {'portal': name, 'jobs': len(jobs), 'error': None}
+        return {'portal': name, 'jobs': len(jobs), 'error': None, 'blocked': False}
+    except PortalBlocked as e:
+        return {'portal': name, 'jobs': 0, 'error': str(e), 'blocked': True}
     except Exception as e:
-        return {'portal': name, 'jobs': 0, 'error': f"{type(e).__name__}: {e}"}
+        return {'portal': name, 'jobs': 0, 'error': f"{type(e).__name__}: {e}", 'blocked': False}
     finally:
         if scraper is not None:
             try:
@@ -56,7 +84,7 @@ def check_portal(name, factory, query, max_jobs):
 def run(query='python', min_jobs=1, max_jobs=5, portals=None):
     """Revisa los portales y devuelve (ok, resultados)."""
     results = [check_portal(name, factory, query, max_jobs) for name, factory in (portals or PORTALS).items()]
-    ok = all(r['error'] is None and r['jobs'] >= min_jobs for r in results)
+    ok = all(r['blocked'] or (r['error'] is None and r['jobs'] >= min_jobs) for r in results)
     return ok, results
 
 

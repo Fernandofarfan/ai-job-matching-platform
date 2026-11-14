@@ -15,13 +15,18 @@ from urllib.parse import urlencode
 import pandas as pd
 
 import accounts
-from scrapers.common import Browser, get_with_retries
+from scrapers.common import Browser, PortalBlocked, get_with_retries
 
 logger = logging.getLogger(__name__)
 
 BASE_URL = os.getenv('INDEED_BASE_URL', 'https://www.indeed.com').rstrip('/')
 CARD = "[class*='job_seen_beacon']"
+# El título pasó de <h2> a <h3>; se busca por la clase para no depender del nivel.
+TITLE_LINK = '.jobTitle a[data-jk]'
+TITLE = '.jobTitle span'
 VERIFICATION_TEXTS = ('Additional Verification Required', 'Verify you are human', 'Just a moment')
+# Indeed manda a los navegadores anónimos que detecta como bots al login en vez de mostrar la oferta.
+LOGIN_WALL = ('from=bot-detection', 'secure.indeed.com/auth', '/account/login')
 EASY_APPLY_PHRASES = ('easily apply', 'apply now', 'easy apply', 'quick apply')
 DATE_POSTED = {'1', '3', '7', '14', '30'}
 EXPERIENCE = {'entry': 'ENTRY_LEVEL', 'mid': 'MID_LEVEL', 'senior': 'SENIOR_LEVEL'}
@@ -58,9 +63,9 @@ def parse_card(card) -> Optional[Dict]:
     def text(selector):
         node = card.query_selector(selector)
         return node.inner_text().strip() if node else ''
-    link = card.query_selector('h2.jobTitle a')
+    link = card.query_selector(TITLE_LINK)
     job_id = link.get_attribute('data-jk') if link else None
-    title = text('h2.jobTitle span')
+    title = text(TITLE)
     if not (title and job_id):
         return None
     if 'easily apply' in card.inner_text().lower() or card.query_selector('.iaIcon'):
@@ -99,30 +104,40 @@ class indeedScraper:
         return True
 
     def _blocked(self, page) -> bool:
-        """True si Indeed muestra un captcha o una verificación anti-bot."""
+        """True si Indeed muestra un captcha, una verificación anti-bot o pide login."""
         try:
             content = page.content()
         except Exception:
             return False
-        if any(text in content for text in VERIFICATION_TEXTS):
+        if any(text in content for text in VERIFICATION_TEXTS) or any(m in page.url for m in LOGIN_WALL):
             logger.warning("Indeed pidió una verificación anti-bot; se corta la búsqueda")
             return True
         return False
 
     def _description(self, job_id: str) -> Optional[str]:
-        """Texto de la oferta; None si no carga o si se postula con Indeed Apply."""
+        """Texto de la oferta; None si no carga o si se postula con Indeed Apply.
+
+        Lanza `PortalBlocked` si Indeed pide una verificación o login en vez de mostrarla.
+        """
         page = self.page.context.new_page()
         try:
             get_with_retries(page, self._link(job_id))
             if self._blocked(page):
-                return None
-            page.wait_for_selector('#jobDescriptionText', timeout=10_000)
+                raise PortalBlocked('Indeed pidió login o una verificación para ver la oferta')
+            try:
+                page.wait_for_selector('#jobDescriptionText', timeout=10_000)
+            except Exception:
+                if self._blocked(page):
+                    raise PortalBlocked('Indeed pidió login o una verificación para ver la oferta')
+                raise
             buttons = ' '.join(page.eval_on_selector_all(
                 "#indeedApplyButton, button, a[href*='apply']",
                 "els => els.map(e => (e.innerText || '') + ' ' + (e.getAttribute('aria-label') || ''))")).lower()
             if page.query_selector('#indeedApplyButton') or any(p in buttons for p in EASY_APPLY_PHRASES):
                 return None
             return page.inner_text('#jobDescriptionText')
+        except PortalBlocked:
+            raise
         except Exception as e:
             logger.warning(f"No se pudo leer la oferta {job_id}: {e}")
             return None
@@ -165,7 +180,10 @@ class indeedScraper:
             for card in filter(None, map(parse_card, nodes)):
                 if self._link(card['id']) in seen:
                     continue
-                job = self.extract_job_details(card)
+                try:
+                    job = self.extract_job_details(card)
+                except PortalBlocked:
+                    return self.all_jobs
                 seen.add(self._link(card['id']))
                 if job:
                     job.update({'Search_Position': job_title, 'Search_Location': location})
@@ -204,6 +222,17 @@ class indeedScraper:
         if self.all_jobs:
             self._save(self.all_jobs, job_title, location, partial=True)
         return self.all_jobs
+
+    def listing(self, job_title: str, location: str = '', max_jobs: int = 5) -> List[Dict]:
+        """Tarjetas de la primera página del listado, sin abrir descripciones ni guardar nada.
+
+        Sirve para el monitor de scrapers: si Indeed cambia su HTML devuelve una lista vacía;
+        si muestra un captcha lanza `PortalBlocked`.
+        """
+        get_with_retries(self.page, search_url(job_title, location, {}, 0, self.base_url))
+        if self._blocked(self.page):
+            raise PortalBlocked('Indeed pidió una verificación anti-bot')
+        return [card for card in map(parse_card, self.page.query_selector_all(CARD)) if card][:max_jobs]
 
     def search_jobs(self, job_title: str, location: str, clear_previous=True, max_jobs_per_search=5) -> List[Dict]:
         """Búsqueda sin filtros (prueba de scrapers)."""

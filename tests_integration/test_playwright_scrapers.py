@@ -93,6 +93,19 @@ def test_indeed_with_playwright(portal_server):
     assert jobs[0]['Experience_Category'] == 'Early Career (2-3 years)'
 
 
+def test_indeed_listing_for_monitor(portal_server):
+    from scrapers.indeed_scraper import indeedScraper
+
+    def listing():
+        scraper = indeedScraper()
+        scraper.base_url = portal_server
+        try:
+            return scraper.listing('Data Engineer', 'Remote')
+        finally:
+            scraper.close()
+    assert [card['id'] for card in _in_thread(listing)] == ['abc123']
+
+
 def test_linkedin_connections_with_playwright(portal_server, monkeypatch):
     from scrapers import linkedin_connection as lc
     monkeypatch.setattr(lc, 'people_search_url',
