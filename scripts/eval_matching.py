@@ -42,6 +42,8 @@ def compare(min_ndcg=0.0, as_json=False):
     import embeddings
     import matching_eval
     previous = os.environ.get('MATCHING_BACKEND')
+    # el backend por idioma mezclaría los dos backends en cada fila: se compara cada uno puro
+    by_language = os.environ.pop('MATCHING_BACKEND_BY_LANGUAGE', None)
     results = {}
     try:
         for backend in ('tfidf', 'embeddings'):
@@ -76,6 +78,8 @@ def compare(min_ndcg=0.0, as_json=False):
             os.environ.pop('MATCHING_BACKEND', None)
         else:
             os.environ['MATCHING_BACKEND'] = previous
+        if by_language is not None:
+            os.environ['MATCHING_BACKEND_BY_LANGUAGE'] = by_language
     if all('mean' in row for row in results.values()):
         # embeddings - TF-IDF: positivo = embeddings ordena mejor
         tfidf, emb = results['tfidf'], results['embeddings']

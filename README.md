@@ -347,7 +347,7 @@ docker-compose logs -f web
 
 ### Calidad del matching
 
-`python scripts/eval_matching.py` ordena las ofertas de `eval/matching_dataset.json` para cada CV etiquetado y muestra NDCG@5, precisión@3 y MRR. Con `MATCHING_BACKEND=embeddings` (y `GEMINI_API_KEY`) mide el matching por embeddings, y `--compare` mide los dos seguidos, en total y por idioma del CV, con la diferencia entre ambos. El workflow "Comparar matching" lo corre los lunes y a pedido con el secreto `GEMINI_API_KEY`, y deja el JSON como artefacto. El dataset tiene CVs y ofertas en inglés, español y portugués. `--min-ndcg 0.9` sale con código 1 si el promedio queda por debajo. Para cubrir un caso nuevo, sumá ofertas o CVs con sus etiquetas al JSON.
+`python scripts/eval_matching.py` ordena las ofertas de `eval/matching_dataset.json` para cada CV etiquetado y muestra NDCG@5, precisión@3 y MRR. Con `MATCHING_BACKEND=embeddings` (y `GEMINI_API_KEY`) mide el matching por embeddings, y `--compare` mide los dos seguidos, en total y por idioma del CV, con la diferencia entre ambos. Si embeddings mejora en algún idioma, se activa solo para ese idioma con `MATCHING_BACKEND_BY_LANGUAGE` (ej. `es=embeddings,pt=embeddings`); `--compare` la ignora para medir cada backend puro. El workflow "Comparar matching" lo corre los lunes y a pedido con el secreto `GEMINI_API_KEY`, y deja el JSON como artefacto. El dataset tiene CVs y ofertas en inglés, español y portugués. `--min-ndcg 0.9` sale con código 1 si el promedio queda por debajo. Para cubrir un caso nuevo, sumá ofertas o CVs con sus etiquetas al JSON.
 
 ## 📁 Estructura del Proyecto
 
@@ -460,6 +460,7 @@ RATELIMIT_STORAGE_URI=memory:// # usá redis://... con varias instancias
 AI_MONTHLY_TOKEN_LIMIT=0        # tope mensual de tokens de Gemini (0 = sin tope); consumo en GET /api/ai/usage.
 AI_USER_MONTHLY_TOKEN_LIMIT=0   # tope mensual por cuenta (0 = sin tope); cada cuenta ve su consumo en GET /api/ai/usage.
 MATCHING_BACKEND=tfidf          # embeddings = match CV-oferta por significado con Gemini (cuenta en el tope); tfidf = palabras en común.
+MATCHING_BACKEND_BY_LANGUAGE=   # backend según el idioma del CV (es, pt, en), por encima de MATCHING_BACKEND. Ej.: es=embeddings,pt=embeddings
                                 # Al llegar al tope, la carga de CV sigue funcionando con el parser local (regex + spaCy), sin IA
 AI_CACHE_TTL=3600               # caché de respuestas de IA deterministas (temperatura ≤ 0.5), compartida en Redis si RATELIMIT_STORAGE_URI es redis://; 0 la apaga
 GEMINI_LIGHT_MODEL=gemini-2.5-flash-lite  # modelo barato para extraer salarios y clasificar correos de Gmail; vacío = GEMINI_MODEL

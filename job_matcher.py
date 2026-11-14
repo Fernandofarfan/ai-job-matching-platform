@@ -68,7 +68,7 @@ class jobMatcher:
         return min(years) if years else 0
     
     def calculate_text_similarity(self, profile_text, job_description):
-        """Similitud 0-100: embeddings si MATCHING_BACKEND=embeddings, si no (o si fallan) TF-IDF."""
+        """Similitud 0-100: embeddings si están activos para el idioma del CV, si no (o si fallan) TF-IDF."""
         import embeddings
         semantic = embeddings.similarity(profile_text, job_description)
         if semantic is not None:

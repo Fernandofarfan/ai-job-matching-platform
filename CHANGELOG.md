@@ -6,6 +6,14 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar] - Backend de matching por idioma del CV
+
+- `MATCHING_BACKEND_BY_LANGUAGE` (ej. `es=embeddings,pt=embeddings`) elige el backend según el idioma del CV, por
+  encima de `MATCHING_BACKEND`. Vacío por defecto: nada cambia hasta activarlo, y sin `GEMINI_API_KEY` sigue TF-IDF.
+- `embeddings.detect_language` distingue español, portugués e inglés por palabras frecuentes, sin dependencias
+  nuevas; acierta en los 16 CVs del dataset de evaluación.
+- `scripts/eval_matching.py --compare` ignora la variable para medir cada backend puro.
+
 ## [Sin publicar] - Extensión de Chrome vinculada desde Mi cuenta
 
 - La extensión (1.2.0) se vincula con "Vincular con mi cuenta": abre `/account/extension/link?state=…`, se confirma
