@@ -73,7 +73,8 @@ def _description_length(job: Job) -> int:
 
 def _merge(group: list[Job]) -> Job:
     """La oferta con la descripción más larga, completada con los datos que falten de las demás."""
-    base: Job = dict(max(group, key=_description_length))
+    richest: Job = max(group, key=_description_length)
+    base = dict(richest)
     for other in group:
         for field, value in other.items():
             if not _known(base.get(field)) and _known(value):
