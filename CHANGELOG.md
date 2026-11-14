@@ -11,6 +11,11 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 ### Para actualizar desde 3.0.0
 - Versión mayor porque `REDIS_PASSWORD` pasa a ser obligatoria: agregala al `.env` (solo letras y números, va dentro de una URL).
 
+### Pruebas de mutación
+- mutmut sobre `auth.py`, `accounts.py`, `rate_limit.py` y `job_dedup.py`: 80,1 % de mutantes detectados (988 de 1233). Corre los lunes y a mano (`.github/workflows/mutation.yml`), con un reporte por módulo (`scripts/mutation_report.py`). No frena PRs.
+- `tests/test_account_rules.py`: reglas de registro, administrador, bloqueo de cuentas, verificación de email, huella de la sesión y límites de pedidos que ningún test detectaba al cambiarlas. Subió el puntaje de 67,7 % a 80,1 %.
+- `tests/test_mutmut_config.py` avisa si un módulo nuevo de la raíz falta en `also_copy`. Explicado en `docs/mutation-testing.md`.
+
 ### Tests de flujos de los scrapers
 - Computrabajo, Bumeran y LinkedIn (`linkedin_pw`) se prueban sin navegador: login, paginación, link de postulación, CSV y errores. La cobertura unitaria pasa de 22 %, 35 % y 41 % a 96 %, 94 % y 94 %.
 
