@@ -10,7 +10,6 @@ from flask_wtf.csrf import CSRFProtect
 import accounts
 import auth
 from flask_limiter.util import get_remote_address
-from flask_socketio import SocketIO, emit
 import os
 import logging
 import glob
@@ -48,10 +47,6 @@ app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['SESSION_COOKIE_SECURE'] = os.getenv('SESSION_COOKIE_SECURE', '0') == '1'
 csrf = CSRFProtect(app)
 app.jinja_env.auto_reload = True
-
-# WebSockets (async_mode=threading es compatible con el servidor dev de Flask)
-_cors_origins = [o.strip() for o in os.getenv('CORS_ALLOWED_ORIGINS', '').split(',') if o.strip()] or None
-socketio = SocketIO(app, async_mode='threading', cors_allowed_origins=_cors_origins)
 
 logging.basicConfig(
     level=os.getenv('LOG_LEVEL', 'INFO').upper(),
@@ -861,35 +856,6 @@ def not_found(e):
 def server_error(e):
     logger.error(f"500 Internal Server Error: {e}")
     return render_template('error.html', code=500, message=str(e)), 500
-
-
-# ─────────────────────────────────────────────
-# SocketIO: progreso del scraper en tiempo real
-# ─────────────────────────────────────────────
-
-@socketio.on('connect')
-def on_connect():
-    emit('connected', {'data': 'Connected to EmpleoIA SocketIO'})
-
-@socketio.on('check_status')
-def handle_check_status(data):
-    """Cliente puede pedir el estado actual de cualquier scraper."""
-    scraper_key = data.get('scraper', 'indeed_scraping')
-    status = job_status.get(scraper_key, {})
-    emit('scraper_status', status)
-
-
-def emit_scraper_progress(scraper_key: str):
-    """Emite el progreso del scraper via SocketIO (llamar desde los threads de scraping)."""
-    try:
-        import job_dispatch
-        job_dispatch.refresh(job_status)
-        socketio.emit('scraper_status', {
-            'scraper': scraper_key,
-            **job_status.get(scraper_key, {})
-        })
-    except Exception:
-        pass  # No romper el scraper si SocketIO falla
 
 
 # Las rutas viven en web/ y se registran sobre `app` al importarse

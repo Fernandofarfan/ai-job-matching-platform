@@ -35,28 +35,6 @@ CREATE TABLE IF NOT EXISTS applications (
     INDEX idx_applied_date (applied_date)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Tabla de seguimiento de trabajos
-CREATE TABLE IF NOT EXISTS job_tracker (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    title VARCHAR(255) NOT NULL,
-    company VARCHAR(255) NOT NULL,
-    location VARCHAR(255),
-    salary VARCHAR(100),
-    job_link TEXT,
-    status ENUM('bookmarked', 'applying', 'applied', 'interviewing', 'negotiating', 'accepted', 'rejected') DEFAULT 'bookmarked',
-    excitement INT DEFAULT 0,
-    date_saved TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    date_applied DATE NULL,
-    deadline DATE NULL,
-    follow_up DATE NULL,
-    notes TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_status (status),
-    INDEX idx_company (company),
-    INDEX idx_date_saved (date_saved)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
 -- Tabla de solicitudes de conexión
 CREATE TABLE IF NOT EXISTS connection_requests (
     id INT AUTO_INCREMENT PRIMARY KEY,

@@ -166,38 +166,6 @@ Respondé con este JSON exacto (sin markdown, sin bloques de código):
         return fallback.model_dump()
 
 
-def analyze_company_culture(job_description: str) -> dict:
-    """Analiza la cultura de la empresa a partir de la descripción del puesto."""
-    prompt = f"""Analizá esta descripción de trabajo e identificá la cultura de la empresa.
-Respondé en JSON sin bloques de código:
-
-Descripción: {job_description[:2000]}
-
-{{
-  "tipo_cultura": "startup agresiva|corporativo tradicional|empresa de tecnología|agencia creativa|ONG|pyme familiar|remoto-first",
-  "valores_detectados": ["valor1", "valor2", "valor3"],
-  "ritmo_trabajo": "alto|moderado|relajado",
-  "tono_comunicacion": "formal|semi-formal|casual",
-  "beneficios_mencionados": ["beneficio1", "beneficio2"],
-  "señales_positivas": ["señal1", "señal2"],
-  "señales_advertencia": ["señal1 o vacío"],
-  "recomendacion_tono_carta": "formal|semi-formal|casual|audaz",
-  "consejo_para_entrevista": "consejo práctico de 1-2 oraciones"
-}}"""
-
-    raw = _call_gemini(prompt, temperature=0.4)
-    raw = re.sub(r'```(?:json)?\s*', '', raw).strip()
-    try:
-        return json.loads(raw)
-    except:
-        return {"tipo_cultura": "desconocido", "tono_comunicacion": "formal",
-                "recomendacion_tono_carta": "formal", "consejo_para_entrevista": raw}
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# 2. MEJORA DE CV
-# ─────────────────────────────────────────────────────────────────────────────
-
 def rewrite_cv_bullet(bullet_point: str, job_description: str, job_title: str = "") -> dict:
     """
     Reescribe un bullet point del CV para que haga mejor match con la oferta.
@@ -448,38 +416,3 @@ Respondé en JSON sin bloques de código:
 # ─────────────────────────────────────────────────────────────────────────────
 # 6. OPTIMIZACIÓN MASIVA DE CVs
 # ─────────────────────────────────────────────────────────────────────────────
-
-def score_resume_for_job(resume_text: str, job_description: str, job_title: str) -> dict:
-    """Score detallado del CV para una oferta específica."""
-    prompt = f"""Evaluá este CV para la oferta de trabajo. Sé honesto y específico.
-
-Puesto: {job_title}
-Oferta: {job_description[:1500]}
-CV: {resume_text[:2000]}
-
-Respondé en JSON sin bloques de código:
-{{
-  "score_total": 75,
-  "score_skills": 80,
-  "score_experiencia": 70,
-  "score_educacion": 75,
-  "score_keywords": 65,
-  "fortalezas": ["fortaleza específica1", "fortaleza2"],
-  "debilidades": ["debilidad específica1", "debilidad2"],
-  "keywords_presentes": ["keyword1", "keyword2"],
-  "keywords_faltantes": ["keyword1", "keyword2"],
-  "recomendaciones": ["recomendación accionable1", "recomendación2", "recomendación3"],
-  "probabilidad_pase_ats": "alta|media|baja",
-  "veredicto": "Aplicar|Mejorar primero|No aplicar",
-  "resumen": "evaluación en 2 oraciones"
-}}"""
-
-    raw = _call_gemini(prompt, temperature=0.3)
-    raw = re.sub(r'```(?:json)?\s*', '', raw).strip()
-    try:
-        return json.loads(raw)
-    except:
-        return {
-            "score_total": 0, "fortalezas": [], "debilidades": [],
-            "recomendaciones": [raw], "veredicto": "Revisar manualmente"
-        }

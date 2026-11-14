@@ -64,7 +64,7 @@
 
 ### 🚀 **Nueva Arquitectura y Escalabilidad (Fases 1-5 completadas)**
 - **Migración a Playwright**: El motor de scraping abandona Selenium y adopta `playwright` asincrónico para máxima velocidad y evitar detecciones.
-- **FastAPI Core**: Transición de Flask a FastAPI (`main.py`) activada para endpoints de IA asincrónicos, preparándose para soporte WebSocket nativo de alta concurrencia.
+- **FastAPI Core**: las APIs JSON corren en FastAPI (`main.py`); Flask sirve las páginas HTML.
 - **Entorno DevContainer**: Repositorio "Docker-first" con `.devcontainer` que soluciona conflictos de C++ y restricciones de Windows Defender para dependencias de IA.
 - **Web Speech API**: Interfaz de *Mock Interviews* actualizada con funcionalidad de voz-a-texto en la UI.
 - **Autonomías Externas**: Tracker automático para Gmail vía OAuth e introducción de auto-aplicación en LinkedIn.
@@ -424,7 +424,6 @@ GOOGLE_OAUTH_CLIENT_SECRET=
 GMAIL_OAUTH_CLIENT_FILE=credentials.json  # cliente OAuth "aplicación web" de Google para "Conectar Gmail" en Mi cuenta
                        # (redirect URI: PUBLIC_BASE_URL + /account/gmail/callback)
 SESSION_COOKIE_SECURE=0  # 1 detrás de HTTPS
-CORS_ALLOWED_ORIGINS=  # orígenes WebSocket permitidos, separados por coma (vacío = mismo origen)
 FLASK_HOST=127.0.0.1   # python app.py solo escucha en localhost; usá 0.0.0.0 para exponerlo
 FLASK_PORT=5000
 FLASK_DEBUG=0          # 1 activa el debugger de Werkzeug: nunca lo expongas a la red
@@ -651,7 +650,7 @@ Proyecto desarrollado desde cero para automatizar la búsqueda de empleo con tec
 ### Tecnologías
 
 - **Web Scraping**: [Selenium](https://www.selenium.dev/) + [undetected-chromedriver](https://github.com/ultrafunkamsterdam/undetected-chromedriver)
-- **Framework**: [Flask](https://flask.palletsprojects.com/) + [Flask-SocketIO](https://flask-socketio.readthedocs.io/)
+- **Framework**: [Flask](https://flask.palletsprojects.com/) + [FastAPI](https://fastapi.tiangolo.com/)
 - **Task Queue**: [Celery](https://docs.celeryq.dev/) + [Redis](https://redis.io/)
 - **NLP**: [spaCy](https://spacy.io/)
 - **UI**: [Bootstrap 5](https://getbootstrap.com/)

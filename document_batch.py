@@ -55,6 +55,12 @@ def validate(kind, filename, num_jobs):
     return filename, max(1, min(num_jobs, MAX_JOBS))
 
 
+def _account_alive():
+    """False si la cuenta dueña del lote se borró mientras se generaba (no hay que recrear sus archivos)."""
+    uid = accounts.current_user_id()
+    return uid is None or accounts.get_user(uid) is not None
+
+
 def run(kind, filename, num_jobs, resume_text, progress=None, pause=2.0):
     """Genera un documento por oferta del CSV. `progress(done, total)` se llama tras cada una."""
     from document_generators import CoverLetterGenerator, ResumeOptimizer
@@ -83,10 +89,14 @@ def run(kind, filename, num_jobs, resume_text, progress=None, pause=2.0):
         if job_description and job_description != 'nan':
             try:
                 text = create(resume_text, job_description, job_title, company)
+                if not _account_alive():
+                    raise BatchError('La cuenta fue borrada', 410)
                 saved = save(text, job_title, company, output_dir=generated_dir(kind))
                 results.append({'job_title': job_title, 'company': company, 'filename': saved, 'status': 'success'})
                 if pause and done < len(rows):
                     time.sleep(pause)
+            except BatchError:
+                raise
             except Exception as e:
                 logger.error(f'Error generando {kind} para la oferta {index}: {e}')
                 results.append({'job_title': job_title, 'company': company, 'filename': None,

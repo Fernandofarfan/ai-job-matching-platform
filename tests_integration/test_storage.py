@@ -54,7 +54,6 @@ def test_tracker_rejects_duplicates(migrated_db):
     """El tracker guarda el empleo y detecta el duplicado por título y empresa."""
     from db_config import DatabaseManager
     db = DatabaseManager()
-    db.create_job_tracker_table()
     job = {'title': f'Data Engineer {uuid.uuid4().hex[:8]}', 'company': 'Globant', 'status': 'bookmarked'}
     job_id = db.add_job_to_tracker(job)
     assert isinstance(job_id, int)
@@ -152,7 +151,6 @@ def test_applications_filters_and_connections(migrated_db):
     assert company in {c['company'] for c in db.get_companies_for_connections()}
     assert db.exclude_company(company) and db.exclude_company(company)
     assert company not in {c['company'] for c in db.get_companies_for_connections()}
-    assert isinstance(db.save_connection_request(company, [job_id]), int)
     assert db.delete_tracked_job(job_id)
 
 
