@@ -22,13 +22,13 @@ def run_migrations_offline():
 
 
 def run_migrations_online():
+    """Migra la base de DB_* comparando contra la metadata de todos los modelos."""
+    import db_schema
     import models
-    import job_alerts
-    import profile_store
     engine = create_engine(models.get_database_url())
     with engine.connect() as connection:
-        target_metadata = [models.Base.metadata, profile_store.Base.metadata, job_alerts.Base.metadata]
-        context.configure(connection=connection, target_metadata=target_metadata)
+        context.configure(connection=connection, target_metadata=db_schema.metadata_list(),
+                          compare_type=True, include_object=db_schema.include_object)
         with context.begin_transaction():
             context.run_migrations()
 

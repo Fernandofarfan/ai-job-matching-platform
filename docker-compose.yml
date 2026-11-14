@@ -7,6 +7,24 @@ version: "3.9"
 
 services:
 
+  # ── Migraciones (Alembic crea y actualiza todo el esquema) ─────────
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: python -m alembic upgrade head
+    environment:
+      - DB_HOST=mysql
+      - DB_USER=root
+      - DB_PASSWORD=${DB_PASSWORD:-empleoia_pass}
+      - DB_NAME=job_tracker
+    depends_on:
+      mysql:
+        condition: service_healthy
+    restart: "no"
+    networks:
+      - empleoia-net
+
   # ── Web (FastAPI) ───────────────────────────────────────────────────
   web:
     build:
@@ -50,6 +68,8 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
       redis:
         condition: service_started
     restart: unless-stopped
@@ -91,8 +111,10 @@ services:
       - ./temp:/app/temp
       - ./logs:/app/logs
     depends_on:
-      - redis
-      - mysql
+      redis:
+        condition: service_started
+      migrate:
+        condition: service_completed_successfully
     restart: unless-stopped
     networks:
       - empleoia-net
@@ -165,7 +187,6 @@ services:
       - MYSQL_COLLATION_SERVER=utf8mb4_unicode_ci
     volumes:
       - mysql_data:/var/lib/mysql
-      - ./setup_database.sql:/docker-entrypoint-initdb.d/setup_database.sql:ro
     restart: unless-stopped
     networks:
       - empleoia-net

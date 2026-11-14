@@ -131,15 +131,16 @@ class ConnectionRequest(Base):
     __tablename__ = "connection_requests"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int | None] = mapped_column(Integer, index=True)
     company: Mapped[str] = mapped_column(String(255), nullable=False)
     contact_name: Mapped[str | None] = mapped_column(String(255))
     contact_profile_url: Mapped[str | None] = mapped_column(Text)
     sent_date: Mapped[datetime | None] = mapped_column(DateTime, default=datetime.now)
     status: Mapped[str | None] = mapped_column(
-        Enum("sent", "accepted", "pending", "withdrawn", name="conn_status"),
+        Enum("sent", "accepted", "declined", "pending", "withdrawn", name="conn_status"),
         default="sent"
     )
-    application_ids: Mapped[str | None] = mapped_column(String(500))  # CSV of application IDs
+    application_ids: Mapped[str | None] = mapped_column(Text)  # CSV of application IDs
     message_sent: Mapped[str | None] = mapped_column(Text)
 
     def to_dict(self) -> dict:
@@ -151,8 +152,13 @@ class NetworkingExclusion(Base):
     __tablename__ = "networking_exclusions"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    company_name: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
+    user_id: Mapped[int | None] = mapped_column(Integer, index=True)
+    company_name: Mapped[str] = mapped_column(String(255), nullable=False)
     excluded_at: Mapped[datetime | None] = mapped_column(DateTime, default=datetime.now)
+
+    __table_args__ = (
+        Index("uq_networking_exclusions_user_company_name", "user_id", "company_name", unique=True),
+    )
 
 
 class ProcessedFile(Base):
@@ -160,10 +166,15 @@ class ProcessedFile(Base):
     __tablename__ = "processed_files"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    filename: Mapped[str] = mapped_column(String(500), unique=True, nullable=False)
+    user_id: Mapped[int | None] = mapped_column(Integer, index=True)
+    filename: Mapped[str] = mapped_column(String(500), nullable=False)
     total_jobs: Mapped[int | None] = mapped_column(Integer, default=0)
     jobs_applied: Mapped[int | None] = mapped_column(Integer, default=0)
     processed_date: Mapped[datetime | None] = mapped_column(DateTime, default=datetime.now)
+
+    __table_args__ = (
+        Index("uq_processed_files_user_filename", "user_id", "filename", unique=True),
+    )
 
 
 class MarketInsight(Base):
@@ -219,26 +230,14 @@ class UserSettings(Base):
 
 # ── Utility functions ─────────────────────────────────────────────────────────
 
-def create_all_tables():
-    """Crea todas las tablas si no existen."""
-    Base.metadata.create_all(bind=engine)
-
-
-def drop_all_tables():
-    """⚠️ Elimina todas las tablas (solo para desarrollo)."""
-    Base.metadata.drop_all(bind=engine)
-
-
 # ── SQLAlchemy Manager (wrapper compatible con el db_config.py existente) ─────
 
 class SQLAlchemyManager:
     """
     Wrapper de SQLAlchemy que provee la misma interfaz que DatabaseManager
     para mantener compatibilidad hacia atrás con app.py mientras se migra gradualmente.
+    Las tablas las crea Alembic (`alembic upgrade head`).
     """
-
-    def __init__(self):
-        create_all_tables()
 
     def get_session(self) -> Session:
         return SessionLocal()

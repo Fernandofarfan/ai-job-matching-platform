@@ -1,17 +1,14 @@
 """Tabla user_profiles (perfiles de CV por rol, antes en profiles/user_profiles.json).
 
-Las tablas previas (applications, job_tracker, ...) siguen creándose con setup_database.sql;
-esta es la primera migración versionada.
-
 Revision ID: 0001_user_profiles
-Revises:
+Revises: 0000_core_tables
 Create Date: 2026-11-12
 """
 from alembic import context, op
 import sqlalchemy as sa
 
 revision = '0001_user_profiles'
-down_revision = None
+down_revision = '0000_core_tables'
 branch_labels = None
 depends_on = None
 
