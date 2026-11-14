@@ -1,208 +1,208 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="container py-4" style="max-width: 720px;">
-  <h1 class="h3 fw-bold mb-4">Mi cuenta</h1>
+  <h1 class="h3 fw-bold mb-4">{{ _('Mi cuenta') }}</h1>
   <div class="card border-0 shadow-sm mb-4">
     <div class="card-body p-4">
       <h2 class="h5 fw-bold">Email</h2>
       <p class="mb-2">{{ user.email }}
-        {% if user.email_verified %}<span class="badge bg-success ms-2">Verificado</span>
-        {% else %}<span class="badge bg-warning text-dark ms-2">Sin verificar</span>{% endif %}</p>
+        {% if user.email_verified %}<span class="badge bg-success ms-2">{{ _('Verificado') }}</span>
+        {% else %}<span class="badge bg-warning text-dark ms-2">{{ _('Sin verificar') }}</span>{% endif %}</p>
       {% if not user.email_verified %}
       <form method="POST" action="{{ url_for('resend_verification') }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button type="submit" class="btn btn-outline-primary btn-sm">Reenviar email de verificación</button>
+        <button type="submit" class="btn btn-outline-primary btn-sm">{{ _('Reenviar email de verificación') }}</button>
       </form>
       {% endif %}
     </div>
   </div>
   <div class="card border-0 shadow-sm mb-4">
     <div class="card-body p-4">
-      <h2 class="h5 fw-bold">Cambiar contraseña</h2>
-      <p class="text-muted small">Al cambiarla se cierran las sesiones abiertas en otros dispositivos.</p>
+      <h2 class="h5 fw-bold">{{ _('Cambiar contraseña') }}</h2>
+      <p class="text-muted small">{{ _('Al cambiarla se cierran las sesiones abiertas en otros dispositivos.') }}</p>
       <form method="POST" action="{{ url_for('change_password') }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <label for="current" class="form-label">Contraseña actual</label>
+        <label for="current" class="form-label">{{ _('Contraseña actual') }}</label>
         <input type="password" class="form-control mb-3" id="current" name="current" required autocomplete="current-password">
-        <label for="password" class="form-label">Contraseña nueva</label>
+        <label for="password" class="form-label">{{ _('Contraseña nueva') }}</label>
         <input type="password" class="form-control mb-1" id="password" name="password" required minlength="{{ min_password }}" autocomplete="new-password" aria-describedby="password-help">
-        <div id="password-help" class="form-text mb-3">Al menos {{ min_password }} caracteres.</div>
-        <label for="confirm" class="form-label">Repetir contraseña nueva</label>
+        <div id="password-help" class="form-text mb-3">{{ _('Al menos %(n)s caracteres.', n=min_password) }}</div>
+        <label for="confirm" class="form-label">{{ _('Repetir contraseña nueva') }}</label>
         <input type="password" class="form-control mb-3" id="confirm" name="confirm" required minlength="{{ min_password }}" autocomplete="new-password">
-        <button type="submit" class="btn btn-primary">Cambiar contraseña</button>
+        <button type="submit" class="btn btn-primary">{{ _('Cambiar contraseña') }}</button>
       </form>
     </div>
   </div>
   <div class="card border-0 shadow-sm mb-4" id="two-factor">
     <div class="card-body p-4">
-      <h2 class="h5 fw-bold">Verificación en dos pasos</h2>
+      <h2 class="h5 fw-bold">{{ _('Verificación en dos pasos') }}</h2>
       {% if recovery_codes %}
       <div class="alert alert-warning" role="alert">
-        <p class="fw-semibold mb-2">Guardá estos códigos de recuperación en un lugar seguro. Cada uno sirve una vez si perdés el teléfono, y no se vuelven a mostrar.</p>
+        <p class="fw-semibold mb-2">{{ _('Guardá estos códigos de recuperación en un lugar seguro. Cada uno sirve una vez si perdés el teléfono, y no se vuelven a mostrar.') }}</p>
         <ul class="list-unstyled font-monospace mb-0" id="recovery-codes">
           {% for c in recovery_codes %}<li>{{ c }}</li>{% endfor %}
         </ul>
       </div>
       {% endif %}
       {% if two_factor.enabled %}
-      <p class="small"><span class="badge text-bg-success">Activada</span> Al entrar te pedimos un código de tu app autenticadora.
-        Te quedan {{ two_factor.recovery_left }} códigos de recuperación.</p>
+      <p class="small"><span class="badge text-bg-success">{{ _('Activada') }}</span> {{ _('Al entrar te pedimos un código de tu app autenticadora.') }}
+        {{ _('Te quedan %(n)s códigos de recuperación.', n=two_factor.recovery_left) }}</p>
       <form method="POST" class="row g-2 align-items-end mb-2">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="col-sm-5">
-          <label for="tf-password" class="form-label small">Tu contraseña</label>
+          <label for="tf-password" class="form-label small">{{ _('Tu contraseña') }}</label>
           <input type="password" class="form-control form-control-sm" id="tf-password" name="password" required autocomplete="current-password">
         </div>
         <div class="col-sm-3">
-          <label for="tf-code" class="form-label small">Código actual</label>
+          <label for="tf-code" class="form-label small">{{ _('Código actual') }}</label>
           <input type="text" class="form-control form-control-sm" id="tf-code" name="code" required inputmode="numeric" autocomplete="one-time-code" maxlength="32">
         </div>
         <div class="col-sm-4 d-flex gap-2 flex-wrap">
-          <button type="submit" class="btn btn-sm btn-outline-primary" formaction="{{ url_for('two_factor_recovery') }}">Códigos nuevos</button>
-          <button type="submit" class="btn btn-sm btn-outline-danger" formaction="{{ url_for('two_factor_disable') }}">Desactivar</button>
+          <button type="submit" class="btn btn-sm btn-outline-primary" formaction="{{ url_for('two_factor_recovery') }}">{{ _('Códigos nuevos') }}</button>
+          <button type="submit" class="btn btn-sm btn-outline-danger" formaction="{{ url_for('two_factor_disable') }}">{{ _('Desactivar') }}</button>
         </div>
       </form>
       {% elif totp_setup %}
-      <p class="small">Escaneá el QR con Google Authenticator, Authy, 1Password u otra app compatible, o cargá la clave a mano.</p>
+      <p class="small">{{ _('Escaneá el QR con Google Authenticator, Authy, 1Password u otra app compatible, o cargá la clave a mano.') }}</p>
       <div class="mb-2" style="max-width: 220px;">{{ totp_setup.qr }}</div>
-      <p class="small">Clave: <code class="user-select-all" id="totp-secret">{{ totp_setup.secret }}</code></p>
+      <p class="small">{{ _('Clave:') }} <code class="user-select-all" id="totp-secret">{{ totp_setup.secret }}</code></p>
       <form method="POST" action="{{ url_for('two_factor_enable') }}" class="d-flex gap-2 align-items-end">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div>
-          <label for="totp-code" class="form-label small">Código de 6 dígitos que muestra la app</label>
+          <label for="totp-code" class="form-label small">{{ _('Código de 6 dígitos que muestra la app') }}</label>
           <input type="text" class="form-control" id="totp-code" name="code" required inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9 ]{6,7}">
         </div>
-        <button type="submit" class="btn btn-primary" id="enableTotpBtn">Activar</button>
+        <button type="submit" class="btn btn-primary" id="enableTotpBtn">{{ _('Activar') }}</button>
       </form>
       {% else %}
-      <p class="text-muted small">Además de la contraseña, al entrar te pide un código de una app autenticadora del teléfono. Protege tus CVs aunque te roben la contraseña.</p>
-      {% if two_factor.error %}<p class="text-danger small">No se pudo leer el estado; probá de nuevo más tarde.</p>{% endif %}
+      <p class="text-muted small">{{ _('Además de la contraseña, al entrar te pide un código de una app autenticadora del teléfono. Protege tus CVs aunque te roben la contraseña.') }}</p>
+      {% if two_factor.error %}<p class="text-danger small">{{ _('No se pudo leer el estado; probá de nuevo más tarde.') }}</p>{% endif %}
       <form method="POST" action="{{ url_for('two_factor_setup') }}" class="d-flex gap-2 align-items-end">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div>
-          <label for="tf-setup-password" class="form-label small">Tu contraseña</label>
+          <label for="tf-setup-password" class="form-label small">{{ _('Tu contraseña') }}</label>
           <input type="password" class="form-control" id="tf-setup-password" name="password" required autocomplete="current-password">
         </div>
-        <button type="submit" class="btn btn-outline-primary" id="setupTotpBtn">Configurar</button>
+        <button type="submit" class="btn btn-outline-primary" id="setupTotpBtn">{{ _('Configurar') }}</button>
       </form>
       {% endif %}
     </div>
   </div>
   <div class="card border-0 shadow-sm mb-4">
     <div class="card-body p-4">
-      <h2 class="h5 fw-bold">Integraciones</h2>
+      <h2 class="h5 fw-bold">{{ _('Integraciones') }}</h2>
 
       <h3 class="h6 fw-bold mt-3">Telegram</h3>
       {% if telegram_bot %}
-      <p class="text-muted small">Escribile <code>/start</code> al bot de la instancia y pegá tu chat ID (te lo da <code>@userinfobot</code>).</p>
+      <p class="text-muted small">{{ _('Escribile %(start)s al bot de la instancia y pegá tu chat ID (te lo da %(bot)s).', start='<code>/start</code>'|safe, bot='<code>@userinfobot</code>'|safe) }}</p>
       <form method="POST" action="{{ url_for('save_telegram') }}" class="d-flex gap-2 mb-2">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <label for="chat_id" class="visually-hidden">Chat ID de Telegram</label>
+        <label for="chat_id" class="visually-hidden">{{ _('Chat ID de Telegram') }}</label>
         <input type="text" class="form-control" id="chat_id" name="chat_id" inputmode="numeric" value="{{ integ.telegram_chat_id or '' }}" placeholder="123456789">
-        <button type="submit" class="btn btn-outline-primary">Guardar</button>
+        <button type="submit" class="btn btn-outline-primary">{{ _('Guardar') }}</button>
       </form>
       {% if integ.telegram_chat_id %}
       <form method="POST" action="{{ url_for('test_telegram') }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button type="submit" class="btn btn-link btn-sm p-0">Mandar mensaje de prueba</button>
+        <button type="submit" class="btn btn-link btn-sm p-0">{{ _('Mandar mensaje de prueba') }}</button>
       </form>
       {% endif %}
       {% else %}
-      <p class="text-muted small">El administrador no configuró <code>TELEGRAM_BOT_TOKEN</code>.</p>
+      <p class="text-muted small">{{ _('El administrador no configuró %(var)s.', var='<code>TELEGRAM_BOT_TOKEN</code>'|safe) }}</p>
       {% endif %}
 
-      <h3 class="h6 fw-bold mt-4">Extensión de Chrome</h3>
+      <h3 class="h6 fw-bold mt-4">{{ _('Extensión de Chrome') }}</h3>
       {% if new_token %}
       <div class="alert alert-warning" role="alert">
-        Copiá este token en la extensión ahora: no se vuelve a mostrar.
-        <input type="text" class="form-control mt-2" id="new-token" value="{{ new_token }}" readonly aria-label="Token de la extensión">
+        {{ _('Copiá este token en la extensión ahora: no se vuelve a mostrar.') }}
+        <input type="text" class="form-control mt-2" id="new-token" value="{{ new_token }}" readonly aria-label="{{ _('Token de la extensión') }}">
       </div>
       {% endif %}
-      <p class="text-muted small">{% if integ.extension_token %}La extensión tiene un token activo para esta cuenta.{% else %}Generá un token para que la extensión guarde ofertas en tu tracker.{% endif %}</p>
+      <p class="text-muted small">{% if integ.extension_token %}{{ _('La extensión tiene un token activo para esta cuenta.') }}{% else %}{{ _('Generá un token para que la extensión guarde ofertas en tu tracker.') }}{% endif %}</p>
       <div class="d-flex gap-2">
         <form method="POST" action="{{ url_for('new_extension_token') }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <button type="submit" class="btn btn-outline-primary btn-sm">{% if integ.extension_token %}Generar uno nuevo{% else %}Generar token{% endif %}</button>
+          <button type="submit" class="btn btn-outline-primary btn-sm">{% if integ.extension_token %}{{ _('Generar uno nuevo') }}{% else %}{{ _('Generar token') }}{% endif %}</button>
         </form>
         {% if integ.extension_token %}
         <form method="POST" action="{{ url_for('revoke_extension_token') }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <button type="submit" class="btn btn-outline-secondary btn-sm">Revocar</button>
+          <button type="submit" class="btn btn-outline-secondary btn-sm">{{ _('Revocar') }}</button>
         </form>
         {% endif %}
       </div>
 
-      <h3 class="h6 fw-bold mt-4">Notificaciones push</h3>
+      <h3 class="h6 fw-bold mt-4">{{ _('Notificaciones push') }}</h3>
       <div id="push-box">
-        <p class="text-muted small" id="push-status" role="status" aria-live="polite">Revisando si este navegador las admite…</p>
+        <p class="text-muted small" id="push-status" role="status" aria-live="polite">{{ _('Revisando si este navegador las admite…') }}</p>
         <div class="d-flex gap-2">
-          <button type="button" class="btn btn-outline-primary btn-sm" id="push-enable" hidden>Activar en este dispositivo</button>
-          <button type="button" class="btn btn-outline-secondary btn-sm" id="push-test" hidden>Mandar una de prueba</button>
-          <button type="button" class="btn btn-outline-secondary btn-sm" id="push-disable" hidden>Desactivar en este dispositivo</button>
+          <button type="button" class="btn btn-outline-primary btn-sm" id="push-enable" hidden>{{ _('Activar en este dispositivo') }}</button>
+          <button type="button" class="btn btn-outline-secondary btn-sm" id="push-test" hidden>{{ _('Mandar una de prueba') }}</button>
+          <button type="button" class="btn btn-outline-secondary btn-sm" id="push-disable" hidden>{{ _('Desactivar en este dispositivo') }}</button>
         </div>
       </div>
 
       <h3 class="h6 fw-bold mt-4">Gmail</h3>
       {% if integ.gmail %}
-      <p class="text-muted small">Conectado: las invitaciones a entrevistas actualizan tu tracker.</p>
+      <p class="text-muted small">{{ _('Conectado: las invitaciones a entrevistas actualizan tu tracker.') }}</p>
       <form method="POST" action="{{ url_for('gmail_disconnect') }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button type="submit" class="btn btn-outline-secondary btn-sm">Desconectar Gmail</button>
+        <button type="submit" class="btn btn-outline-secondary btn-sm">{{ _('Desconectar Gmail') }}</button>
       </form>
       {% elif gmail_available %}
       <form method="POST" action="{{ url_for('gmail_connect') }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button type="submit" class="btn btn-outline-primary btn-sm">Conectar Gmail</button>
+        <button type="submit" class="btn btn-outline-primary btn-sm">{{ _('Conectar Gmail') }}</button>
       </form>
       {% else %}
-      <p class="text-muted small">El administrador no configuró el cliente OAuth de Google.</p>
+      <p class="text-muted small">{{ _('El administrador no configuró el cliente OAuth de Google.') }}</p>
       {% endif %}
     </div>
   </div>
   <div class="card border-0 shadow-sm mb-4">
     <div class="card-body p-4">
-      <h2 class="h5 fw-bold">Sesiones abiertas</h2>
-      <p class="text-muted small">Navegadores donde tu cuenta está abierta. Cerrá los que no reconozcas.</p>
+      <h2 class="h5 fw-bold">{{ _('Sesiones abiertas') }}</h2>
+      <p class="text-muted small">{{ _('Navegadores donde tu cuenta está abierta. Cerrá los que no reconozcas.') }}</p>
       <ul class="list-group list-group-flush mb-3" id="open-sessions">
         {% for s in open_sessions %}
         <li class="list-group-item d-flex justify-content-between align-items-center gap-2 px-0">
           <div class="small text-break">
-            <div class="fw-semibold">{{ s.user_agent or 'Navegador desconocido' }}
-              {% if s.current %}<span class="badge text-bg-success ms-1">Este navegador</span>{% endif %}</div>
-            <div class="text-muted">IP {{ s.ip or '?' }} · iniciada {{ s.created_at.strftime('%d/%m/%Y %H:%M') if s.created_at else '' }}
-              · última actividad {{ s.last_seen_at.strftime('%d/%m/%Y %H:%M') if s.last_seen_at else '' }}</div>
+            <div class="fw-semibold">{{ s.user_agent or _('Navegador desconocido') }}
+              {% if s.current %}<span class="badge text-bg-success ms-1">{{ _('Este navegador') }}</span>{% endif %}</div>
+            <div class="text-muted">IP {{ s.ip or '?' }} · {{ _('iniciada') }} {{ s.created_at.strftime('%d/%m/%Y %H:%M') if s.created_at else '' }}
+              · {{ _('última actividad') }} {{ s.last_seen_at.strftime('%d/%m/%Y %H:%M') if s.last_seen_at else '' }}</div>
           </div>
           <form method="POST" action="{{ url_for('revoke_session', session_id=s.id) }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit" class="btn btn-sm btn-outline-danger"
-                    aria-label="Cerrar la sesión {{ s.user_agent or '' }}">Cerrar</button>
+                    aria-label="{{ _('Cerrar la sesión %(name)s', name=s.user_agent or '') }}">{{ _('Cerrar') }}</button>
           </form>
         </li>
         {% else %}
-        <li class="list-group-item px-0 small">No hay sesiones registradas.</li>
+        <li class="list-group-item px-0 small">{{ _('No hay sesiones registradas.') }}</li>
         {% endfor %}
       </ul>
       {% if open_sessions|length > 1 %}
       <form method="POST" action="{{ url_for('revoke_other_sessions') }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button type="submit" class="btn btn-outline-danger" id="revokeOthersBtn">Cerrar las demás sesiones</button>
+        <button type="submit" class="btn btn-outline-danger" id="revokeOthersBtn">{{ _('Cerrar las demás sesiones') }}</button>
       </form>
       {% endif %}
     </div>
   </div>
   <div class="card border-0 shadow-sm mb-4">
     <div class="card-body p-4">
-      <h2 class="h5 fw-bold">Actividad reciente</h2>
-      <p class="text-muted small">Inicios de sesión y cambios de seguridad de tu cuenta. Si ves algo que no hiciste, cambiá la contraseña.</p>
+      <h2 class="h5 fw-bold">{{ _('Actividad reciente') }}</h2>
+      <p class="text-muted small">{{ _('Inicios de sesión y cambios de seguridad de tu cuenta. Si ves algo que no hiciste, cambiá la contraseña.') }}</p>
       {% if events %}
       <div class="table-responsive">
         <table class="table table-sm small mb-0" id="security-events">
-          <thead><tr><th scope="col">Fecha</th><th scope="col">Evento</th><th scope="col">IP</th><th scope="col">Navegador</th></tr></thead>
+          <thead><tr><th scope="col">{{ _('Fecha') }}</th><th scope="col">{{ _('Evento') }}</th><th scope="col">IP</th><th scope="col">{{ _('Navegador') }}</th></tr></thead>
           <tbody>
           {% for e in events %}
             <tr class="{{ 'table-warning' if e.kind == 'login_failed' else '' }}">
               <td class="text-nowrap">{{ e.created_at.strftime('%d/%m/%Y %H:%M') if e.created_at else '' }}</td>
-              <td>{{ e.label }}</td>
+              <td>{{ _(e.label) }}</td>
               <td>{{ e.ip or '' }}</td>
               <td class="text-truncate" style="max-width: 16rem;" title="{{ e.user_agent or '' }}">{{ e.user_agent or '' }}</td>
             </tr>
@@ -211,31 +211,31 @@
         </table>
       </div>
       {% else %}
-      <p class="small mb-0">Todavía no hay actividad registrada.</p>
+      <p class="small mb-0">{{ _('Todavía no hay actividad registrada.') }}</p>
       {% endif %}
     </div>
   </div>
   <div class="card border-0 shadow-sm mb-4">
     <div class="card-body p-4">
-      <h2 class="h5 fw-bold">Exportar mis datos</h2>
-      <p class="text-muted small">Descarga un ZIP con tu tracker, perfiles, CVs, alertas, resultados de búsquedas y documentos generados. No incluye contraseñas ni tokens.</p>
+      <h2 class="h5 fw-bold">{{ _('Exportar mis datos') }}</h2>
+      <p class="text-muted small">{{ _('Descarga un ZIP con tu tracker, perfiles, CVs, alertas, resultados de búsquedas y documentos generados. No incluye contraseñas ni tokens.') }}</p>
       <form method="POST" action="{{ url_for('export_data') }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <label for="export-password" class="form-label">Tu contraseña</label>
+        <label for="export-password" class="form-label">{{ _('Tu contraseña') }}</label>
         <input type="password" class="form-control mb-3" id="export-password" name="password" required autocomplete="current-password">
-        <button type="submit" class="btn btn-outline-primary" id="exportDataBtn">Descargar mis datos</button>
+        <button type="submit" class="btn btn-outline-primary" id="exportDataBtn">{{ _('Descargar mis datos') }}</button>
       </form>
     </div>
   </div>
   <div class="card border-danger shadow-sm">
     <div class="card-body p-4">
-      <h2 class="h5 fw-bold text-danger">Borrar la cuenta</h2>
-      <p class="text-muted small">Borra la cuenta y todos sus datos: tracker, perfiles, CVs, alertas y resultados de búsquedas. No se puede deshacer.</p>
-      <form method="POST" action="{{ url_for('delete_account') }}" onsubmit="return confirm('¿Borrar tu cuenta y todos tus datos? No se puede deshacer.');">
+      <h2 class="h5 fw-bold text-danger">{{ _('Borrar la cuenta') }}</h2>
+      <p class="text-muted small">{{ _('Borra la cuenta y todos sus datos: tracker, perfiles, CVs, alertas y resultados de búsquedas. No se puede deshacer.') }}</p>
+      <form method="POST" action="{{ url_for('delete_account') }}" data-confirm="{{ _('¿Borrar tu cuenta y todos tus datos? No se puede deshacer.') }}" onsubmit="return confirm(this.dataset.confirm);">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <label for="delete-password" class="form-label">Tu contraseña</label>
+        <label for="delete-password" class="form-label">{{ _('Tu contraseña') }}</label>
         <input type="password" class="form-control mb-3" id="delete-password" name="password" required autocomplete="current-password">
-        <button type="submit" class="btn btn-danger" id="deleteAccountBtn">Borrar mi cuenta</button>
+        <button type="submit" class="btn btn-danger" id="deleteAccountBtn">{{ _('Borrar mi cuenta') }}</button>
       </form>
     </div>
   </div>
