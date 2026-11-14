@@ -6,7 +6,39 @@ from dotenv import load_dotenv
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
+import skill_catalog
+
 load_dotenv()  # MATCHING_BACKEND y GEMINI_API_KEY de .env, también para scripts/eval_matching.py
+
+# variantes con las que una oferta puede nombrar una habilidad del CV
+SKILL_VARIATIONS = {
+    'apache spark': ['spark', 'apache spark', 'pyspark', 'spark sql', 'databricks'],
+    'power bi': ['power bi', 'powerbi', 'power-bi', 'microsoft bi'],
+    'postgresql': ['postgresql', 'postgres', 'psql'],
+    'python': ['python', 'py', 'python3'],
+    'javascript': ['javascript', 'js', 'node.js', 'nodejs'],
+    'etl': ['etl', 'elt', 'data pipeline', 'data integration', 'extract transform load'],
+    'aws': ['aws', 'amazon web services', 'aws glue', 'redshift', 's3', 'lambda', 'kinesis'],
+    'azure': ['azure', 'microsoft azure', 'azure data factory', 'adf'],
+    'machine learning': ['machine learning', 'ml', 'predictive modeling', 'classification'],
+    'data visualization': ['data visualization', 'dashboards', 'reporting', 'charts'],
+    'statistical analysis': ['statistical analysis', 'statistics', 'hypothesis testing', 'regression'],
+    'snowflake': ['snowflake', 'snowflake cloud'],
+    'tableau': ['tableau', 'tableau desktop', 'tableau server'],
+    'excel': ['excel', 'microsoft excel', 'pivot tables', 'vlookup'],
+    'git': ['git', 'github', 'version control', 'gitlab'],
+    'docker': ['docker', 'containerization', 'containers'],
+    'airflow': ['airflow', 'apache airflow', 'workflow orchestration'],
+    'selenium': ['selenium', 'web scraping', 'automated testing'],
+    'pandas': ['pandas', 'python pandas', 'dataframe'],
+    'numpy': ['numpy', 'numerical python'],
+    'sql': ['sql', 'mysql', 'postgresql', 'database queries', 'query'],
+    'nosql': ['nosql', 'mongodb', 'document database', 'non-relational'],
+    'rest api': ['rest api', 'api', 'rest', 'restful', 'web services'],
+    'ci/cd': ['ci/cd', 'continuous integration', 'jenkins', 'devops']
+}
+MAX_MISSING_SKILLS = 8
+
 
 MAX_REQUIRED_YEARS = 20  # más años que esto en una oferta no es un requisito para la persona
 
@@ -116,7 +148,8 @@ class jobMatcher:
             'skill_match': round(skill_score, 1),
             'experience_match': round(experience_score, 1),
             'text_similarity': round(text_similarity_score, 1),
-            'matched_skills': self._get_matched_skills(skills, job_description)
+            'matched_skills': self._get_matched_skills(skills, job_description),
+            'missing_skills': self.get_missing_skills(skills, job_description),
         }
     
     def calculate_skill_match(self, profile_skills, job_description):
@@ -206,32 +239,6 @@ class jobMatcher:
         matched_skills = []
         
         
-        skill_variations = {
-            'apache spark': ['spark', 'apache spark', 'pyspark', 'spark sql', 'databricks'],
-            'power bi': ['power bi', 'powerbi', 'power-bi', 'microsoft bi'],
-            'postgresql': ['postgresql', 'postgres', 'psql'],
-            'python': ['python', 'py', 'python3'],
-            'javascript': ['javascript', 'js', 'node.js', 'nodejs'],
-            'etl': ['etl', 'elt', 'data pipeline', 'data integration', 'extract transform load'],
-            'aws': ['aws', 'amazon web services', 'aws glue', 'redshift', 's3', 'lambda', 'kinesis'],
-            'azure': ['azure', 'microsoft azure', 'azure data factory', 'adf'],
-            'machine learning': ['machine learning', 'ml', 'predictive modeling', 'classification'],
-            'data visualization': ['data visualization', 'dashboards', 'reporting', 'charts'],
-            'statistical analysis': ['statistical analysis', 'statistics', 'hypothesis testing', 'regression'],
-            'snowflake': ['snowflake', 'snowflake cloud'],
-            'tableau': ['tableau', 'tableau desktop', 'tableau server'],
-            'excel': ['excel', 'microsoft excel', 'pivot tables', 'vlookup'],
-            'git': ['git', 'github', 'version control', 'gitlab'],
-            'docker': ['docker', 'containerization', 'containers'],
-            'airflow': ['airflow', 'apache airflow', 'workflow orchestration'],
-            'selenium': ['selenium', 'web scraping', 'automated testing'],
-            'pandas': ['pandas', 'python pandas', 'dataframe'],
-            'numpy': ['numpy', 'numerical python'],
-            'sql': ['sql', 'mysql', 'postgresql', 'database queries', 'query'],
-            'nosql': ['nosql', 'mongodb', 'document database', 'non-relational'],
-            'rest api': ['rest api', 'api', 'rest', 'restful', 'web services'],
-            'ci/cd': ['ci/cd', 'continuous integration', 'jenkins', 'devops']
-        }
         
         for skill in profile_skills:
             skill_lower = skill.lower().strip()
@@ -244,7 +251,7 @@ class jobMatcher:
                 skill_found = True
             else:
                 
-                for base_skill, variations in skill_variations.items():
+                for base_skill, variations in SKILL_VARIATIONS.items():
                     if skill_lower in [v.lower() for v in variations]:
                         for variation in variations:
                             variation_pattern = r'\b' + re.escape(variation.lower()) + r'\b'
@@ -261,6 +268,17 @@ class jobMatcher:
                         matched_skills.append(skill)
         
         return matched_skills
+
+    @staticmethod
+    def get_missing_skills(profile_skills, job_description):
+        """Habilidades del vocabulario que pide la oferta y no están en el CV (ni como variante), hasta 8."""
+        have = {skill_catalog.canonical(s) for s in profile_skills}
+        for variations in SKILL_VARIATIONS.values():
+            names = {skill_catalog.canonical(v) for v in variations}
+            if have & names:
+                have |= names
+        missing = [s for s in skill_catalog.skills_in(job_description) if s not in have]
+        return missing[:MAX_MISSING_SKILLS]
 
     def process_job_dataframe(self, df, profile, job_description_column='Description'):
         """Process entire job dataframe and add match scores"""
@@ -284,7 +302,8 @@ class jobMatcher:
                     'skill_match': 0.0,
                     'experience_match': 0.0,
                     'text_similarity': 0.0,
-                    'matched_skills': []
+                    'matched_skills': [],
+                    'missing_skills': [],
                 })
                 results.append(job_result)
         

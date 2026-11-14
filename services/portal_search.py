@@ -128,6 +128,7 @@ def run_indeed_scraper_with_matching(credentials, searches, filters=None):
                         df['experience_match'] = 0.0
                         df['text_similarity'] = 0.0
                         df['matched_skills'] = [[] for _ in range(len(df))]
+                        df['missing_skills'] = [[] for _ in range(len(df))]
                 
                 job_status['indeed_scraping']['message'] = _m('Guardando resultados...')
                 job_status['indeed_scraping']['progress'] = 95
@@ -324,6 +325,7 @@ def run_linkedin_scraper_with_matching(credentials, searches, filters=None):
                     df['experience_match'] = 0.0
                     df['text_similarity'] = 0.0
                     df['matched_skills'] = [[] for _ in range(len(df))]
+                    df['missing_skills'] = [[] for _ in range(len(df))]
             
             job_status['linkedin_scraping']['message'] = _m('Guardando resultados...')
             job_status['linkedin_scraping']['progress'] = 95
