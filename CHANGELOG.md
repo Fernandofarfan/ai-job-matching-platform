@@ -7,6 +7,12 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
+### Cambiado
+- Los perfiles de CV por rol se guardan en MySQL (tabla `user_profiles`) en vez de `profiles/user_profiles.json`.
+  La primera vez que la app conecta a MySQL importa el JSON existente y lo renombra a `.migrated`.
+  Sin MySQL (o con `PROFILE_STORAGE=json`) se sigue usando el JSON.
+- Primera migración de Alembic (`alembic upgrade head`); se eliminó `utils.py`, que duplicaba la lógica de perfiles y no se usaba.
+
 ### Planeado
 - Auto-Apply: Postulación automática a trabajos "Easy Apply" de LinkedIn con Playwright
 - Email Tracking: Detección de respuestas vía Gmail/Outlook API

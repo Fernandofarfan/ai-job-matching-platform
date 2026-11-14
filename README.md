@@ -229,6 +229,7 @@ python -m spacy download en_core_web_sm
 
 # 5. Configurar base de datos MySQL
 mysql -u root -p < setup_database.sql
+alembic upgrade head   # tablas versionadas (user_profiles)
 
 # 6. Configurar variables de entorno
 cp .env.example .env

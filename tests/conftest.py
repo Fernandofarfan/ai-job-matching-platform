@@ -135,6 +135,9 @@ def app():
     mock_db.create_job_tracker_table.return_value = True
     mock_db.get_companies_for_connections.return_value = []
 
+    # Fuera del patch.dict para que app y los tests compartan el mismo módulo (y su JSON_PATH temporal)
+    import profile_store  # noqa: F401
+
     with mock.patch.dict('sys.modules', {}):
         import db_config
         db_config.db_manager = mock_db
@@ -152,10 +155,15 @@ def app():
 
 
 @pytest.fixture(autouse=True)
-def _no_login_by_default(monkeypatch):
+def _no_login_by_default(monkeypatch, tmp_path):
     """Los tests corren sin login salvo que definan APP_PASSWORD (ignora el .env local)."""
     monkeypatch.delenv('APP_PASSWORD', raising=False)
     monkeypatch.delenv('EXTENSION_TOKEN', raising=False)
+    # Perfiles en un JSON temporal: los tests no tocan MySQL ni profiles/ real
+    import profile_store
+    monkeypatch.setenv('PROFILE_STORAGE', 'json')
+    monkeypatch.setattr(profile_store, 'JSON_PATH', str(tmp_path / 'user_profiles.json'))
+    profile_store.configure(None)
 
 
 @pytest.fixture

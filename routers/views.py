@@ -9,13 +9,10 @@ router = APIRouter()
 templates = Jinja2Templates(directory="templates")
 
 def get_user_profile():
-    """Load user profile from profiles/user_profiles.json"""
+    """Todos los perfiles por rol o None."""
     try:
-        profile_path = os.path.join('profiles', 'user_profiles.json')
-        if os.path.exists(profile_path):
-            with open(profile_path, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        return None
+        import profile_store
+        return profile_store.get_all_profiles() or None
     except Exception:
         return None
 

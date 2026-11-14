@@ -67,6 +67,8 @@ jobs:
             mysql-connector-python \
             openpyxl \
             reportlab \
+            SQLAlchemy==2.0.57 \
+            alembic==1.20.1 \
             pytest \
             pytest-flask \
             pytest-mock \
