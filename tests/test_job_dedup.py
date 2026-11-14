@@ -120,6 +120,8 @@ def test_seniority_aliases_caba_and_different_provinces():
 
 def test_title_key_drops_company_segment():
     assert job_dedup.title_key('Cajero - Coto', 'Coto CICSA') == job_dedup.title_key('Cajero', 'Coto') == 'cajero'
+    assert job_dedup.title_key('Cajero–Coto', 'Coto') == job_dedup.title_key('Cajero en Coto', 'Coto') == 'cajero'
+    assert job_dedup.title_key('Coto', 'Coto') == 'coto'
     assert job_dedup.title_key('Analista en Sistemas', 'Sistemas Globales') == 'analista en sistemas'
     assert job_dedup.title_key('Analista en Sistemas', 'Acme') == 'analista en sistemas'
 
