@@ -1,0 +1,53 @@
+name: Release
+
+# Al pushear un tag vX.Y.Z: verifica que coincida con VERSION, crea el release de GitHub con la sección del
+# CHANGELOG y publica la imagen en ghcr.io con las etiquetas X.Y.Z y el commit. No despliega: producción se
+# despliega con deploy.yml desde el tag (docs/releases.md).
+
+on:
+  push:
+    tags: ["v[0-9]+.[0-9]+.[0-9]+"]
+
+permissions:
+  contents: write
+  packages: write
+
+concurrency:
+  group: release-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Release ${{ github.ref_name }}
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ github.ref_name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
+
+      - name: El tag coincide con VERSION y el CHANGELOG tiene la sección
+        run: |
+          version="$(cat VERSION)"
+          if [ "$TAG" != "v$version" ]; then
+            echo "::error::El tag $TAG no coincide con VERSION ($version). Corré scripts/release.py prepare antes del tag."
+            exit 1
+          fi
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+          python3 scripts/release.py notes "$version" > release-notes.md
+
+      - name: Imagen en ghcr.io
+        run: |
+          image="ghcr.io/${GITHUB_REPOSITORY,,}"
+          echo "${{ github.token }}" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          docker build --build-arg APP_COMMIT="$GITHUB_SHA" \
+            --label org.opencontainers.image.version="$VERSION" \
+            -t "$image:$VERSION" -t "$image:sha-$GITHUB_SHA" .
+          docker push "$image:$VERSION"
+          docker push "$image:sha-$GITHUB_SHA"
+          echo "Imagen: \`$image:$VERSION\`" >> release-notes.md
+
+      - name: Release de GitHub
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$TAG" --verify-tag --title "EmpleoIA $VERSION" --notes-file release-notes.md

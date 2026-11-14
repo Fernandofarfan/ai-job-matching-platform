@@ -19,6 +19,7 @@ import fastapi_web
 import observability
 import rate_limit
 import security_headers
+import version
 from routers import (account_integrations, account_pages, admin_pages, ai, alert_pages, analytics, auth_pages, content_pages, documents,
                      export_pages, insights, login_providers, pages, profile_pages, scraper_pages, security_pages, tracker)
 from routers import push as push_router
@@ -101,7 +102,8 @@ def metrics(authorization: str | None = Header(default=None)):
 
 async def health_check():
     """Para verificar si los contenedores/FastAPI están vivos."""
-    return {"status": "ok", "service": "EmpleoIA API (FastAPI Mode)"}
+    return {"status": "ok", "service": "EmpleoIA API (FastAPI Mode)",
+            "version": version.__version__, "commit": version.commit()}
 
 
 def _check_database():
@@ -164,7 +166,7 @@ def create_app(web_app=None) -> FastAPI:
     """FastAPI con sus routers; `web_app` (por defecto la de app.py) tiene la clave, la config y los globals."""
     error_reporting.setup("web")
     docs = os.getenv("ENABLE_API_DOCS", "0") == "1"
-    app = FastAPI(title="EmpleoIA API", description="FastAPI Core para EmpleoIA", version="1.0.0",
+    app = FastAPI(title="EmpleoIA API", description="FastAPI Core para EmpleoIA", version=version.__version__,
                   docs_url="/docs" if docs else None, redoc_url="/redoc" if docs else None,
                   openapi_url="/openapi.json" if docs else None)
     try:
