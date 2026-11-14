@@ -71,7 +71,7 @@ def _places(location: object) -> set[str]:
     la provincia). Capital Federal queda: es un lugar distinto del resto de la provincia de Buenos Aires."""
     text = _place_text(location)
     for province in PROVINCES - {'capital federal'}:
-        text = text.replace(f' {province} ', ' ')
+        text = re.sub(rf'(?<= ){province}(?= )', '', text)
     return set(text.split()) - GENERIC_PLACES
 
 
