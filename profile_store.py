@@ -7,16 +7,25 @@ import json
 import logging
 import os
 import time
-from datetime import datetime
 from collections.abc import Callable
+from datetime import datetime
 from typing import Any, TypeVar
 
 from cryptography.fernet import InvalidToken
-from sqlalchemy import JSON, DateTime, Integer, String, UniqueConstraint, delete, select, text
+from sqlalchemy import (
+    JSON,
+    DateTime,
+    Integer,
+    String,
+    UniqueConstraint,
+    delete,
+    select,
+    text,
+)
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
-from sqlalchemy.sql.elements import ColumnElement
 from sqlalchemy.orm.attributes import flag_modified
+from sqlalchemy.sql.elements import ColumnElement
 from sqlalchemy.types import TypeDecorator
 
 import accounts
@@ -126,7 +135,7 @@ def _sessions() -> Callable[[], Session] | None:
     return _session_factory
 
 
-def _run(db_op: Callable[[Session], T], json_op: Callable[[], T]) -> T:
+def _run[T](db_op: Callable[[Session], T], json_op: Callable[[], T]) -> T:
     """Ejecuta db_op(session) en MySQL; si no hay MySQL o falla, json_op() sobre el JSON."""
     sessions = _sessions()
     if sessions is not None:
@@ -152,7 +161,7 @@ def _read_json_raw(path: str | None = None) -> dict[str, Any]:
     path = path or _current_json()
     if not os.path.exists(path):
         return {}
-    with open(path, 'r', encoding='utf-8') as f:
+    with open(path, encoding='utf-8') as f:
         data: dict[str, Any] = json.load(f)
     return data
 
@@ -206,7 +215,8 @@ def _import_json(path: str, user_id: int | None) -> None:
     legacy, deleted = _read_json(path), _json_deleted(path)
     if not legacy and not deleted:
         return
-    assert _session_factory is not None
+    if _session_factory is None:
+        raise RuntimeError('profile_store sin base configurada')
     with _session_factory() as session:
         stamp = _read_json_raw(path).get(WRITTEN_KEY)
         if not isinstance(stamp, (int, float)):
@@ -325,7 +335,7 @@ def _seal_json_file(path: str) -> int:
     """Cifra los perfiles en texto plano de un JSON de respaldo, sin tocar el resto de las claves."""
     if not os.path.exists(path):
         return 0
-    with open(path, 'r', encoding='utf-8') as f:
+    with open(path, encoding='utf-8') as f:
         raw = json.load(f)
     plain = [k for k, v in raw.items() if isinstance(v, dict) and not _is_sealed(v)]
     if plain:

@@ -9,12 +9,12 @@ la base): cada cuenta con al menos --min-each marcas de cada lado ordena las ofe
 Solo muestra promedios, nunca filas por cuenta.
 Sale con código 1 si el NDCG@5 promedio queda por debajo de --min-ndcg.
 """
-from typing import Any
-from collections.abc import Callable
 import argparse
 import json
 import os
 import sys
+from collections.abc import Callable
+from typing import Any
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 

@@ -24,7 +24,7 @@ def _ids():
 
 
 def test_only_admin_sees_panel(client, bob_client):
-    ana, bob = _ids()
+    ana, _bob = _ids()
     assert bob_client.get('/admin').status_code == 404
     assert bob_client.post(f'/admin/users/{ana}/block').status_code == 404
     assert 'Administración' not in bob_client.get('/account').get_data(as_text=True)

@@ -130,6 +130,7 @@ def test_login_next_to_login_does_not_loop(registered):
 def test_register_rejects_second_account_when_signup_closed(accounts_db, monkeypatch):
     """Aunque se saltee el chequeo de la vista, accounts.register respeta ALLOW_SIGNUP."""
     import pytest
+
     import accounts
     monkeypatch.delenv('ALLOW_SIGNUP', raising=False)
     accounts.register('a@example.com', 'x' * 10)
@@ -140,6 +141,7 @@ def test_register_rejects_second_account_when_signup_closed(accounts_db, monkeyp
 def test_first_account_requires_admin_email_on_cloud_run(accounts_db, monkeypatch):
     """En Cloud Run no se puede crear la primera cuenta sin ADMIN_EMAIL."""
     import pytest
+
     import accounts
     monkeypatch.setenv('K_SERVICE', 'app')
     monkeypatch.delenv('ADMIN_EMAIL', raising=False)
@@ -291,6 +293,7 @@ def test_telegram_chat_is_per_account(registered, monkeypatch):
 def test_gmail_token_encrypted(registered, monkeypatch):
     """Con CV_ENCRYPTION_KEY el token de Gmail queda cifrado en la base y se lee en claro."""
     from cryptography.fernet import Fernet
+
     import integrations
     monkeypatch.setenv('CV_ENCRYPTION_KEY', Fernet.generate_key().decode())
     ana = accounts.find_user_id('ana@example.com')
@@ -414,6 +417,7 @@ def test_gmail_disconnect_skips_token_json(registered, monkeypatch):
     """La primera cuenta que desconectó Gmail no vuelve a leer token.json."""
     import sys
     from types import ModuleType
+
     import integrations
     for name in ('googleapiclient', 'googleapiclient.discovery', 'google_auth_oauthlib', 'google_auth_oauthlib.flow',
                  'google.auth.transport.requests', 'google.oauth2.credentials'):

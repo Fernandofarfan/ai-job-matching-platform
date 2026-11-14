@@ -3,8 +3,8 @@
 Lo expone /metrics como empleoia_scraper_runs_total{portal,outcome}; la alerta EmpleoIAPortalSinOfertas
 avisa cuando un portal corre varias veces en un día sin devolver ofertas (cambió el HTML o nos bloquean).
 """
-from typing import Optional, Sequence
 import logging
+from collections.abc import Sequence
 
 import ai_usage
 
@@ -20,14 +20,14 @@ def _key(portal: str, outcome: str) -> str:
     return f"scraper_runs:{portal}:{outcome}"
 
 
-def outcome(jobs: Optional[Sequence[object]], error: Optional[BaseException] = None) -> str:
+def outcome(jobs: Sequence[object] | None, error: BaseException | None = None) -> str:
     """'error' si falló, 'empty' si no trajo ofertas, 'ok' si trajo al menos una."""
     if error is not None:
         return 'error'
     return 'ok' if jobs else 'empty'
 
 
-def record(portal: str, jobs: Optional[Sequence[object]], error: Optional[BaseException] = None) -> str:
+def record(portal: str, jobs: Sequence[object] | None, error: BaseException | None = None) -> str:
     """Anota una búsqueda de `portal`; nunca corta la búsqueda si el storage no responde."""
     result = outcome(jobs, error)
     if result != 'ok':

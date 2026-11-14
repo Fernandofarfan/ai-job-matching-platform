@@ -2,7 +2,7 @@
 import logging
 import os
 import threading
-from typing import Any, Optional
+from typing import Any
 
 from limits import parse
 from limits.storage import storage_from_string
@@ -39,7 +39,7 @@ def _limiter() -> dict[str, Any]:
         return _state
 
 
-def client_ip(remote_addr: Optional[str], forwarded_for: Optional[str]) -> str:
+def client_ip(remote_addr: str | None, forwarded_for: str | None) -> str:
     """IP real del cliente.
 
     Detrás de un proxy (Cloud Run, nginx) todos los pedidos llegan desde la IP del proxy.
@@ -57,7 +57,7 @@ def client_ip(remote_addr: Optional[str], forwarded_for: Optional[str]) -> str:
     return remote_addr or 'unknown'
 
 
-def client_key(user_id: Optional[int], ip: Optional[str]) -> str:
+def client_key(user_id: int | None, ip: str | None) -> str:
     """Clave del contador: la cuenta si hay sesión, si no la IP."""
     return f'user:{user_id}' if user_id else f'ip:{ip or "unknown"}'
 

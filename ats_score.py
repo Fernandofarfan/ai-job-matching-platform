@@ -1,22 +1,15 @@
 """Puntaje ATS de un CV (0-100) sin IA: legibilidad para filtros automáticos y palabras clave de la oferta."""
-from typing import Any
 import re
 import unicodedata
 from collections import Counter
+from typing import Any
 
 SECTIONS = {
     'experience': ('experiencia', 'experience', 'trayectoria', 'antecedentes laborales'),
     'education': ('educacion', 'education', 'formacion', 'estudios'),
     'skills': ('habilidades', 'skills', 'competencias', 'conocimientos', 'tecnologias'),
 }
-STOPWORDS = set("""
-a al algo ante antes como con contra cual cuando de del desde donde durante e el ella ellos en entre era es esa ese
-eso esta este esto estos hacia hasta la las le les lo los mas me mi muy no nos o otra otro para pero por que se ser si
-sin sobre su sus tambien te tiene tu un una uno unos y ya buscamos busca requisitos experiencia empresa trabajo equipo
-puesto deseable excluyente anos años conocimiento conocimientos manejo nivel ofrecemos beneficios modalidad
-the and or of to in for with on at by an be is are as from this that you we our your will have has work team
-experience years job role skills strong knowledge plus etc
-""".split())
+STOPWORDS = {"a", "al", "algo", "ante", "antes", "como", "con", "contra", "cual", "cuando", "de", "del", "desde", "donde", "durante", "e", "el", "ella", "ellos", "en", "entre", "era", "es", "esa", "ese", "eso", "esta", "este", "esto", "estos", "hacia", "hasta", "la", "las", "le", "les", "lo", "los", "mas", "me", "mi", "muy", "no", "nos", "o", "otra", "otro", "para", "pero", "por", "que", "se", "ser", "si", "sin", "sobre", "su", "sus", "tambien", "te", "tiene", "tu", "un", "una", "uno", "unos", "y", "ya", "buscamos", "busca", "requisitos", "experiencia", "empresa", "trabajo", "equipo", "puesto", "deseable", "excluyente", "anos", "años", "conocimiento", "conocimientos", "manejo", "nivel", "ofrecemos", "beneficios", "modalidad", "the", "and", "or", "of", "to", "in", "for", "with", "on", "at", "by", "an", "be", "is", "are", "as", "from", "this", "that", "you", "we", "our", "your", "will", "have", "has", "work", "team", "experience", "years", "job", "role", "skills", "strong", "knowledge", "plus", "etc"}
 WEIGHTS = {'contact': 15, 'sections': 20, 'length': 10, 'achievements': 10, 'dates': 5, 'keywords': 40}
 MAX_KEYWORDS = 25
 

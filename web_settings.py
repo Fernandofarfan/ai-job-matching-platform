@@ -9,7 +9,7 @@ import logging
 import os
 import uuid
 from base64 import b64decode, b64encode
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from email.utils import format_datetime, parsedate_to_datetime
 from typing import Any
 
@@ -38,7 +38,7 @@ def _tag(value: Any) -> Any:
     if isinstance(value, uuid.UUID):
         return {' u': value.hex}
     if isinstance(value, datetime):
-        return {' d': format_datetime(value.astimezone(timezone.utc), usegmt=True)}
+        return {' d': format_datetime(value.astimezone(UTC), usegmt=True)}
     return value
 
 
@@ -55,7 +55,7 @@ def _untag(obj: dict[str, Any]) -> Any:
     if key == ' b':
         return b64decode(value)
     if key == ' m':
-        return Markup(value)
+        return Markup(value)  # noqa: S704 - viene de la sesión firmada, ya era Markup al guardarse
     if key == ' u':
         return uuid.UUID(value)
     if key == ' d':

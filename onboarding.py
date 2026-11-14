@@ -6,7 +6,7 @@ hace falta una tabla nueva y las cuentas viejas cuentan desde el primer día.
 import glob
 import logging
 import os
-from typing import Any, Optional
+from typing import Any
 
 import accounts
 import job_alerts
@@ -31,12 +31,12 @@ def mark_searched() -> None:
         pass
 
 
-def _results_dir(user_id: Optional[int]) -> str:
+def _results_dir(user_id: int | None) -> str:
     """Carpeta de CSV de la cuenta, sin crearla (accounts.results_dir() la crea)."""
     return accounts.RESULTS_ROOT if user_id is None else os.path.join(accounts.RESULTS_ROOT, f'u{user_id}')
 
 
-def _done(user_id: Optional[int]) -> dict[str, bool]:
+def _done(user_id: int | None) -> dict[str, bool]:
     """Qué pasos ya completó la cuenta; si una fuente falla, ese paso cuenta como pendiente."""
     done = {key: False for key, _, _ in STEPS}
     with accounts.as_user(user_id):
@@ -53,7 +53,7 @@ def _done(user_id: Optional[int]) -> dict[str, bool]:
     return done
 
 
-def status(user_id: Optional[int]) -> dict[str, Any]:
+def status(user_id: int | None) -> dict[str, Any]:
     """Pasos con su estado, el siguiente pendiente y si ya terminó (la portada deja de mostrar la guía)."""
     done = _done(user_id)
     steps = [{'key': key, 'label': label, 'endpoint': endpoint, 'done': done[key]} for key, label, endpoint in STEPS]

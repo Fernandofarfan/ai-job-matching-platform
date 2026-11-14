@@ -1,11 +1,17 @@
 """Métricas Prometheus (/metrics) y trazas OpenTelemetry opcionales (OTEL_EXPORTER_OTLP_ENDPOINT)."""
-from typing import Any
-from collections.abc import Iterable, Iterator, Mapping
 import hmac
 import logging
 import os
+from collections.abc import Iterable, Iterator, Mapping
+from typing import Any
 
-from prometheus_client import CONTENT_TYPE_LATEST, CollectorRegistry, Counter, Histogram, generate_latest
+from prometheus_client import (
+    CONTENT_TYPE_LATEST,
+    CollectorRegistry,
+    Counter,
+    Histogram,
+    generate_latest,
+)
 from prometheus_client.core import CounterMetricFamily, GaugeMetricFamily, Metric
 
 logger = logging.getLogger(__name__)
@@ -137,7 +143,9 @@ def setup_tracing(fastapi_app: Any = None, celery_worker: bool = False) -> bool:
         return False
     try:
         from opentelemetry import trace
-        from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+        from opentelemetry.exporter.otlp.proto.http.trace_exporter import (
+            OTLPSpanExporter,
+        )
         from opentelemetry.instrumentation.requests import RequestsInstrumentor
         from opentelemetry.sdk.trace import TracerProvider
         from opentelemetry.sdk.trace.export import BatchSpanProcessor

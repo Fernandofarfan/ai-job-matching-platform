@@ -3,7 +3,8 @@ import html
 import logging
 import re
 import unicodedata
-from typing import Any, Iterable, Optional
+from collections.abc import Iterable
+from typing import Any
 
 import requests
 
@@ -17,13 +18,13 @@ PER_PAGE = 50
 DESCRIPTION_CHARS = 2000
 
 
-def _plain(markup: Optional[str]) -> str:
+def _plain(markup: str | None) -> str:
     """Texto sin etiquetas HTML ni espacios repetidos."""
     text = re.sub(r'<[^>]+>', ' ', markup or '')
     return re.sub(r'\s+', ' ', html.unescape(text)).strip()
 
 
-def _norm(text: Optional[str]) -> str:
+def _norm(text: str | None) -> str:
     """Minúsculas y sin tildes, para comparar ubicaciones."""
     return unicodedata.normalize('NFKD', text or '').encode('ascii', 'ignore').decode().lower().strip()
 
@@ -44,7 +45,7 @@ def _cities(attrs: dict[str, Any]) -> list[str]:
             if isinstance(c, dict) and (c.get('attributes') or {}).get('name')]
 
 
-def parse_job(item: dict[str, Any]) -> Optional[Job]:
+def parse_job(item: dict[str, Any]) -> Job | None:
     """Oferta en el formato de los demás scrapers; None si no tiene título."""
     attrs = item.get('attributes') or {}
     if not attrs.get('title'):
@@ -98,11 +99,11 @@ def parse_payload(payload: dict[str, Any], location: str = '') -> list[Job]:
 class GetOnBoardScraper:
     """Misma interfaz que los scrapers de Selenium (search_jobs/close)."""
 
-    def __init__(self, session: Optional[requests.Session] = None) -> None:
+    def __init__(self, session: requests.Session | None = None) -> None:
         self.session = session or requests.Session()
 
     def search_jobs(self, position: str, location: str = "", max_jobs: int = 50,
-                    email: Optional[str] = None, password: Optional[str] = None) -> list[Job]:
+                    email: str | None = None, password: str | None = None) -> list[Job]:
         jobs: list[Job] = []
         page = 1
         while len(jobs) < max_jobs:

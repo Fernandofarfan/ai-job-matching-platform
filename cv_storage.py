@@ -9,8 +9,8 @@ import logging
 import os
 import tempfile
 import time
+from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import Iterator, List, Optional
 
 from cryptography.fernet import Fernet, InvalidToken
 
@@ -29,12 +29,12 @@ def generated_dirs() -> tuple[str, ...]:
     return shared + per_account
 
 
-def _fernet() -> Optional[Fernet]:
+def _fernet() -> Fernet | None:
     key = os.getenv('CV_ENCRYPTION_KEY', '').strip()
     return Fernet(key.encode()) if key else None
 
 
-def get_fernet() -> Optional[Fernet]:
+def get_fernet() -> Fernet | None:
     """Fernet de CV_ENCRYPTION_KEY (también cifra los perfiles) o None si no hay clave."""
     return _fernet()
 
@@ -120,7 +120,7 @@ def delete_all() -> int:
     return removed
 
 
-def expired(days: int, now: Optional[float] = None) -> List[str]:
+def expired(days: int, now: float | None = None) -> list[str]:
     """Nombres de los CVs con más de `days` días."""
     cutoff = (now or time.time()) - days * 86400
     return [
@@ -129,7 +129,7 @@ def expired(days: int, now: Optional[float] = None) -> List[str]:
     ]
 
 
-def purge_generated(days: int, now: Optional[float] = None) -> int:
+def purge_generated(days: int, now: float | None = None) -> int:
     """Borra CVs adaptados y cartas generados hace más de `days` días."""
     cutoff = (now or time.time()) - days * 86400
     removed = 0

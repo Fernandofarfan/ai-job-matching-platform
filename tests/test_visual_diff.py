@@ -53,7 +53,7 @@ def test_small_change_below_ratio_is_equal(dirs):
 
 
 def test_size_change_new_and_removed_pages(dirs):
-    base, head, diff = dirs
+    base, head, _diff = dirs
     _png(base / 'alto.png')
     _png(head / 'alto.png', size=(100, 101))
     _png(base / 'quitada.png')

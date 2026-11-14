@@ -2,12 +2,11 @@
 from datetime import datetime, timedelta
 from unittest import mock
 
-
 import pytest
 
+import account_lifecycle
 import account_notify
 import accounts
-import account_lifecycle
 import security_events
 
 PASSWORD = 'clave-larga-1'

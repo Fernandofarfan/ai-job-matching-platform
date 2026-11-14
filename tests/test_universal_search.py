@@ -23,8 +23,9 @@ def test_universal_job_without_portal_state(app, monkeypatch, tmp_path):
 
 def test_universal_job_unifies_offers_repeated_across_portals(app, monkeypatch, tmp_path):
     """La misma oferta en Computrabajo y Bumeran queda una sola vez en el CSV, con los dos portales."""
-    import job_dispatch
     import pandas as pd
+
+    import job_dispatch
     module = job_dispatch.resolve('run_universal_job').__globals__
     same = {'Title': 'Data Engineer', 'Company': 'Globant', 'Location': 'Buenos Aires'}
     for cls, extra in (('ComputrabajoScraper', {'URL': 'https://ct.example/1'}),

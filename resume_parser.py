@@ -1,11 +1,12 @@
 """Lectura de CVs (PDF, DOCX, TXT): texto, habilidades, años de experiencia y estudios, con Gemini si hay permiso."""
-import re
+import json
 import os
+import re
+from datetime import datetime
+from typing import Any, cast
+
 import docx
 import pypdf
-import json
-from datetime import datetime
-from typing import Any, Optional, cast
 
 import skill_catalog
 
@@ -23,7 +24,7 @@ load_dotenv()
 class resumeParser:
     def __init__(self) -> None:
         self.configure_genai()
-        
+
         self.technical_skills = {k: list(v) for k, v in skill_catalog.TECHNICAL_SKILLS.items()}
 
         self.all_technical_skills = []
@@ -54,29 +55,29 @@ class resumeParser:
             print("Warning: AI API key not found. Using regex-based parsing.")
 
     def extract_text_from_file(self, file_path: str) -> str:
-        
+
         text = ""
         file_extension = os.path.splitext(file_path)[1].lower()
-        
+
         try:
             if file_extension == '.pdf':
                 with open(file_path, 'rb') as file:
                     pdf_reader = pypdf.PdfReader(file)
                     for page in pdf_reader.pages:
                         text += page.extract_text() + "\n"
-            
+
             elif file_extension == '.docx':
                 doc = docx.Document(file_path)
                 for paragraph in doc.paragraphs:
                     text += paragraph.text + "\n"
-            
+
             elif file_extension == '.txt':
-                with open(file_path, 'r', encoding='utf-8') as file:
+                with open(file_path, encoding='utf-8') as file:
                     text = file.read()
-            
+
             return text.strip()
         except Exception as e:
-            print(f"Error extracting text from {file_path}: {str(e)}")
+            print(f"Error extracting text from {file_path}: {e!s}")
             return ""
 
     def extract_skills(self, text: str) -> list[str]:
@@ -89,16 +90,16 @@ class resumeParser:
             pattern = r'\b' + re.escape(skill.lower()) + r'\b'
             if re.search(pattern, text_lower):
                 found_skills.append(skill)
-        
+
 
         return list(set(found_skills))
 
     def parse_date_range(self, date_string: str) -> float:
-       
+
         try:
             # Normalize separators
             date_string = date_string.replace('–', '-').replace('—', '-').replace(' - ', '-')
-            
+
             # Month name mapping
             month_map = {
                 'jan': 1, 'january': 1,
@@ -114,7 +115,7 @@ class resumeParser:
                 'nov': 11, 'november': 11,
                 'dec': 12, 'december': 12
             }
-            
+
             # Enhanced date patterns with month names
             date_patterns = [
                 (r'(jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*[\s,]+(\d{4})\s*-\s*(jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*[\s,]+(\d{4})', 'month_year'),
@@ -124,12 +125,12 @@ class resumeParser:
                 (r'(\d{4})\s*-\s*(\d{4})', 'yyyy'),
                 (r'(\d{4})\s*-\s*(?:present|current|today|now)', 'yyyy_present'),
             ]
-            
+
             for pattern, pattern_type in date_patterns:
                 match = re.search(pattern, date_string, re.IGNORECASE)
                 if match:
                     groups = match.groups()
-                    
+
                     try:
                         if pattern_type == 'month_year':
                             start_month_str, start_year, end_month_str, end_year = groups
@@ -137,51 +138,51 @@ class resumeParser:
                             end_month = month_map.get(end_month_str.lower()[:3], 12)
                             start_date = datetime(int(start_year), start_month, 1)
                             end_date = datetime(int(end_year), end_month, 1)
-                        
+
                         elif pattern_type == 'month_year_present':
                             start_month_str, start_year = groups
                             start_month = month_map.get(start_month_str.lower()[:3], 1)
                             start_date = datetime(int(start_year), start_month, 1)
                             end_date = datetime.now()
-                        
+
                         elif pattern_type == 'mm_yyyy':
                             start_mm, start_year, end_mm, end_year = groups
                             start_date = datetime(int(start_year), int(start_mm), 1)
                             end_date = datetime(int(end_year), int(end_mm), 1)
-                        
+
                         elif pattern_type == 'mm_yyyy_present':
                             start_mm, start_year = groups
                             start_date = datetime(int(start_year), int(start_mm), 1)
                             end_date = datetime.now()
-                        
+
                         elif pattern_type == 'yyyy':
                             start_year, end_year = groups
                             start_date = datetime(int(start_year), 1, 1)
                             end_date = datetime(int(end_year), 12, 31)
-                        
+
                         elif pattern_type == 'yyyy_present':
                             start_year = groups[0]
                             start_date = datetime(int(start_year), 1, 1)
                             end_date = datetime.now()
-                        
+
                         years_diff = (end_date - start_date).days / 365.25
                         return max(years_diff, 0)
-                    
+
                     except (ValueError, IndexError) as e:
-                        print(f"Error parsing date components: {str(e)}")
+                        print(f"Error parsing date components: {e!s}")
                         continue
-            
+
             return 0
         except Exception as e:
-            print(f"Error parsing date range '{date_string}': {str(e)}")
+            print(f"Error parsing date range '{date_string}': {e!s}")
             return 0
 
     def extract_experience_years(self, text: str) -> float:
         """Extract years of experience from text using multiple methods"""
         text_lower = text.lower()
         years: list[float] = []
-        
-       
+
+
         explicit_patterns = [
             r'(\d+)\+?\s*years?\s*(?:of\s*)?experience',
             r'(\d+)\+?\s*years?\s*in\s+(?:software|development|programming|it|tech|data|analytics|engineering)',
@@ -190,7 +191,7 @@ class resumeParser:
             r'over\s+(\d+)\s*years?',
             r'more\s+than\s+(\d+)\s*years?',
         ]
-        
+
         for pattern in explicit_patterns:
             matches = re.findall(pattern, text_lower)
             for match in matches:
@@ -198,13 +199,13 @@ class resumeParser:
                     years.append(int(match))
                 except ValueError:
                     continue
-        
-       
+
+
         work_experience_years = self.calculate_work_experience(text)
         if work_experience_years > 0:
             years.append(work_experience_years)
-        
-        
+
+
         return max(years) if years else 0
 
     def calculate_work_experience(self, text: str) -> float:
@@ -215,38 +216,35 @@ class resumeParser:
         seen_dates = set()
         # fechas descartadas por estar junto a estudios: solo las cuenta una línea con un puesto
         skipped_dates = set()
-        
+
         # Track if we're in experience section (helpful but not required)
         in_education_section = False
         i = 0
-        
+
         while i < len(lines):
             line = lines[i].strip()
-            
+
             # Detect section markers
             if re.match(r'^experience\s*$', line.lower()) or ('professional' in line.lower() and 'experience' in line.lower()):
                 in_education_section = False
                 i += 1
                 continue
-            
+
             if re.match(r'^education\s*$', line.lower()) or re.match(r'^projects?\s*$', line.lower()):
                 in_education_section = True
-            
+
             # Skip lines in education section
             if in_education_section:
                 i += 1
                 continue
-            
+
             if line:
                 # Get next few lines for context
-                next_lines = []
-                for j in range(1, min(4, len(lines) - i)):
-                    if i + j < len(lines):
-                        next_lines.append(lines[i + j].strip())
-                
+                next_lines = [lines[i + j].strip() for j in range(1, min(4, len(lines) - i)) if i + j < len(lines)]
+
                 # Look for date patterns in current line or next lines
-                all_context = [line] + next_lines
-                
+                all_context = [line, *next_lines]
+
                 for context_index, context_line in enumerate(all_context):
                     # Enhanced date patterns to catch more formats
                     date_patterns = [
@@ -257,7 +255,7 @@ class resumeParser:
                         r'(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*[\s,]+\d{4}\s*[–—-]\s*(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*[\s,]+\d{4}',  # Month YYYY - Month YYYY
                         r'(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*[\s,]+\d{4}\s*[–—-]\s*(?:present|current)',  # Month YYYY - Present
                     ]
-                    
+
                     for pattern in date_patterns:
                         match = re.search(pattern, context_line, re.IGNORECASE)
                         if match:
@@ -265,32 +263,32 @@ class resumeParser:
                             date_index = i + context_index
                             if date_index in seen_dates:
                                 break
-                            
+
                             # Build job context from current line and matched line
                             job_context = line
                             if context_index > 0:
                                 job_context += " " + context_line
-                            
+
                             # Skip if it's an internship or education
                             skip_keywords = [
                                 'intern', 'internship', 'student', 'university',
                                 'college', 'degree', 'bachelor', 'master', 'phd',
                                 'education', 'course', 'certification'
                             ]
-                            
+
                             should_skip = any(keyword in job_context.lower() for keyword in skip_keywords)
-                            
+
                             # Prioritize lines with job-related keywords
                             job_keywords = [
                                 'engineer', 'developer', 'analyst', 'manager', 'specialist',
                                 'administrator', 'consultant', 'architect', 'lead', 'senior',
                                 'junior', 'associate', 'coordinator', 'director', 'technician'
                             ]
-                            
+
                             has_job_title = any(keyword in job_context.lower() for keyword in job_keywords)
-                            
+
                             # Only count if it looks like work experience
-                            counts = not should_skip or (has_job_title and not 'intern' in job_context.lower())
+                            counts = not should_skip or (has_job_title and 'intern' not in job_context.lower())
                             if date_index in skipped_dates and not has_job_title:
                                 counts = False
                             if counts:
@@ -302,67 +300,67 @@ class resumeParser:
                             else:
                                 skipped_dates.add(date_index)
                                 print(f"Skipping non-work experience: {job_context[:50]}... - {date_range}")
-                            
+
                             break  # Move to next line once we found a date
                     else:
                         continue
                     break  # Move to next line once we found a date
-            
+
             i += 1
-        
+
         # Cap at realistic maximum
-        return min(total_years, 20) 
+        return min(total_years, 20)
 
     def extract_education(self, text: str) -> list[str]:
         """Extract education information, excluding internship locations"""
         education_keywords = [
-            'bachelor', 'master', 'phd', 'doctorate', 'degree', 'university', 
+            'bachelor', 'master', 'phd', 'doctorate', 'degree', 'university',
             'college', 'institute', 'b.s.', 'b.a.', 'm.s.', 'm.a.', 'mba',
             'b.sc', 'b.tech', 'm.tech', 'mca', 'bca'
         ]
-        
+
         education_info: list[str] = []
         lines = text.split('\n')
-        
-        
+
+
         in_education_section = False
-        
+
         for i, line in enumerate(lines):
             line_stripped = line.strip()
             line_lower = line_stripped.lower()
-            
-           
+
+
             if re.match(r'^education\s*$', line_lower):
                 in_education_section = True
                 continue
-            
-            
+
+
             if in_education_section and re.match(r'^(experience|projects?|skills|summary)\s*$', line_lower):
                 break
-            
-          
+
+
             if in_education_section or any(keyword in line_lower for keyword in education_keywords):
-                
+
                 internship_indicators = ['intern', 'internship', 'remote', 'iit bombay', 'inc', 'llc', 'corp']
                 if any(indicator in line_lower for indicator in internship_indicators):
                     continue
-                
-              
+
+
                 if any(keyword in line_lower for keyword in education_keywords):
                     cleaned_line = line_stripped
-                    if len(cleaned_line) > 10:  
+                    if len(cleaned_line) > 10:
                         education_info.append(cleaned_line)
-        
+
         return education_info
 
-    def parse_with_ai(self, text: str) -> Optional[dict[str, Any]]:
+    def parse_with_ai(self, text: str) -> dict[str, Any] | None:
         if not self.use_ai:
             return None
-            
+
         prompt = f"""
         You are an expert Resume Parser. Extract the following information from the resume text below.
         Return ONLY a valid JSON object with no markdown formatting.
-        
+
         JSON Structure:
         {{
             "skills": ["skill1", "skill2", ...],
@@ -370,19 +368,19 @@ class resumeParser:
             "education": ["degree 1", "degree 2", ...],
             "summary": "<brief professional summary>"
         }}
-        
+
         Rules:
-        1. experience_years: Calculate the TOTAL years of PROFESSIONAL work experience. 
+        1. experience_years: Calculate the TOTAL years of PROFESSIONAL work experience.
            - EXCLUDE internships, volunteer work, and education periods unless they were full-time professional roles.
            - If there are overlapping roles, count the time only once.
            - Round to 1 decimal place.
         2. skills: Extract technical skills, programming languages, tools, and frameworks.
         3. education: Extract degrees and universities.
-        
+
         Resume Text:
         {text}
         """
-        
+
         try:
             import accounts
             import ai_usage
@@ -404,38 +402,38 @@ class resumeParser:
                 json_str = json_str[7:]
             if json_str.endswith("```"):
                 json_str = json_str[:-3]
-            
+
             return cast(dict[str, Any], json.loads(json_str.strip()))
         except Exception as e:
             print(f"Error parsing with AI: {e}")
             return None
 
-    def parse_resume(self, file_path: str) -> Optional[dict[str, Any]]:
-       
+    def parse_resume(self, file_path: str) -> dict[str, Any] | None:
+
         text = self.extract_text_from_file(file_path)
-        
+
         if not text:
             return None
-        
+
         print("Parsing resume...")
         print(f"Text length: {len(text)} characters")
-        
+
         profile: dict[str, Any] = {
             'raw_text': text,
             'skills': [],
             'experience_years': 0,
             'education': []
         }
-        
+
         # Try AI parsing first
         ai_result = self.parse_with_ai(text)
-        
+
         if ai_result:
             print("✅ Successfully parsed resume with AI")
             profile['skills'] = ai_result.get('skills', [])
             profile['experience_years'] = ai_result.get('experience_years', 0)
             profile['education'] = ai_result.get('education', [])
-            
+
             # Fallback for empty skills if AI fails to extract them but gets other things
             if not profile['skills']:
                  profile['skills'] = self.extract_skills(text)
@@ -444,11 +442,11 @@ class resumeParser:
             profile['skills'] = self.extract_skills(text)
             profile['experience_years'] = self.extract_experience_years(text)
             profile['education'] = self.extract_education(text)
-        
+
         print(f"Found {len(profile['skills'])} skills")
         print(f"Calculated {profile['experience_years']} years of experience")
         print(f"Found {len(profile['education'])} education entries")
-        
+
         return profile
 
 

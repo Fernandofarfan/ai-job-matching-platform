@@ -10,7 +10,6 @@ import logging
 import secrets
 import time
 from datetime import datetime
-from typing import Optional
 
 import pyotp
 import segno
@@ -70,16 +69,16 @@ def _new_recovery_codes() -> list[str]:
     return ['-'.join(c[i:i + 5] for i in range(0, 20, 5)) for c in codes]
 
 
-def _row(user_id: Optional[int]) -> Optional[UserTotp]:
+def _row(user_id: int | None) -> UserTotp | None:
     """Fila de la cuenta o None."""
     if not user_id:
         return None
     with accounts._sessions()() as session:
-        row: Optional[UserTotp] = session.get(UserTotp, user_id)
+        row: UserTotp | None = session.get(UserTotp, user_id)
         return row
 
 
-def is_enabled(user_id: Optional[int]) -> bool:
+def is_enabled(user_id: int | None) -> bool:
     """True si la cuenta confirmó el segundo factor."""
     row = _row(user_id)
     return bool(row and row.enabled_at)
@@ -97,7 +96,7 @@ def start_setup(user_id: int) -> str:
     return str(secret)
 
 
-def pending_secret(user_id: Optional[int]) -> Optional[str]:
+def pending_secret(user_id: int | None) -> str | None:
     """Secreto de una configuración empezada y no confirmada."""
     row = _row(user_id)
     return _decrypt(str(row.secret)) if row and not row.enabled_at else None
@@ -113,7 +112,7 @@ def qr_svg(uri: str) -> str:
     return str(segno.make(uri, error='m').svg_inline(scale=4, title='Código QR para la app autenticadora')
 )
 
-def _matching_step(secret: str, code: str) -> Optional[int]:
+def _matching_step(secret: str, code: str) -> int | None:
     """Paso de 30 s cuyo código coincide, dentro de la ventana permitida."""
     code = (code or '').replace(' ', '')
     if not (code.isdigit() and len(code) == 6):
@@ -137,7 +136,7 @@ def _consume_step(user_id: int, step: int) -> bool:
         return bool(accounts.rowcount(result))
 
 
-def enable(user_id: int, code: str) -> Optional[list[str]]:
+def enable(user_id: int, code: str) -> list[str] | None:
     """Confirma la configuración con un código de la app; devuelve los códigos de recuperación."""
     row = _row(user_id)
     if not row or row.enabled_at:
@@ -153,13 +152,13 @@ def enable(user_id: int, code: str) -> Optional[list[str]]:
     return codes
 
 
-def verify(user_id: int, code: str) -> Optional[str]:
+def verify(user_id: int, code: str) -> str | None:
     """'totp' o 'recovery' si el código vale (y lo consume); None si no."""
     row = _row(user_id)
     if not row or not row.enabled_at:
         return None
     try:
-        secret: Optional[str] = _decrypt(str(row.secret))
+        secret: str | None = _decrypt(str(row.secret))
     except Exception as e:
         # sin la clave (o con otra) la app autenticadora no se puede comprobar; los códigos de recuperación sí
         logger.error(f'No se pudo descifrar el segundo factor de la cuenta {user_id}: {e}')
@@ -181,13 +180,13 @@ def verify(user_id: int, code: str) -> Optional[str]:
     return 'recovery' if accounts.rowcount(result) else None
 
 
-def recovery_codes_left(user_id: Optional[int]) -> int:
+def recovery_codes_left(user_id: int | None) -> int:
     """Cuántos códigos de recuperación quedan sin usar."""
     row = _row(user_id)
     return len(json.loads(str(row.recovery_hashes or "[]"))) if row and row.enabled_at else 0
 
 
-def regenerate_recovery_codes(user_id: int) -> Optional[list[str]]:
+def regenerate_recovery_codes(user_id: int) -> list[str] | None:
     """Códigos nuevos; los anteriores dejan de valer."""
     if not is_enabled(user_id):
         return None

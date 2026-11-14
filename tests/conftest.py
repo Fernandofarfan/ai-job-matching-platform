@@ -2,12 +2,12 @@
 conftest.py – Fixtures globales de pytest para EmpleoIA.
 Provee un cliente de prueba de la app con mock de DB y módulos pesados.
 """
-import os
-import sys
-import types
 import importlib
 import importlib.abc
 import importlib.machinery
+import os
+import sys
+import types
 import unittest.mock as mock
 from types import SimpleNamespace
 
@@ -113,11 +113,12 @@ def app():
     mock_db.get_companies_for_connections.return_value = []
 
     # Fuera del patch.dict para que app y los tests compartan el mismo módulo (y su JSON_PATH temporal)
-    import profile_store  # noqa: F401
     # numpy no se puede cargar dos veces: si entra dentro del patch.dict, main.py (WebClient) falla al reimportarlo
-    import numpy, pandas  # noqa: F401,E401
+    import numpy  # noqa: F401
+
     # Modelos sobre accounts.Base: reimportarlos duplicaría sus índices en la metadata
-    import integrations, push, security_events, two_factor, user_sessions  # noqa: F401,E401
+    import integrations  # noqa: F401
+    import profile_store  # noqa: F401
 
     with mock.patch.dict('sys.modules', {}):
         import db_config
@@ -183,6 +184,7 @@ class WebClient:
 
     def __init__(self, web_app):
         from fastapi.testclient import TestClient
+
         import main
         self.app = main.create_app(web_app)
         self._c = TestClient(self.app, base_url='http://localhost')
@@ -280,14 +282,15 @@ def _accounts_sqlite():
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
     from sqlalchemy.pool import StaticPool
+
     import accounts
     engine = create_engine('sqlite://', poolclass=StaticPool, connect_args={'check_same_thread': False})
+    import email_delivery  # noqa: F401
     import integrations  # noqa: F401  (registra su tabla en Base)
+    import passkeys  # noqa: F401
     import push  # noqa: F401
     import security_events  # noqa: F401
     import two_factor  # noqa: F401
-    import email_delivery  # noqa: F401
-    import passkeys  # noqa: F401
     accounts.Base.metadata.create_all(engine)
     accounts.configure(sessionmaker(bind=engine))
     yield engine

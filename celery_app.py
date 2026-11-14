@@ -2,9 +2,10 @@
 celery_app.py — Configuración central de Celery para EmpleoIA
 Permite ejecutar scrapers y tareas de IA de forma asíncrona.
 """
-from typing import Any
 import os
 import sys
+from typing import Any
+
 from celery import Celery
 from celery.signals import celeryd_init, worker_init, worker_process_init
 from dotenv import load_dotenv

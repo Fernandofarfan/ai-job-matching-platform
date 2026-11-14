@@ -1,9 +1,9 @@
 """tasks/scraping_tasks.py — corre en el worker de Celery las búsquedas que lanza la web (job_dispatch)."""
-from typing import Any, Optional
-import accounts
-import logging
 import copy
+import logging
+from typing import Any
 
+import accounts
 from celery_app import celery
 
 logger = logging.getLogger(__name__)
@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 @celery.task(bind=True, name="tasks.scraping_tasks.run_web_job")
 def run_web_job(self: Any, key: str, name: str, args: list[Any], poll_seconds: float = 2.0,
-                user_id: Optional[int] = None) -> dict[str, Any]:
+                user_id: int | None = None) -> dict[str, Any]:
     """Corre en el worker el mismo scraper que lanza la web (como `user_id`) y publica su `job_status[key]`."""
     import job_dispatch
     from services.state import job_status as status

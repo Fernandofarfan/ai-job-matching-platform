@@ -3,8 +3,9 @@ import logging
 import os
 import random
 import time
+from collections.abc import Callable
 from datetime import datetime
-from typing import Any, Callable, Optional
+from typing import Any
 
 import pandas as pd
 
@@ -31,7 +32,7 @@ def _mark_searched() -> None:
         logger.warning(f"No se pudo anotar la búsqueda para el primer uso: {e}")
 
 
-def run_computrabajo_job(searches: list[dict[str, Any]], email: Optional[str], password: Optional[str]) -> None:
+def run_computrabajo_job(searches: list[dict[str, Any]], email: str | None, password: str | None) -> None:
     try:
         scraper = ComputrabajoScraper()
         all_jobs: list[Job] = []
@@ -133,7 +134,7 @@ def run_bumeran_job(searches: list[dict[str, Any]]) -> None:
 
 
 
-def run_universal_job(position: str, location: str) -> None:
+def run_universal_job(position: str, location: str) -> None:  # noqa: C901 - complejidad heredada; no crecer
     try:
         all_results: list[Job] = []
         scraper_results: dict[str, list[Job]] = {
@@ -176,7 +177,7 @@ def run_universal_job(position: str, location: str) -> None:
                 job_status['universal_scraping']['message'] = _m('Buscando en %(portal)s...', portal='Computrabajo')
 
                 scraper = ComputrabajoScraper()
-                jobs = scraper.search_jobs(position, location, max_jobs=50, 
+                jobs = scraper.search_jobs(position, location, max_jobs=50,
                                           email=computrabajo_email, password=computrabajo_password)
                 scraper_stats.record('computrabajo', jobs)
 
@@ -268,7 +269,7 @@ def run_universal_job(position: str, location: str) -> None:
         job_status['universal_scraping']['message'] = _m('Consolidando resultados...')
         job_status['universal_scraping']['progress'] = 90
 
-        for source, jobs in scraper_results.items():
+        for jobs in scraper_results.values():
             all_results.extend(jobs)
         found = len(all_results)
         all_results = job_dedup.unify(all_results)
@@ -283,7 +284,7 @@ def run_universal_job(position: str, location: str) -> None:
             cols = df.columns.tolist()
             if 'Fuente' in cols:
                 cols.remove('Fuente')
-                cols = ['Fuente'] + cols
+                cols = ['Fuente', *cols]
                 df = df[cols]
 
             # Save to CSV

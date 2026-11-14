@@ -1,5 +1,6 @@
 """Suscripciones a notificaciones push del navegador (/api/push/*)."""
 from typing import Any
+
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
 

@@ -2,16 +2,26 @@
 tasks/notification_tasks.py — Tareas de notificaciones vía Celery + Email
 Envía alertas de follow-up, nuevos trabajos relevantes y resúmenes semanales.
 """
-from collections.abc import Callable
-from typing import Any, Optional, TypeVar
-import os
 import logging
-from datetime import datetime, date, timedelta
+import os
+from collections.abc import Callable
+from datetime import date, datetime, timedelta
+from typing import Any
 
 from celery_app import celery
-from notification_messages import (WEEKLY_DAYS, _get_email_template, _telegram_chunks, alert_email_html,
-                                   alert_telegram_text, due_followups, followup_email_html, followup_telegram_text,
-                                   weekly_digest_data, weekly_digest_empty, weekly_digest_html)
+from notification_messages import (
+    WEEKLY_DAYS,
+    _get_email_template,
+    _telegram_chunks,
+    alert_email_html,
+    alert_telegram_text,
+    due_followups,
+    followup_email_html,
+    followup_telegram_text,
+    weekly_digest_data,
+    weekly_digest_empty,
+    weekly_digest_html,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -73,7 +83,7 @@ def send_new_jobs_digest(jobs: list[Any], user_email: str) -> bool:
         <div style="background:#232336;padding:15px;border-radius:10px;margin:10px 0;
                     border-left:4px solid {score_color};">
             <strong style="color:white;">{job.get('Title', job.get('title', 'Sin título'))}</strong><br>
-            <span style="color:#a78bfa;">{job.get('Company', job.get('company', ''))}</span> · 
+            <span style="color:#a78bfa;">{job.get('Company', job.get('company', ''))}</span> ·
             <span style="color:#94a3b8;">{job.get('Location', job.get('location', ''))}</span><br>
             <span style="color:{score_color};font-weight:600;">Match: {float(match_score or 0)*100:.0f}%</span>
         </div>"""
@@ -191,7 +201,7 @@ def _recipient() -> str:
     return user["email"] if user else NOTIFICATION_EMAIL
 
 
-def _telegram_chat() -> Optional[str]:
+def _telegram_chat() -> str | None:
     """Chat de la cuenta actual; TELEGRAM_CHAT_ID es del dueño de la instancia (primera cuenta o sin cuentas)."""
     import accounts
     uid = accounts.current_user_id()
@@ -214,16 +224,15 @@ def _telegram_allowed() -> bool:
     return accounts.current_user_id() is None or _telegram_chat() is not None
 
 
-def accounts_current() -> Optional[int]:
+def accounts_current() -> int | None:
     """Cuenta de la tarea actual (None sin cuentas)."""
     import accounts
     return accounts.current_user_id()
 
 
-_T = TypeVar('_T')
 
 
-def _for_each_user(func: Callable[[], _T]) -> dict[Optional[int], _T]:
+def _for_each_user[T](func: Callable[[], T]) -> dict[int | None, T]:
     """Corre func() una vez por cuenta (o una sola vez sin usuario si todavía no hay cuentas)."""
     import accounts
     results = {}

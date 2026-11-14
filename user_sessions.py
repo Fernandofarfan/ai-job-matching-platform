@@ -3,7 +3,7 @@ import hashlib
 import logging
 import secrets
 from datetime import datetime, timedelta
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy import DateTime, Integer, String, delete, or_, select, update
 from sqlalchemy.orm import Mapped, mapped_column
@@ -36,7 +36,7 @@ def _hash(sid: str) -> str:
     return hashlib.sha256(sid.encode()).hexdigest()
 
 
-def create(user_id: int, ip: Optional[str] = None, user_agent: Optional[str] = None) -> str:
+def create(user_id: int, ip: str | None = None, user_agent: str | None = None) -> str:
     """Registra una sesión nueva y devuelve el id que va en la cookie."""
     sid = secrets.token_urlsafe(32)
     with accounts._sessions()() as session:
@@ -47,7 +47,7 @@ def create(user_id: int, ip: Optional[str] = None, user_agent: Optional[str] = N
     return sid
 
 
-def is_active(user_id: int, sid: Optional[str]) -> bool:
+def is_active(user_id: int, sid: str | None) -> bool:
     """True si la sesión `sid` es de la cuenta, no se cerró y no venció; actualiza su última actividad."""
     if not sid:
         return False
@@ -66,7 +66,7 @@ def is_active(user_id: int, sid: Optional[str]) -> bool:
         return True
 
 
-def active(user_id: Optional[int], current_sid: Optional[str] = None) -> list[dict[str, Any]]:
+def active(user_id: int | None, current_sid: str | None = None) -> list[dict[str, Any]]:
     """Sesiones abiertas de la cuenta, la más reciente primero; `current` marca la del navegador actual."""
     if not user_id:
         return []
@@ -90,7 +90,7 @@ def revoke(user_id: int, session_id: int) -> bool:
         return bool(accounts.rowcount(result))
 
 
-def revoke_sid(sid: Optional[str]) -> None:
+def revoke_sid(sid: str | None) -> None:
     """Cierra la sesión de esa cookie (logout)."""
     if not sid:
         return
@@ -100,7 +100,7 @@ def revoke_sid(sid: Optional[str]) -> None:
         session.commit()
 
 
-def revoke_all(user_id: int, except_sid: Optional[str] = None) -> int:
+def revoke_all(user_id: int, except_sid: str | None = None) -> int:
     """Cierra todas las sesiones de la cuenta salvo `except_sid`; devuelve cuántas cerró."""
     query = update(UserSession).where(UserSession.user_id == user_id, UserSession.revoked_at.is_(None))
     if except_sid:

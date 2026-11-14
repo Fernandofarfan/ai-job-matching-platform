@@ -1,7 +1,7 @@
 """Administración: lista de cuentas, bloqueo, quitar el segundo factor y borrado, en FastAPI."""
-from collections.abc import Callable
 import logging
-from typing import Any, Optional
+from collections.abc import Callable
+from typing import Any
 
 from fastapi import APIRouter, Request
 from fastapi.responses import Response
@@ -9,27 +9,37 @@ from starlette.concurrency import run_in_threadpool
 
 import account_lifecycle
 import accounts
-import onboarding
 import ai_usage
 import auth
+import onboarding
 import two_factor
 import user_sessions
-from fastapi_web import (TextForm, flash, hit_limit, services_for,
-                         limit_key, read_form, redirect, render, too_many_requests, url_for)
-from routers.auth_pages import audit
+from fastapi_web import (
+    TextForm,
+    flash,
+    hit_limit,
+    limit_key,
+    read_form,
+    redirect,
+    render,
+    services_for,
+    too_many_requests,
+    url_for,
+)
 from routers.account_pages import _not_found
+from routers.auth_pages import audit
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["admin"], include_in_schema=False)
 
 
-def _admin_id() -> Optional[int]:
+def _admin_id() -> int | None:
     """Id del administrador, o None para cualquier otra cuenta (que recibe 404)."""
     user_id = accounts.current_user_id()
     return user_id if auth.auth_enabled() and user_id is not None and accounts.is_admin(user_id) else None
 
 
-def _target(request: Request, admin_id: int, user_id: int) -> Optional[dict[str, Any]]:
+def _target(request: Request, admin_id: int, user_id: int) -> dict[str, Any] | None:
     """Cuenta sobre la que se actúa; None (con aviso) si es la propia o la administradora."""
     target = accounts.get_user(user_id)
     if target is None:

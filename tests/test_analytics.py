@@ -142,6 +142,7 @@ def test_avg_days_to_apply_ignores_rejected():
 def test_history_makes_rejected_and_days_exact():
     """Con historial, una rechazada cuenta como postulada solo si pasó por 'applied'."""
     from datetime import datetime
+
     from tracker_stats import avg_days_to_apply, portal_stats
     jobs = [
         {'id': 1, 'status': 'rejected', 'job_link': 'https://www.bumeran.com.ar/x', 'created_at': '2026-01-01'},

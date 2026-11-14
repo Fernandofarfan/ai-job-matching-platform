@@ -8,7 +8,7 @@ con la misma clave por cuenta.
 import logging
 import os
 from datetime import date
-from typing import Any, Optional, cast
+from typing import Any, cast
 from urllib.parse import quote
 
 from fastapi import APIRouter, Request
@@ -20,13 +20,28 @@ import accounts
 import auth
 import data_export
 import integrations
-import security_events
 import passkeys
+import security_events
 import two_factor
 import user_sessions
-from fastapi_web import (TextForm, clear_offline_data, client_info, flash, web_app_for, get_session, hit_limit, services_for,
-                         limit_key, read_form, redirect, render, safe_next, save_session,
-                         too_many_requests, url_for)
+from fastapi_web import (
+    TextForm,
+    clear_offline_data,
+    client_info,
+    flash,
+    get_session,
+    hit_limit,
+    limit_key,
+    read_form,
+    redirect,
+    render,
+    safe_next,
+    save_session,
+    services_for,
+    too_many_requests,
+    url_for,
+    web_app_for,
+)
 from routers.auth_pages import audit, send_verification
 
 logger = logging.getLogger(__name__)
@@ -39,7 +54,7 @@ def _user_id() -> int:
     return cast(int, accounts.current_user_id())
 
 
-async def _form(request: Request, spec: Optional[str] = None, namespace: str = '') -> tuple[TextForm, Optional[Response]]:
+async def _form(request: Request, spec: str | None = None, namespace: str = '') -> tuple[TextForm, Response | None]:
     """Formulario con CSRF y, si hay `spec`, el límite por cuenta del endpoint (como hacía @limiter.limit)."""
     form, error = await read_form(request)
     if error:

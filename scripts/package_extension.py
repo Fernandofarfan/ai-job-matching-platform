@@ -2,12 +2,12 @@
 
 Uso: python scripts/package_extension.py [--out dist]
 """
-from typing import Any
 import argparse
 import json
 import os
 import sys
 import zipfile
+from typing import Any
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 EXT_DIR = os.path.join(ROOT, 'chrome_extension')
