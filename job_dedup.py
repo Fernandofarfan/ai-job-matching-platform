@@ -101,9 +101,9 @@ def unify(jobs: Iterable[Job]) -> list[Job]:
         if index is None:
             index = len(groups)
             groups.append([])
-            if all(key):
-                by_key.setdefault(key, []).append(index)
         groups[index].append(job)
+        if all(key) and index not in by_key.setdefault(key, []):
+            by_key[key].append(index)
         if url:
             by_url.setdefault(url, index)
     return [_merge(group) for group in groups]
