@@ -53,6 +53,7 @@ def build(user_id: int) -> bytes:
             row = session.get(accounts.User, user_id)
             zf.writestr('cuenta.json', _dump({
                 'email': row.email, 'creada': row.created_at, 'email_verificado': row.email_verified_at,
+                'terminos_aceptados': row.terms_accepted_at, 'permiso_ia': row.ai_consent_at,
                 'integraciones': integrations.status(user_id),
                 'dispositivos_push': push.device_count(user_id)}))
             inspector = inspect(session.get_bind())

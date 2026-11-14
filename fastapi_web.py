@@ -198,6 +198,7 @@ def render(request: Request, name: str, status_code: int = 200, **context) -> HT
     user = accounts.get_user(user_id) if user_id else None
     base = {'auth_enabled': auth.auth_enabled(), 'current_user_email': user['email'] if user else '',
             'current_user_is_admin': user is not None and accounts.is_admin(user['id']),
+            'ai_consent_needed': user is not None and not user.get('ai_consent', True),
             'current_lang': lang, 'languages': i18n.LANGUAGES,
             'current_path': request.url.path + (f'?{request.url.query}' if request.url.query else '')}
     response = templates.TemplateResponse(request=request, name=name, context={**base, **context},

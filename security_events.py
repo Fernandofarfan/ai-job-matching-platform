@@ -37,6 +37,8 @@ LABELS = {
     'account_unblocked': 'Cuenta desbloqueada por el administrador',
     'two_factor_reset': 'Verificación en dos pasos quitada por el administrador',
     'admin_deleted_account': 'Cuenta de otra persona borrada (administración)',
+    'ai_consent_given': 'Permiso para usar la IA activado',
+    'ai_consent_revoked': 'Permiso para usar la IA quitado',
 }
 LOGIN_KINDS = ('login', 'login_google')
 

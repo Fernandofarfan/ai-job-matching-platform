@@ -25,8 +25,8 @@ import tracker_export
 import two_factor
 import user_sessions
 from fastapi_web import (TextForm, clear_offline_data, client_info, flash, web_app_for, get_session, hit_limit, legacy,
-                         limit_key, public_url, read_form, redirect, render, save_session, too_many_requests,
-                         url_for)
+                         limit_key, public_url, read_form, redirect, render, safe_next, save_session,
+                         too_many_requests, url_for)
 from routers.auth_pages import audit, send_verification
 
 logger = logging.getLogger(__name__)
@@ -247,6 +247,26 @@ def _resend_verification(request: Request) -> Response:
         else:
             flash(request, 'No se pudo mandar el email: revisá la configuración de SMTP', 'danger')
     return _to_account(request)
+
+
+@router.post("/account/ai_consent", name="ai_consent")
+async def ai_consent(request: Request):
+    """Da (granted=1) o quita el permiso para mandar el CV y las ofertas de la cuenta a Gemini."""
+    form, error = await _form(request, '20 per hour', 'ai_consent')
+    if error:
+        return error
+    user_id = accounts.current_user_id()
+    granted = form.get('granted') == '1'
+    try:
+        await run_in_threadpool(accounts.set_ai_consent, user_id, granted)
+    except Exception as e:
+        logger.error(f'No se pudo guardar el permiso de IA de la cuenta {user_id}: {e}')
+        flash(request, 'No se pudo guardar el cambio: probá de nuevo', 'danger')
+        return _to_account(request)
+    audit(request, user_id, 'ai_consent_given' if granted else 'ai_consent_revoked')
+    flash(request, 'Listo: ya podés usar las funciones de IA' if granted
+          else 'Listo: no se mandan más datos de tu cuenta a la IA', 'success')
+    return redirect(request, safe_next(form.get('next', '')) if form.get('next') else url_for(request, 'account'))
 
 
 @router.post("/account/password", name="change_password")

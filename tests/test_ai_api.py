@@ -89,3 +89,11 @@ def test_notifications_without_manager(api):
     """Sin NotificationManager las rutas responden 503."""
     assert api.get('/api/notifications/config').status_code == 503
     assert api.post('/api/notifications/test').status_code == 503
+
+
+def test_interview_evaluate_without_gemini_has_no_grade(api, engine):
+    """Si Gemini no respondió (sin permiso, sin cuota) no se devuelve un puntaje inventado."""
+    engine.evaluate_interview_answer.return_value = {'error': 'Error al contactar Gemini: falta tu permiso'}
+    resp = api.post('/api/ai/interview/evaluate', json={'question': 'q', 'answer': 'a'})
+    assert resp.status_code == 503
+    assert resp.json() == {'success': False, 'error': 'Error al contactar Gemini: falta tu permiso'}

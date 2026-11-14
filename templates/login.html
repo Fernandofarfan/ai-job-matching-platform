@@ -26,6 +26,7 @@
         </form>
         {% if google_login %}
         <a href="{{ url_for('google_login', next=next_url) }}" class="btn btn-outline-dark w-100 mt-3">{{ _('Entrar con Google') }}</a>
+        <p class="form-text text-center mb-0">{% set terms_link %}<a href="{{ url_for('terms') }}">{{ _('Términos') }}</a>{% endset %}{% set privacy_link %}<a href="{{ url_for('privacy') }}">{{ _('Política de privacidad') }}</a>{% endset %}{{ _('Si es tu primera vez, continuar con Google crea una cuenta y acepta los %(terms)s y la %(privacy)s.', terms=terms_link, privacy=privacy_link) }}</p>
         {% endif %}
         <p class="text-center mt-3 mb-0"><a href="{{ url_for('forgot_password') }}">{{ _('¿Olvidaste tu contraseña?') }}</a></p>
         {% if signup_open %}

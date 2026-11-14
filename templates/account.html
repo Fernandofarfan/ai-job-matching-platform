@@ -217,6 +217,24 @@
   </div>
   <div class="card border-0 shadow-sm mb-4">
     <div class="card-body p-4">
+      <h2 class="h5 fw-bold">{{ _('Permiso para usar la IA') }}</h2>
+      <p class="text-muted small">{{ _('Las cartas, los CVs optimizados, el Copilot, la entrevista simulada y el matching semántico envían el texto de tu CV y de las ofertas a Google Gemini. Sin permiso, esas funciones no se usan y el matching sigue sin IA.') }}</p>
+      <form method="POST" action="{{ url_for('ai_consent') }}" class="d-flex align-items-center gap-3">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        {% if user.ai_consent %}
+        <span class="badge text-bg-success">{{ _('Activado') }}</span>
+        <input type="hidden" name="granted" value="0">
+        <button type="submit" class="btn btn-outline-danger btn-sm" id="aiConsentBtn">{{ _('Quitar el permiso') }}</button>
+        {% else %}
+        <span class="badge text-bg-secondary">{{ _('Desactivado') }}</span>
+        <input type="hidden" name="granted" value="1">
+        <button type="submit" class="btn btn-primary btn-sm" id="aiConsentBtn">{{ _('Dar permiso') }}</button>
+        {% endif %}
+      </form>
+    </div>
+  </div>
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-body p-4">
       <h2 class="h5 fw-bold">{{ _('Exportar mis datos') }}</h2>
       <p class="text-muted small">{{ _('Descarga un ZIP con tu tracker, perfiles, CVs, alertas, resultados de búsquedas y documentos generados. No incluye contraseñas ni tokens.') }}</p>
       <form method="POST" action="{{ url_for('export_data') }}">

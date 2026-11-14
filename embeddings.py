@@ -64,7 +64,11 @@ def embed(texts):
             found[text] = _cache[key]
     missing = [t for t in dict.fromkeys(texts) if t not in found]
     if missing:
+        import accounts
         import ai_usage
+        if accounts.ai_consent_missing():
+            logger.info("La cuenta no dio permiso para usar la IA; matching con TF-IDF")
+            return None
         if ai_usage.budget_exceeded():
             logger.info("Tope mensual de tokens de IA alcanzado; matching con TF-IDF")
             return None

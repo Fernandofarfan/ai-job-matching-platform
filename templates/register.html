@@ -28,6 +28,10 @@
           <div id="password-help" class="form-text mb-3">{{ _('Al menos %(n)s caracteres.', n=min_password) }}</div>
           <label for="confirm" class="form-label">{{ _('Repetir contraseña') }}</label>
           <input type="password" class="form-control mb-3" id="confirm" name="confirm" required minlength="{{ min_password }}" autocomplete="new-password">
+          <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" id="accept_terms" name="accept_terms" required>
+            <label class="form-check-label small" for="accept_terms">{% set terms_link %}<a href="{{ url_for('terms') }}" target="_blank">{{ _('Términos') }}</a>{% endset %}{% set privacy_link %}<a href="{{ url_for('privacy') }}" target="_blank">{{ _('Política de privacidad') }}</a>{% endset %}{{ _('Acepto los %(terms)s y la %(privacy)s', terms=terms_link, privacy=privacy_link) }}</label>
+          </div>
           <button type="submit" class="btn btn-primary w-100">{{ _('Crear cuenta') }}</button>
         </form>
         {% if not first_account %}

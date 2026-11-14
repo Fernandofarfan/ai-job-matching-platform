@@ -17,7 +17,7 @@ PASSWORD = 'clave-larga-1'
 @pytest.fixture
 def ana(client, accounts_db):
     """Primera cuenta con sesión abierta."""
-    client.post('/register', data={'email': 'ana@example.com', 'password': PASSWORD, 'confirm': PASSWORD})
+    client.post('/register', data={'accept_terms': 'on', 'email': 'ana@example.com', 'password': PASSWORD, 'confirm': PASSWORD})
     return accounts.find_user_id('ana@example.com')
 
 
