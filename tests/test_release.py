@@ -75,10 +75,14 @@ def test_prepare_bumps_version_and_refuses_going_back(tmp_path, capsys):
 
 
 def test_real_changelog_can_be_released(tmp_path):
-    """El CHANGELOG del repo se puede cerrar tal cual: tiene entradas pendientes y la versión actual."""
+    """El CHANGELOG del repo tiene la versión actual con notas, y si hay entradas pendientes se pueden cerrar.
+    En el commit de un release no queda ninguna pendiente."""
     import version
     text = (ROOT / 'CHANGELOG.md').read_text(encoding='utf-8')
     assert f'## [{version.__version__}]' in text
+    assert release.notes(text, version.__version__).strip()
+    if not any(release.PENDING.match(line) for line in text.split('\n')):
+        return
     out = release.consolidate(text, '99.0.0', '2026-11-14')
     assert not any(release.PENDING.match(line) for line in out.split('\n'))
     assert release.notes(out, '99.0.0').strip()
