@@ -121,3 +121,20 @@ def test_bookmarked_job_rejected_keeps_saved_date(migrated_db):
     assert db.update_job_status(job_id, 'rejected')
     assert db.get_tracked_job_by_id(job_id)['applied_date'].year == 2000
     db.delete_tracked_job(job_id)
+
+
+def test_applications_filters_and_connections(migrated_db):
+    """Filtros de postulaciones, CSV procesados y empresas excluidas del networking sobre MySQL."""
+    from db_config import DatabaseManager
+    db = DatabaseManager()
+    company = f'Acme {uuid.uuid4().hex[:8]}'
+    job_id = db.save_application({'title': 'Backend', 'company': company})
+    assert isinstance(job_id, int)
+    assert [j['id'] for j in db.get_applications({'company': company, 'status': 'applied'})] == [job_id]
+    assert db.save_processed_file(f'{company}.csv', 3, 1)
+    assert db.save_processed_file(f'{company}.csv', 4, 2)
+    assert company in {c['company'] for c in db.get_companies_for_connections()}
+    assert db.exclude_company(company) and db.exclude_company(company)
+    assert company not in {c['company'] for c in db.get_companies_for_connections()}
+    assert isinstance(db.save_connection_request(company, [job_id]), int)
+    assert db.delete_tracked_job(job_id)

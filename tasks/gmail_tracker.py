@@ -8,9 +8,11 @@ from celery_app import celery
 
 logger = logging.getLogger(__name__)
 
-# Scope for read-only access to Gmail
-SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
+# Leer y marcar como leídos los correos ya procesados
+SCOPES = ['https://www.googleapis.com/auth/gmail.modify']
 TOKEN_FILE = 'token.json'
+# Una invitación no pisa postulaciones ya cerradas (aceptadas o rechazadas) ni las que ya están en entrevista
+OPEN_STATUSES = ('bookmarked', 'applying', 'applied')
 
 def get_gmail_service():
     """Confirgura y retorna la conexion (servicio) a Gmail API usando OAuth."""
@@ -18,7 +20,9 @@ def get_gmail_service():
     # token.json almacena el token de acceso del usuario
     # después de la primera vez que inicia sesión con éxito
     if os.path.exists(TOKEN_FILE):
-        creds = Credentials.from_authorized_user_file(TOKEN_FILE, SCOPES)
+        creds = Credentials.from_authorized_user_file(TOKEN_FILE)
+        if not creds.has_scopes(SCOPES):  # token viejo de solo lectura: pedir el permiso nuevo
+            creds = None
 
     # Si no hay credenciales, forzar el login (Abre Google Auth en navegador local)
     if not creds or not creds.valid:
@@ -56,9 +60,8 @@ def check_interview_emails():
             return "No hay nuevos correos de entrevistas."
 
         updates_made = 0
-        from db_config import trackerDbClass
-        db_manager = trackerDbClass()
-        tracked_jobs = db_manager.fetch_all_tracked()
+        from db_config import db_manager
+        tracked_jobs = db_manager.get_all_tracked_jobs()
 
         for message in messages:
             msg = service.users().messages().get(userId='me', id=message['id']).execute()
@@ -71,16 +74,20 @@ def check_interview_emails():
             from ai_engine import _call_gemini
             prompt = f"El reclutador {sender} envió este correo: {subject}. ¿Corresponde a alguna de estas empresas? {', '.join([j['company'] for j in tracked_jobs])}. Responde el nombre de la empresa exacto."
             
-            matched_company = _call_gemini(prompt).strip()
+            matched_company = (_call_gemini(prompt) or '').strip()
             
-            for job in tracked_jobs:
-                if matched_company.lower() in job['company'].lower():
+            for job in tracked_jobs if matched_company else ():
+                if job.get('status') in OPEN_STATUSES and matched_company.lower() in job['company'].lower():
                     logger.info(f"¡Match! Actualizando estado de {job['company']} a ENTRENVISTA.")
-                    db_manager.move_to_stage(job['id'], "Interview")
+                    db_manager.update_job_status(job['id'], 'interviewing')
                     updates_made += 1
                     
             # Marcar como leído
-            service.users().messages().modify(userId='me', id=message['id'], body={'removeLabelIds': ['UNREAD']}).execute()
+            try:
+                service.users().messages().modify(userId='me', id=message['id'],
+                                                  body={'removeLabelIds': ['UNREAD']}).execute()
+            except Exception as e:
+                logger.warning(f"No se pudo marcar como leído el correo {message['id']}: {e}")
             
         return f"{updates_made} postulaciones actualizadas automáticamente."
     except Exception as e:

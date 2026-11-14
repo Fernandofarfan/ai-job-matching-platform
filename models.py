@@ -8,6 +8,7 @@ from sqlalchemy import (
     create_engine, Column, Integer, String, Text, DateTime,
     Date, Float, Boolean, Enum, ForeignKey, Index
 )
+from sqlalchemy.engine import URL
 from sqlalchemy.orm import declarative_base, relationship, sessionmaker, Session
 from sqlalchemy.pool import QueuePool
 from dotenv import load_dotenv
@@ -18,11 +19,15 @@ Base = declarative_base()
 
 # ── Database URL ──────────────────────────────────────────────────────────────
 def get_database_url() -> str:
-    host = os.getenv("DB_HOST", "127.0.0.1")
-    user = os.getenv("DB_USER", "root")
-    password = os.getenv("DB_PASSWORD", "")
-    db = os.getenv("DB_NAME", "job_tracker")
-    return f"mysql+mysqlconnector://{user}:{password}@{host}/{db}?charset=utf8mb4"
+    """URL de MySQL con usuario y contraseña escapados (admite '@', ':' o '/' en DB_PASSWORD)."""
+    return URL.create(
+        "mysql+mysqlconnector",
+        username=os.getenv("DB_USER", "root"),
+        password=os.getenv("DB_PASSWORD", ""),
+        host=os.getenv("DB_HOST", "127.0.0.1"),
+        database=os.getenv("DB_NAME", "job_tracker"),
+        query={"charset": "utf8mb4"},
+    ).render_as_string(hide_password=False)
 
 
 # ── Engine & Session Factory ──────────────────────────────────────────────────
