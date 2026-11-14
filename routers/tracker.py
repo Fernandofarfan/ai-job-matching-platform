@@ -187,7 +187,7 @@ browser = [Depends(require_browser_session)]
 @router.get('/jobs', dependencies=browser, response_model=None)
 def list_jobs(db: Any = Depends(get_db)) -> dict[str, Any]:
     """Todas las postulaciones del tracker, con fechas en ISO."""
-    jobs = [with_iso_dates(job) for job in db.get_all_tracked_jobs()]
+    jobs = [with_iso_dates(job) for job in db.get_all_tracked_jobs(raise_errors=True)]
     return {'success': True, 'jobs': jobs, 'count': len(jobs)}
 
 

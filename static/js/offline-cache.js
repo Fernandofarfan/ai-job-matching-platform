@@ -35,11 +35,13 @@ function openDB() {
 }
 
 // ── Guardar datos en IndexedDB ───────────────────────────────
-async function saveToStore(storeName, data) {
+// replace=true borra antes lo guardado, así no quedan registros que el servidor ya no devuelve.
+async function saveToStore(storeName, data, replace = false) {
   const db = await openDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(storeName, 'readwrite');
     const store = tx.objectStore(storeName);
+    if (replace) store.clear();
     if (Array.isArray(data)) {
       data.forEach((item) => store.put(item));
     } else {
@@ -68,7 +70,7 @@ async function syncTrackerData() {
     if (!response.ok) throw new Error('Network error');
     const data = await response.json();
     if (data.success && data.jobs) {
-      await saveToStore(STORES.tracker, data.jobs);
+      await saveToStore(STORES.tracker, data.jobs, true);
       console.log(`[OfflineCache] Cached ${data.jobs.length} tracker jobs`);
       return data.jobs;
     }

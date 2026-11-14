@@ -6,6 +6,15 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar] - Tests del JavaScript del navegador
+
+- `tests_integration/test_browser_js.py`: 20 tests en Chromium para `actions.js`, `passkeys.js`, `push.js`,
+  `offline-cache.js` y `document_batch.js`. Sirven una página mínima con los scripts reales y respuestas fijas de la
+  API, sin levantar la app; WebAuthn, el service worker y las notificaciones se reemplazan con dobles.
+- Arreglo: el caché offline del tracker no borraba las postulaciones que ya no estaban en el servidor; ahora cada
+  sincronización reemplaza lo guardado.
+
+
 ## [Sin publicar] - mypy estricto, etapa 2
 
 - `services.*`, `routers.*` y `tasks.*` tienen todas las funciones tipadas, genéricos con parámetros y no devuelven
