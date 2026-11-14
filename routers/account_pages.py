@@ -7,6 +7,7 @@ con la misma clave por cuenta.
 """
 import logging
 import os
+import re
 from datetime import date
 from typing import Optional, cast
 from urllib.parse import quote
@@ -91,18 +92,18 @@ def _gmail_client_file() -> str:
     return os.getenv('GMAIL_OAUTH_CLIENT_FILE', 'credentials.json')
 
 
-def render_account(request: Request, new_token=None, **once) -> Response:
-    """Página de cuenta. `new_token`, el QR y los códigos de recuperación se muestran una sola vez (no-store)."""
+def render_account(request: Request, **once) -> Response:
+    """Página de cuenta. El QR y los códigos de recuperación se muestran una sola vez (no-store)."""
     user_id = _user_id()
     response = render(
         request, 'account.html', user=accounts.get_user(user_id), min_password=accounts.MIN_PASSWORD,
         integ=integrations.status(user_id), telegram_bot=bool(os.getenv('TELEGRAM_BOT_TOKEN')),
-        gmail_available=os.path.exists(_gmail_client_file()), new_token=new_token,
+        gmail_available=os.path.exists(_gmail_client_file()),
         events=security_events.recent(user_id),
         open_sessions=user_sessions.active(user_id, get_session(request).get('sid')),
         two_factor=_two_factor_status(user_id), totp_setup=once.get('totp_setup'),
         recovery_codes=once.get('recovery_codes'), passkeys=_passkeys(user_id))
-    if new_token or once:
+    if once:
         response.headers['Cache-Control'] = 'no-store'
     return response
 
@@ -151,18 +152,40 @@ def _test_telegram(request: Request) -> Response:
     return _to_account(request)
 
 
-@router.post("/account/extension_token", name="new_extension_token")
-async def new_extension_token(request: Request):
-    """Genera el token de la extensión de Chrome para esta cuenta (reemplaza al anterior)."""
-    _form_data, error = await _form(request, '5 per minute', 'new_extension_token')
-    return error or await run_in_threadpool(_new_extension_token, request)
+# Lo genera la extensión (chrome_extension/link.js); solo ella sabe qué state espera
+EXTENSION_STATE = re.compile(r'^[A-Za-z0-9_-]{16,128}$')
 
 
-def _new_extension_token(request: Request) -> Response:
-    """Token nuevo, mostrado una sola vez."""
+def _extension_page(request: Request, state: str, token: Optional[str] = None) -> Response:
+    response = render(request, 'extension_link.html', state=state, token=token)
+    response.headers['Cache-Control'] = 'no-store'
+    return response
+
+
+@router.get("/account/extension/link", name="link_extension")
+def link_extension(request: Request):
+    """Confirmación para vincular la extensión que abrió esta pestaña."""
+    state = request.query_params.get('state', '')
+    if not auth.auth_enabled() or not EXTENSION_STATE.match(state):
+        return _not_found(request)
+    return _extension_page(request, state)
+
+
+@router.post("/account/extension/link", name="confirm_link_extension")
+async def confirm_link_extension(request: Request):
+    """Genera el token de la extensión (reemplaza al anterior) y se lo pasa en la página, no en la URL."""
+    form, error = await _form(request, '5 per minute', 'new_extension_token')
+    return error or await run_in_threadpool(_confirm_link_extension, request, form)
+
+
+def _confirm_link_extension(request: Request, form: TextForm) -> Response:
+    """La extensión lee el token de la página que carga en su pestaña, si el state coincide."""
+    state = form.get('state', '')
+    if not EXTENSION_STATE.match(state):
+        return _not_found(request)
     token = integrations.new_extension_token(_user_id())
-    audit(request, _user_id(), 'extension_token_created')
-    return render_account(request, new_token=token)
+    audit(request, _user_id(), 'extension_linked')
+    return _extension_page(request, state, token)
 
 
 @router.post("/account/extension_token/revoke", name="revoke_extension_token")
@@ -176,7 +199,7 @@ def _revoke_extension_token(request: Request) -> Response:
     """Borra el token y registra el evento."""
     integrations.revoke_extension_token(_user_id())
     audit(request, _user_id(), 'extension_token_revoked')
-    flash(request, 'Token de la extensión revocado', 'success')
+    flash(request, 'Extensión desvinculada', 'success')
     return _to_account(request)
 
 

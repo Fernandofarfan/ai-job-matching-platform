@@ -21,7 +21,7 @@ La publicación la hace el dueño de la cuenta de desarrollador (pago único de 
 - **Datos que maneja:** título, empresa, ubicación, salario, descripción y URL de la oferta abierta. Se envían solo al servidor que el usuario configura (por defecto `http://localhost:5000`); no hay servidores de terceros ni analítica.
 - **Justificación de permisos:**
   - `activeTab` y `scripting`: leer la oferta de la pestaña actual cuando el usuario usa el menú contextual.
-  - `storage`: guardar la URL del servidor y el token de la extensión.
+  - `storage`: guardar la URL del servidor (sincronizada) y el token de la extensión (solo en el dispositivo, `storage.local`).
   - `contextMenus`: entrada "Guardar en EmpleoIA" del click derecho.
   - Host `localhost:5000`: enviar la oferta a la instancia local.
   - Host opcional `https://*/*`: se pide solo para el origen exacto del servidor que el usuario configura (por ejemplo su Cloud Run).

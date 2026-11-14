@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "EmpleoIA Saver",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Guardá ofertas de LinkedIn, Indeed, Bumeran, ZonaJobs, Computrabajo y GetOnBoard en tu EmpleoIA con 1 click.",
   "permissions": [
     "activeTab",

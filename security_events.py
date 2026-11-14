@@ -25,6 +25,7 @@ LABELS = {
     'email_verified': 'Email confirmado',
     'telegram_changed': 'Telegram configurado',
     'extension_token_created': 'Token de la extensión generado',
+    'extension_linked': 'Extensión de Chrome vinculada',
     'extension_token_revoked': 'Token de la extensión revocado',
     'gmail_connected': 'Gmail conectado',
     'gmail_disconnected': 'Gmail desconectado',

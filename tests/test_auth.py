@@ -303,16 +303,16 @@ def test_gmail_token_encrypted(registered, monkeypatch):
 
 
 def test_account_page_integrations(registered, monkeypatch):
-    """Desde "Mi cuenta" se guarda el chat y el token nuevo se muestra una sola vez."""
+    """Desde "Mi cuenta" se guarda el chat; el token de la extensión va solo en la página de vinculación."""
     import integrations
     monkeypatch.setenv('TELEGRAM_BOT_TOKEN', 'bot')
     _login(registered)
     registered.post('/account/telegram', data={'chat_id': '333'})
     ana = accounts.find_user_id('ana@example.com')
     assert integrations.telegram_chat_id(ana) == '333'
-    page = registered.post('/account/extension_token')
+    page = registered.post('/account/extension/link', data={'state': 'estado-de-la-extension-123'})
     assert page.headers['Cache-Control'] == 'no-store'
-    token = page.get_data(as_text=True).split('id="new-token" value="')[1].split('"')[0]
+    token = page.get_data(as_text=True).split('data-token="')[1].split('"')[0]
     assert integrations.user_for_extension_token(token) == ana
     assert token not in registered.get('/account').get_data(as_text=True)
 

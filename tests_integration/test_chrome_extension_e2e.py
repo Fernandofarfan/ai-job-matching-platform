@@ -3,6 +3,7 @@ import os
 import tempfile
 
 import pytest
+from playwright.sync_api import expect
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 EXT = os.path.join(ROOT, 'chrome_extension')
@@ -70,3 +71,104 @@ def test_popup_buttons_work_under_mv3_csp(extension_context):
     popup.click('#connect-btn')
     assert 'no es válida' in popup.locator('#message-area').inner_text()
     assert errors == []
+
+
+LINK_URL = 'http://localhost:5000/account/extension/link'
+STATE = 'estado-de-la-extension-123'
+TOKEN = 'tok_' + 'a' * 40
+
+
+def _serve_link_page(context, state=STATE, token=TOKEN):
+    """La página de confirmación de la app, con el token para la extensión (sin levantar la app)."""
+    body = (f'<!doctype html><title>Vincular</title><div id="empleoia-extension-link" hidden '
+            f'data-state="{state}" data-token="{token}"></div>')
+    context.route('http://localhost:5000/**', lambda route: route.fulfill(content_type='text/html', body=body))
+
+
+def _local_token(worker, wait=True):
+    return worker.evaluate("""async (wait) => {
+        for (let i = 0; i < (wait ? 50 : 1); i++) {
+            const { extensionToken } = await chrome.storage.local.get('extensionToken');
+            if (extensionToken) return extensionToken;
+            await new Promise(r => setTimeout(r, 100));
+        }
+        return null;
+    }""", wait)
+
+
+def test_link_stores_token_only_on_device(extension_context):
+    """Con el state que generó el popup, el service worker guarda el token en storage.local y no en sync."""
+    context, worker = extension_context
+    worker.evaluate(f"chrome.storage.session.set({{ linkState: '{STATE}' }})")
+    # espera la migración del arranque para que no copie el token viejo después
+    worker.evaluate("""async () => {
+        while (!(await chrome.storage.local.get('tokenMigrated')).tokenMigrated) {
+            await new Promise(r => setTimeout(r, 50));
+        }
+        await chrome.storage.sync.set({ extensionToken: 'viejo' });
+    }""")
+    _serve_link_page(context)
+    context.new_page().goto(LINK_URL)
+    assert _local_token(worker) == TOKEN
+    stored = worker.evaluate("""async () => ({
+        sync: await chrome.storage.sync.get('extensionToken'),
+        session: await chrome.storage.session.get('linkState'),
+    })""")
+    assert stored == {'sync': {}, 'session': {}}
+
+
+def test_link_ignores_page_with_another_state(extension_context):
+    """Una página con otro state (no la abrió esta extensión) no cambia el token."""
+    context, worker = extension_context
+    worker.evaluate(f"chrome.storage.session.set({{ linkState: '{STATE}' }})")
+    _serve_link_page(context, state='otro-estado-cualquiera-456')
+    page = context.new_page()
+    page.goto(LINK_URL)
+    page.wait_for_timeout(1000)
+    assert _local_token(worker, wait=False) is None
+
+
+def test_token_from_old_version_is_copied_once(extension_context):
+    """El token que versiones anteriores dejaban en storage.sync se copia a storage.local una sola vez.
+
+    Queda en sync para los otros Chrome que todavía no se actualizaron; desvincular no lo vuelve a copiar."""
+    _context, worker = extension_context
+    result = worker.evaluate("""async () => {
+        while (!(await chrome.storage.local.get('tokenMigrated')).tokenMigrated) {
+            await new Promise(r => setTimeout(r, 50));
+        }
+        await chrome.storage.local.remove('tokenMigrated');
+        await chrome.storage.sync.set({ extensionToken: 'viejo' });
+        await EmpleoIALink.migrateToken(chrome.storage);
+        const first = {
+            sync: await chrome.storage.sync.get('extensionToken'),
+            local: await chrome.storage.local.get('extensionToken'),
+        };
+        await chrome.storage.local.remove('extensionToken');
+        await EmpleoIALink.migrateToken(chrome.storage);
+        return { first, again: await chrome.storage.local.get('extensionToken') };
+    }""")
+    assert result == {'first': {'sync': {'extensionToken': 'viejo'}, 'local': {'extensionToken': 'viejo'}},
+                      'again': {}}
+
+
+def test_popup_link_button_opens_account_with_state(extension_context):
+    """"Vincular con mi cuenta" abre Mi cuenta con un state nuevo, que queda guardado para comprobar la respuesta."""
+    context, worker = extension_context
+    extension_id = worker.url.split('/')[2]
+    popup = context.new_page()
+    popup.goto(f'chrome-extension://{extension_id}/popup.html')
+    # el estado lo carga el popup de forma asíncrona desde storage.local
+    # (expect y no wait_for_function: la CSP de la extensión no permite evaluar strings)
+    expect(popup.locator('#link-status')).to_contain_text('Sin vincular')
+    # se registra la URL que abriría la pestaña: así no depende de que haya una app escuchando en el puerto
+    popup.evaluate("() => { window.openedUrls = []; chrome.tabs.create = async (o) => { window.openedUrls.push(o.url); return {}; }; }")
+    popup.click('#settings-toggle')
+    popup.click('#link-btn')
+    for _ in range(50):
+        if popup.evaluate('() => window.openedUrls.length'):
+            break
+        popup.wait_for_timeout(100)
+    url = popup.evaluate('() => window.openedUrls[0]')
+    state = worker.evaluate("async () => (await chrome.storage.session.get('linkState')).linkState")
+    assert url == f'{LINK_URL}?state={state}' and len(state) >= 32

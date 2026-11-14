@@ -1,7 +1,9 @@
-"""Mi cuenta: Telegram, token de la extensión, Gmail y reenvío de verificación."""
+"""Mi cuenta: Telegram, vincular la extensión, Gmail y reenvío de verificación."""
 import pytest
 
 import accounts
+import auth
+import security_events
 import integrations
 from tests.test_gmail_tracker import gmail_tracker  # noqa: F401  (clientes de Google simulados)
 
@@ -30,12 +32,37 @@ def test_telegram_save_and_test(client, ana, monkeypatch):
         assert client.post('/account/telegram/test').status_code == 302
 
 
-def test_extension_token_shown_once_and_revoked(client, ana, monkeypatch):
-    monkeypatch.setattr(integrations, 'new_extension_token', lambda uid: 'tok-secreto-123')
+STATE = 'estado-de-la-extension-123'
+
+
+def test_extension_link_asks_to_confirm(client, ana):
+    response = client.get(f'/account/extension/link?state={STATE}')
+    page = response.get_data(as_text=True)
+    assert response.status_code == 200 and response.headers['Cache-Control'] == 'no-store'
+    assert f'name="state" value="{STATE}"' in page and 'empleoia-extension-link' not in page
+    assert client.get('/account/extension/link').status_code == 404
+    assert client.get('/account/extension/link?state=corto').status_code == 404
+    assert client.get('/account/extension/link?state=' + 'x' * 20 + '%22%3E').status_code == 404
+
+
+def test_extension_link_passes_token_in_page_not_url(client, ana):
+    response = client.post('/account/extension/link', data={'state': STATE})
+    page = response.get_data(as_text=True)
+    assert response.status_code == 200 and response.headers['Cache-Control'] == 'no-store'
+    token = page.split('data-token="')[1].split('"')[0]
+    assert f'data-state="{STATE}"' in page and auth.extension_token_user(token) == ana
+    assert 'extension_linked' in [e['kind'] for e in security_events.recent(ana)]
+    assert client.post('/account/extension/link', data={'state': 'mal estado'}).status_code == 404
+
+
+def test_extension_link_requires_login(client, accounts_db):
+    response = client.get(f'/account/extension/link?state={STATE}')
+    assert response.status_code == 302 and '/login' in response.headers['Location']
+
+
+def test_extension_unlinked(client, ana, monkeypatch):
     revoked = []
     monkeypatch.setattr(integrations, 'revoke_extension_token', revoked.append)
-    response = client.post('/account/extension_token')
-    assert 'tok-secreto-123' in response.get_data(as_text=True) and response.headers['Cache-Control'] == 'no-store'
     assert client.post('/account/extension_token/revoke').status_code == 302 and revoked == [ana]
 
 

@@ -274,8 +274,9 @@
       <input type="url" class="server-input" id="server-url"
              placeholder="http://localhost:5000" value="http://localhost:5000">
       <button type="button" class="btn-extract" id="connect-btn">Permitir acceso a este servidor</button>
-      <label for="extension-token">Token de la extensión (Mi cuenta → Extensión de Chrome):</label>
-      <input type="password" class="server-input" id="extension-token" placeholder="Solo si la app pide login">
+      <p id="link-status" role="status"></p>
+      <button type="button" class="btn-extract" id="link-btn">Vincular con mi cuenta</button>
+      <button type="button" class="btn-extract" id="unlink-btn" hidden>Desvincular este dispositivo</button>
     </div>
 
     <!-- Message area -->
@@ -328,6 +329,7 @@
     <a href="http://localhost:5000/tracker" target="_blank">Abrir Job Tracker →</a>
   </div>
 
+  <script src="link.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

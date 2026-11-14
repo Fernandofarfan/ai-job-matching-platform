@@ -526,9 +526,9 @@ La extensión **EmpleoIA Saver** permite guardar ofertas de trabajo con 1 click.
 - ✅ GetOnBoard (getonbrd.com)
 - ✅ Click derecho → Guardar en EmpleoIA (cualquier página; usa el JobPosting de schema.org si la página lo publica)
 
-### Servidor y token
+### Servidor y vinculación
 
-En ⚙️ cargá la URL de tu EmpleoIA y el token que generás en **Mi cuenta → Extensión de Chrome** (guarda en el tracker de esa cuenta). Para un servidor que no sea `localhost:5000` (por ejemplo Cloud Run), tocá **Permitir acceso a este servidor**: la extensión solo pide permiso para ese origen.
+En ⚙️ cargá la URL de tu EmpleoIA y tocá **Vincular con mi cuenta**: se abre Mi cuenta, confirmás y la extensión queda vinculada (guarda en el tracker de esa cuenta). No hay que copiar ningún token: se guarda solo en ese dispositivo (`chrome.storage.local`), no se sincroniza a otros Chrome, y **Mi cuenta → Desvincular** lo revoca. Para un servidor que no sea `localhost:5000` (por ejemplo Cloud Run), tocá **Permitir acceso a este servidor**: la extensión solo pide permiso para ese origen.
 
 ### Publicar en el Chrome Web Store
 

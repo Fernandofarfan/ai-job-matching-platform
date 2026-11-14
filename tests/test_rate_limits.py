@@ -41,8 +41,9 @@ def test_account_limits_are_per_account_not_per_ip(app, limited, make_client):
     ana, beto = make_client(), make_client()
     _login(ana, 'ana@example.com')
     _login(beto, 'beto@example.com')
-    assert [ana.post('/account/extension_token').status_code for _ in range(6)][-1] == 429
-    assert beto.post('/account/extension_token').status_code == 200
+    link = ('/account/extension/link', {'state': 'estado-de-la-extension-123'})
+    assert [ana.post(link[0], data=link[1]).status_code for _ in range(6)][-1] == 429
+    assert beto.post(link[0], data=link[1]).status_code == 200
 
 
 def test_login_is_limited_per_email_across_ips(client, limited, monkeypatch):

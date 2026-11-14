@@ -539,5 +539,15 @@
  "Pendiente:": "Pendente:",
  "Primeros pasos": "Primeiros passos",
  "Se registraron": "Cadastraram-se",
- "Subí tu CV": "Envie seu currículo"
+ "Subí tu CV": "Envie seu currículo",
+ "Desvincular": "Desvincular",
+ "Extensión de Chrome vinculada": "Extensão do Chrome vinculada",
+ "La extensión EmpleoIA Saver pide guardar ofertas en el tracker de esta cuenta. Confirmá solo si la abriste vos desde la extensión.": "A extensão EmpleoIA Saver pede para salvar vagas no tracker desta conta. Confirme só se você abriu isto pela extensão.",
+ "La extensión está vinculada con esta cuenta.": "A extensão está vinculada a esta conta.",
+ "Listo: la extensión quedó vinculada con tu cuenta en este dispositivo. Ya podés cerrar esta pestaña.": "Pronto: a extensão ficou vinculada à sua conta neste dispositivo. Você já pode fechar esta aba.",
+ "Para vincularla, abrí la extensión, entrá en ⚙️ y tocá \"Vincular con mi cuenta\": te trae acá para confirmar, sin copiar ningún token.": "Para vinculá-la, abra a extensão, vá em ⚙️ e toque em \"Vincular com minha conta\": ela traz você aqui para confirmar, sem copiar nenhum token.",
+ "Si la extensión no muestra \"Vinculada\", volvé a tocar \"Vincular con mi cuenta\" desde la extensión.": "Se a extensão não mostrar \"Vinculada\", toque de novo em \"Vincular com minha conta\" na extensão.",
+ "Si ya tenías la extensión vinculada en otro dispositivo, ese deja de funcionar.": "Se a extensão já estava vinculada em outro dispositivo, aquele deixa de funcionar.",
+ "Vincular": "Vincular",
+ "Vincular la extensión de Chrome": "Vincular a extensão do Chrome"
 }
