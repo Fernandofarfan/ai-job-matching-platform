@@ -16,8 +16,8 @@
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-192.png') }}">
 
     <!-- Bootstrap & Icons -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.3/font/bootstrap-icons.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.3/font/bootstrap-icons.css" integrity="sha384-b6lVK+yci+bfDmaY1u0zE8YYJt0TZxLEAFyYSLHId4xoVvsrQu3INevFKo+Xir8e" crossorigin="anonymous">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
@@ -380,7 +380,7 @@
     <!-- ═══════════════════════════════════════════════════════════════════ -->
 
     <!-- Overlay (mobile) -->
-    <div id="copilot-overlay" onclick="closeCopilot()"></div>
+    <div id="copilot-overlay" data-onclick="closeCopilot"></div>
 
     <!-- Sidebar -->
     <div id="copilot-sidebar" role="complementary" aria-label="{{ _('Asistente Copilot') }}">
@@ -391,16 +391,16 @@
                 <h6>{{ _('Asistente Copilot') }}</h6>
                 <small id="copilot-ai-status">{{ _('Impulsado por Gemini') }}</small>
             </div>
-            <button class="copilot-close-btn" onclick="closeCopilot()" title="{{ _('Cerrar') }}">✕</button>
+            <button class="copilot-close-btn" data-onclick="closeCopilot" title="{{ _('Cerrar') }}">✕</button>
         </div>
 
         <!-- Quick Action Chips -->
         <div class="copilot-quick-actions">
-            <span class="qa-chip" onclick="quickAction('¿Cómo mejoro mi tasa de respuesta?')">📈 {{ _('Mejorar tasa') }}</span>
-            <span class="qa-chip" onclick="quickAction('Dame consejos para el follow-up')">📧 Follow-up</span>
-            <span class="qa-chip" onclick="quickAction('¿Cómo negocio mi salario?')">💰 {{ _('Salario') }}</span>
-            <span class="qa-chip" onclick="quickAction('Consejos para el perfil de LinkedIn')">💼 LinkedIn</span>
-            <span class="qa-chip" onclick="quickAction('¿Dónde buscan talento tech en Argentina?')">🇦🇷 {{ _('Mercado') }}</span>
+            <span class="qa-chip" data-onclick="quickAction" data-args='["¿Cómo mejoro mi tasa de respuesta?"]'>📈 {{ _('Mejorar tasa') }}</span>
+            <span class="qa-chip" data-onclick="quickAction" data-args='["Dame consejos para el follow-up"]'>📧 Follow-up</span>
+            <span class="qa-chip" data-onclick="quickAction" data-args='["¿Cómo negocio mi salario?"]'>💰 {{ _('Salario') }}</span>
+            <span class="qa-chip" data-onclick="quickAction" data-args='["Consejos para el perfil de LinkedIn"]'>💼 LinkedIn</span>
+            <span class="qa-chip" data-onclick="quickAction" data-args='["¿Dónde buscan talento tech en Argentina?"]'>🇦🇷 {{ _('Mercado') }}</span>
         </div>
 
         <!-- Messages -->
@@ -423,10 +423,10 @@
                     class="copilot-textarea"
                     placeholder="{{ _('Preguntale algo al Copilot...') }}"
                     rows="1"
-                    onkeydown="handleCopilotKeydown(event)"
-                    oninput="autoResizeTextarea(this)"
+                    data-onkeydown="handleCopilotKeydown" data-onkeydown-args='["$event"]'
+                    data-oninput="autoResizeTextarea" data-oninput-args='["$el"]'
                 ></textarea>
-                <button class="copilot-send-btn" id="copilot-send-btn" onclick="sendCopilotMessage()" title="{{ _('Enviar') }}">
+                <button class="copilot-send-btn" id="copilot-send-btn" data-onclick="sendCopilotMessage" title="{{ _('Enviar') }}">
                     <i class="bi bi-send-fill"></i>
                 </button>
             </div>
@@ -435,11 +435,11 @@
     </div>
 
     <!-- Floating toggle -->
-    <button id="copilot-toggle-btn" onclick="toggleCopilot()" title="AI Copilot">
+    <button id="copilot-toggle-btn" data-onclick="toggleCopilot" title="AI Copilot">
         🤖
     </button>
 
-    <script>
+    <script nonce="{{ csp_nonce() }}">
     // CSRF: agrega el token a fetch same-origin y a todos los formularios POST
     (function () {
         const token = document.querySelector('meta[name="csrf-token"]').content;
@@ -467,13 +467,14 @@
         }, true);
     })();
     </script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
     <!-- Offline cache & Service Worker -->
+    <script src="{{ url_for('static', filename='js/actions.js') }}"></script>
     <script src="{{ url_for('static', filename='js/offline-cache.js') }}"></script>
     <script src="{{ url_for('static', filename='js/push.js') }}"></script>
 
     <!-- ── AI Copilot JS ─────────────────────────────────────────────────── -->
-    <script>
+    <script nonce="{{ csp_nonce() }}">
     let copilotHistory = [];
     let copilotOpen = false;
     let copilotTyping = false;
@@ -567,7 +568,8 @@
         div.className = `msg ${role}`;
         const avatar = role === 'assistant' ? '🤖' : '<i class="bi bi-person"></i>';
         // Convert **bold** and line breaks for display
-        const formatted = text
+        const escaped = text.replace(/[&<>"']/g, (c) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+        const formatted = escaped
             .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
             .replace(/\n/g, '<br>');
         div.innerHTML = `

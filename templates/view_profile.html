@@ -26,7 +26,7 @@
     </a>
     {% if role_type %}
     <a href="/delete_profile/{{ role_type }}" class="btn btn-outline-danger"
-      onclick="return confirm('¿Estás seguro de eliminar este perfil?')">
+      data-confirm="¿Estás seguro de eliminar este perfil?">
       <i class="bi bi-trash me-1"></i> Eliminar
     </a>
     {% endif %}
@@ -196,7 +196,7 @@
           <h5 class="fw-bold mb-0">
             <i class="bi bi-file-text text-secondary me-2"></i>Vista Previa del CV
           </h5>
-          <button class="btn btn-sm btn-outline-secondary" onclick="togglePreview()">
+          <button class="btn btn-sm btn-outline-secondary" data-onclick="togglePreview">
             <i class="bi bi-arrows-angle-expand" id="expandIcon"></i>
           </button>
         </div>
@@ -458,7 +458,7 @@
   }
 </style>
 
-<script>
+<script nonce="{{ csp_nonce() }}">
   function togglePreview() {
     const preview = document.getElementById('resumePreview');
     const icon = document.getElementById('expandIcon');

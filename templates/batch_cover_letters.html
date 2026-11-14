@@ -115,7 +115,7 @@
 
         <!-- Results List -->
         <div id="generation_results" style="display: none;">
-          <div class="table-responsive">
+          <div class="table-responsive" tabindex="0">
             <table class="table table-hover align-middle mb-0">
               <thead class="bg-light">
                 <tr>
@@ -162,7 +162,7 @@
   .tone-option.selected { border-color: #667eea; background: rgba(102,126,234,0.08); }
   .tone-icon { font-size: 1.4rem; }
 </style>
-<script>
+<script nonce="{{ csp_nonce() }}">
   // ── Tone selector visual toggle ──────────
   document.querySelectorAll('.tone-option').forEach(option => {
     option.addEventListener('click', () => {
@@ -173,7 +173,8 @@
   });
 
   // ── Generate button ──────────────────────
-  document.getElementById('start_generation').addEventListener('click', function () {
+  // sin archivos de búsqueda no se muestra el botón
+  document.getElementById('start_generation')?.addEventListener('click', function () {
     const filename = document.getElementById('job_file_select').value;
     const numJobs  = parseInt(document.getElementById('num_jobs').value) || 5;
     const tone     = document.querySelector('input[name="tone"]:checked')?.value || 'profesional';

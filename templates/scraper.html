@@ -48,7 +48,7 @@
               <span id="universal-progress-text" class="fw-bold text-primary">0%</span>
             </div>
             <div class="progress mb-3" style="height: 12px;">
-              <div id="universal-progress" class="progress-bar progress-bar-striped bg-primary" role="progressbar"
+              <div id="universal-progress" class="progress-bar progress-bar-striped bg-primary" role="progressbar" aria-label="Progreso de Universal" aria-valuemin="0" aria-valuemax="100"
                 style="width: 0%"></div>
             </div>
             <p id="universal-message" class="small text-muted mb-4 text-center fst-italic"></p>
@@ -154,7 +154,7 @@
               <span id="indeed-status" class="badge bg-light text-dark border">Inactivo</span>
             </div>
             <div class="progress mb-2" style="height: 6px;">
-              <div id="indeed-progress" class="progress-bar" role="progressbar" style="width: 0%"></div>
+              <div id="indeed-progress" class="progress-bar" role="progressbar" aria-label="Progreso de Indeed" aria-valuemin="0" aria-valuemax="100" style="width: 0%"></div>
             </div>
             <p id="indeed-message" class="small text-muted text-truncate"></p>
           </div>
@@ -211,7 +211,7 @@
               <span id="linkedin-status" class="badge bg-light text-dark border">Inactivo</span>
             </div>
             <div class="progress mb-2" style="height: 6px;">
-              <div id="linkedin-progress" class="progress-bar bg-info" role="progressbar" style="width: 0%"></div>
+              <div id="linkedin-progress" class="progress-bar bg-info" role="progressbar" aria-label="Progreso de Linkedin" aria-valuemin="0" aria-valuemax="100" style="width: 0%"></div>
             </div>
             <p id="linkedin-message" class="small text-muted text-truncate"></p>
           </div>
@@ -238,14 +238,14 @@
           </div>
 
           <div class="d-flex justify-content-between mb-3">
-            <button type="button" class="btn btn-outline-info btn-sm" id="add-linkedin-search">
+            <button type="button" class="btn btn-outline-primary btn-sm" id="add-linkedin-search">
               <i class="bi bi-plus-lg me-1"></i> Agregar Fila
             </button>
           </div>
 
           <div class="mb-3">
             <button type="button" class="btn btn-outline-secondary btn-sm w-100"
-              onclick="toggleFilters('linkedin-filters')" id="toggle-linkedin-filters">
+              data-onclick="toggleFilters" data-args='["linkedin-filters"]' id="toggle-linkedin-filters">
               <i class="bi bi-sliders me-1"></i> Configuración Avanzada
             </button>
             <div id="linkedin-filters" class="mt-3 p-3 border rounded bg-light" style="display: none;">
@@ -258,7 +258,7 @@
             </div>
           </div>
 
-          <button type="submit" class="btn btn-info text-white w-100">
+          <button type="submit" class="btn btn-primary w-100">
             <i class="bi bi-search me-2"></i> Buscar en LinkedIn
           </button>
         </form>
@@ -281,7 +281,7 @@
               <span id="computrabajo-status" class="badge bg-light text-dark border">Inactivo</span>
             </div>
             <div class="progress mb-2" style="height: 6px;">
-              <div id="computrabajo-progress" class="progress-bar bg-danger" role="progressbar" style="width: 0%"></div>
+              <div id="computrabajo-progress" class="progress-bar bg-danger" role="progressbar" aria-label="Progreso de Computrabajo" aria-valuemin="0" aria-valuemax="100" style="width: 0%"></div>
             </div>
             <p id="computrabajo-message" class="small text-muted text-truncate"></p>
           </div>
@@ -337,7 +337,7 @@
               <span id="bumeran-status" class="badge bg-light text-dark border">Inactivo</span>
             </div>
             <div class="progress mb-2" style="height: 6px;">
-              <div id="bumeran-progress" class="progress-bar bg-success" role="progressbar" style="width: 0%"></div>
+              <div id="bumeran-progress" class="progress-bar bg-success" role="progressbar" aria-label="Progreso de Bumeran" aria-valuemin="0" aria-valuemax="100" style="width: 0%"></div>
             </div>
             <p id="bumeran-message" class="small text-muted text-truncate"></p>
           </div>
@@ -380,7 +380,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script>
+<script nonce="{{ csp_nonce() }}">
   document.addEventListener('DOMContentLoaded', function () {
     // Add search row buttons
     document.getElementById('add-indeed-search').addEventListener('click', function () {

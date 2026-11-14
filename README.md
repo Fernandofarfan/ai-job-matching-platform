@@ -431,7 +431,10 @@ GOOGLE_OAUTH_CLIENT_ID=      # "Entrar con Google" (cliente OAuth web; redirect:
 GOOGLE_OAUTH_CLIENT_SECRET=
 GMAIL_OAUTH_CLIENT_FILE=credentials.json  # cliente OAuth "aplicación web" de Google para "Conectar Gmail" en Mi cuenta
                        # (redirect URI: PUBLIC_BASE_URL + /account/gmail/callback)
-SESSION_COOKIE_SECURE=0  # 1 detrás de HTTPS
+SESSION_COOKIE_SECURE=0  # 1 detrás de HTTPS (también activa HSTS)
+CSP_REPORT_ONLY=0      # 1 = la CSP solo informa violaciones (Content-Security-Policy-Report-Only), útil para probar
+CSP_REPORT_URI=        # URL que recibe los reportes de violaciones de la CSP (opcional)
+ENABLE_API_DOCS=0      # 1 publica /docs, /redoc y /openapi.json; apagado en producción
 FLASK_HOST=127.0.0.1   # python app.py solo escucha en localhost; usá 0.0.0.0 para exponerlo
 FLASK_PORT=5000
 FLASK_DEBUG=0          # 1 activa el modo debug (recarga y /debug/directories): nunca lo expongas a la red

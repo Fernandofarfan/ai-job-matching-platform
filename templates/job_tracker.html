@@ -19,7 +19,7 @@
       <a href="/results" class="btn btn-outline-secondary">
         <i class="bi bi-file-earmark-spreadsheet me-2"></i> Importar de Resultados
       </a>
-      <button class="btn btn-outline-secondary" id="toggleCompactView" onclick="toggleCompactView()">
+      <button class="btn btn-outline-secondary" id="toggleCompactView" data-onclick="toggleCompactView">
         <i class="bi bi-list-ul me-2"></i> Vista Compacta
       </button>
       <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addJobModal">
@@ -206,7 +206,7 @@
       <div class="modal-footer border-top-0 bg-light">
         <button type="button" class="btn btn-link text-muted text-decoration-none"
           data-bs-dismiss="modal">Cancelar</button>
-        <button type="button" class="btn btn-primary px-4" onclick="saveManualJob()">Guardar Empleo</button>
+        <button type="button" class="btn btn-primary px-4" data-onclick="saveManualJob">Guardar Empleo</button>
       </div>
     </div>
   </div>
@@ -224,7 +224,7 @@
         <!-- Details loaded dynamically -->
       </div>
       <div class="modal-footer border-top-0 bg-light justify-content-between">
-        <button type="button" class="btn btn-outline-danger" onclick="deleteJob()">
+        <button type="button" class="btn btn-outline-danger" data-onclick="deleteJob">
           <i class="bi bi-trash me-2"></i> Eliminar
         </button>
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
@@ -233,7 +233,7 @@
   </div>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce() }}">
   let currentJobId = null;
 
   // Load all jobs on page load
@@ -491,7 +491,7 @@
               <label class="small text-muted fw-bold text-uppercase" for="detailNotes">Notas</label>
               <textarea class="form-control" id="detailNotes" rows="3">${escapeHtml(job.notes || '')}</textarea>
               <div class="d-flex align-items-center gap-2 mt-2">
-                <button type="button" class="btn btn-sm btn-primary" onclick="saveReminder()">
+                <button type="button" class="btn btn-sm btn-primary" data-onclick="saveReminder">
                   <i class="bi bi-alarm me-1" aria-hidden="true"></i> Guardar fechas y notas
                 </button>
                 <span id="reminderStatus" class="small" role="status"></span>

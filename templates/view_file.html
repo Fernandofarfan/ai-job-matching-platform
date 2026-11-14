@@ -12,7 +12,7 @@
 
   <div class="row mb-3">
     <div class="col-12 text-end">
-      <button class="btn btn-success me-2" onclick="saveApplicationStatus()">
+      <button class="btn btn-success me-2" data-onclick="saveApplicationStatus">
         <i class="bi bi-save"></i> Guardar y Enviar Postulaciones
       </button>
       <a href="/download_csv/{{ filename }}" class="btn btn-primary me-2">
@@ -35,7 +35,7 @@
           <label class="form-label small fw-bold text-muted">Buscar</label>
           <div class="input-group input-group-sm">
             <span class="input-group-text bg-light border-end-0"><i class="bi bi-search"></i></span>
-            <input aria-label="Buscar" type="text" id="filterKeyword" class="form-control border-start-0" placeholder="Empresa, título..." oninput="applyFilters()">
+            <input aria-label="Buscar" type="text" id="filterKeyword" class="form-control border-start-0" placeholder="Empresa, título..." data-oninput="applyFilters">
           </div>
         </div>
 
@@ -43,25 +43,25 @@
           <label class="form-label small fw-bold text-muted">Modalidad</label>
           <div class="d-flex flex-column gap-1">
             <div class="form-check form-check-sm">
-              <input class="form-check-input" type="checkbox" id="filterRemote" checked onchange="applyFilters()">
+              <input class="form-check-input" type="checkbox" id="filterRemote" checked data-onchange="applyFilters">
               <label class="form-check-label small" for="filterRemote">Remoto</label>
             </div>
             <div class="form-check form-check-sm">
-              <input class="form-check-input" type="checkbox" id="filterHybrid" checked onchange="applyFilters()">
+              <input class="form-check-input" type="checkbox" id="filterHybrid" checked data-onchange="applyFilters">
               <label class="form-check-label small" for="filterHybrid">Híbrido</label>
             </div>
             <div class="form-check form-check-sm">
-              <input class="form-check-input" type="checkbox" id="filterOnsite" checked onchange="applyFilters()">
+              <input class="form-check-input" type="checkbox" id="filterOnsite" checked data-onchange="applyFilters">
               <label class="form-check-label small" for="filterOnsite">Presencial</label>
             </div>
             <div class="form-check form-check-sm">
-              <input class="form-check-input" type="checkbox" id="filterOther" checked onchange="applyFilters()">
+              <input class="form-check-input" type="checkbox" id="filterOther" checked data-onchange="applyFilters">
               <label class="form-check-label small" for="filterOther">Sin Especif.</label>
             </div>
           </div>
         </div>
 
-        <button class="btn btn-sm btn-outline-secondary w-100" onclick="resetFilters()">
+        <button class="btn btn-sm btn-outline-secondary w-100" data-onclick="resetFilters">
           <i class="bi bi-arrow-counterclockwise me-1"></i>Limpiar
         </button>
 
@@ -73,7 +73,7 @@
 
     <!-- Main Table -->
     <div class="col-lg-10">
-      <div class="table-responsive">{{ table_html | safe }}</div>
+      <div class="table-responsive" tabindex="0">{{ table_html | safe }}</div>
     </div>
   </div>
 </div>
@@ -99,7 +99,7 @@
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
           Cerrar
         </button>
-        <button type="button" class="btn btn-primary" onclick="processConnections()">
+        <button type="button" class="btn btn-primary" data-onclick="processConnections">
           Continuar
         </button>
       </div>
@@ -107,7 +107,7 @@
   </div>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce() }}">
   let appliedJobs = {};
 
   document.addEventListener('DOMContentLoaded', function () {
@@ -177,27 +177,32 @@
       const actionsCell = document.createElement('td');
 
       // Determine if we have a valid URL
-      const hasUrl = applyUrl && applyUrl !== '#' && applyUrl !== 'N/A';
+      const hasUrl = /^https?:\/\//i.test(applyUrl || '');
 
-      actionsCell.innerHTML = `
-              <div class="d-flex gap-2">
-                  <button class="btn btn-sm btn-primary fw-bold" 
-                          onclick="applyAndTrack(${index}, '${hasUrl ? applyUrl : ''}', event)"
-                          title="Postular, Seguir y Marcar como Aplicado"
-                          ${!hasUrl ? 'disabled' : ''}>
-                      <i class="bi bi-rocket-takeoff"></i> Postular y Seguir
-                  </button>
-              </div>
-          `;
+      // Celdas armadas con el DOM: la URL viene del CSV y no se mete en HTML ni en un handler inline
+      const applyBtn = document.createElement('button');
+      applyBtn.className = 'btn btn-sm btn-primary fw-bold';
+      applyBtn.title = 'Postular, Seguir y Marcar como Aplicado';
+      applyBtn.disabled = !hasUrl;
+      applyBtn.innerHTML = '<i class="bi bi-rocket-takeoff"></i> Postular y Seguir';
+      applyBtn.addEventListener('click', (event) => applyAndTrack(index, hasUrl ? applyUrl : '', event));
+      const actionsWrap = document.createElement('div');
+      actionsWrap.className = 'd-flex gap-2';
+      actionsWrap.appendChild(applyBtn);
+      actionsCell.appendChild(actionsWrap);
 
       // Create toggle cell
       const toggleCell = document.createElement('td');
-      toggleCell.innerHTML = `
-              <div class="form-check form-switch">
-                  <input class="form-check-input" type="checkbox" id="applied_${index}"
-                         onchange="toggleApplied(${index}, this)">
-              </div>
-          `;
+      const toggleWrap = document.createElement('div');
+      toggleWrap.className = 'form-check form-switch';
+      const toggle = document.createElement('input');
+      toggle.className = 'form-check-input';
+      toggle.type = 'checkbox';
+      toggle.id = `applied_${index}`;
+      toggle.setAttribute('aria-label', 'Aplicado');
+      toggle.addEventListener('change', () => toggleApplied(index, toggle));
+      toggleWrap.appendChild(toggle);
+      toggleCell.appendChild(toggleWrap);
 
       // Insert cells
       if (insertIndex < cells.length) {

@@ -23,6 +23,7 @@ import accounts
 import auth
 import i18n
 import rate_limit
+import security_headers
 
 logger = logging.getLogger(__name__)
 templates = Jinja2Templates(directory=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates'))
@@ -170,11 +171,17 @@ def _csrf_token(context):
 
 
 @pass_context
+def _csp_nonce(context):
+    """Nonce de la CSP del pedido, para los <script> inline de las plantillas."""
+    return security_headers.nonce(context['request'])
+
+
+@pass_context
 def _get_flashed_messages(context, with_categories=False, **_):
     return get_flashed_messages(context['request'], with_categories)
 
 
-templates.env.globals.update({'url_for': _url_for, 'csrf_token': _csrf_token,
+templates.env.globals.update({'url_for': _url_for, 'csrf_token': _csrf_token, 'csp_nonce': _csp_nonce,
                               'get_flashed_messages': _get_flashed_messages, '_': i18n.jinja_gettext})
 
 
