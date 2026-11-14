@@ -61,7 +61,8 @@ rule_files:
 
 **Cloud Monitoring (Terraform):** `terraform/monitoring.tf` crea, sin necesitar Prometheus:
 
-- Uptime check de `/api/health` cada 5 min y alerta si falla 10 min. Solo con `public_access = true`.
+- Uptime check de `/api/ready` cada 5 min y alerta si falla 10 min: avisa si se cae la app, la base o Redis. Solo con `public_access = true`.
+- `/api/health` dice solo que el proceso está vivo (liveness de Cloud Run). `/api/ready` además hace `SELECT 1` en la base y `PING` al Redis de `RATELIMIT_STORAGE_URI` si es redis:// (sin él fallan login y APIs; Celery y las cachés de `REDIS_URL` tienen respaldo local) y da 503 si algo falla; Cloud Run la usa como startup probe y Docker Compose como healthcheck de `web`.
 - 5xx > 5 % y p95 > 5 s con las métricas de Cloud Run.
 - Disco de Cloud SQL > 85 %.
 

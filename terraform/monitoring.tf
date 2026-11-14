@@ -18,12 +18,12 @@ resource "google_monitoring_notification_channel" "email" {
 # Solo si el servicio es público: un uptime check no pasa el IAM de Cloud Run.
 resource "google_monitoring_uptime_check_config" "health" {
   count        = var.public_access ? 1 : 0
-  display_name = "empleoia-web-${local.env} /api/health"
+  display_name = "empleoia-web-${local.env} /api/ready"
   timeout      = "10s"
   period       = "300s"
 
   http_check {
-    path         = "/api/health"
+    path         = "/api/ready"
     port         = 443
     use_ssl      = true
     validate_ssl = true
@@ -42,7 +42,7 @@ resource "google_monitoring_uptime_check_config" "health" {
 
 resource "google_monitoring_alert_policy" "uptime" {
   count        = var.public_access ? 1 : 0
-  display_name = "EmpleoIA ${local.env}: /api/health no responde"
+  display_name = "EmpleoIA ${local.env}: /api/ready no responde (app, base o Redis)"
   combiner     = "OR"
 
   conditions {

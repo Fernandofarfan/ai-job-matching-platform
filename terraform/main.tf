@@ -364,9 +364,11 @@ resource "google_cloud_run_v2_service" "empleoia_web" {
         container_port = 5000
       }
 
+      # startup: no recibe tráfico hasta que la base y Redis respondan; liveness: solo el proceso,
+      # así una caída de la base no reinicia las instancias en loop
       startup_probe {
         http_get {
-          path = "/api/health"
+          path = "/api/ready"
         }
         initial_delay_seconds = 10
         timeout_seconds       = 5

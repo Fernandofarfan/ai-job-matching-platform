@@ -116,7 +116,7 @@ jobs:
             exit 0
           fi
           for i in 1 2 3 4 5; do
-            curl -fsS "$url/api/health" && exit 0
+            curl -fsS "$url/api/ready" && exit 0
             sleep 10
           done
           exit 1

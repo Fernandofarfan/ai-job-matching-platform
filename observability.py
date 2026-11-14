@@ -146,7 +146,7 @@ def setup_tracing(fastapi_app=None, celery_worker=False):
         RequestsInstrumentor().instrument(excluded_urls=requests_excluded_urls())
         if fastapi_app is not None:
             from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
-            FastAPIInstrumentor.instrument_app(fastapi_app, excluded_urls='api/health,metrics')
+            FastAPIInstrumentor.instrument_app(fastapi_app, excluded_urls='api/health,api/ready,metrics')
         if celery_worker:
             from opentelemetry.instrumentation.celery import CeleryInstrumentor
             CeleryInstrumentor().instrument()

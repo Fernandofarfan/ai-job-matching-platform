@@ -11,6 +11,63 @@ def test_health_endpoint(client):
     assert response.get_json()['status'] == 'ok'
 
 
+def test_ready_ok_without_redis(client, monkeypatch):
+    """Con la base respondiendo y sin Redis configurado, /api/ready da 200."""
+    import main
+    monkeypatch.setattr(main, '_check_database', lambda: None)
+    monkeypatch.delenv('RATELIMIT_STORAGE_URI', raising=False)
+    response = client.get('/api/ready')
+    assert response.status_code == 200
+    assert response.get_json() == {'status': 'ok', 'checks': {'database': 'ok', 'redis': 'ok'}}
+
+
+def test_ready_503_when_database_down(client, monkeypatch):
+    """Si la base no responde, /api/ready da 503 sin el error interno; /api/health sigue en 200."""
+    import main
+
+    def down():
+        raise RuntimeError('secreto interno')
+    monkeypatch.setattr(main, '_check_database', down)
+    monkeypatch.setattr(main, '_check_redis', lambda: None)
+    response = client.get('/api/ready')
+    assert response.status_code == 503
+    assert response.get_json()['checks'] == {'database': 'error', 'redis': 'ok'}
+    assert 'secreto' not in response.get_data(as_text=True)
+    assert client.get('/api/health').status_code == 200
+
+
+def test_ready_pings_rate_limit_redis_only(monkeypatch):
+    """Solo hace ping al Redis de los límites (sin él la web no atiende); REDIS_URL tiene respaldo local."""
+    import redis
+
+    import main
+    pinged = []
+
+    class FakeRedis:
+        def __init__(self, url):
+            self.url = url
+
+        def ping(self):
+            pinged.append(self.url)
+            if 'down' in self.url:
+                raise redis.ConnectionError('no')
+
+        def close(self):
+            pass
+    monkeypatch.setattr(redis.Redis, 'from_url', staticmethod(lambda url, **kw: FakeRedis(url)))
+    monkeypatch.setenv('REDIS_URL', 'redis://down:6379/0')
+    monkeypatch.setenv('CELERY_BROKER_URL', 'redis://down:6379/0')
+    monkeypatch.setenv('RATELIMIT_STORAGE_URI', 'memory://')
+    main._check_redis()
+    assert pinged == []
+    monkeypatch.setenv('RATELIMIT_STORAGE_URI', 'redis://a:6379/0')
+    main._check_redis()
+    assert pinged == ['redis://a:6379/0']
+    monkeypatch.setenv('RATELIMIT_STORAGE_URI', 'redis://down:6379/0')
+    with pytest.raises(redis.ConnectionError):
+        main._check_redis()
+
+
 def test_upload_too_large_redirects(client, app):
     """Un upload que supera MAX_CONTENT_LENGTH redirige al perfil."""
     previous = app.config['MAX_CONTENT_LENGTH']
