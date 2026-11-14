@@ -3,11 +3,11 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
   <div>
-    <h2 class="fw-bold text-dark mb-1">Generador de Cartas de Presentación</h2>
-    <p class="text-muted mb-0">Crea cartas personalizadas para múltiples empleos usando IA</p>
+    <h2 class="fw-bold text-dark mb-1">{{ _('Generador de Cartas de Presentación') }}</h2>
+    <p class="text-muted mb-0">{{ _('Crea cartas personalizadas para múltiples empleos usando IA') }}</p>
   </div>
   <a href="/profile" class="btn btn-outline-primary">
-    <i class="bi bi-person-badge me-2"></i> Verificar mi CV
+    <i class="bi bi-person-badge me-2"></i> {{ _('Verificar mi CV') }}
   </a>
 </div>
 
@@ -16,41 +16,41 @@
   <div class="col-lg-4">
     <div class="card border-0 shadow-sm h-100">
       <div class="card-header bg-white border-0 pt-4 px-4 pb-0">
-        <h5 class="fw-bold mb-0"><i class="bi bi-sliders me-2 text-primary"></i> Configuración</h5>
+        <h5 class="fw-bold mb-0"><i class="bi bi-sliders me-2 text-primary"></i> {{ _('Configuración') }}</h5>
       </div>
       <div class="card-body p-4">
         {% if job_files %}
         <div class="mb-4">
-          <label for="job_file_select" class="form-label small fw-bold text-muted">1. Archivo de Origen</label>
+          <label for="job_file_select" class="form-label small fw-bold text-muted">{{ _('1. Archivo de Origen') }}</label>
           <select class="form-select" id="job_file_select">
-            <option value="">-- Seleccionar archivo CSV --</option>
+            <option value="">{{ _('-- Seleccionar archivo CSV --') }}</option>
             {% for filename in job_files %}
             <option value="{{ filename }}">{{ filename }}</option>
             {% endfor %}
           </select>
-          <div class="form-text small">El archivo debe contener columnas 'Title' y 'Description'.</div>
+          <div class="form-text small">{{ _('El archivo debe contener columnas "Title" y "Description".') }}</div>
         </div>
 
         <div class="mb-4">
-          <label for="num_jobs" class="form-label small fw-bold text-muted">2. Cantidad a Generar</label>
+          <label for="num_jobs" class="form-label small fw-bold text-muted">{{ _('2. Cantidad a Generar') }}</label>
           <div class="input-group">
             <span class="input-group-text bg-light border-end-0"><i class="bi bi-hash"></i></span>
             <input type="number" class="form-control border-start-0" id="num_jobs" value="5" min="1" max="20">
           </div>
-          <div class="form-text small">Se procesarán los primeros N empleos del archivo.</div>
+          <div class="form-text small">{{ _('Se procesarán los primeros N empleos del archivo.') }}</div>
         </div>
 
         <!-- ✨ Nuevo: Selección de tono -->
         <div class="mb-4">
-          <label class="form-label small fw-bold text-muted">3. Tono de la Carta</label>
+          <label class="form-label small fw-bold text-muted">{{ _('3. Tono de la Carta') }}</label>
           <div class="d-flex flex-column gap-2" id="tone-selector">
             <label class="tone-option selected" data-tone="profesional">
               <input type="radio" name="tone" value="profesional" checked class="d-none">
               <div class="d-flex align-items-center gap-2">
                 <span class="tone-icon">🏢</span>
                 <div>
-                  <div class="fw-semibold small">Profesional / Corporativo</div>
-                  <div class="text-muted" style="font-size: 0.75rem;">Formal, estructurado, logros cuantificables</div>
+                  <div class="fw-semibold small">{{ _('Profesional / Corporativo') }}</div>
+                  <div class="text-muted" style="font-size: 0.75rem;">{{ _('Formal, estructurado, logros cuantificables') }}</div>
                 </div>
               </div>
             </label>
@@ -59,8 +59,8 @@
               <div class="d-flex align-items-center gap-2">
                 <span class="tone-icon">🚀</span>
                 <div>
-                  <div class="fw-semibold small">Startup / Tech</div>
-                  <div class="text-muted" style="font-size: 0.75rem;">Dinámico, directo, enfocado en impacto</div>
+                  <div class="fw-semibold small">{{ _('Startup / Tech') }}</div>
+                  <div class="text-muted" style="font-size: 0.75rem;">{{ _('Dinámico, directo, enfocado en impacto') }}</div>
                 </div>
               </div>
             </label>
@@ -69,8 +69,8 @@
               <div class="d-flex align-items-center gap-2">
                 <span class="tone-icon">🎨</span>
                 <div>
-                  <div class="fw-semibold small">Creativo / Emprendedor</div>
-                  <div class="text-muted" style="font-size: 0.75rem;">Memorable, narrativo, personal</div>
+                  <div class="fw-semibold small">{{ _('Creativo / Emprendedor') }}</div>
+                  <div class="text-muted" style="font-size: 0.75rem;">{{ _('Memorable, narrativo, personal') }}</div>
                 </div>
               </div>
             </label>
@@ -79,13 +79,13 @@
 
         <div class="d-grid">
           <button class="btn btn-primary py-2" id="start_generation">
-            <i class="bi bi-magic me-2"></i> Generar Cartas con IA
+            <i class="bi bi-magic me-2"></i> {{ _('Generar Cartas con IA') }}
           </button>
         </div>
         {% else %}
         <div class="alert alert-warning mb-0">
-          <i class="bi bi-exclamation-triangle me-2"></i> No hay archivos disponibles.
-          <a href="/scraper" class="alert-link">Ir al Scraper</a> para buscar empleos primero.
+          <i class="bi bi-exclamation-triangle me-2"></i> {{ _('No hay archivos disponibles.') }}
+          <a href="/scraper" class="alert-link">{{ _('Ir al Scraper') }}</a> {{ _('para buscar empleos primero.') }}
         </div>
         {% endif %}
       </div>
@@ -97,14 +97,14 @@
   <div class="col-lg-8">
     <div class="card border-0 shadow-sm h-100">
       <div class="card-header bg-white border-0 pt-4 px-4 pb-0 d-flex justify-content-between align-items-center">
-        <h5 class="fw-bold mb-0"><i class="bi bi-list-check me-2 text-success"></i> Resultados</h5>
-        <span id="status-badge" class="badge bg-light text-muted border">Esperando inicio...</span>
+        <h5 class="fw-bold mb-0"><i class="bi bi-list-check me-2 text-success"></i> {{ _('Resultados') }}</h5>
+        <span id="status-badge" class="badge bg-light text-muted border">{{ _('Esperando inicio...') }}</span>
       </div>
       <div class="card-body p-4">
         <!-- Progress Section -->
         <div id="generation_status" style="display: none;">
           <div class="mb-2 d-flex justify-content-between small">
-            <span id="generation_message" class="text-muted">Iniciando...</span>
+            <span id="generation_message" class="text-muted">{{ _('Iniciando...') }}</span>
             <span id="progress-percentage" class="fw-bold text-primary">0%</span>
           </div>
           <div class="progress mb-4" style="height: 8px;">
@@ -119,10 +119,10 @@
             <table class="table table-hover align-middle mb-0">
               <thead class="bg-light">
                 <tr>
-                  <th class="ps-3 py-3 text-muted text-uppercase small fw-bold">Puesto</th>
-                  <th class="py-3 text-muted text-uppercase small fw-bold">Empresa</th>
-                  <th class="py-3 text-muted text-uppercase small fw-bold text-center">Estado</th>
-                  <th class="pe-3 py-3 text-muted text-uppercase small fw-bold text-end">Acción</th>
+                  <th class="ps-3 py-3 text-muted text-uppercase small fw-bold">{{ _('Puesto') }}</th>
+                  <th class="py-3 text-muted text-uppercase small fw-bold">{{ _('Empresa') }}</th>
+                  <th class="py-3 text-muted text-uppercase small fw-bold text-center">{{ _('Estado') }}</th>
+                  <th class="pe-3 py-3 text-muted text-uppercase small fw-bold text-end">{{ _('Acción') }}</th>
                 </tr>
               </thead>
               <tbody id="results_list">
@@ -137,7 +137,7 @@
           <div class="mb-3 text-muted opacity-25">
             <i class="bi bi-envelope-open" style="font-size: 3rem;"></i>
           </div>
-          <p class="text-muted small">Los resultados aparecerán aquí una vez inicie el proceso.</p>
+          <p class="text-muted small">{{ _('Los resultados aparecerán aquí una vez inicie el proceso.') }}</p>
         </div>
 
       </div>
@@ -147,6 +147,8 @@
 {% endblock %}
 
 {% block scripts %}
+<script type="application/json" data-i18n nonce="{{ csp_nonce() }}">{{ {'Error desconocido': _('Error desconocido'), 'En cola...': _('En cola...'), 'Generando...': _('Generando...'), 'Éxito': _('Éxito'), 'Descargar': _('Descargar'), 'Fallido': _('Fallido'), 'Por favor seleccioná un archivo de empleos': _('Por favor seleccioná un archivo de empleos'), 'Analizando CV y generando cartas (tono: %(tone)s)...': _('Analizando CV y generando cartas (tono: %(tone)s)...'), 'Procesando...': _('Procesando...'), '¡Proceso finalizado!': _('¡Proceso finalizado!'), 'Completado': _('Completado'), 'Generar Cartas con IA': _('Generar Cartas con IA'), 'Carta': _('Carta'), 'Vista previa': _('Vista previa')}|tojson }}</script>
+<script src="{{ url_for('static', filename='js/i18n.js') }}"></script>
 <script src="{{ url_for('static', filename='js/document_batch.js') }}"></script>
 <style>
   .tone-option {
@@ -169,14 +171,14 @@
   <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
     <div class="modal-content border-0 shadow">
       <div class="modal-header">
-        <h5 class="modal-title fw-bold" id="previewModalTitle">Preview Carta</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        <h5 class="modal-title fw-bold" id="previewModalTitle">{{ _('Preview Carta') }}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ _('Cerrar') }}"></button>
       </div>
       <div class="modal-body">
         <pre id="previewModalBody" style="white-space: pre-wrap; font-family: 'Inter', sans-serif; font-size: 0.9rem; line-height: 1.7;"></pre>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ _('Cerrar') }}</button>
       </div>
     </div>
   </div>

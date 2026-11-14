@@ -11,8 +11,8 @@
                     <i class="bi bi-mic-fill"></i>
                 </div>
                 <div>
-                    <h1 class="page-title mb-1">Mock Interview</h1>
-                    <p class="page-subtitle text-muted mb-0">Practicá entrevistas con IA · Feedback en tiempo real</p>
+                    <h1 class="page-title mb-1">{{ _('Mock Interview') }}</h1>
+                    <p class="page-subtitle text-muted mb-0">{{ _('Practicá entrevistas con IA · Feedback en tiempo real') }}</p>
                 </div>
             </div>
         </div>
@@ -26,12 +26,12 @@
             <div class="card-premium h-100">
                 <div class="card-header-premium">
                     <i class="bi bi-briefcase me-2 text-primary-gradient"></i>
-                    <strong>Seleccionar Posición</strong>
+                    <strong>{{ _('Seleccionar Posición') }}</strong>
                 </div>
                 <div class="card-body-premium">
-                    <label class="form-label text-muted mb-2">Desde tu Job Tracker:</label>
-                    <select aria-label="Desde tu Job Tracker" class="form-select form-select-dark mb-3" id="tracker-job-select">
-                        <option value="">— Seleccioná un trabajo guardado —</option>
+                    <label class="form-label text-muted mb-2">{{ _('Desde tu Job Tracker:') }}</label>
+                    <select aria-label="{{ _('Desde tu Job Tracker') }}" class="form-select form-select-dark mb-3" id="tracker-job-select">
+                        <option value="">{{ _('— Seleccioná un trabajo guardado —') }}</option>
                         {% for job in tracked_jobs %}
                         <option value="{{ job.id }}"
                                 data-title="{{ job.title }}"
@@ -42,15 +42,15 @@
                         {% endfor %}
                     </select>
 
-                    <div class="divider-text my-3">— o ingresá manualmente —</div>
+                    <div class="divider-text my-3">{{ _('— o ingresá manualmente —') }}</div>
 
-                    <input aria-label="Título del puesto (ej: Data Analyst)" type="text" id="manual-title" class="form-control form-control-dark mb-2"
-                           placeholder="Título del puesto (ej: Data Analyst)">
-                    <input aria-label="Empresa (ej: Mercado Libre)" type="text" id="manual-company" class="form-control form-control-dark mb-2"
-                           placeholder="Empresa (ej: Mercado Libre)">
-                    <textarea aria-label="Pegá la descripción del trabajo aquí (opcional pero mejora la calidad de las preguntas)" id="manual-description" class="form-control form-control-dark"
+                    <input aria-label="{{ _('Título del puesto (ej: Data Analyst)') }}" type="text" id="manual-title" class="form-control form-control-dark mb-2"
+                           placeholder="{{ _('Título del puesto (ej: Data Analyst)') }}">
+                    <input aria-label="{{ _('Empresa (ej: Mercado Libre)') }}" type="text" id="manual-company" class="form-control form-control-dark mb-2"
+                           placeholder="{{ _('Empresa (ej: Mercado Libre)') }}">
+                    <textarea aria-label="{{ _('Pegá la descripción del trabajo aquí (opcional pero mejora la calidad de las preguntas)') }}" id="manual-description" class="form-control form-control-dark"
                               rows="4"
-                              placeholder="Pegá la descripción del trabajo aquí (opcional pero mejora la calidad de las preguntas)"></textarea>
+                              placeholder="{{ _('Pegá la descripción del trabajo aquí (opcional pero mejora la calidad de las preguntas)') }}"></textarea>
                 </div>
             </div>
         </div>
@@ -60,48 +60,48 @@
             <div class="card-premium h-100">
                 <div class="card-header-premium">
                     <i class="bi bi-sliders me-2 text-success-gradient"></i>
-                    <strong>Configurar Entrevista</strong>
+                    <strong>{{ _('Configurar Entrevista') }}</strong>
                 </div>
                 <div class="card-body-premium">
 
-                    <label class="form-label text-muted">Dificultad:</label>
+                    <label class="form-label text-muted">{{ _('Dificultad:') }}</label>
                     <div class="difficulty-selector mb-4">
                         <button class="diff-btn active" data-diff="junior">
-                            <i class="bi bi-1-circle"></i> Junior
+                            <i class="bi bi-1-circle"></i> {{ _('Junior') }}
                         </button>
                         <button class="diff-btn" data-diff="medio">
-                            <i class="bi bi-2-circle"></i> Medio
+                            <i class="bi bi-2-circle"></i> {{ _('Medio') }}
                         </button>
                         <button class="diff-btn" data-diff="senior">
-                            <i class="bi bi-3-circle"></i> Senior
+                            <i class="bi bi-3-circle"></i> {{ _('Senior') }}
                         </button>
                     </div>
 
-                    <label class="form-label text-muted">Número de preguntas:</label>
+                    <label class="form-label text-muted">{{ _('Número de preguntas:') }}</label>
                     <div class="d-flex align-items-center gap-3 mb-4">
-                        <input aria-label="Número de preguntas" type="range" class="form-range" id="questions-count"
+                        <input aria-label="{{ _('Número de preguntas') }}" type="range" class="form-range" id="questions-count"
                                min="5" max="15" value="10" step="5">
                         <span class="badge bg-primary-gradient px-3 py-2" id="questions-label">10</span>
                     </div>
 
-                    <label class="form-label text-muted">Modo de práctica:</label>
+                    <label class="form-label text-muted">{{ _('Modo de práctica:') }}</label>
                     <div class="mode-selector mb-4">
                         <label class="mode-option active" id="mode-text-label">
                             <input type="radio" name="interview-mode" value="text" checked>
                             <i class="bi bi-chat-dots"></i>
-                            <span>Texto</span>
+                            <span>{{ _('Texto') }}</span>
                         </label>
                         <label class="mode-option" id="mode-timed-label">
                             <input type="radio" name="interview-mode" value="timed">
                             <i class="bi bi-stopwatch"></i>
-                            <span>Con tiempo</span>
+                            <span>{{ _('Con tiempo') }}</span>
                         </label>
                     </div>
 
                     <button class="btn btn-primary-gradient w-100 btn-lg" id="start-interview-btn"
                             data-onclick="startInterview">
                         <i class="bi bi-play-circle me-2"></i>
-                        Comenzar Entrevista
+                        {{ _('Comenzar Entrevista') }}
                     </button>
                 </div>
             </div>
@@ -119,15 +119,15 @@
                     <!-- Progress -->
                     <div class="card-header-premium d-flex justify-content-between align-items-center">
                         <div>
-                            <span class="badge bg-primary-gradient me-2" id="question-badge">Pregunta 1/10</span>
-                            <span class="badge bg-secondary" id="question-type-badge">Técnica</span>
+                            <span class="badge bg-primary-gradient me-2" id="question-badge">{{ _('Pregunta 1/10') }}</span>
+                            <span class="badge bg-secondary" id="question-type-badge">{{ _('Técnica') }}</span>
                         </div>
                         <div class="d-flex align-items-center gap-2">
                             <span id="timer-display" class="timer-badge d-none">
                                 <i class="bi bi-clock"></i> <span id="timer-value">2:00</span>
                             </span>
                             <button class="btn btn-sm btn-outline-danger" data-onclick="endInterview">
-                                <i class="bi bi-x-circle me-1"></i> Terminar
+                                <i class="bi bi-x-circle me-1"></i> {{ _('Terminar') }}
                             </button>
                         </div>
                     </div>
@@ -146,7 +146,7 @@
                             </div>
                             <div class="question-content">
                                 <p id="question-text" class="question-text mb-1">
-                                    Cargando pregunta...
+                                    {{ _('Cargando pregunta...') }}
                                 </p>
                                 <small id="question-hint" class="text-muted d-none">
                                     <i class="bi bi-lightbulb me-1"></i>
@@ -157,28 +157,28 @@
 
                         <!-- Hint Toggle -->
                         <button class="btn btn-sm btn-outline-warning mb-3" data-onclick="toggleHint" id="hint-btn">
-                            <i class="bi bi-lightbulb me-1"></i> Ver pista
+                            <i class="bi bi-lightbulb me-1"></i> {{ _('Ver pista') }}
                         </button>
 
                         <!-- Answer Input -->
                         <div class="answer-section">
                             <label class="form-label text-muted d-flex justify-content-between align-items-center">
-                                <span><i class="bi bi-pencil me-1"></i> Tu respuesta:</span>
+                                <span><i class="bi bi-pencil me-1"></i> {{ _('Tu respuesta:') }}</span>
                                 <button class="btn btn-sm btn-outline-danger" id="voice-btn" data-onclick="toggleVoiceRecording">
-                                    <i class="bi bi-mic me-1"></i> Hablar
+                                    <i class="bi bi-mic me-1"></i> {{ _('Hablar') }}
                                 </button>
                             </label>
-                            <textarea aria-label="Tu respuesta" id="user-answer" class="form-control form-control-dark answer-textarea"
-                                      rows="6" placeholder="Escribí tu respuesta aquí, o usá el micrófono para dictarla..."></textarea>
+                            <textarea aria-label="{{ _('Tu respuesta') }}" id="user-answer" class="form-control form-control-dark answer-textarea"
+                                      rows="6" placeholder="{{ _('Escribí tu respuesta aquí, o usá el micrófono para dictarla...') }}"></textarea>
                         </div>
 
                         <div class="d-flex gap-2 mt-3">
                             <button class="btn btn-primary-gradient flex-grow-1" id="submit-answer-btn"
                                     data-onclick="submitAnswer">
-                                <i class="bi bi-send me-2"></i> Enviar y ver feedback
+                                <i class="bi bi-send me-2"></i> {{ _('Enviar y ver feedback') }}
                             </button>
                             <button class="btn btn-outline-secondary" data-onclick="skipQuestion">
-                                <i class="bi bi-skip-forward me-1"></i> Saltar
+                                <i class="bi bi-skip-forward me-1"></i> {{ _('Saltar') }}
                             </button>
                         </div>
                     </div>
@@ -191,12 +191,12 @@
                 <!-- Job Info -->
                 <div class="card-premium mb-3">
                     <div class="card-header-premium">
-                        <i class="bi bi-briefcase me-2"></i> <strong id="interview-job-title">Puesto</strong>
+                        <i class="bi bi-briefcase me-2"></i> <strong id="interview-job-title">{{ _('Puesto') }}</strong>
                     </div>
                     <div class="card-body-premium py-2">
                         <small class="text-muted">
                             <i class="bi bi-building me-1"></i>
-                            <span id="interview-company">Empresa</span>
+                            <span id="interview-company">{{ _('Empresa') }}</span>
                         </small>
                     </div>
                 </div>
@@ -204,12 +204,12 @@
                 <!-- Answers History -->
                 <div class="card-premium">
                     <div class="card-header-premium">
-                        <i class="bi bi-list-check me-2"></i> <strong>Progreso</strong>
+                        <i class="bi bi-list-check me-2"></i> <strong>{{ _('Progreso') }}</strong>
                     </div>
                     <div class="card-body-premium p-0">
                         <div id="answers-history" class="answers-history-list">
                             <p class="text-muted text-center py-3 px-3 mb-0">
-                                <small>Las respuestas evaluadas aparecerán aquí</small>
+                                <small>{{ _('Las respuestas evaluadas aparecerán aquí') }}</small>
                             </p>
                         </div>
                     </div>
@@ -223,10 +223,10 @@
                 <div class="feedback-header d-flex justify-content-between align-items-center mb-3">
                     <h5 class="mb-0">
                         <i class="bi bi-stars me-2 text-warning"></i>
-                        Feedback de la IA
+                        {{ _('Feedback de la IA') }}
                     </h5>
                     <button class="btn btn-sm btn-primary-gradient" data-onclick="nextQuestion">
-                        Siguiente →
+                        {{ _('Siguiente →') }}
                     </button>
                 </div>
 
@@ -241,20 +241,20 @@
                 <div class="row g-3 mb-3">
                     <div class="col-6">
                         <div class="feedback-section strengths">
-                            <h6><i class="bi bi-check-circle-fill text-success me-1"></i>Fortalezas</h6>
+                            <h6><i class="bi bi-check-circle-fill text-success me-1"></i>{{ _('Fortalezas') }}</h6>
                             <ul id="feedback-strengths" class="feedback-list"></ul>
                         </div>
                     </div>
                     <div class="col-6">
                         <div class="feedback-section improvements">
-                            <h6><i class="bi bi-arrow-up-circle-fill text-warning me-1"></i>Mejorar</h6>
+                            <h6><i class="bi bi-arrow-up-circle-fill text-warning me-1"></i>{{ _('Mejorar') }}</h6>
                             <ul id="feedback-improvements" class="feedback-list"></ul>
                         </div>
                     </div>
                 </div>
 
                 <div class="improved-answer mb-3">
-                    <h6><i class="bi bi-magic me-2 text-primary"></i>Respuesta mejorada:</h6>
+                    <h6><i class="bi bi-magic me-2 text-primary"></i>{{ _('Respuesta mejorada:') }}</h6>
                     <div id="feedback-improved" class="improved-text"></div>
                 </div>
 
@@ -273,8 +273,8 @@
                 <div class="card-premium text-center">
                     <div class="card-body-premium py-5">
                         <div class="results-trophy mb-3">🏆</div>
-                        <h2 class="mb-2">¡Entrevista Completada!</h2>
-                        <p class="text-muted mb-4">Aquí está tu evaluación final</p>
+                        <h2 class="mb-2">{{ _('¡Entrevista Completada!') }}</h2>
+                        <p class="text-muted mb-4">{{ _('Aquí está tu evaluación final') }}</p>
 
                         <div class="final-score-display mb-5">
                             <div class="final-score-ring">
@@ -295,11 +295,11 @@
                         <div class="d-flex gap-3 justify-content-center">
                             <button class="btn btn-primary-gradient px-4"
                                     data-onclick="startNewInterview">
-                                <i class="bi bi-arrow-repeat me-2"></i> Nueva entrevista
+                                <i class="bi bi-arrow-repeat me-2"></i> {{ _('Nueva entrevista') }}
                             </button>
                             <button class="btn btn-outline-secondary px-4"
                                     data-onclick="downloadResults">
-                                <i class="bi bi-download me-2"></i> Descargar reporte
+                                <i class="bi bi-download me-2"></i> {{ _('Descargar reporte') }}
                             </button>
                         </div>
                     </div>
@@ -312,5 +312,7 @@
 
 {% block scripts %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/mock_interview.css') }}">
+<script type="application/json" data-i18n nonce="{{ csp_nonce() }}">{{ {'Ingresá el título del puesto para comenzar': _('Ingresá el título del puesto para comenzar'), 'Generando preguntas...': _('Generando preguntas...'), 'Error al generar preguntas:': _('Error al generar preguntas:'), 'desconocido': _('desconocido'), 'Error de conexión:': _('Error de conexión:'), 'Comenzar Entrevista': _('Comenzar Entrevista'), 'Pregunta %(n)s/%(total)s': _('Pregunta %(n)s/%(total)s'), 'técnica': _('técnica'), 'Ver pista': _('Ver pista'), 'Ocultar pista': _('Ocultar pista'), 'Escribí algo antes de enviar': _('Escribí algo antes de enviar'), 'Evaluando...': _('Evaluando...'), 'Error al evaluar:': _('Error al evaluar:'), 'Enviar y ver feedback': _('Enviar y ver feedback'), '¿Terminás la entrevista? Se perderán las últimas respuestas sin enviar.': _('¿Terminás la entrevista? Se perderán las últimas respuestas sin enviar.'), 'Las respuestas evaluadas aparecerán aquí': _('Las respuestas evaluadas aparecerán aquí'), 'Permiso de micrófono denegado': _('Permiso de micrófono denegado'), 'Tu navegador no soporta reconocimiento de voz': _('Tu navegador no soporta reconocimiento de voz'), 'Hablar': _('Hablar'), 'Detener grabación': _('Detener grabación'), 'Grabando... Empezá a hablar': _('Grabando... Empezá a hablar')}|tojson }}</script>
+<script src="{{ url_for('static', filename='js/i18n.js') }}"></script>
 <script src="{{ url_for('static', filename='js/pages/mock_interview.js') }}"></script>
 {% endblock %}

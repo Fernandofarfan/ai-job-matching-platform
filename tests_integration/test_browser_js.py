@@ -410,7 +410,7 @@ def test_offline_banner_follows_connection(app, page, context):
 # ── document_batch.js ─────────────────────────────────────────
 
 def test_document_batch_returns_sync_result_or_polls_task(app, page):
-    app.page('/', '<table><tbody id="rows"></tbody></table>', ['document_batch.js'])
+    app.page('/', '<table><tbody id="rows"></tbody></table>', ['i18n.js', 'document_batch.js'])
     app.api[('POST', '/api/batch_cover_letters')] = (200, {'success': True, 'results': []})
     page.goto('/')
     assert page.evaluate("runDocumentBatch('/api/batch_cover_letters', {n: 1}, () => {})") == {'success': True, 'results': []}
@@ -431,7 +431,7 @@ def test_document_batch_returns_sync_result_or_polls_task(app, page):
 
 
 def test_document_batch_reports_progress_and_failure(app, page):
-    app.page('/', '', ['document_batch.js'])
+    app.page('/', '', ['i18n.js', 'document_batch.js'])
     app.api[('POST', '/api/batch_optimize')] = (202, {'task_id': 't1'})
     app.api[('GET', '/api/documents/tasks/t1')] = (200, {'state': 'queued'})
     page.goto('/')
@@ -453,7 +453,7 @@ def test_document_batch_reports_progress_and_failure(app, page):
 
 
 def test_document_rows_render_text_not_html(app, page):
-    app.page('/', '<table><tbody id="rows"><tr><td>viejo</td></tr></tbody></table>', ['document_batch.js'])
+    app.page('/', '<table><tbody id="rows"><tr><td>viejo</td></tr></tbody></table>', ['i18n.js', 'document_batch.js'])
     page.goto('/')
     page.evaluate("""renderDocumentRows(document.getElementById('rows'), [
       {status: 'success', job_title: '<img src=x onerror="window.pwned=1">', company: 'ACME & Co', filename: 'cv a/b.pdf'},
