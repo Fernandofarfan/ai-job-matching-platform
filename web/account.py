@@ -14,6 +14,7 @@ import auth
 import data_export
 import integrations
 import security_events
+import two_factor
 import user_sessions
 from app import _clear_offline_data, app, client_ip, delete_user_profile, email_limit_key, limiter
 
@@ -152,15 +153,26 @@ def account():
     return _render_account()
 
 
-def _render_account(new_token=None):
-    """Página de cuenta; `new_token` es el token de la extensión recién generado (se muestra una vez)."""
+def _two_factor_status(user_id) -> dict:
+    """Estado del segundo factor para la página; si la tabla falla, la página se muestra igual."""
+    try:
+        return {'enabled': two_factor.is_enabled(user_id), 'recovery_left': two_factor.recovery_codes_left(user_id)}
+    except Exception as e:
+        logger.error(f'No se pudo leer el segundo factor de la cuenta {user_id}: {e}')
+        return {'enabled': False, 'recovery_left': 0, 'error': True}
+
+
+def _render_account(new_token=None, **once):
+    """Página de cuenta. `new_token`, el QR y los códigos de recuperación se muestran una sola vez (no-store)."""
     user_id = accounts.current_user_id()
     response = make_response(render_template(
         'account.html', user=accounts.get_user(user_id), min_password=accounts.MIN_PASSWORD,
         integ=integrations.status(user_id), telegram_bot=bool(os.getenv('TELEGRAM_BOT_TOKEN')),
         gmail_available=os.path.exists(_gmail_client_file()), new_token=new_token,
-        events=security_events.recent(user_id), open_sessions=user_sessions.active(user_id, session.get('sid'))))
-    if new_token:
+        events=security_events.recent(user_id), open_sessions=user_sessions.active(user_id, session.get('sid')),
+        two_factor=_two_factor_status(user_id), totp_setup=once.get('totp_setup'),
+        recovery_codes=once.get('recovery_codes')))
+    if new_token or once:
         response.headers['Cache-Control'] = 'no-store'
     return response
 

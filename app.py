@@ -89,7 +89,7 @@ if not auth.auth_enabled():
 
 PUBLIC_ENDPOINTS = {'login', 'register', 'static', 'health', 'service_worker',
                     'forgot_password', 'reset_password', 'verify_email',
-                    'google_login', 'google_callback'}
+                    'google_login', 'google_callback', 'login_two_factor'}
 
 
 @app.before_request
@@ -133,6 +133,9 @@ def login():
                 else:
                     flash('Tenés que confirmar tu email, pero no se pudo mandar el enlace: avisale al administrador', 'danger')
             elif user:
+                pending = second_factor.begin_login(user, 'login', next_url)
+                if pending:
+                    return pending
                 auth.start_session(session, app.secret_key, user['id'], *account.client_info())
                 account.audit_login(user, 'login')
                 return redirect(_safe_next(next_url))
@@ -883,7 +886,8 @@ def server_error(e):
 
 # Las rutas viven en web/ y se registran sobre `app` al importarse
 from web import (  # noqa: E402,F401
-    account, alerts, analytics, documents, exports, files, google_login, pages, profiles, scrapers, tracker,
+    account, alerts, analytics, documents, exports, files, google_login, pages, profiles, scrapers, second_factor,
+    tracker,
 )
 
 

@@ -33,6 +33,61 @@
       </form>
     </div>
   </div>
+  <div class="card border-0 shadow-sm mb-4" id="two-factor">
+    <div class="card-body p-4">
+      <h2 class="h5 fw-bold">Verificación en dos pasos</h2>
+      {% if recovery_codes %}
+      <div class="alert alert-warning" role="alert">
+        <p class="fw-semibold mb-2">Guardá estos códigos de recuperación en un lugar seguro. Cada uno sirve una vez si perdés el teléfono, y no se vuelven a mostrar.</p>
+        <ul class="list-unstyled font-monospace mb-0" id="recovery-codes">
+          {% for c in recovery_codes %}<li>{{ c }}</li>{% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+      {% if two_factor.enabled %}
+      <p class="small"><span class="badge text-bg-success">Activada</span> Al entrar te pedimos un código de tu app autenticadora.
+        Te quedan {{ two_factor.recovery_left }} códigos de recuperación.</p>
+      <form method="POST" class="row g-2 align-items-end mb-2">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="col-sm-5">
+          <label for="tf-password" class="form-label small">Tu contraseña</label>
+          <input type="password" class="form-control form-control-sm" id="tf-password" name="password" required autocomplete="current-password">
+        </div>
+        <div class="col-sm-3">
+          <label for="tf-code" class="form-label small">Código actual</label>
+          <input type="text" class="form-control form-control-sm" id="tf-code" name="code" required inputmode="numeric" autocomplete="one-time-code" maxlength="32">
+        </div>
+        <div class="col-sm-4 d-flex gap-2 flex-wrap">
+          <button type="submit" class="btn btn-sm btn-outline-primary" formaction="{{ url_for('two_factor_recovery') }}">Códigos nuevos</button>
+          <button type="submit" class="btn btn-sm btn-outline-danger" formaction="{{ url_for('two_factor_disable') }}">Desactivar</button>
+        </div>
+      </form>
+      {% elif totp_setup %}
+      <p class="small">Escaneá el QR con Google Authenticator, Authy, 1Password u otra app compatible, o cargá la clave a mano.</p>
+      <div class="mb-2" style="max-width: 220px;">{{ totp_setup.qr }}</div>
+      <p class="small">Clave: <code class="user-select-all" id="totp-secret">{{ totp_setup.secret }}</code></p>
+      <form method="POST" action="{{ url_for('two_factor_enable') }}" class="d-flex gap-2 align-items-end">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div>
+          <label for="totp-code" class="form-label small">Código de 6 dígitos que muestra la app</label>
+          <input type="text" class="form-control" id="totp-code" name="code" required inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9 ]{6,7}">
+        </div>
+        <button type="submit" class="btn btn-primary" id="enableTotpBtn">Activar</button>
+      </form>
+      {% else %}
+      <p class="text-muted small">Además de la contraseña, al entrar te pide un código de una app autenticadora del teléfono. Protege tus CVs aunque te roben la contraseña.</p>
+      {% if two_factor.error %}<p class="text-danger small">No se pudo leer el estado; probá de nuevo más tarde.</p>{% endif %}
+      <form method="POST" action="{{ url_for('two_factor_setup') }}" class="d-flex gap-2 align-items-end">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div>
+          <label for="tf-setup-password" class="form-label small">Tu contraseña</label>
+          <input type="password" class="form-control" id="tf-setup-password" name="password" required autocomplete="current-password">
+        </div>
+        <button type="submit" class="btn btn-outline-primary" id="setupTotpBtn">Configurar</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
   <div class="card border-0 shadow-sm mb-4">
     <div class="card-body p-4">
       <h2 class="h5 fw-bold">Integraciones</h2>
