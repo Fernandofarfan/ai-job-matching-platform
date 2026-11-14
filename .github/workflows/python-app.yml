@@ -87,6 +87,7 @@ jobs:
             pypdf==7.0.1 \
             cryptography==50.0.2 \
             prometheus-client==0.26.0 \
+            sentry-sdk==2.74.0 \
             python-docx==0.8.11 \
             scikit-learn==1.9.1 \
             spacy==3.8.18

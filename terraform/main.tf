@@ -30,6 +30,7 @@ locals {
       DB_USER               = google_sql_user.empleoia_user.name
       DB_NAME               = google_sql_database.job_tracker.name
       PROFILE_STORAGE       = "mysql"
+      SENTRY_ENVIRONMENT    = var.environment
       SESSION_COOKIE_SECURE = "1"
       ADMIN_EMAIL           = var.admin_email
       CV_RETENTION_DAYS     = tostring(var.cv_retention_days)

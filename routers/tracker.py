@@ -15,6 +15,7 @@ from starlette.exceptions import HTTPException
 
 import accounts
 import auth
+import error_reporting
 
 logger = logging.getLogger(__name__)
 SAFE_METHODS = {'GET', 'HEAD', 'OPTIONS'}
@@ -94,8 +95,9 @@ class TrackerRoute(APIRoute):
                 return JSONResponse(e.payload, status_code=e.status_code)
             except RequestValidationError as e:
                 return JSONResponse({'success': False, 'error': _validation_message(e)}, status_code=400)
-            except Exception:
+            except Exception as e:
                 logger.exception(f"Error en {request.method} {request.url.path}")
+                error_reporting.capture(e)
                 return JSONResponse({'success': False, 'error': 'Error interno del servidor'}, status_code=500)
 
         return wrapped

@@ -30,10 +30,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-if os.getenv('SENTRY_DSN'):
-    import sentry_sdk
-    sentry_sdk.init(dsn=os.getenv('SENTRY_DSN'), traces_sample_rate=float(os.getenv('SENTRY_TRACES_SAMPLE_RATE', '0')))
-
 if not auth.auth_enabled():
     logger.warning("LOGIN_REQUIRED=false: la app no pide login (usala solo en local)")
 
