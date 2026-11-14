@@ -527,5 +527,17 @@
  "Inicio de sesión con passkey": "Sign-in with passkey",
  "Passkey agregada": "Passkey added",
  "Passkey borrada": "Passkey deleted",
- "Esa passkey no existe": "That passkey does not exist"
+ "Esa passkey no existe": "That passkey does not exist",
+ "%(done)s de %(total)s listos": "%(done)s of %(total)s done",
+ "Activación: primeros pasos": "Activation: getting started",
+ "Creá una alerta": "Create an alert",
+ "Cuántas cuentas llegaron a cada paso del primer uso": "How many accounts reached each getting-started step",
+ "Del paso anterior": "From previous step",
+ "Hacé tu primera búsqueda": "Run your first search",
+ "Listo:": "Done:",
+ "Paso": "Step",
+ "Pendiente:": "Pending:",
+ "Primeros pasos": "Getting started",
+ "Se registraron": "Signed up",
+ "Subí tu CV": "Upload your resume"
 }

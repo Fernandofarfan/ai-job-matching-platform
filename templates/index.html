@@ -32,6 +32,31 @@
     </div>
 </div>
 
+{% if onboarding and not onboarding.finished %}
+<section class="card border-0 shadow-sm mb-5" id="onboarding" aria-labelledby="onboarding-title">
+    <div class="card-body p-4">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+            <h2 class="h5 fw-bold mb-0" id="onboarding-title">{{ _('Primeros pasos') }}</h2>
+            <span class="small text-muted">{{ _('%(done)s de %(total)s listos', done=onboarding.completed, total=onboarding.total) }}</span>
+        </div>
+        <div class="progress mb-3" role="progressbar" aria-label="{{ _('Primeros pasos') }}"
+             aria-valuenow="{{ onboarding.completed }}" aria-valuemin="0" aria-valuemax="{{ onboarding.total }}">
+            <div class="progress-bar" style="width: {{ (100 * onboarding.completed / onboarding.total)|round|int }}%"></div>
+        </div>
+        <ol class="list-unstyled mb-3">
+            {% for step in onboarding.steps %}
+            <li class="mb-1" data-step="{{ step.key }}">
+                {% if step.done %}<i class="bi bi-check-circle-fill text-success me-2" aria-hidden="true"></i><span class="visually-hidden">{{ _('Listo:') }}</span>
+                {% else %}<i class="bi bi-circle text-muted me-2" aria-hidden="true"></i><span class="visually-hidden">{{ _('Pendiente:') }}</span>{% endif %}
+                {{ _(step.label) }}
+            </li>
+            {% endfor %}
+        </ol>
+        <a href="{{ url_for(onboarding.next.endpoint) }}" class="btn btn-primary">{{ _(onboarding.next.label) }} <i class="bi bi-arrow-right ms-1" aria-hidden="true"></i></a>
+    </div>
+</section>
+{% endif %}
+
 <!-- Features Cards -->
 <div class="row g-4 mb-5">
     <!-- Scraper Card -->

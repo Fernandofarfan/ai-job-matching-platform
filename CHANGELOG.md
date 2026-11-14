@@ -6,6 +6,14 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar] - Primeros pasos y embudo de activación
+
+- La portada muestra "Primeros pasos" (subí tu CV → primera búsqueda → creá una alerta) con el avance y un botón al
+  paso que falta; desaparece cuando la cuenta completa los 3. Los pasos salen de lo que ya está guardado (perfiles,
+  CSV de resultados y alertas): no hay tabla nueva y las cuentas viejas cuentan desde el primer día.
+- Administración muestra el embudo de activación: cuántas cuentas llegaron a cada paso, en orden, y qué porcentaje
+  del paso anterior. Así se ve en qué paso abandonan las cuentas nuevas.
+
 ## [Sin publicar] - mypy estricto, etapa 1
 
 - `accounts`, `auth`, `models`, `passkeys`, `security_events`, `two_factor` y `user_sessions` cumplen las reglas de `--strict`

@@ -527,5 +527,17 @@
  "Inicio de sesión con passkey": "Login com passkey",
  "Passkey agregada": "Passkey adicionada",
  "Passkey borrada": "Passkey excluída",
- "Esa passkey no existe": "Essa passkey não existe"
+ "Esa passkey no existe": "Essa passkey não existe",
+ "%(done)s de %(total)s listos": "%(done)s de %(total)s concluídos",
+ "Activación: primeros pasos": "Ativação: primeiros passos",
+ "Creá una alerta": "Crie um alerta",
+ "Cuántas cuentas llegaron a cada paso del primer uso": "Quantas contas chegaram a cada etapa do primeiro uso",
+ "Del paso anterior": "Da etapa anterior",
+ "Hacé tu primera búsqueda": "Faça sua primeira busca",
+ "Listo:": "Concluído:",
+ "Paso": "Etapa",
+ "Pendiente:": "Pendente:",
+ "Primeros pasos": "Primeiros passos",
+ "Se registraron": "Cadastraram-se",
+ "Subí tu CV": "Envie seu currículo"
 }

@@ -7,6 +7,7 @@ from fastapi.responses import Response
 from starlette.concurrency import run_in_threadpool
 
 import accounts
+import onboarding
 import ai_usage
 import auth
 import two_factor
@@ -67,7 +68,12 @@ def admin_panel(request: Request):
         user['last_seen'] = last_seen.get(user['id'])
         user['ai'] = ai_usage.account_usage(user['id'])
         user['is_admin'] = accounts.is_admin(user['id'])
-    response = render(request, 'admin.html', users=users, signup_open=accounts.signup_open(),
+    try:
+        activation = onboarding.funnel()
+    except Exception as e:
+        logger.error(f'No se pudo calcular el embudo de activación: {e}')
+        activation = []
+    response = render(request, 'admin.html', users=users, signup_open=accounts.signup_open(), activation=activation,
                       usage=ai_usage.summary(), user_limit=ai_usage.user_monthly_limit())
     response.headers['Cache-Control'] = 'no-store'
     return response

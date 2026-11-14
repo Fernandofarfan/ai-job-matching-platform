@@ -5,8 +5,10 @@ from fastapi import APIRouter, Request
 from fastapi.responses import FileResponse, RedirectResponse
 from starlette.concurrency import run_in_threadpool
 
+import accounts
 import auth
 import i18n
+import onboarding
 from fastapi_web import services_for, render
 
 router = APIRouter(tags=["pages"], include_in_schema=False)
@@ -14,7 +16,7 @@ router = APIRouter(tags=["pages"], include_in_schema=False)
 
 @router.get("/", name="index")
 def index(request: Request):
-    return render(request, "index.html")
+    return render(request, "index.html", onboarding=onboarding.status(accounts.current_user_id()))
 
 
 @router.get("/scraper", name="scraper")
