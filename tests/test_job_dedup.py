@@ -60,3 +60,12 @@ def test_same_url_is_the_same_offer_even_without_company():
     jobs = job_dedup.unify([_job('Bumeran', company='', URL=url + '?utm=1'),
                             _job('Bumeran', title='Otro título', company='', URL=url + '/')])
     assert len(jobs) == 1
+
+
+def test_english_placeholders_are_not_real_data():
+    jobs = [_job('Computrabajo', company='Confidential', URL='https://ct.example/1', Salary='Not specified'),
+            _job('Computrabajo', company='Confidential', URL='https://ct.example/2')]
+    assert len(job_dedup.unify(jobs)) == 2
+    merged = job_dedup.unify([_job('Computrabajo', Salary='Not specified', URL='https://x.example/1'),
+                              _job('Bumeran', Salary='$ 1.500.000', URL='https://x.example/1')])
+    assert merged[0]['Salary'] == '$ 1.500.000'

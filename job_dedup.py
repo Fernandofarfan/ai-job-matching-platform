@@ -12,7 +12,7 @@ from urllib.parse import urlsplit
 Job = dict[str, Any]
 
 PLACEHOLDERS = {'', 'confidencial', 'empresa confidencial', 'reservado', 'no especificado', 'no especificada',
-                'n a', 'na', 'nan', 'none'}
+                'n a', 'na', 'nan', 'none', 'confidential', 'not specified', 'unknown'}
 COMPANY_SUFFIXES = {'sa', 'srl', 'sas', 'sau', 'sl', 'sacif', 'saic', 'ltda', 'inc', 'llc', 'corp', 'corporation',
                     'ltd', 'limited', 'gmbh', 'cv', 'de'}
 GENERIC_PLACES = {'argentina', 'chile', 'uruguay', 'paraguay', 'bolivia', 'peru', 'colombia', 'mexico', 'brasil',
