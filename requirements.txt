@@ -58,7 +58,7 @@ google-auth-httplib2
 google-auth-oauthlib
 
 # --- Exportación de datos ---
-openpyxl>=3.1.0
+openpyxl>=3.1.5
 reportlab>=4.0.0
 
 # --- Tests ---
