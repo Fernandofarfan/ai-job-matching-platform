@@ -44,9 +44,7 @@ def test_auth_pages_are_served_by_fastapi(client, app):
     assert client.app.url_path_for('reset_password', token='t') == '/reset_password/t'
     assert client.app.url_path_for('verify_email', token='t') == '/verify_email/t'
     assert not (moved | {'reset_password', 'verify_email'}) & set(app.view_functions)
-    with app.test_request_context():
-        from flask import url_for
-        assert url_for('reset_password', token='t') == '/reset_password/t'
+    assert app.url_map.bind('').build('reset_password', {'token': 't'}) == '/reset_password/t'
 
 
 def test_logout_clears_session_and_offline_data(client, app):
@@ -133,3 +131,21 @@ def test_auth_form_rejects_oversized_body(client):
     big = {'email': 'a@b.c', 'password': 'x' * (fastapi_web.FORM_MAX_BYTES + 1)}
     assert client.post('/login', data=big).status_code == 413
     assert client.post('/login', data={'email': 'a@b.c', 'password': 'x'}).status_code != 413
+
+
+def test_account_admin_and_export_pages_are_served_by_fastapi(client, app):
+    """Mi cuenta, segundo factor, Administración y exportación ya no son vistas de Flask."""
+    moved = set(app.extensions['empleoia_app_globals']['ACCOUNT_PAGES'])
+    params = {'revoke_session': {'session_id': 1}, 'admin_block': {'user_id': 1}, 'admin_unblock': {'user_id': 1},
+              'admin_reset_two_factor': {'user_id': 1}, 'admin_delete': {'user_id': 1},
+              'export_results_excel': {'filename': 'x.csv'}}
+    for name in moved:
+        assert client.app.url_path_for(name, **params.get(name, {}))
+    assert not moved & set(app.view_functions)
+
+
+def test_account_forms_require_csrf(client, app, monkeypatch):
+    """Los POST de Mi cuenta y Administración validan el token CSRF como Flask-WTF."""
+    monkeypatch.setitem(app.config, 'WTF_CSRF_ENABLED', True)
+    assert client.post('/account/delete', data={'password': 'x'}).status_code == 400
+    assert client.post('/admin/users/1/block').status_code == 400

@@ -1,5 +1,4 @@
 """Tests de cuentas (email + contraseña), login y protección CSRF."""
-import inspect
 import io
 
 import pytest
@@ -209,7 +208,7 @@ def test_first_account_is_verified(registered):
 
 def test_delete_account_needs_password(registered, monkeypatch, app):
     """Borrar la cuenta pide la contraseña y después la cuenta deja de existir."""
-    monkeypatch.setitem(inspect.unwrap(app.view_functions['delete_account']).__globals__, 'delete_user_profile', lambda: True)
+    monkeypatch.setitem(app.extensions['empleoia_app_globals'], 'delete_user_profile', lambda: True)
     _login(registered)
     registered.post('/account/delete', data={'password': 'mal'})
     assert accounts.find_user_id('ana@example.com')
@@ -235,7 +234,7 @@ def test_reset_link_is_single_use_under_race(registered):
 
 def test_admin_account_kept_while_others_exist(registered, monkeypatch, app):
     """La primera cuenta no se borra si hay otras (Telegram, Gmail y la extensión son suyos)."""
-    monkeypatch.setitem(inspect.unwrap(app.view_functions['delete_account']).__globals__, 'delete_user_profile', lambda: True)
+    monkeypatch.setitem(app.extensions['empleoia_app_globals'], 'delete_user_profile', lambda: True)
     monkeypatch.setenv('ALLOW_SIGNUP', 'true')
     accounts.register('beto@example.com', PASSWORD)
     _login(registered)

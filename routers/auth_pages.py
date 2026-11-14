@@ -38,7 +38,7 @@ def _email_key(form: dict) -> str:
     return (form.get('email') or '').strip().lower()[:254]
 
 
-def _audit(request: Request, user_id, kind: str) -> bool:
+def audit(request: Request, user_id, kind: str) -> bool:
     """Registra el evento de seguridad con la IP y el navegador del pedido."""
     return account_notify.audit(user_id, kind, *client_info(request))
 
@@ -48,7 +48,7 @@ def _audit_login(request: Request, user: dict, kind: str) -> None:
     account_notify.audit_login(user, kind, *client_info(request), lambda: public_url(request, 'account'))
 
 
-def _send_verification(request: Request, user: dict) -> bool:
+def send_verification(request: Request, user: dict) -> bool:
     """Manda el enlace para confirmar el email de la cuenta."""
     token = auth.account_token(_secret(request), 'verify', user)
     return account_notify.send_verification(user, public_url(request, 'verify_email', token=token))
@@ -106,18 +106,18 @@ def _login(request: Request, form: Optional[dict]) -> Response:
             user_id = accounts.authenticate(form.get('email', ''), form.get('password', ''))
             user = accounts.get_user(user_id) if user_id else None
             if user and auth.verification_required() and not user['email_verified']:
-                if _send_verification(request, user):
+                if send_verification(request, user):
                     flash(request, 'Antes de entrar confirmá tu email: te mandamos un enlace', 'warning')
                 else:
                     flash(request, 'Tenés que confirmar tu email, pero no se pudo mandar el enlace: '
                           'avisale al administrador', 'danger')
             elif user and user['disabled']:
-                _audit(request, user['id'], 'login_blocked')
+                audit(request, user['id'], 'login_blocked')
                 flash(request, 'Tu cuenta está bloqueada: hablá con el administrador', 'danger')
             elif user:
                 return begin_login(request, user, 'login', next_url) or _finish_login(request, user, 'login', next_url)
             else:
-                _audit(request, accounts.find_user_id(form.get('email', '')), 'login_failed')
+                audit(request, accounts.find_user_id(form.get('email', '')), 'login_failed')
                 flash(request, 'Email o contraseña incorrectos', 'danger')
         signup = accounts.signup_open()
     except SQLAlchemyError as e:
@@ -155,9 +155,9 @@ def _register(request: Request, form: Optional[dict]) -> Response:
                 except accounts.AccountError as e:
                     flash(request, str(e), 'danger')
                 else:
-                    _audit(request, user_id, 'register')
+                    audit(request, user_id, 'register')
                     user = accounts.get_user(user_id) or {}
-                    sent = not user['email_verified'] and _send_verification(request, user)
+                    sent = not user['email_verified'] and send_verification(request, user)
                     if auth.verification_required() and not user['email_verified']:
                         if sent:
                             flash(request, 'Te mandamos un enlace para confirmar tu email', 'info')
@@ -236,7 +236,7 @@ def _reset_password(request: Request, token: str, form: Optional[dict]) -> Respo
                 flash(request, str(e), 'danger')
             else:
                 accounts.mark_verified(user['id'])  # recibió el email: la dirección es suya
-                _audit(request, user['id'], 'password_reset')
+                audit(request, user['id'], 'password_reset')
                 get_session(request).clear()
                 flash(request, 'Listo: ya podés entrar con la contraseña nueva', 'success')
                 return clear_offline_data(redirect(request, url_for(request, 'login')))
@@ -253,7 +253,7 @@ def verify_email(request: Request, token: str):
         flash(request, 'El enlace de verificación venció o no es válido', 'danger')
     else:
         accounts.mark_verified(user['id'])
-        _audit(request, user['id'], 'email_verified')
+        audit(request, user['id'], 'email_verified')
         flash(request, 'Email confirmado', 'success')
     logged_in = auth.is_session_valid(get_session(request), _secret(request))
     return redirect(request, url_for(request, 'account' if logged_in else 'login'))
@@ -299,12 +299,12 @@ def _login_two_factor(request: Request, form: Optional[dict]) -> Response:
         if method:
             response = _finish_login(request, user, pending['kind'], pending.get('next', ''))
             if method == 'recovery':
-                _audit(request, user['id'], 'recovery_code_used')
+                audit(request, user['id'], 'recovery_code_used')
                 flash(request, f'Usaste un código de recuperación: te quedan '
                       f'{two_factor.recovery_codes_left(user["id"])}', 'warning')
                 response = redirect(request, response.headers['location'])
             return response
-        _audit(request, user['id'], 'two_factor_failed')
+        audit(request, user['id'], 'two_factor_failed')
         flash(request, 'El código no es correcto', 'danger')
     return render(request, 'login_2fa.html')
 
@@ -353,12 +353,12 @@ def google_callback(request: Request):
         except accounts.AccountError as e:
             flash(request, str(e), 'warning')
             return redirect(request, url_for(request, 'login'))
-        _audit(request, user_id, 'register')
+        audit(request, user_id, 'register')
     user = accounts.get_user(user_id)
     if user is None:
         return redirect(request, url_for(request, 'login'))
     if user['disabled']:
-        _audit(request, user_id, 'login_blocked')
+        audit(request, user_id, 'login_blocked')
         flash(request, 'Tu cuenta está bloqueada: hablá con el administrador', 'danger')
         return redirect(request, url_for(request, 'login'))
     if not user['email_verified']:
