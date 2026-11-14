@@ -2,7 +2,8 @@
 
 Uso: python scripts/eval_matching.py [--min-ndcg 0.8] [--json] [--compare]
 Con MATCHING_BACKEND=embeddings (y GEMINI_API_KEY) mide el matching por embeddings.
---compare mide TF-IDF y embeddings sobre el mismo dataset (embeddings necesita GEMINI_API_KEY).
+--compare mide TF-IDF y embeddings sobre el mismo dataset, en total y por idioma del CV, con la diferencia
+entre ambos (embeddings necesita GEMINI_API_KEY). En GitHub lo corre el workflow "Comparar matching".
 Sale con código 1 si el NDCG@5 promedio queda por debajo de --min-ndcg.
 """
 import argparse
@@ -49,7 +50,8 @@ def compare(min_ndcg=0.0, as_json=False):
                 results[backend] = {'skipped': 'sin GEMINI_API_KEY: no se mide'}
                 continue
             if backend == 'tfidf':
-                results[backend] = {'mean': matching_eval.evaluate()['mean']}
+                result = matching_eval.evaluate()
+                results[backend] = {'mean': result['mean'], 'by_language': result['by_language']}
                 continue
             # si Gemini falla o se agota el tope, el matcher vuelve a TF-IDF en silencio: se cuentan esos casos
             fallbacks = 0
@@ -64,28 +66,42 @@ def compare(min_ndcg=0.0, as_json=False):
 
             embeddings.similarity = counted
             try:
-                mean = matching_eval.evaluate()['mean']
+                result = matching_eval.evaluate()
             finally:
                 embeddings.similarity = original
             results[backend] = ({'skipped': f'{fallbacks} comparaciones cayeron a TF-IDF: no se mide'} if fallbacks
-                                else {'mean': mean})
+                                else {'mean': result['mean'], 'by_language': result['by_language']})
     finally:
         if previous is None:
             os.environ.pop('MATCHING_BACKEND', None)
         else:
             os.environ['MATCHING_BACKEND'] = previous
+    if all('mean' in row for row in results.values()):
+        # embeddings - TF-IDF: positivo = embeddings ordena mejor
+        tfidf, emb = results['tfidf'], results['embeddings']
+        results['delta'] = {'mean': _diff(emb['mean'], tfidf['mean']),
+                            'by_language': {lang: _diff(emb['by_language'][lang], tfidf['by_language'][lang])
+                                            for lang in tfidf['by_language']}}
     if as_json:
         print(json.dumps(results, indent=2))
     else:
-        print(f"{'backend':<12} {'NDCG@5':>7} {'P@3':>5} {'MRR':>5}")
+        print(f"{'backend':<12} {'idioma':<8} {'NDCG@5':>7} {'P@3':>6} {'MRR':>6}")
         for backend, row in results.items():
             if 'skipped' in row:
                 print(f"{backend:<12} {row['skipped']}")
                 continue
-            mean = row['mean']
-            print(f"{backend:<12} {mean['ndcg@5']:>7.3f} {mean['precision@3']:>5.2f} {mean['mrr']:>5.2f}")
-    measured = [row['mean']['ndcg@5'] for row in results.values() if 'mean' in row]
+            sign = '+' if backend == 'delta' else ''
+            for lang, m in [('todos', row['mean']), *row['by_language'].items()]:
+                print(f"{backend:<12} {lang:<8} {m['ndcg@5']:>{sign}7.3f} {m['precision@3']:>{sign}6.2f} "
+                      f"{m['mrr']:>{sign}6.2f}")
+    measured = [row['mean']['ndcg@5'] for name, row in results.items() if 'mean' in row and name != 'delta']
     return 1 if any(ndcg < min_ndcg for ndcg in measured) else 0
+
+
+def _diff(a, b):
+    """a - b, métrica por métrica."""
+    return {metric: a[metric] - b[metric] for metric in a}
+
 
 if __name__ == '__main__':
     sys.exit(main())

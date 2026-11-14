@@ -52,3 +52,52 @@ def test_compare_does_not_report_tfidf_as_embeddings(monkeypatch, capsys):
     assert eval_matching.main(['--compare', '--json']) == 0
     out = json.loads(capsys.readouterr().out)
     assert 'cayeron a TF-IDF' in out['embeddings']['skipped']
+
+
+class _FakeGemini:
+    """Cliente de embeddings determinístico: trigramas de letras en 64 dimensiones (sin red)."""
+
+    def __init__(self):
+        """`client.models.embed_content` apunta a este mismo objeto."""
+        self.models = self
+        self.calls = 0
+
+    def embed_content(self, model, contents, config):
+        """Respuesta con la forma de google-genai: `.embeddings[i].values`."""
+        from types import SimpleNamespace
+        self.calls += 1
+
+        def vector(text):
+            """Conteo de trigramas de letras, agrupados en 64 posiciones."""
+            values = [0.0] * 64
+            text = text.lower()
+            for i in range(len(text) - 2):
+                values[sum(map(ord, text[i:i + 3])) % 64] += 1
+            return SimpleNamespace(values=values)
+        return SimpleNamespace(embeddings=[vector(t) for t in contents])
+
+
+def test_compare_measures_embeddings_by_language(monkeypatch, capsys):
+    """Con un cliente de embeddings, --compare mide los dos backends por idioma y su diferencia."""
+    import embeddings
+    fake = _FakeGemini()
+    embeddings.configure(fake)
+    monkeypatch.setenv('GEMINI_API_KEY', 'prueba')
+    try:
+        from scripts import eval_matching
+        assert eval_matching.main(['--compare', '--json']) == 0
+        out = json.loads(capsys.readouterr().out)
+        assert fake.calls > 0
+        assert set(out['tfidf']['by_language']) == set(out['embeddings']['by_language']) == {'en', 'es', 'pt'}
+        delta = out['delta']['mean']['ndcg@5']
+        assert abs(delta - (out['embeddings']['mean']['ndcg@5'] - out['tfidf']['mean']['ndcg@5'])) < 1e-9
+        assert eval_matching.main(['--compare']) == 0
+        assert 'delta' in capsys.readouterr().out
+    finally:
+        embeddings.configure(None)
+
+
+def test_language_of_ids():
+    """El idioma sale del prefijo o sufijo del id."""
+    ids = ('qa_es', 'es_qa', 'frontend_pt', 'pt_fe', 'ux')
+    assert [matching_eval.language(n) for n in ids] == ['es', 'es', 'pt', 'pt', 'en']

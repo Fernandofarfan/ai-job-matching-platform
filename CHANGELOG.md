@@ -6,6 +6,11 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar] - Comparación de embeddings con TF-IDF por idioma
+
+- `python scripts/eval_matching.py --compare` muestra NDCG@5, P@3 y MRR en total y por idioma del CV (`en`, `es`, `pt`), y la fila `delta` (embeddings − TF-IDF) cuando se midieron los dos backends. `matching_eval.evaluate()` devuelve también `by_language`.
+- Workflow "Comparar matching" (`.github/workflows/matching-compare.yml`): los lunes y a pedido, con el secreto `GEMINI_API_KEY`; deja el JSON como artefacto y en el resumen del job. Sin el secreto mide solo TF-IDF.
+
 ## [Sin publicar] - Indeed y conexiones de LinkedIn en Playwright
 
 - `scrapers/indeed_scraper.py` y `scrapers/linkedin_connection.py` usan Playwright (`scrapers.common.Browser`, Chromium sin ventana, `PLAYWRIGHT_WS_ENDPOINT`/`PROXY_SERVER`). Salen del proyecto Selenium, `webdriver-manager` y `undetected-chromedriver`.

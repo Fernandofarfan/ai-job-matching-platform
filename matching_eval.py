@@ -34,8 +34,16 @@ def reciprocal_rank(ranked_rels):
     return next((1 / (i + 1) for i, r in enumerate(ranked_rels) if r >= 2), 0.0)
 
 
+def language(name):
+    """Idioma de un CV u oferta según su id: `_es`/`es_` español, `_pt`/`pt_` portugués; si no, inglés."""
+    for lang in ('es', 'pt'):
+        if name.endswith('_' + lang) or name.startswith(lang + '_'):
+            return lang
+    return 'en'
+
+
 def evaluate(dataset=None, matcher=None):
-    """{'profiles': {nombre: métricas y top-5}, 'mean': métricas promedio}."""
+    """{'profiles': {nombre: métricas y top-5}, 'mean': promedio, 'by_language': promedio por idioma del CV}."""
     from resume_parser import jobMatcher
     dataset = dataset or load()
     matcher = matcher or jobMatcher()
@@ -51,5 +59,10 @@ def evaluate(dataset=None, matcher=None):
             'top5': [(j, scores[j]) for j in ranking[:5]],
         }
     metrics = ('ndcg@5', 'precision@3', 'mrr')
-    mean = {m: sum(p[m] for p in per_profile.values()) / len(per_profile) for m in metrics}
-    return {'profiles': per_profile, 'mean': mean}
+
+    def average(rows):
+        """Promedio de cada métrica sobre las filas dadas."""
+        return {m: sum(r[m] for r in rows) / len(rows) for m in metrics}
+    by_language = {lang: average([p for name, p in per_profile.items() if language(name) == lang])
+                   for lang in sorted({language(name) for name in per_profile})}
+    return {'profiles': per_profile, 'mean': average(list(per_profile.values())), 'by_language': by_language}
