@@ -5,6 +5,9 @@ Negativas: las guardadas que llevan `RANKING_STALE_DAYS` días sin que te postul
 "Me interesa" / "no me interesa" (job_feedback.py) pesan doble de cada lado: es lo que dijiste explícitamente.
 Modelo: Naive Bayes con suavizado de Laplace sobre palabras del título, empresa, ubicación y portal.
 Con menos de `MIN_EXAMPLES` ejemplos de cada clase no personaliza.
+Peso del ranking frente al match: con al menos `MIN_TUNING` ofertas marcadas de cada lado se elige, por cuenta,
+el que mejor ordena "me interesa" por encima de "no me interesa" (AUC, con la preferencia de cada oferta
+calculada sin esa oferta); si no, `RANKING_WEIGHT`.
 """
 import logging
 import math
@@ -18,6 +21,9 @@ from datetime import date, datetime
 logger = logging.getLogger(__name__)
 
 MIN_EXAMPLES = 3
+MIN_TUNING = 5
+MAX_TUNING_ROWS = 300
+WEIGHTS = tuple(i / 10 for i in range(9))
 FEEDBACK_WEIGHT = 2
 POSITIVE = {'applying': 1, 'applied': 1, 'rejected': 1, 'interviewing': 2, 'negotiating': 2, 'accepted': 2}
 _STOPWORDS = {
@@ -135,6 +141,49 @@ def preference(model, job):
     return round(100 / (1 + math.exp(-z)), 1)
 
 
+def _auc(pos, neg):
+    """Probabilidad de que un puntaje de `pos` supere a uno de `neg` (empates cuentan medio)."""
+    wins = sum(1.0 if p > n else 0.5 if p == n else 0.0 for p in pos for n in neg)
+    return wins / (len(pos) * len(neg))
+
+
+def _same_offer(a, b):
+    """True si dos ejemplos son la misma oferta (mismo enlace, o mismo título y empresa)."""
+    link_a = _get(a, 'job_link', 'Job_Link', 'URL', 'url').strip()
+    if link_a and link_a == _get(b, 'job_link', 'Job_Link', 'URL', 'url').strip():
+        return True
+    title_a, company_a = _norm(_get(a, 'title', 'Title')), _norm(_get(a, 'company', 'Company'))
+    return bool(title_a and company_a) and (title_a, company_a) == (
+        _norm(_get(b, 'title', 'Title')), _norm(_get(b, 'company', 'Company')))
+
+
+def learn_weight(examples, today=None):
+    """Peso del ranking que mejor separa "me interesa" de "no me interesa" en lo que marcó la cuenta.
+
+    {'weight', 'auc', 'match_auc', 'examples'} o None si no hay `MIN_TUNING` ofertas marcadas con match de cada
+    lado. La preferencia de cada oferta marcada sale de un modelo entrenado sin ella ni sus copias (p. ej. la del
+    tracker), para no medir con trampa.
+    Entre pesos con el mismo AUC gana el más cercano a `RANKING_WEIGHT`.
+    """
+    marked = [e for e in examples if e.get('interested') is not None and e.get('match_score') is not None]
+    marked = marked[-MAX_TUNING_ROWS:]
+    if sum(1 for e in marked if e['interested']) < MIN_TUNING or sum(1 for e in marked if not e['interested']) < MIN_TUNING:
+        return None
+    held_out = []
+    for row in marked:
+        model = train([e for e in examples if e is not row and not _same_offer(row, e)], today)
+        held_out.append((row['interested'], float(row['match_score']), preference(model, row) if model else 50.0))
+    default = _weight()
+
+    def auc_at(weight):
+        """AUC de las ofertas marcadas con el puntaje combinado con ese peso del ranking."""
+        scores = [(interested, (1 - weight) * match + weight * pref) for interested, match, pref in held_out]
+        return _auc([s for i, s in scores if i], [s for i, s in scores if not i])
+    best = max(WEIGHTS, key=lambda w: (round(auc_at(w), 6), -abs(w - default)))
+    return {'weight': best, 'auc': round(auc_at(best), 3), 'match_auc': round(auc_at(0.0), 3),
+            'examples': len(held_out)}
+
+
 def top_signals(model, n=8):
     """Rasgos que más suben y más bajan una oferta, para mostrar qué aprendió."""
     feats = set(model['pos']) | set(model['neg'])
@@ -173,6 +222,10 @@ def load_model():
     except Exception as e:
         logger.warning(f"Ranking personal sin \"me interesa\": {e}")
     model = train(examples) if examples else None
+    if model is not None:
+        model['tuning'] = learn_weight(examples)
+        if model['tuning']:
+            model['weight'] = model['tuning']['weight']
     _cache[key] = (time.monotonic(), model)
     return model
 
@@ -180,7 +233,7 @@ def load_model():
 def rank(jobs, model=None, match_key='match_percent'):
     """Agrega `preference` y `ranked_score` y ordena de mayor a menor; sin modelo deja el orden por match."""
     model = model if model is not None else load_model()
-    weight = _weight()
+    weight = model.get('weight', _weight()) if model else _weight()
     for job in jobs:
         match = float(job.get(match_key) or 0)
         if model is None:
