@@ -117,8 +117,19 @@ jobs:
         if: github.event_name != 'pull_request'
         run: |
           # La revisión nueva entra sin tráfico (etiqueta candidate) y esta sigue atendiendo hasta que la nueva pase el smoke test.
-          prev="$(gcloud run services describe "empleoia-web-${ENVIRONMENT}" --region "$REGION" --format=json 2>/dev/null \
-            | jq -r '[.status.traffic[]? | select(.percent == 100 and .revisionName != null)][0].revisionName // empty' || true)"
+          svc="empleoia-web-${ENVIRONMENT}"
+          # Si gcloud falla, el paso se corta (bash -e): no se toma como primer deploy.
+          existing="$(gcloud run services list --region "$REGION" --filter="metadata.name=$svc" --format='value(metadata.name)')"
+          if [ -z "$existing" ]; then
+            prev=""
+          else
+            prev="$(gcloud run services describe "$svc" --region "$REGION" --format=json \
+              | jq -r '[.status.traffic[]? | select(.percent == 100 and .revisionName != null)][0].revisionName // empty')"
+            if [ -z "$prev" ]; then
+              echo "::error::$svc existe pero ninguna revisión tiene el 100% del tráfico; pasalo a una sola con 'gcloud run services update-traffic' y volvé a desplegar"
+              exit 1
+            fi
+          fi
           echo "Revisión que atiende hoy: ${prev:-ninguna (primer deploy)}"
           echo "SERVING_REVISION=$prev" >> "$GITHUB_ENV"
           echo "TF_VAR_serving_revision=$prev" >> "$GITHUB_ENV"
