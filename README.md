@@ -408,7 +408,7 @@ GEMINI_API_KEY=tu_api_key_aqui
 # === Seguridad ===
 SECRET_KEY=            # obligatoria en producción: python -c "import secrets; print(secrets.token_hex(32))"
 APP_PASSWORD=          # activa el login; vacía = sin login (solo local). Obligatoria en Cloud Run
-CV_ENCRYPTION_KEY=     # cifra los CVs en uploads/ (Fernet). Sin ella no se pueden leer los ya cifrados
+CV_ENCRYPTION_KEY=     # cifra los CVs en uploads/ y los perfiles (texto del CV incluido) en MySQL (Fernet). Sin ella no se pueden leer los ya cifrados
 CV_RETENTION_DAYS=0    # >0: Celery borra cada día CVs, perfiles y documentos más viejos que N días
 EXTENSION_TOKEN=       # token que se configura en la extensión de Chrome cuando hay login
 SESSION_COOKIE_SECURE=0  # 1 detrás de HTTPS
@@ -490,7 +490,7 @@ La extensión **EmpleoIA Saver** permite guardar ofertas de trabajo con 1 click.
 | Cloud Run `empleoia-web-<env>` | Web (uvicorn), cuenta de servicio propia, solo tráfico a IPs privadas por la VPC |
 | Cloud Run worker pool `empleoia-worker-<env>` | Celery worker + beat (scraping, alertas, retención de CVs); 1 instancia |
 | Cloud Run job `empleoia-migrate-<env>` | `alembic upgrade head`, se corre en cada deploy antes de actualizar la web |
-| Cloud SQL MySQL 8.0 | Solo IP privada, backups diarios (`backup_retention_count`) y point-in-time recovery de 7 días; en prod regional y con protección contra borrado |
+| Cloud SQL MySQL 8.0 | Solo IP privada, backups diarios (`backup_retention_count`) y point-in-time recovery de 7 días; en prod regional y con protección contra borrado. La restauración se verifica cada mes (`docs/backup-restore.md`) |
 | Memorystore Redis 7 | Rate limit, caché de IA y broker de Celery (HA en prod) |
 | Bucket `<proyecto>-empleoia-uploads-<env>` | CVs montados en `/app/uploads`; privado, sin versionado y con borrado por antigüedad si `cv_retention_days > 0` |
 | Bucket `<proyecto>-empleoia-results-<env>` | Resultados de búsqueda montados en `/app/results`, compartidos entre el worker y la web |

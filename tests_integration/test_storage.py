@@ -6,10 +6,12 @@ import pytest
 
 
 @pytest.fixture
-def mysql(migrated_db):
-    """Sesión SQLAlchemy contra la base migrada."""
+def mysql(migrated_db, monkeypatch):
+    """Sesión SQLAlchemy contra la base migrada, con la misma clave de cifrado que la app levantada."""
     import job_alerts
     import profile_store
+    from tests_integration.conftest import CV_ENCRYPTION_KEY
+    monkeypatch.setenv('CV_ENCRYPTION_KEY', CV_ENCRYPTION_KEY)
     profile_store.configure(None)
     job_alerts.configure(None)
     yield
@@ -26,6 +28,10 @@ def test_profile_round_trip(mysql, monkeypatch, tmp_path):
     assert profile_store._sessions() is not None
     assert profile_store.get_profile(role)['skills'] == ['python', 'sql']
     assert not os.path.exists(profile_store.JSON_PATH)
+    from sqlalchemy import text
+    with profile_store._sessions()() as session:
+        raw = session.execute(text('SELECT data FROM user_profiles WHERE role_type = :r'), {'r': role}).scalar()
+    assert 'python' not in raw and profile_store.ENC_KEY in raw
     assert profile_store.delete_profile(role)
     assert profile_store.get_profile(role) is None
 
@@ -86,4 +92,32 @@ def test_tracker_reminder_dates_and_marks(migrated_db):
     assert len(due) == 1
     assert db.mark_reminded([job_id])
     assert not [j for j in due_followups(db.get_followup_candidates(), date.today()) if j['id'] == job_id]
+    db.delete_tracked_job(job_id)
+
+
+def test_bookmarked_job_gets_applied_date_when_skipping_applied(migrated_db):
+    """Una oferta guardada que pasa directo a entrevista toma la fecha de hoy como postulación."""
+    from datetime import date, datetime
+
+    from db_config import DatabaseManager
+    db = DatabaseManager()
+    job_id = db.add_job_to_tracker({'title': f'QA {uuid.uuid4().hex[:8]}', 'company': 'Despegar',
+                                    'status': 'bookmarked', 'date_applied': datetime(2000, 1, 2)})
+    assert db.update_job_status(job_id, 'interviewing')
+    assert db.get_tracked_job_by_id(job_id)['applied_date'].date() == date.today()
+    assert db.update_job_status(job_id, 'accepted')
+    assert db.get_tracked_job_by_id(job_id)['applied_date'].date() == date.today()
+    db.delete_tracked_job(job_id)
+
+
+def test_bookmarked_job_rejected_keeps_saved_date(migrated_db):
+    """Descartar una oferta guardada no inventa una fecha de postulación."""
+    from datetime import datetime
+
+    from db_config import DatabaseManager
+    db = DatabaseManager()
+    job_id = db.add_job_to_tracker({'title': f'QA {uuid.uuid4().hex[:8]}', 'company': 'Despegar',
+                                    'status': 'bookmarked', 'date_applied': datetime(2000, 1, 2)})
+    assert db.update_job_status(job_id, 'rejected')
+    assert db.get_tracked_job_by_id(job_id)['applied_date'].year == 2000
     db.delete_tracked_job(job_id)

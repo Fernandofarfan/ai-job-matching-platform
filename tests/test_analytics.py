@@ -85,3 +85,56 @@ class TestAnalyticsAdvanced:
         assert stats.get('applied', 0) == 1
         assert stats.get('interviewing', 0) == 1
         assert stats.get('bookmarked', 0) == 1
+
+
+def test_portal_of_detects_known_portals():
+    """El portal sale del dominio del enlace."""
+    from web.analytics import portal_of
+    assert portal_of('https://ar.computrabajo.com/ofertas/1') == 'Computrabajo'
+    assert portal_of('https://www.getonbrd.com/jobs/x') == 'GetOnBoard'
+    assert portal_of('https://www.zonajobs.com.ar/x') == 'ZonaJobs'
+    assert portal_of('https://example.com') == 'Otros'
+    assert portal_of(None) == 'Otros'
+
+
+def test_portal_stats_and_days_to_apply():
+    """Tasa de respuesta por portal = respuestas / postulaciones; días promedio de guardado a postulación."""
+    from datetime import date, datetime
+
+    from web.analytics import avg_days_to_apply, portal_stats
+    jobs = [
+        {'job_link': 'https://www.bumeran.com.ar/a', 'status': 'applied',
+         'created_at': datetime(2026, 11, 1, 10), 'applied_date': date(2026, 11, 3)},
+        {'job_link': 'https://www.bumeran.com.ar/b', 'status': 'interviewing',
+         'created_at': '2026-11-01 08:00:00', 'applied_date': '2026-11-05'},
+        {'job_link': 'https://www.bumeran.com.ar/c', 'status': 'bookmarked', 'created_at': None, 'applied_date': None},
+        {'job_link': 'https://ar.computrabajo.com/d', 'status': 'rejected', 'created_at': None, 'applied_date': None},
+    ]
+    assert portal_stats(jobs) == [
+        {'portal': 'Bumeran', 'saved': 3, 'applied': 2, 'responses': 1, 'response_rate': 50.0},
+        {'portal': 'Computrabajo', 'saved': 1, 'applied': 1, 'responses': 0, 'response_rate': 0},
+    ]
+    assert avg_days_to_apply(jobs) == 3.0
+    assert avg_days_to_apply([]) is None
+
+
+def test_advanced_analytics_includes_portals(client):
+    """El endpoint devuelve el desglose por portal."""
+    data = client.get('/api/analytics/advanced').get_json()
+    assert sum(p['saved'] for p in data['by_portal']) == data['total']
+    assert 'avg_days_to_apply' in data
+
+
+def test_advanced_analytics_hides_internal_errors(app, client, monkeypatch):
+    """Un error interno no se filtra en la respuesta."""
+    db = app.view_functions['api_analytics_advanced'].__globals__['db_manager']
+    monkeypatch.setattr(db.get_all_tracked_jobs, 'side_effect', RuntimeError('detalle secreto'))
+    resp = client.get('/api/analytics/advanced')
+    assert resp.status_code == 500 and 'secreto' not in resp.get_data(as_text=True)
+
+
+def test_avg_days_to_apply_ignores_rejected():
+    """Una oferta guardada y descartada no cuenta como postulación."""
+    from web.analytics import avg_days_to_apply
+    jobs = [{'status': 'rejected', 'created_at': '2026-01-01', 'applied_date': '2026-01-01'}]
+    assert avg_days_to_apply(jobs) is None

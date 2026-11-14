@@ -155,6 +155,7 @@ def _no_login_by_default(monkeypatch, tmp_path):
     """Los tests corren sin login salvo que definan APP_PASSWORD (ignora el .env local)."""
     monkeypatch.delenv('APP_PASSWORD', raising=False)
     monkeypatch.delenv('EXTENSION_TOKEN', raising=False)
+    monkeypatch.delenv('CV_ENCRYPTION_KEY', raising=False)
     # Perfiles en un JSON temporal: los tests no tocan MySQL ni profiles/ real
     import profile_store
     monkeypatch.setenv('PROFILE_STORAGE', 'json')

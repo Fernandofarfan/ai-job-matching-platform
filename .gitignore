@@ -89,3 +89,5 @@ terraform/.terraform/
 tfplan
 crash.log
 *.secret.tfvars
+
+.lighthouseci/

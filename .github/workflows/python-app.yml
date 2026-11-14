@@ -193,8 +193,29 @@ jobs:
           python init_db.py
           python -m alembic upgrade head
 
-      - name: Tests de integración y E2E
+      - name: Tests de integración, E2E y accesibilidad (axe)
         run: python -m pytest tests_integration -v --tb=short -p no:cacheprovider
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Lighthouse (accesibilidad >= 90, buenas prácticas >= 75, rendimiento >= 60 como aviso)
+        run: |
+          python -m uvicorn main:app --host 127.0.0.1 --port 5000 > uvicorn.log 2>&1 &
+          for i in $(seq 1 60); do curl -fs http://127.0.0.1:5000/api/health > /dev/null && break; sleep 1; done
+          CHROME_PATH="$(python -c 'from playwright.sync_api import sync_playwright as p; s = p().start(); print(s.chromium.executable_path); s.stop()')" \
+            npx -y @lhci/cli@0.14.0 autorun --config=lighthouserc.json
+
+      - name: Reportes de Lighthouse
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse
+          path: |
+            .lighthouseci/
+            uvicorn.log
+          if-no-files-found: ignore
 
   # ─── Resumen de estado ────────────────────────────────────
   summary:

@@ -70,6 +70,33 @@
             </div>
         </div>
     </div>
+
+    <!-- Rendimiento por portal -->
+    <div class="row" id="portal-row" style="display:none;">
+        <div class="col-12">
+            <div class="card premium-card bg-dark text-light border-secondary mb-4">
+                <div class="card-header border-secondary bg-transparent d-flex flex-wrap justify-content-between align-items-center gap-2">
+                    <h5 class="mb-0"><i class="bi bi-globe2 me-2" aria-hidden="true"></i>Rendimiento por portal</h5>
+                    <span id="avg-days-to-apply" class="text-muted small"></span>
+                </div>
+                <div class="card-body table-responsive">
+                    <table class="table table-dark table-sm align-middle mb-0" id="portal-table">
+                        <caption class="visually-hidden">Ofertas guardadas, postulaciones y tasa de respuesta de cada portal</caption>
+                        <thead>
+                            <tr>
+                                <th scope="col">Portal</th>
+                                <th scope="col" class="text-end">Guardadas</th>
+                                <th scope="col" class="text-end">Postulaciones</th>
+                                <th scope="col" class="text-end">Respuestas</th>
+                                <th scope="col" class="text-end">Tasa de respuesta</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <style>
@@ -179,5 +206,35 @@ document.addEventListener("DOMContentLoaded", async function() {
         console.error("Error cargando dashboard:", e);
     }
 });
+async function loadPortalStats() {
+    try {
+        const response = await fetch('/api/analytics/advanced');
+        const data = await response.json();
+        if (!data.success || !data.by_portal || data.by_portal.length === 0) return;
+        const tbody = document.querySelector('#portal-table tbody');
+        tbody.replaceChildren(...data.by_portal.map(p => {
+            const tr = document.createElement('tr');
+            const th = document.createElement('th');
+            th.scope = 'row';
+            th.textContent = p.portal;
+            tr.appendChild(th);
+            [p.saved, p.applied, p.responses, `${p.response_rate}%`].forEach(value => {
+                const td = document.createElement('td');
+                td.className = 'text-end';
+                td.textContent = value;
+                tr.appendChild(td);
+            });
+            return tr;
+        }));
+        if (data.avg_days_to_apply !== null && data.avg_days_to_apply !== undefined) {
+            document.getElementById('avg-days-to-apply').textContent =
+                `Postulás en promedio ${data.avg_days_to_apply} días después de guardar una oferta`;
+        }
+        document.getElementById('portal-row').style.display = '';
+    } catch (e) {
+        console.error("Error cargando el rendimiento por portal:", e);
+    }
+}
+document.addEventListener("DOMContentLoaded", loadPortalStats);
 </script>
 {% endblock %}

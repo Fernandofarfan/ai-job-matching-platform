@@ -16,7 +16,8 @@ import pytest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 APP_PASSWORD = secrets.token_urlsafe(16)
-CV_ENCRYPTION_KEY = base64.urlsafe_b64encode(secrets.token_bytes(32)).decode()
+# Con la clave del .env local la app de desarrollo sigue leyendo los perfiles que escribe el E2E (misma base)
+CV_ENCRYPTION_KEY = os.getenv('CV_ENCRYPTION_KEY') or base64.urlsafe_b64encode(secrets.token_bytes(32)).decode()
 
 
 def pytest_collection_modifyitems(config, items):
@@ -78,3 +79,24 @@ def live_server(migrated_db, tmp_path_factory):
     proc.terminate()
     proc.wait(10)
     log.close()
+
+
+@pytest.fixture(scope='session')
+def browser():
+    """Chromium headless compartido por los tests E2E."""
+    sync_api = pytest.importorskip('playwright.sync_api')
+    with sync_api.sync_playwright() as p:
+        b = p.chromium.launch()
+        yield b
+        b.close()
+
+
+@pytest.fixture
+def page(browser, live_server, app_password):
+    """Pestaña nueva apuntando a la app levantada."""
+    context = browser.new_context(base_url=live_server, reduced_motion='reduce')
+    page = context.new_page()
+    page.set_default_timeout(20000)
+    page.app_password = app_password
+    yield page
+    context.close()
