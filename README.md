@@ -405,6 +405,13 @@ CORS_ALLOWED_ORIGINS=  # orígenes WebSocket permitidos, separados por coma (vac
 FLASK_HOST=127.0.0.1   # python app.py solo escucha en localhost; usá 0.0.0.0 para exponerlo
 FLASK_PORT=5000
 FLASK_DEBUG=0          # 1 activa el debugger de Werkzeug: nunca lo expongas a la red
+MAX_UPLOAD_MB=16       # tamaño máximo de CV
+AI_RATE_LIMIT=30 per minute     # límite por IP para /api/ai/*
+RATELIMIT_STORAGE_URI=memory:// # usá redis://... con varias instancias
+
+# === Observabilidad (opcional) ===
+LOG_LEVEL=INFO
+SENTRY_DSN=
 
 # === Base de Datos ===
 DB_HOST=127.0.0.1

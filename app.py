@@ -1,5 +1,8 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session, send_from_directory, send_file
 import io
+from flask_limiter import Limiter
+import rate_limit
+from flask_limiter.util import get_remote_address
 from flask_socketio import SocketIO, emit
 from werkzeug.utils import secure_filename
 import os
@@ -37,7 +40,7 @@ app.secret_key = os.getenv('SECRET_KEY')
 if not app.secret_key:
     logging.getLogger(__name__).warning("SECRET_KEY no definida: se usa una clave temporal y las sesiones se pierden al reiniciar")
     app.secret_key = os.urandom(24)
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
+app.config['MAX_CONTENT_LENGTH'] = int(os.getenv('MAX_UPLOAD_MB', '16')) * 1024 * 1024
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 app.jinja_env.auto_reload = True
 
@@ -46,7 +49,7 @@ _cors_origins = [o.strip() for o in os.getenv('CORS_ALLOWED_ORIGINS', '').split(
 socketio = SocketIO(app, async_mode='threading', cors_allowed_origins=_cors_origins)
 
 logging.basicConfig(
-    level=logging.INFO,
+    level=os.getenv('LOG_LEVEL', 'INFO').upper(),
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
         logging.FileHandler('logs/app.log'),
@@ -54,6 +57,24 @@ logging.basicConfig(
     ]
 )
 logger = logging.getLogger(__name__)
+
+if os.getenv('SENTRY_DSN'):
+    import sentry_sdk
+    sentry_sdk.init(dsn=os.getenv('SENTRY_DSN'), traces_sample_rate=float(os.getenv('SENTRY_TRACES_SAMPLE_RATE', '0')))
+
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    storage_uri=os.getenv('RATELIMIT_STORAGE_URI', 'memory://'),
+    swallow_errors=True,
+)
+
+
+@app.before_request
+def limit_ai_requests():
+    """Cada llamada a /api/ai/* consume cuota de Gemini: un solo contador por IP (compartido con FastAPI)."""
+    if request.path.startswith('/api/ai/') and not rate_limit.hit_ai_limit(request.remote_addr):
+        return rate_limited(None)
 
 for folder in ['uploads', 'results', 'logs', 'profiles']:
     os.makedirs(folder, exist_ok=True)
@@ -2998,6 +3019,27 @@ def export_results_excel(filename):
 # ─────────────────────────────────────────────
 # Error Handlers
 # ─────────────────────────────────────────────
+
+@app.route('/api/health')
+def health():
+    """Health check del servidor Flask."""
+    return jsonify({'status': 'ok', 'gemini': bool(AI_AVAILABLE)})
+
+
+@app.errorhandler(413)
+def file_too_large(e):
+    """Responde a uploads que superan MAX_CONTENT_LENGTH."""
+    if request.path.startswith('/api/'):
+        return jsonify({'error': f"El archivo supera el máximo de {app.config['MAX_CONTENT_LENGTH'] // (1024 * 1024)} MB"}), 413
+    flash(f"El archivo supera el máximo de {app.config['MAX_CONTENT_LENGTH'] // (1024 * 1024)} MB", 'danger')
+    return redirect(url_for('profile'))
+
+
+@app.errorhandler(429)
+def rate_limited(e):
+    """Responde 429 cuando se supera un rate limit."""
+    return jsonify({'error': 'Demasiadas solicitudes, probá de nuevo en un minuto'}), 429
+
 
 @app.errorhandler(404)
 def not_found(e):

@@ -17,12 +17,12 @@ import json
 from datetime import datetime
 
 try:
-    import google.generativeai as genai
+    from google import genai
     _GENAI_AVAILABLE = True
 except (ImportError, Exception) as e:
     genai = None
     _GENAI_AVAILABLE = False
-    print(f"Warning: google.generativeai not available: {e}")
+    print(f"Warning: google-genai not available: {e}")
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -87,8 +87,8 @@ class resumeParser:
         if api_key:
             try:
                 if 'genai' in globals() and genai is not None:
-                    genai.configure(api_key=api_key)
-                    self.model = genai.GenerativeModel('gemini-2.5-flash-lite')
+                    self.client = genai.Client(api_key=api_key)
+                    self.model_name = os.getenv('GEMINI_PARSER_MODEL', 'gemini-2.5-flash-lite')
                     self.use_ai = True
                     print("✅ AI parser configured successfully")
                 else:
@@ -422,7 +422,7 @@ class resumeParser:
         """
         
         try:
-            response = self.model.generate_content(prompt)
+            response = self.client.models.generate_content(model=self.model_name, contents=prompt)
             json_str = response.text.strip()
             # Clean up potential markdown code blocks
             if json_str.startswith("```json"):

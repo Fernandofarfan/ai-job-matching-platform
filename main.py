@@ -17,6 +17,20 @@ except Exception as e:
 app.include_router(ai.router)
 app.include_router(analytics.router)
 
+import rate_limit  # noqa: E402
+from fastapi.responses import JSONResponse  # noqa: E402
+from starlette.routing import Match  # noqa: E402
+
+
+@app.middleware("http")
+async def rate_limit_ai(request: Request, call_next):
+    """Cuenta las rutas de IA nativas de FastAPI; las de Flask las cuenta app.py con el mismo contador."""
+    if any(route.matches(request.scope)[0] != Match.NONE for route in ai.router.routes):
+        client_ip = request.client.host if request.client else "unknown"
+        if not rate_limit.hit_ai_limit(client_ip):
+            return JSONResponse({"error": "Demasiadas solicitudes de IA, probá de nuevo en un minuto"}, status_code=429)
+    return await call_next(request)
+
 # ========================================================
 # WebSockets Nativos (Reemplazo de Flask-SocketIO)
 # ========================================================
