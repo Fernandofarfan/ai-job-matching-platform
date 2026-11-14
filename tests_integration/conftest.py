@@ -56,7 +56,7 @@ def _free_port():
 
 @pytest.fixture(scope='session')
 def live_server(migrated_db, tmp_path_factory):
-    """La app completa (FastAPI + Flask) con uvicorn, login activo y almacenamiento real."""
+    """La app completa con uvicorn, login activo y almacenamiento real."""
     port = _free_port()
     env = {
         **{k: v for k, v in os.environ.items() if k not in ('APP_PASSWORD', 'ADMIN_EMAIL')},

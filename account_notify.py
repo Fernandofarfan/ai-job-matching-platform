@@ -1,6 +1,6 @@
 """Emails y eventos de seguridad de las cuentas, sin depender del framework web.
 
-Flask y FastAPI pasan la IP, el navegador y la URL base de su pedido.
+Las rutas pasan la IP, el navegador y la URL base de su pedido.
 """
 import logging
 import os

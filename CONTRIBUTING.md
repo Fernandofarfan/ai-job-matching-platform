@@ -215,7 +215,7 @@ Algunas áreas donde podés contribuir:
 #### Backend & Scrapers
 - **Rate Limiting Inteligente**: Implementar sistema de rate limiting adaptativo para APIs externas
 - **Caché de Resultados**: Sistema de caché para resultados de scraping y análisis inteligente
-- **Tests Unitarios**: Agregar tests para scrapers, parsers y rutas de Flask
+- **Tests Unitarios**: Agregar tests para scrapers, parsers y rutas de FastAPI
 - **Manejo de Errores**: Mejorar logging y recuperación de errores en scrapers
 - **Async Processing**: Implementar procesamiento asíncrono para scraping de múltiples plataformas
 
@@ -249,7 +249,7 @@ Algunas áreas donde podés contribuir:
 - **Traducción**: Soporte multiidioma (inglés, portugués)
 
 #### Refactoring
-- **Modularización**: Separar lógica de negocio de rutas de Flask
+- **Modularización**: Separar lógica de negocio de rutas de FastAPI
 - **Type Hints**: Agregar type hints completos en todo el código Python
 - **Code Quality**: Ruff y mypy ya corren en CI y en pre-commit (`pre-commit install`); falta sumar formateo automático
 - **Arquitectura**: Migrar a arquitectura más escalable (microservicios, API REST)

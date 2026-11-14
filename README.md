@@ -5,7 +5,7 @@
 ### *Plataforma Inteligente de Búsqueda de Empleo con IA*
 
 [![Python Version](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
-[![Flask](https://img.shields.io/badge/flask-3.1.3-green.svg)](https://flask.palletsprojects.com/)
+[![FastAPI](https://img.shields.io/badge/fastapi-0.162-green.svg)](https://fastapi.tiangolo.com/)
 [![License](https://img.shields.io/badge/license-MIT-orange.svg)](LICENSE)
 [![Status](https://img.shields.io/badge/status-active-success.svg)]()
 [![Celery](https://img.shields.io/badge/celery-5.3+-brightgreen.svg)](https://docs.celeryq.dev/)
@@ -64,7 +64,7 @@
 
 ### 🚀 **Nueva Arquitectura y Escalabilidad (Fases 1-5 completadas)**
 - **Migración a Playwright**: El motor de scraping abandona Selenium y adopta `playwright` asincrónico para máxima velocidad y evitar detecciones.
-- **FastAPI Core**: las APIs JSON y las páginas ya migradas (`routers/pages.py`: inicio, scraper, resultados, perfil, entrevista, tracker y analytics; `routers/auth_pages.py`: login, registro, recuperación, verificación en dos pasos y Google; `routers/account_pages.py`: Mi cuenta, Administración y exportación; `routers/content_pages.py`: resultados, documentos, perfiles y alertas) corren en FastAPI (`main.py`); Flask, montado debajo, sirve el resto de las páginas HTML mientras dura la migración.
+- **FastAPI Core**: las APIs JSON y las páginas ya migradas (`routers/pages.py`: inicio, scraper, resultados, perfil, entrevista, tracker y analytics; `routers/auth_pages.py`: login, registro, recuperación, verificación en dos pasos y Google; `routers/account_pages.py`: Mi cuenta, Administración y exportación; `routers/content_pages.py`: resultados, documentos, perfiles y alertas) y `routers/scraper_pages.py`: búsquedas y conexiones) corren en FastAPI (`main.py`). Flask ya no forma parte del proyecto; las sesiones abiertas antes siguen valiendo (`web_settings.py`).
 - **Entorno DevContainer**: Repositorio "Docker-first" con `.devcontainer` que soluciona conflictos de C++ y restricciones de Windows Defender para dependencias de IA.
 - **Web Speech API**: Interfaz de *Mock Interviews* actualizada con funcionalidad de voz-a-texto en la UI.
 - **Autonomías Externas**: Tracker automático para Gmail vía OAuth e introducción de auto-aplicación en LinkedIn.
@@ -156,8 +156,8 @@
 <br><sub>Backend</sub>
 </td>
 <td align="center" width="20%">
-<img src="https://flask.palletsprojects.com/en/2.3.x/_images/flask-logo.png" width="60px" height="60px" alt="Flask" />
-<br><strong>Flask 2.3</strong>
+<img src="https://fastapi.tiangolo.com/img/logo-margin/logo-teal.png" width="60px" height="60px" alt="FastAPI" />
+<br><strong>FastAPI</strong>
 <br><sub>Web Framework</sub>
 </td>
 <td align="center" width="20%">
@@ -247,7 +247,7 @@ alembic upgrade head   # tablas versionadas (user_profiles)
 cp .env.example .env
 # Editar .env con tus credenciales
 
-# 7. Ejecutar la aplicación (levanta main:app con uvicorn: FastAPI + Flask)
+# 7. Ejecutar la aplicación (levanta main:app con uvicorn)
 python app.py
 ```
 
@@ -272,7 +272,7 @@ python app.py
 cp .env.example .env
 # Editar .env con GEMINI_API_KEY y DB_PASSWORD
 
-# Levanta todo: Flask + MySQL + Redis + Celery + Flower
+# Levanta todo: web (FastAPI) + MySQL + Redis + Celery + Flower
 docker-compose up -d
 
 # Ver logs
@@ -381,8 +381,9 @@ EmpleoIA/
 │   ├── main.tf
 │   └── variables.tf
 │
-├── 📄 app.py                 # Configuración de Flask, login, helpers y scrapers en segundo plano
-├── 📁 web/                   # Rutas Flask por área todavía no migradas (profiles, scrapers, ai_api, files, documents, analytics, exports)
+├── 📄 main.py                # App FastAPI (routers, login, límites, métricas, páginas de error)
+├── 📄 app.py                 # Configuración de la web (web_settings.py), helpers de perfiles y scrapers en segundo plano
+├── 📁 routers/               # Páginas y APIs de FastAPI por área
 ├── 📄 ai_engine.py           # 🆕 Motor de IA centralizado (Gemini)
 ├── 📄 celery_app.py          # 🆕 Configuración de Celery
 ├── 📄 models.py              # 🆕 Modelos SQLAlchemy ORM
@@ -433,7 +434,7 @@ GMAIL_OAUTH_CLIENT_FILE=credentials.json  # cliente OAuth "aplicación web" de G
 SESSION_COOKIE_SECURE=0  # 1 detrás de HTTPS
 FLASK_HOST=127.0.0.1   # python app.py solo escucha en localhost; usá 0.0.0.0 para exponerlo
 FLASK_PORT=5000
-FLASK_DEBUG=0          # 1 activa el debugger de Werkzeug: nunca lo expongas a la red
+FLASK_DEBUG=0          # 1 activa el modo debug (recarga y /debug/directories): nunca lo expongas a la red
 MAX_UPLOAD_MB=16       # tamaño máximo de CV
 AI_RATE_LIMIT=30 per minute     # límite por cuenta (o por IP sin sesión) para /api/ai/*
 API_RATE_LIMIT=300 per minute   # límite por cuenta para todo /api/*
@@ -660,7 +661,7 @@ Proyecto desarrollado desde cero para automatizar la búsqueda de empleo con tec
 ### Tecnologías
 
 - **Web Scraping**: [Selenium](https://www.selenium.dev/) + [undetected-chromedriver](https://github.com/ultrafunkamsterdam/undetected-chromedriver)
-- **Framework**: [Flask](https://flask.palletsprojects.com/) + [FastAPI](https://fastapi.tiangolo.com/)
+- **Framework**: [FastAPI](https://fastapi.tiangolo.com/)
 - **Task Queue**: [Celery](https://docs.celeryq.dev/) + [Redis](https://redis.io/)
 - **NLP**: [spaCy](https://spacy.io/)
 - **UI**: [Bootstrap 5](https://getbootstrap.com/)

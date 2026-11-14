@@ -1,17 +1,19 @@
-"""App ASGI: rutas de FastAPI y, montada debajo, la app Flask con lo que todavía no se migró."""
+"""App ASGI de EmpleoIA: páginas, APIs, métricas y páginas de error."""
 import logging
 import time
 from urllib.parse import quote
 
 from fastapi import FastAPI, Header, Request
-from fastapi.middleware.wsgi import WSGIMiddleware
+from fastapi.exception_handlers import http_exception_handler
 from fastapi.responses import JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from starlette.concurrency import run_in_threadpool
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.routing import Match
 
 import accounts
 import auth
+import fastapi_web
 import observability
 import rate_limit
 from routers import account_pages, ai, analytics, auth_pages, content_pages, scraper_pages, documents, insights, pages, tracker
@@ -31,8 +33,7 @@ def _matches(routers, scope) -> bool:
 async def rate_limit_ai(request: Request, call_next):
     """Límites por cuenta (o por IP sin sesión): API_RATE_LIMIT para todo /api/* y AI_RATE_LIMIT para la IA.
 
-    Corre dentro de require_login, que ya fijó la cuenta. Las rutas de IA que siguen en Flask
-    las cuenta app.py con el mismo contador.
+    Corre dentro de require_login, que ya fijó la cuenta.
     """
     client_ip = rate_limit.client_ip(request.client.host if request.client else None,
                                      request.headers.get("x-forwarded-for"))
@@ -57,9 +58,9 @@ async def rate_limit_ai(request: Request, call_next):
 
 async def require_login(request: Request, call_next):
     """Fija el usuario de la sesión para las capas de datos; las rutas nativas de FastAPI exigen login."""
-    flask = request.app.state.flask_app
-    cookie = request.cookies.get(flask.config.get("SESSION_COOKIE_NAME", "session")) if flask else None
-    user_id = await run_in_threadpool(auth.cookie_user_id, flask, cookie) if cookie else None
+    web_app = request.app.state.web_app
+    cookie = request.cookies.get(web_app.config.get("SESSION_COOKIE_NAME", "session"))
+    user_id = await run_in_threadpool(auth.cookie_user_id, web_app, cookie) if cookie else None
     accounts.set_current_user(user_id)
     if (auth.auth_enabled() and user_id is None and request.url.path not in PUBLIC_API_PATHS
             and _matches(LOGIN_ROUTERS, request.scope)):
@@ -79,7 +80,7 @@ async def record_metrics(request: Request, call_next):
         return response
     finally:
         observability.observe_request(
-            request.method, observability.route_label(request.app, request.scope, request.app.state.flask_app),
+            request.method, observability.route_label(request.app, request.scope),
             status, time.perf_counter() - start)
 
 def metrics(authorization: str | None = Header(default=None)):
@@ -96,8 +97,24 @@ async def health_check():
     return {"status": "ok", "service": "EmpleoIA API (FastAPI Mode)"}
 
 
-def create_app(flask_app=None) -> FastAPI:
-    """FastAPI con sus routers y `flask_app` (por defecto la de app.py) montada en `/`."""
+async def http_error(request: Request, exc: StarletteHTTPException):
+    """Errores HTTP: JSON en /api/* y en los 405; página de error en el resto (404 sin detalles internos)."""
+    if request.url.path.startswith("/api/") or exc.status_code != 404:
+        return await http_exception_handler(request, exc)
+    return fastapi_web.render(request, "error.html", 404, code=404, message="Página no encontrada")
+
+
+async def server_error(request: Request, exc: Exception):
+    """500 sin el mensaje interno (queda en el log)."""
+    logging.exception(f"500 en {request.url.path}: {exc}")
+    if request.url.path.startswith("/api/"):
+        return JSONResponse({"error": "Error interno"}, status_code=500)
+    return fastapi_web.templates.TemplateResponse(request=request, name="error.html", status_code=500,
+                                                  context={"code": 500, "message": "Error interno del servidor"})
+
+
+def create_app(web_app=None) -> FastAPI:
+    """FastAPI con sus routers; `web_app` (por defecto la de app.py) tiene la clave, la config y los globals."""
     app = FastAPI(title="EmpleoIA API", description="FastAPI Core para EmpleoIA", version="1.0.0")
     try:
         app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -125,15 +142,12 @@ def create_app(flask_app=None) -> FastAPI:
 
     observability.setup_tracing(fastapi_app=app)
 
-    if flask_app is None:
-        try:
-            from app import app as flask_app
-        except Exception as e:
-            logging.error(f"Error mounting Flask app: {e}")
-    app.state.flask_app = flask_app
-    if flask_app is not None:
-        # Lo que FastAPI no atiende lo sirve Flask (migración gradual)
-        app.mount("/", WSGIMiddleware(flask_app))
+    app.add_exception_handler(StarletteHTTPException, http_error)  # type: ignore[arg-type]
+    app.add_exception_handler(Exception, server_error)
+
+    if web_app is None:
+        from app import app as web_app
+    app.state.web_app = web_app
     return app
 
 

@@ -1,4 +1,4 @@
-"""Límites de pedidos compartidos por Flask y FastAPI: por cuenta si hay sesión, si no por IP."""
+"""Límites de pedidos: por cuenta si hay sesión, si no por IP."""
 import logging
 import os
 import threading
@@ -71,6 +71,16 @@ def _hit(limit_name: str, namespace: str, key: str, consume: bool = True) -> boo
         state = _limiter()
         check = state['limiter'].hit if consume else state['limiter'].test
         return check(state[limit_name], namespace, key or 'unknown')
+    except Exception as e:
+        logger.warning(f"Rate limit no disponible ({e}); se permite la solicitud")
+        return True
+
+
+def hit_page(spec: str, namespace: str, key: str) -> bool:
+    """Suma un pedido al límite `spec` (p. ej. '5 per minute') de una página; False si lo superó."""
+    try:
+        state = _limiter()
+        return state['limiter'].hit(parse(spec), 'page', namespace, key or 'unknown')
     except Exception as e:
         logger.warning(f"Rate limit no disponible ({e}); se permite la solicitud")
         return True

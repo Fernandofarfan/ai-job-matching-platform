@@ -22,7 +22,7 @@ import cv_storage
 import job_alerts
 import job_dispatch
 from document_generators import ResumeOptimizer
-from fastapi_web import (_body_within, _csrf_ok, flash, flask_app_for, get_session, legacy, read_form, read_upload,
+from fastapi_web import (_body_within, _csrf_ok, flash, web_app_for, get_session, legacy, read_form, read_upload,
                          redirect, render, save_session, upload_max_bytes, url_for)
 
 logger = logging.getLogger(__name__)
@@ -184,7 +184,7 @@ def connections(request: Request):
 @router.get('/debug/directories', name='debug_directories')
 def debug_directories(request: Request):
     """Estado de las carpetas de trabajo; solo con debug activo."""
-    if not flask_app_for(request).debug:
+    if not web_app_for(request).debug:
         return JSONResponse({'error': 'Not found'}, status_code=404)
     directories: dict = {}
     for path in ['uploads', 'results', 'logs', 'profiles', 'temp', 'temp/resumes']:

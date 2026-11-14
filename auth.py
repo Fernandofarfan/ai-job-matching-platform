@@ -1,4 +1,4 @@
-"""Login con cuentas de usuario (accounts.py) compartido por Flask y FastAPI."""
+"""Login con cuentas de usuario (accounts.py) de las páginas y APIs de FastAPI."""
 import hashlib
 import hmac
 import logging
@@ -88,21 +88,21 @@ def is_local_path(target) -> bool:
     return bool(target) and target.startswith('/') and not target.startswith('//') and '\\' not in target
 
 
-def load_session_cookie(flask_app, cookie_value) -> dict:
-    """Contenido de la cookie de sesión de Flask (para rutas servidas por FastAPI); {} si no vale."""
+def load_session_cookie(web_app, cookie_value) -> dict:
+    """Contenido de la cookie de sesión (web_settings.WebApp); {} si no vale."""
     if not cookie_value:
         return {}
-    serializer = flask_app.session_interface.get_signing_serializer(flask_app)
     try:
-        data = serializer.loads(cookie_value, max_age=int(flask_app.permanent_session_lifetime.total_seconds()))
+        data = web_app.session_serializer().loads(
+            cookie_value, max_age=int(web_app.permanent_session_lifetime.total_seconds()))
     except Exception:
         return {}
     return data if isinstance(data, dict) else {}
 
 
-def cookie_user_id(flask_app, cookie_value) -> Optional[int]:
-    """Usuario de la cookie de sesión de Flask, o None."""
-    return session_user_id(load_session_cookie(flask_app, cookie_value), flask_app.secret_key)
+def cookie_user_id(web_app, cookie_value) -> Optional[int]:
+    """Usuario de la cookie de sesión, o None."""
+    return session_user_id(load_session_cookie(web_app, cookie_value), web_app.secret_key)
 
 
 def check_csrf_token(session_data: dict, token: str, secret_key, time_limit=3600) -> bool:

@@ -1,5 +1,5 @@
 """API de IA (/api/ai/*), notificaciones y análisis salarial servida por FastAPI (antes web/ai_api.py).
-Comparte con routers/tracker.py la sesión de Flask, el login, el CSRF y el formato de error;
+Comparte con routers/tracker.py la sesión, el login, el CSRF y el formato de error;
 el rate limit de IA lo aplica main.py sobre las rutas de `router`."""
 import accounts
 import logging

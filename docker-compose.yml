@@ -2,12 +2,12 @@ version: "3.9"
 
 # ============================================================
 # EmpleoIA — Docker Compose
-# Levanta: Flask app + MySQL + Redis + Celery Worker + Flower
+# Levanta: web (FastAPI) + MySQL + Redis + Celery Worker + Flower
 # ============================================================
 
 services:
 
-  # ── Flask Application ────────────────────────────────────────────
+  # ── Web (FastAPI) ───────────────────────────────────────────────────
   web:
     build:
       context: .

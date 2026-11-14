@@ -67,19 +67,9 @@ def observe_request(method, route, status, seconds):
     HTTP_LATENCY.labels(method, route).observe(seconds)
 
 
-def route_label(asgi_app, scope, flask_app=None):
-    """Plantilla de la ruta (/download_resume/<filename>) para no crear una serie por URL."""
-    label = _asgi_route(asgi_app.router.routes, scope)
-    if label:
-        return label
-    if flask_app is not None:
-        try:
-            rule, _ = flask_app.url_map.bind('localhost').match(
-                scope['path'], method=scope.get('method', 'GET'), return_rule=True)
-            return rule.rule
-        except Exception:
-            pass
-    return 'unmatched'
+def route_label(asgi_app, scope):
+    """Plantilla de la ruta (/download_resume/{filename}) para no crear una serie por URL."""
+    return _asgi_route(asgi_app.router.routes, scope) or 'unmatched'
 
 
 def _asgi_route(routes, scope, prefix=''):

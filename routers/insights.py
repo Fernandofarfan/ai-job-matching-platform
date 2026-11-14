@@ -1,5 +1,5 @@
 """API JSON de estadísticas, perfiles y ranking servida por FastAPI (antes Flask).
-Comparte con routers/tracker.py la sesión de Flask, el login y el formato de error."""
+Comparte con routers/tracker.py la sesión, el login y el formato de error."""
 import logging
 from collections import Counter
 from typing import Optional

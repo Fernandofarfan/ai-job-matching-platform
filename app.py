@@ -1,14 +1,9 @@
 import job_dispatch
-from flask import (Flask, render_template, request, redirect, url_for, flash, jsonify, session, g)
-from flask_limiter import Limiter
-from werkzeug.routing import Rule
-import rate_limit
+import web_settings
 import cv_storage
 import profile_store
-from flask_wtf.csrf import CSRFProtect
 import accounts
 import auth
-import i18n
 import os
 import logging
 import glob
@@ -33,19 +28,9 @@ from scrapers.linkedin_connection import linkedinConnections
 
 from resume_parser import resumeParser, jobMatcher
 
-app = Flask(__name__)
-# Con `python app.py` este módulo es __main__: web/* debe importar este mismo módulo
+app = web_settings.WebApp()
+# Con `python app.py` este módulo es __main__: los routers deben importar este mismo módulo
 sys.modules.setdefault('app', sys.modules[__name__])
-app.secret_key = os.getenv('SECRET_KEY')
-if not app.secret_key:
-    logging.getLogger(__name__).warning("SECRET_KEY no definida: se usa una clave temporal y las sesiones se pierden al reiniciar")
-    app.secret_key = os.urandom(24)
-app.config['MAX_CONTENT_LENGTH'] = int(os.getenv('MAX_UPLOAD_MB', '16')) * 1024 * 1024
-app.config['TEMPLATES_AUTO_RELOAD'] = True
-app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-app.config['SESSION_COOKIE_SECURE'] = os.getenv('SESSION_COOKIE_SECURE', '0') == '1'
-csrf = CSRFProtect(app)
-app.jinja_env.auto_reload = True
 
 logging.basicConfig(
     level=os.getenv('LOG_LEVEL', 'INFO').upper(),
@@ -61,84 +46,8 @@ if os.getenv('SENTRY_DSN'):
     import sentry_sdk
     sentry_sdk.init(dsn=os.getenv('SENTRY_DSN'), traces_sample_rate=float(os.getenv('SENTRY_TRACES_SAMPLE_RATE', '0')))
 
-def client_ip() -> str:
-    """IP del cliente respetando TRUSTED_PROXY_HOPS (ver rate_limit.client_ip)."""
-    return rate_limit.client_ip(request.remote_addr, request.headers.get('X-Forwarded-For'))
-
-
-def limit_key() -> str:
-    """Los límites cuentan por cuenta si hay sesión: una red compartida no bloquea a todos."""
-    return rate_limit.client_key(g.get('user_id'), client_ip())
-
-
-def email_limit_key() -> str:
-    """Clave por email del formulario: frena probar contraseñas de una cuenta desde muchas IPs."""
-    return 'email:' + (request.form.get('email') or '').strip().lower()[:254]
-
-
-# init_app va después de require_login: así el limiter ya sabe qué cuenta hizo el pedido.
-limiter = Limiter(
-    limit_key,
-    storage_uri=os.getenv('RATELIMIT_STORAGE_URI', 'memory://'),
-    swallow_errors=True,
-)
-
 if not auth.auth_enabled():
     logger.warning("LOGIN_REQUIRED=false: la app no pide login (usala solo en local)")
-
-PUBLIC_ENDPOINTS = {'login', 'register', 'static', 'health', 'service_worker', 'set_language',
-                    'forgot_password', 'reset_password', 'verify_email',
-                    'google_login', 'google_callback', 'login_two_factor'}
-
-
-@app.before_request
-def select_language():
-    i18n.set_locale(i18n.negotiate(request.cookies.get(i18n.COOKIE), request.headers.get('Accept-Language')))
-
-
-app.jinja_env.globals['_'] = i18n.jinja_gettext
-
-
-@app.before_request
-def require_login():
-    g.user_id = auth.session_user_id(session, app.secret_key) if auth.auth_enabled() else None
-    accounts.set_current_user(g.user_id)
-    if not auth.auth_enabled() or g.user_id is not None or request.endpoint in PUBLIC_ENDPOINTS:
-        return None
-    if request.path.startswith('/api/'):
-        return jsonify({'error': 'No autenticado'}), 401
-    return redirect(url_for('login', next=request.full_path if request.query_string else request.path))
-
-
-limiter.init_app(app)
-
-
-def _safe_next(target):
-    is_local = auth.is_local_path(target)
-    loops = is_local and target.split('?')[0].rstrip('/') in ('/login', '/logout', '/register')
-    return target if is_local and not loops else url_for('index')
-
-
-def _clear_offline_data(response):
-    """Sin sesión no deben quedar páginas ni datos del tracker en el caché del service worker ni en IndexedDB."""
-    response.headers['Clear-Site-Data'] = '"cache", "storage"'
-    return response
-
-
-@app.context_processor
-def inject_auth():
-    user = accounts.get_user(g.get('user_id')) if auth.auth_enabled() and g.get('user_id') else None
-    return {'auth_enabled': auth.auth_enabled(), 'current_user_email': user['email'] if user else '',
-            'current_user_is_admin': bool(user) and accounts.is_admin(user['id']),
-            'current_lang': i18n.get_locale(), 'languages': i18n.LANGUAGES,
-            'current_path': request.full_path if request.query_string else request.path}
-
-
-@app.before_request
-def limit_ai_requests():
-    """Cada llamada a /api/ai/* consume cuota de Gemini: un contador por cuenta (compartido con FastAPI)."""
-    if request.path.startswith('/api/ai/') and not rate_limit.hit_ai_limit(limit_key()):
-        return rate_limited(None)
 
 
 for folder in ['uploads', 'results', 'logs', 'profiles']:
@@ -767,90 +676,12 @@ try:
 except ImportError:
     notification_manager = None
 
-@app.errorhandler(413)
-def file_too_large(e):
-    """Responde a uploads que superan MAX_CONTENT_LENGTH."""
-    if request.path.startswith('/api/'):
-        return jsonify({'error': f"El archivo supera el máximo de {app.config['MAX_CONTENT_LENGTH'] // (1024 * 1024)} MB"}), 413
-    flash(f"El archivo supera el máximo de {app.config['MAX_CONTENT_LENGTH'] // (1024 * 1024)} MB", 'danger')
-    return redirect(url_for('profile'))
-
-
-@app.errorhandler(429)
-def rate_limited(e):
-    """Responde 429 cuando se supera un rate limit."""
-    return jsonify({'error': 'Demasiadas solicitudes, probá de nuevo en un minuto'}), 429
-
-
-@app.errorhandler(404)
-def not_found(e):
-    return render_template('error.html', code=404, message='Página no encontrada'), 404
-
-@app.errorhandler(500)
-def server_error(e):
-    logger.error(f"500 Internal Server Error: {e}")
-    return render_template('error.html', code=500, message=str(e)), 500
-
-
-ACCOUNT_PAGES = {  # routers/account_pages.py
-    'account': '/account', 'save_telegram': '/account/telegram', 'test_telegram': '/account/telegram/test',
-    'new_extension_token': '/account/extension_token', 'revoke_extension_token': '/account/extension_token/revoke',
-    'gmail_connect': '/account/gmail/connect', 'gmail_callback': '/account/gmail/callback',
-    'gmail_disconnect': '/account/gmail/disconnect', 'resend_verification': '/account/resend_verification',
-    'change_password': '/account/password', 'revoke_session': '/account/sessions/<int:session_id>/revoke',
-    'revoke_other_sessions': '/account/sessions/revoke_others', 'export_data': '/account/export',
-    'delete_account': '/account/delete', 'two_factor_setup': '/account/2fa/setup',
-    'two_factor_enable': '/account/2fa/enable', 'two_factor_disable': '/account/2fa/disable',
-    'two_factor_recovery': '/account/2fa/recovery', 'admin_panel': '/admin',
-    'admin_block': '/admin/users/<int:user_id>/block', 'admin_unblock': '/admin/users/<int:user_id>/unblock',
-    'admin_reset_two_factor': '/admin/users/<int:user_id>/2fa/reset',
-    'admin_delete': '/admin/users/<int:user_id>/delete', 'export_tracker_excel': '/export/tracker/excel',
-    'export_tracker_pdf': '/export/tracker/pdf', 'export_results_excel': '/export/results/<filename>/excel',
-}
-
-CONTENT_PAGES = {  # routers/content_pages.py
-    'view_file': '/view/<filename>', 'api_save_applications': '/api/save_applications',
-    'exclude_company_from_networking': '/exclude_company_from_networking', 'connections': '/connections',
-    'debug_directories': '/debug/directories', 'status': '/status', 'download_file': '/results/<filename>',
-    'download_csv_file': '/download_csv/<filename>', 'extract_companies_from_file': '/extract_companies/<filename>',
-    'download_resume': '/download_resume/<filename>', 'delete_csv': '/delete_csv/<filename>',
-    'batch_cover_letters': '/batch_cover_letters', 'batch_optimize_page': '/batch_optimize',
-    'optimize_resume_page': '/optimize_resume', 'optimize_resume': '/optimize_resume', 'ats_score_page': '/ats_score',
-    'view_profile': '/view_profile', 'upload_resume': '/upload_resume', 'delete_profile': '/delete_profile',
-    'view_profile_by_role': '/view_profile/<role_type>', 'delete_profile_by_role': '/delete_profile/<role_type>',
-    'confirm_delete_profile': '/delete_profile/<role_type>/confirm', 'alerts': '/alerts', 'create_alert': '/alerts',
-    'delete_alert': '/alerts/<int:search_id>/delete', 'toggle_alert': '/alerts/<int:search_id>/toggle',
-    'run_alert': '/alerts/<int:search_id>/run', 'analytics': '/analytics',
-}
-
-SCRAPER_PAGES = {  # routers/scraper_pages.py
-    'start_indeed_scraper': '/start_indeed_scraper', 'start_linkedin_scraper': '/start_linkedin_scraper',
-    'start_computrabajo_scraper': '/start_computrabajo_scraper', 'start_bumeran_scraper': '/start_bumeran_scraper',
-    'start_universal_scraper': '/start_universal_scraper', 'run_test_scraper': '/run_test_scraper',
-    'test_task_status': '/test_task_status', 'stop_connection_requests': '/stop_connection_requests',
-    'start_connection_requests': '/start_connection_requests',
-}
-
-# Páginas que ya atiende FastAPI (routers/pages.py): Flask solo las usa para armar URLs con url_for
-for _rule, _endpoint in [('/', 'index'), ('/scraper', 'scraper'), ('/results', 'results'), ('/profile', 'profile'),
-                         ('/mock-interview', 'mock_interview'), ('/tracker', 'tracker'),
-                         ('/lang/<code>', 'set_language'), ('/sw.js', 'service_worker'), ('/api/health', 'health'),
-                         ('/login', 'login'), ('/register', 'register'), ('/logout', 'logout'),
-                         ('/forgot_password', 'forgot_password'), ('/reset_password/<token>', 'reset_password'),
-                         ('/verify_email/<token>', 'verify_email'), ('/login/2fa', 'login_two_factor'),
-                         ('/login/google', 'google_login'), ('/login/google/callback', 'google_callback'),
-                         *[(r, e) for e, r in {**ACCOUNT_PAGES, **CONTENT_PAGES, **SCRAPER_PAGES}.items()]]:
-    app.url_map.add(Rule(_rule, endpoint=_endpoint, build_only=True))
-
-# Las rutas viven en web/ y se registran sobre `app` al importarse
-
-
-# Helpers de este módulo para las páginas que ya sirve FastAPI (fastapi_web.legacy)
+# Helpers de este módulo para las páginas de FastAPI (fastapi_web.legacy)
 app.extensions['empleoia_app_globals'] = globals()
 
 
 if __name__ == '__main__':
-    # Se sirve main:app (FastAPI + Flask montado), igual que en Docker: parte de la API vive solo en FastAPI
+    # Se sirve main:app, igual que en Docker
     import uvicorn
     uvicorn.run(
         'main:app',

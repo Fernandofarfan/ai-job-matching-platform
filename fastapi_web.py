@@ -1,7 +1,7 @@
-"""Páginas HTML servidas por FastAPI con la misma sesión, CSRF y avisos que Flask.
+"""Páginas HTML de FastAPI: sesión en cookie firmada, CSRF, avisos y url_for.
 
-La cookie `session` se lee y se escribe con el serializador de la app Flask montada en main.py,
-así una sesión abierta en Flask sirve en FastAPI y viceversa mientras dure la migración.
+El formato de la cookie y del token CSRF es el que usaban Flask y Flask-WTF (ver web_settings.py),
+así las sesiones abiertas antes de quitar Flask siguen valiendo.
 """
 import logging
 import os
@@ -14,7 +14,6 @@ from fastapi import Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from itsdangerous import URLSafeTimedSerializer
-from limits import parse
 from jinja2 import pass_context
 from starlette.datastructures import ImmutableMultiDict
 from starlette.routing import NoMatchFound
@@ -27,16 +26,16 @@ import rate_limit
 
 logger = logging.getLogger(__name__)
 templates = Jinja2Templates(directory=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates'))
-# Caracteres que Werkzeug deja sin escapar en la query: mismas URLs que el url_for de Flask
+# Caracteres que quedan sin escapar en la query (mismas URLs que armaba el url_for de Flask)
 QUERY_SAFE = "!$'()*,/:;?@"
 
 
-def flask_app_for(request: Request):
-    """App Flask de la que salen la clave, la config y las rutas que todavía no pasaron a FastAPI."""
-    flask_app = getattr(request.app.state, 'flask_app', None)
-    if flask_app is None:
-        from app import app as flask_app
-    return flask_app
+def web_app_for(request: Request):
+    """Clave, config y globals de la web (web_settings.WebApp de app.py, o la de los tests)."""
+    web_app = getattr(request.app.state, 'web_app', None)
+    if web_app is None:
+        from app import app as web_app
+    return web_app
 
 
 class WebSession(dict):
@@ -77,9 +76,9 @@ class WebSession(dict):
 def get_session(request: Request) -> WebSession:
     """Sesión del pedido (se carga una vez y queda en request.state)."""
     if not hasattr(request.state, 'web_session'):
-        flask_app = flask_app_for(request)
-        cookie = request.cookies.get(flask_app.config.get('SESSION_COOKIE_NAME', 'session'))
-        request.state.web_session = WebSession(auth.load_session_cookie(flask_app, cookie))
+        web_app = web_app_for(request)
+        cookie = request.cookies.get(web_app.config.get('SESSION_COOKIE_NAME', 'session'))
+        request.state.web_session = WebSession(auth.load_session_cookie(web_app, cookie))
     return request.state.web_session
 
 
@@ -88,8 +87,8 @@ ResponseT = TypeVar('ResponseT', bound=Response)
 
 def save_session(request: Request, response: ResponseT) -> ResponseT:
     """Escribe la cookie si la sesión cambió, con los mismos atributos que pone Flask."""
-    flask_app = flask_app_for(request)
-    config = flask_app.config
+    web_app = web_app_for(request)
+    config = web_app.config
     session = get_session(request)
     # como Flask (SESSION_REFRESH_EACH_REQUEST): una sesión permanente renueva su vencimiento en cada página
     refresh = bool(session.get('_permanent')) and config.get('SESSION_REFRESH_EACH_REQUEST', True)
@@ -104,21 +103,21 @@ def save_session(request: Request, response: ResponseT) -> ResponseT:
     if not session:
         response.delete_cookie(name, **common)
         return response
-    value = flask_app.session_interface.get_signing_serializer(flask_app).dumps(dict(session))
+    value = web_app.session_serializer().dumps(dict(session))
     expires = None
     if session.get('_permanent'):
-        expires = datetime.now(timezone.utc) + flask_app.permanent_session_lifetime
+        expires = datetime.now(timezone.utc) + web_app.permanent_session_lifetime
     response.set_cookie(name, value, expires=expires, **common)
     return response
 
 
 def csrf_token(request: Request) -> str:
     """Token firmado igual que Flask-WTF (`csrf_token()` en las plantillas)."""
-    flask_app = flask_app_for(request)
+    web_app = web_app_for(request)
     session = get_session(request)
     if 'csrf_token' not in session:
         session['csrf_token'] = secrets.token_hex(20)
-    return URLSafeTimedSerializer(flask_app.secret_key, salt='wtf-csrf-token').dumps(session['csrf_token'])
+    return URLSafeTimedSerializer(web_app.secret_key, salt='wtf-csrf-token').dumps(session['csrf_token'])
 
 
 def flash(request: Request, message: str, category: str = 'message') -> None:
@@ -132,17 +131,26 @@ def get_flashed_messages(request: Request, with_categories: bool = False) -> lis
     return [tuple(f) for f in flashes] if with_categories else [f[1] for f in flashes]
 
 
+def all_routes(routes):
+    """Rutas de la app, incluidas las de los include_router (FastAPI >= 0.13x los agrupa)."""
+    for route in routes:
+        nested = getattr(route, 'original_router', None)
+        if nested is not None:
+            yield from all_routes(nested.routes)
+        else:
+            yield route
+
+
 def url_for(request: Request, endpoint: str, **values) -> str:
-    """Como el url_for de Flask: rutas de FastAPI o de Flask, y lo que sobra va en la query."""
+    """Como el url_for de Flask: la ruta con ese nombre, y lo que sobra va en la query."""
     if endpoint == 'static':
         return str(request.app.url_path_for('static', path=values.pop('filename', values.pop('path', ''))))
     try:
-        route = next(r for r in request.app.router.routes if getattr(r, 'name', None) == endpoint)
+        route = next(r for r in all_routes(request.app.router.routes) if getattr(r, 'name', None) == endpoint)
         params = {k: values.pop(k) for k in list(values) if k in getattr(route, 'param_convertors', {})}
         path = str(request.app.url_path_for(endpoint, **params))
-    except (StopIteration, NoMatchFound):
-        flask_app = flask_app_for(request)
-        return flask_app.url_map.bind('').build(endpoint, values)
+    except StopIteration:
+        raise NoMatchFound(endpoint, values) from None
     values = {k: v for k, v in values.items() if v is not None}
     return f'{path}?{urlencode(values, safe=QUERY_SAFE)}' if values else path
 
@@ -195,8 +203,8 @@ def redirect(request: Request, target: str, status_code: int = 302) -> RedirectR
 
 
 def legacy(request: Request) -> dict:
-    """Globals de app.py (perfil, resultados, base) de la app Flask montada."""
-    return flask_app_for(request).extensions['empleoia_app_globals']
+    """Globals de app.py (perfil, resultados, base, job_status)."""
+    return web_app_for(request).extensions['empleoia_app_globals']
 
 
 def client_ip(request: Request) -> str:
@@ -216,24 +224,14 @@ def limit_key(request: Request) -> str:
 
 
 def hit_limit(request: Request, spec: str, namespace: str, key: str) -> bool:
-    """Suma un pedido al límite `spec` de la página; False si lo superó.
-
-    Usa el limiter de Flask (mismo storage, y apagarlo en la config o en los tests apaga los dos).
-    Si el storage falla, deja pasar, como Flask-Limiter.
-    """
-    limiters = flask_app_for(request).extensions.get('limiter') or ()
-    for limiter in limiters if isinstance(limiters, (set, list, tuple)) else [limiters]:
-        if not limiter.enabled:
-            return True
-        try:
-            return limiter.limiter.hit(parse(spec), 'page', namespace, key or 'unknown')
-        except Exception as e:
-            logger.warning(f"Rate limit no disponible ({e}); se permite la solicitud")
-    return True
+    """Suma un pedido al límite `spec` de la página; False si lo superó (RATELIMIT_ENABLED=False lo apaga)."""
+    if not web_app_for(request).config.get('RATELIMIT_ENABLED', True):
+        return True
+    return rate_limit.hit_page(spec, namespace, key)
 
 
 def too_many_requests() -> JSONResponse:
-    """Misma respuesta que el 429 de Flask."""
+    """Respuesta 429 de los límites de pedidos."""
     return JSONResponse({'error': 'Demasiadas solicitudes, probá de nuevo en un minuto'}, status_code=429)
 
 
@@ -262,14 +260,14 @@ async def _body_within(request: Request, limit: int) -> bool:
 
 def _csrf_ok(request: Request, token: Optional[str]) -> bool:
     """Token del formulario o de los headers X-CSRFToken/X-CSRF-Token (como CSRFProtect de Flask)."""
-    flask_app = flask_app_for(request)
-    if not flask_app.config.get('WTF_CSRF_ENABLED', True):
+    web_app = web_app_for(request)
+    if not web_app.config.get('WTF_CSRF_ENABLED', True):
         return True
     token = token or request.headers.get('x-csrftoken') or request.headers.get('x-csrf-token')
     if not token:
         return False
-    return auth.check_csrf_token(get_session(request), token, flask_app.secret_key,
-                                                 flask_app.config.get('WTF_CSRF_TIME_LIMIT', 3600))
+    return auth.check_csrf_token(get_session(request), token, web_app.secret_key,
+                                                 web_app.config.get('WTF_CSRF_TIME_LIMIT', 3600))
 
 
 def csrf_error(request: Request) -> Response:
@@ -296,8 +294,8 @@ async def read_form(request: Request) -> tuple[TextForm, Optional[Response]]:
 
 
 def upload_max_bytes(request: Request) -> int:
-    """MAX_CONTENT_LENGTH de Flask (MAX_UPLOAD_MB)."""
-    return int(flask_app_for(request).config.get('MAX_CONTENT_LENGTH') or 16 * 1024 * 1024)
+    """MAX_CONTENT_LENGTH (MAX_UPLOAD_MB)."""
+    return int(web_app_for(request).config.get('MAX_CONTENT_LENGTH') or 16 * 1024 * 1024)
 
 
 async def read_upload(request: Request) -> tuple[TextForm, dict, Optional[Response]]:

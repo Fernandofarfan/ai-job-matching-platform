@@ -60,7 +60,7 @@ Los counters son por instancia: en Cloud Run con varias instancias, sumalos con 
 
 Con `OTEL_EXPORTER_OTLP_ENDPOINT` (o `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`), la web y el worker envían trazas por OTLP/HTTP:
 
-- Web: cada pedido HTTP (FastAPI y las rutas de Flask montadas), sin `/api/health` ni `/metrics`.
+- Web: cada pedido HTTP, sin `/api/health` ni `/metrics`.
 - Worker: cada tarea de Celery.
 - Ambos: las llamadas salientes con `requests` (portales, Telegram).
 
