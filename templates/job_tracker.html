@@ -192,6 +192,14 @@
                 <option value="5">⭐⭐⭐⭐⭐ (Muy Alto)</option>
               </select>
             </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-bold text-muted" for="addFollowUp">Recordar seguimiento el</label>
+              <input type="date" class="form-control" id="addFollowUp" name="follow_up">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-bold text-muted" for="addDeadline">Fecha límite</label>
+              <input type="date" class="form-control" id="addDeadline" name="deadline">
+            </div>
           </div>
         </form>
       </div>
@@ -330,6 +338,8 @@
     </div>
     ${job.location ? `<div class="text-muted mb-1 small"><i class="bi bi-geo-alt me-1"></i> ${job.location}</div>` : ''}
     ${job.salary && job.salary !== 'Not specified' ? `<div class="text-success mb-2 small fw-bold"><i class="bi bi-currency-dollar me-1"></i> ${job.salary}</div>` : ''}
+    ${job.follow_up_due ? `<div class="badge bg-warning text-dark mb-2"><i class="bi bi-alarm me-1" aria-hidden="true"></i> Hacer seguimiento</div>` : ''}
+    ${!job.follow_up_due && job.follow_up ? `<div class="text-muted mb-2 small"><i class="bi bi-alarm me-1" aria-hidden="true"></i> Seguimiento: ${escapeHtml(job.follow_up)}</div>` : ''}
     <div class="job-card-footer">
       <span class="text-warning small" style="letter-spacing: -2px;">${stars}</span>
       <span class="small">${appliedDate}</span>
@@ -450,10 +460,17 @@
               <div class="mb-3">
                 <label class="small text-muted fw-bold text-uppercase">Fechas</label>
                 <div class="small">
-                  <div class="mb-1">Guardado: ${new Date(job.date_saved).toLocaleDateString()}</div>
-                  <div class="mb-1">Aplicado: ${job.date_applied ? new Date(job.date_applied).toLocaleDateString() : 'Pendiente'}</div>
-                  <div>Deadline: ${job.deadline || 'N/A'}</div>
+                  <div class="mb-1">Guardado: ${new Date(job.date_saved || job.created_at).toLocaleDateString()}</div>
+                  <div class="mb-1">Aplicado: ${(job.date_applied || job.applied_date) ? new Date(job.date_applied || job.applied_date).toLocaleDateString() : 'Pendiente'}</div>
                 </div>
+              </div>
+              <div class="mb-3">
+                <label class="small text-muted fw-bold text-uppercase" for="detailFollowUp">Recordar seguimiento el</label>
+                <input type="date" class="form-control form-control-sm" id="detailFollowUp" value="${escapeHtml((job.follow_up || '').slice(0, 10))}">
+              </div>
+              <div class="mb-3">
+                <label class="small text-muted fw-bold text-uppercase" for="detailDeadline">Fecha límite</label>
+                <input type="date" class="form-control form-control-sm" id="detailDeadline" value="${escapeHtml((job.deadline || '').slice(0, 10))}">
               </div>
               <div class="mb-3">
                 <label class="small text-muted fw-bold text-uppercase">Interés</label>
@@ -470,16 +487,44 @@
                 </div>
               </div>
             </div>
-            ${job.notes ? `
             <div class="col-12">
-              <label class="small text-muted fw-bold text-uppercase">Notas</label>
-              <div class="p-3 border rounded bg-white">${job.notes}</div>
-            </div>` : ''}
+              <label class="small text-muted fw-bold text-uppercase" for="detailNotes">Notas</label>
+              <textarea class="form-control" id="detailNotes" rows="3">${escapeHtml(job.notes || '')}</textarea>
+              <div class="d-flex align-items-center gap-2 mt-2">
+                <button type="button" class="btn btn-sm btn-primary" onclick="saveReminder()">
+                  <i class="bi bi-alarm me-1" aria-hidden="true"></i> Guardar fechas y notas
+                </button>
+                <span id="reminderStatus" class="small" role="status"></span>
+              </div>
+            </div>
           </div>
         `;
 
           new bootstrap.Modal(document.getElementById('jobDetailModal')).show();
         }
+      });
+  }
+
+  function escapeHtml(value) {
+    return String(value).replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+  }
+
+  function saveReminder() {
+    const status = document.getElementById('reminderStatus');
+    fetch(`/api/tracker/job/${currentJobId}/reminder`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        follow_up: document.getElementById('detailFollowUp').value || null,
+        deadline: document.getElementById('detailDeadline').value || null,
+        notes: document.getElementById('detailNotes').value
+      })
+    })
+      .then(response => response.json())
+      .then(data => {
+        status.className = data.success ? 'small text-success' : 'small text-danger';
+        status.textContent = data.success ? 'Guardado' : (data.error || 'No se pudo guardar');
+        if (data.success) loadAllJobs();
       });
   }
 
@@ -494,7 +539,9 @@
       salary: formData.get('salary') || 'Not specified',
       job_link: formData.get('job_link') || '',
       status: formData.get('status'),
-      excitement: parseInt(formData.get('excitement')) || 0
+      excitement: parseInt(formData.get('excitement')) || 0,
+      follow_up: formData.get('follow_up') || null,
+      deadline: formData.get('deadline') || null
     };
 
     fetch('/api/tracker/job', {
@@ -508,6 +555,9 @@
           bootstrap.Modal.getInstance(document.getElementById('addJobModal')).hide();
           form.reset();
           loadAllJobs();
+          if (data.warning) alert(data.warning);
+        } else {
+          alert(data.error || data.message || 'No se pudo agregar la postulación');
         }
       });
   }

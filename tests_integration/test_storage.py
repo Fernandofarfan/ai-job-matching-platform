@@ -69,3 +69,21 @@ def test_ai_usage_shared_in_redis(monkeypatch):
     assert after['output_tokens'] - before['output_tokens'] == 30
     assert after['calls'] - before['calls'] == 1
     ai_usage.reset()
+
+
+def test_tracker_reminder_dates_and_marks(migrated_db):
+    """Fechas de seguimiento en MySQL: se guardan, entran en los candidatos y se marca el aviso."""
+    from datetime import date
+
+    from db_config import DatabaseManager
+    from tasks.notification_tasks import due_followups
+    db = DatabaseManager()
+    job_id = db.add_job_to_tracker({'title': f'SRE {uuid.uuid4().hex[:8]}', 'company': 'Mercado', 'status': 'applied'})
+    assert db.update_tracker_dates(job_id, date(2000, 1, 2), None, 'Escribir a RR. HH.')
+    job = db.get_tracked_job_by_id(job_id)
+    assert (job['follow_up'], job['notes']) == (date(2000, 1, 2), 'Escribir a RR. HH.')
+    due = [j for j in due_followups(db.get_followup_candidates(), date.today()) if j['id'] == job_id]
+    assert len(due) == 1
+    assert db.mark_reminded([job_id])
+    assert not [j for j in due_followups(db.get_followup_candidates(), date.today()) if j['id'] == job_id]
+    db.delete_tracked_job(job_id)

@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   scrapers:
-    name: Computrabajo y Bumeran devuelven ofertas
+    name: Computrabajo, Bumeran, ZonaJobs y GetOnBoard devuelven ofertas
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:

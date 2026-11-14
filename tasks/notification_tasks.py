@@ -7,7 +7,7 @@ import logging
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 
 from celery_app import celery
 
@@ -186,42 +186,89 @@ def send_weekly_summary(stats: dict, user_email: str):
     return _send_email(user_email, "📊 EmpleoIA: Tu resumen semanal de búsqueda laboral", html)
 
 
+FOLLOWUP_DAYS = int(os.getenv("FOLLOWUP_DAYS", "7"))
+
+
+def _as_date(value):
+    """date de un date/datetime/str ISO; None si no hay."""
+    if isinstance(value, datetime):
+        return value.date()
+    if isinstance(value, date):
+        return value
+    if isinstance(value, str) and value:
+        return date.fromisoformat(value[:10])
+    return None
+
+
+def due_followups(jobs: list, today: date, default_days: int = FOLLOWUP_DAYS) -> list:
+    """Postulaciones a recordar hoy: con fecha de seguimiento vencida o, sin fecha, `default_days`
+    después de postular (0 lo desactiva). Una vez avisada, no se repite hasta una fecha nueva."""
+    due = []
+    for job in jobs:
+        follow_up = _as_date(job.get("follow_up"))
+        if follow_up is None and default_days > 0 and job.get("status") == "applied":
+            applied = _as_date(job.get("applied_date"))
+            follow_up = applied + timedelta(days=default_days) if applied else None
+        reminded = _as_date(job.get("last_reminder_at"))
+        if follow_up and follow_up <= today and (reminded is None or reminded < follow_up):
+            due.append({**job, "follow_up": follow_up})
+    return due
+
+
+def followup_telegram_text(jobs: list) -> str:
+    """Resumen de seguimientos para Telegram."""
+    from html import escape
+    lines = [f"⏰ <b>{len(jobs)} postulaciones para hacer seguimiento</b>"]
+    for job in jobs:
+        title, company = escape(str(job.get("title") or "")), escape(str(job.get("company") or ""))
+        link = escape(str(job.get("job_link") or ""))
+        head = f'<a href="{link}">{title}</a>' if link else title
+        lines.append(f"• {head}\n  {company} · desde {job['follow_up'].isoformat()}")
+    return "\n".join(lines)
+
+
+def followup_email_html(jobs: list) -> str:
+    """Resumen de seguimientos por email."""
+    from html import escape
+    items = "".join(
+        '<div style="background:#232336;padding:12px;border-radius:10px;margin:8px 0;">'
+        f'<strong>{escape(str(j.get("title") or ""))}</strong> · '
+        f'<span style="color:#a78bfa;">{escape(str(j.get("company") or ""))}</span><br>'
+        f'<span style="color:#94a3b8;">Seguimiento desde {j["follow_up"].isoformat()}</span></div>'
+        for j in jobs
+    )
+    body = ("<p>Es buen momento para escribirle al reclutador, conectar en LinkedIn o actualizar el estado.</p>"
+            + items)
+    base_url = os.getenv("APP_BASE_URL", "http://localhost:5000").rstrip("/")
+    return _get_email_template(f"⏰ {len(jobs)} seguimientos pendientes", body, f"{base_url}/tracker",
+                               "Abrir el tracker")
+
+
 @celery.task(name="tasks.notification_tasks.check_and_send_followup_reminders")
 def check_and_send_followup_reminders():
-    """Periódica: verifica follow-ups pendientes y envía recordatorios."""
-    if not NOTIFICATION_EMAIL:
-        return {"sent": 0, "reason": "NOTIFICATION_EMAIL no configurado"}
-
+    """Periódica: un solo aviso (email y/o Telegram) con los seguimientos que vencen hoy."""
+    if not (email_configured() or telegram_configured()):
+        return {"sent": 0, "reason": "Sin canal configurado (SMTP o Telegram)"}
     try:
         from db_config import db_manager
-        jobs = db_manager.get_applications({"status": "applied"})
+        due = due_followups(db_manager.get_followup_candidates(), date.today())
     except Exception as e:
-        logger.error(f"Error fetching applications for reminders: {e}")
+        logger.error(f"Error fetching applications for reminders: {type(e).__name__}: {e}")
         return {"sent": 0, "error": str(e)}
+    if not due:
+        return {"sent": 0}
 
-    today = date.today()
-    sent = 0
-
-    for job in jobs:
-        follow_up = job.get("follow_up")
-        if follow_up and isinstance(follow_up, (date, datetime)):
-            follow_up_date = follow_up.date() if isinstance(follow_up, datetime) else follow_up
-            if follow_up_date <= today:
-                try:
-                    send_followup_reminder.delay(
-                        {
-                            "title": job.get("title"),
-                            "company": job.get("company"),
-                            "applied_date": str(job.get("applied_date", "")),
-                        },
-                        NOTIFICATION_EMAIL
-                    )
-                    sent += 1
-                except Exception as e:
-                    logger.error(f"Error queuing reminder for job {job.get('id')}: {e}")
-
-    logger.info(f"Queued {sent} follow-up reminders")
-    return {"sent": sent, "checked": len(jobs)}
+    delivered = []
+    if email_configured():
+        delivered.append(_send_email(NOTIFICATION_EMAIL, f"⏰ EmpleoIA: {len(due)} seguimientos pendientes",
+                                     followup_email_html(due)))
+    if telegram_configured():
+        delivered.append(send_telegram(followup_telegram_text(due)))
+    if not any(delivered):
+        return {"sent": 0, "due": len(due), "error": "Ningún canal entregó el aviso"}
+    db_manager.mark_reminded([job["id"] for job in due])
+    logger.info(f"Follow-up reminder sent for {len(due)} applications")
+    return {"sent": len(due)}
 
 
 # ── Alertas de empleo (búsquedas guardadas) ──────────────────────────────────

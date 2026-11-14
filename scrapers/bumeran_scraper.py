@@ -16,10 +16,11 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 BASE_URL = "https://www.bumeran.com.ar"
+BADGES = {"apto discapacidad", "postulación rápida", "destacado", "urgente"}
 PROVINCES = ["Buenos Aires", "Capital Federal", "CABA", "Córdoba", "Santa Fe", "Mendoza", "Neuquén", "Rosario", "Tucumán"]
 
 
-def parse_job_card(card, base_url=BASE_URL):
+def parse_job_card(card, base_url=BASE_URL, source='Bumeran'):
     """Datos de una oferta a partir de su <a href=".../empleos/..."> (BeautifulSoup); None si no es una oferta."""
     from urllib.parse import urljoin
     href = card.get('href') or ''
@@ -32,11 +33,11 @@ def parse_job_card(card, base_url=BASE_URL):
         'URL': url, 'Apply_URL': url, 'Title': title,
         'Company': "Confidencial", 'Location': "Argentina", 'Date_Posted': "Reciente",
         'Salary': "No especificado", 'Job_Type': "Full-time", 'Level': "No especificado",
-        'Description': title, 'Source': 'Bumeran',
+        'Description': title, 'Source': source,
     }
     for h3 in card.find_all('h3'):
         text = h3.get_text(" ", strip=True)
-        if not text:
+        if not text or text.lower() in BADGES:
             continue
         if any(x in text.lower() for x in ["publicado", "actualizado", "nuevo", "hoy", "ayer"]):
             job['Date_Posted'] = text
@@ -49,11 +50,11 @@ def parse_job_card(card, base_url=BASE_URL):
     return job
 
 
-def parse_listing(html, base_url=BASE_URL):
+def parse_listing(html, base_url=BASE_URL, source='Bumeran'):
     """Ofertas únicas (por URL) de una página de resultados."""
     jobs, seen = [], set()
     for card in BeautifulSoup(html, 'lxml').select("a[href*='/empleos/']"):
-        job = parse_job_card(card, base_url)
+        job = parse_job_card(card, base_url, source)
         if job and job['URL'] not in seen:
             seen.add(job['URL'])
             jobs.append(job)
@@ -61,9 +62,11 @@ def parse_listing(html, base_url=BASE_URL):
 
 
 class BumeranScraper:
+    base_url = BASE_URL
+    source = 'Bumeran'
+
     def __init__(self):
         """Initialize Bumeran scraper"""
-        self.base_url = BASE_URL
         self.driver = None
         self.wait = None
         self._setup_driver()
@@ -131,7 +134,7 @@ class BumeranScraper:
                 else:
                     search_url = f"{self.base_url}/empleos-busqueda-{position_slug}-pagina-{page}.html"
                 
-                logger.info(f"Searching Bumeran page {page}: {search_url}")
+                logger.info(f"Searching {self.source} page {page}: {search_url}")
                 get_with_retries(self.driver, search_url)
                 
                 # Scroll to trigger lazy loading
@@ -236,7 +239,7 @@ class BumeranScraper:
         except Exception:
             logger.info("Job cards did not render before the timeout")
         try:
-            jobs = parse_listing(self.driver.page_source, self.base_url)
+            jobs = parse_listing(self.driver.page_source, self.base_url, self.source)
         except Exception as e:
             logger.error(f"Error extracting jobs from page: {e}")
             return []

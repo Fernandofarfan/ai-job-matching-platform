@@ -1,4 +1,6 @@
 """Job tracker: página, API CRUD y guardado desde la extensión de Chrome."""
+from datetime import date, datetime
+
 import auth
 from db_config import db_manager
 from flask import jsonify, render_template, request, session
@@ -49,6 +51,46 @@ def api_save_from_extension():
 
 # ── Notifications API ─────────────────────────────────────────────────────────
 
+DATE_FIELDS = ('follow_up', 'deadline')
+
+
+def _parse_date(value):
+    """'AAAA-MM-DD' -> date; vacío -> None; ValueError si el formato es inválido."""
+    return date.fromisoformat(value) if value else None
+
+
+def _with_iso_dates(job):
+    """Fechas en ISO (para <input type="date">) y si el seguimiento está vencido."""
+    job = dict(job)
+    for key, value in job.items():
+        if isinstance(value, (date, datetime)):
+            job[key] = value.isoformat()
+    follow_up = job.get('follow_up')
+    job['follow_up_due'] = bool(follow_up and follow_up[:10] <= date.today().isoformat()
+                                and job.get('status') in ('applied', 'interviewing'))
+    return job
+
+
+def _save_dates(job_id, data):
+    """Guarda follow_up/deadline/notes; devuelve un mensaje de error o None."""
+    try:
+        dates = {k: _parse_date(data.get(k)) for k in DATE_FIELDS}
+    except ValueError:
+        return 'Fecha inválida: usá AAAA-MM-DD'
+    if not db_manager.update_tracker_dates(job_id, dates['follow_up'], dates['deadline'], data.get('notes') or None):
+        return 'No se pudieron guardar las fechas'
+    return None
+
+
+@app.route('/api/tracker/job/<int:job_id>/reminder', methods=['PUT'])
+def api_update_job_reminder(job_id):
+    """Fecha de seguimiento (recordatorio), vencimiento y notas."""
+    error = _save_dates(job_id, request.get_json(silent=True) or {})
+    if error:
+        return jsonify({'success': False, 'error': error}), 400
+    return jsonify({'success': True})
+
+
 @app.route('/tracker')
 def tracker():
     db_manager.create_job_tracker_table()
@@ -57,7 +99,7 @@ def tracker():
 @app.route('/api/tracker/jobs')
 def api_get_tracked_jobs():
     try:
-        jobs = db_manager.get_all_tracked_jobs()
+        jobs = [_with_iso_dates(job) for job in db_manager.get_all_tracked_jobs()]
         return jsonify({
             'success': True,
             'jobs': jobs,
@@ -78,6 +120,12 @@ def api_add_tracked_job():
         if not job_data.get('title') or not job_data.get('company'):
             return jsonify({'success': False, 'error': 'Title and Company are required'}), 400
         
+        try:
+            for key in DATE_FIELDS:
+                _parse_date(job_data.get(key))
+        except ValueError:
+            return jsonify({'success': False, 'error': 'Fecha inválida: usá AAAA-MM-DD'}), 400
+
         logger.info(f"Adding job to tracker: {job_data.get('title')} at {job_data.get('company')}")
         
         result = db_manager.add_job_to_tracker(job_data)
@@ -91,11 +139,18 @@ def api_add_tracked_job():
                 'message': 'Job already exists in tracker'
             }), 409
         
+        warning = None
+        if result and any(job_data.get(k) for k in DATE_FIELDS + ('notes',)):
+            error = _save_dates(result, job_data)
+            if error:
+                logger.warning(f"Job {result} added without dates: {error}")
+                warning = f'Se agregó la postulación, pero no se guardaron las fechas ni las notas ({error}). Cargalas desde el detalle.'
         if result:
             logger.info(f"Successfully added job with ID: {result}")
             return jsonify({
                 'success': True,
                 'job_id': result,
+                'warning': warning,
                 'message': 'Job added to tracker'
             })
         else:
@@ -114,7 +169,7 @@ def api_get_tracked_job(job_id):
         if job:
             return jsonify({
                 'success': True,
-                'job': job
+                'job': _with_iso_dates(job)
             })
         else:
             return jsonify({'success': False, 'error': 'Job not found'}), 404

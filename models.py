@@ -78,6 +78,7 @@ class Application(Base):
     date_applied = Column(Date, nullable=True)
     deadline = Column(Date, nullable=True)
     follow_up = Column(Date, nullable=True)
+    last_reminder_at = Column(DateTime, nullable=True)
     notes = Column(Text)
 
     # AI scores

@@ -1,7 +1,7 @@
 """Alertas de empleo: búsquedas guardadas que corren solas y avisan solo por ofertas nuevas.
 
 Una oferta se identifica por título + empresa normalizados, así la misma publicación en
-Computrabajo y en Bumeran se avisa una sola vez (tabla seen_jobs).
+varios portales se avisa una sola vez (tabla seen_jobs).
 """
 import hashlib
 import logging
@@ -16,7 +16,7 @@ from sqlalchemy.exc import IntegrityError
 logger = logging.getLogger(__name__)
 
 Base = declarative_base()
-PORTALS = ('computrabajo', 'bumeran')
+PORTALS = ('computrabajo', 'bumeran', 'zonajobs', 'getonboard')
 CHANNELS = ('email', 'telegram')
 MAX_JOBS_PER_PORTAL = 30
 # Las que no entran en un aviso quedan sin marcar y salen en el siguiente
@@ -223,6 +223,12 @@ def _make_scraper(portal):
     if portal == 'computrabajo':
         from scrapers.computrabajo_scraper import ComputrabajoScraper
         return ComputrabajoScraper()
+    if portal == 'zonajobs':
+        from scrapers.zonajobs_scraper import ZonaJobsScraper
+        return ZonaJobsScraper()
+    if portal == 'getonboard':
+        from scrapers.getonboard_scraper import GetOnBoardScraper
+        return GetOnBoardScraper()
     from scrapers.bumeran_scraper import BumeranScraper
     return BumeranScraper()
 

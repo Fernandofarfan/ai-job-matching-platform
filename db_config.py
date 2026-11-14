@@ -513,5 +513,57 @@ class DatabaseManager:
             if connection:
                 connection.close()
 
+    def _execute(self, query, params):
+        """Ejecuta un UPDATE y devuelve True si salió bien."""
+        connection = cursor = None
+        try:
+            connection = self.get_connection()
+            cursor = connection.cursor()
+            cursor.execute(query, params)
+            connection.commit()
+            return True
+        except mysql.connector.Error as err:
+            logger.error(f"Error updating applications: {err}")
+            if connection:
+                connection.rollback()
+            return False
+        finally:
+            if cursor:
+                cursor.close()
+            if connection:
+                connection.close()
+
+    def update_tracker_dates(self, job_id, follow_up=None, deadline=None, notes=None):
+        """Fecha de seguimiento, vencimiento y notas de una postulación (None borra la fecha)."""
+        return self._execute(
+            "UPDATE applications SET follow_up = %s, deadline = %s, notes = %s WHERE id = %s",
+            (follow_up, deadline, notes, job_id),
+        )
+
+    def get_followup_candidates(self):
+        """Postulaciones enviadas o en entrevista, que son las que admiten seguimiento."""
+        connection = cursor = None
+        try:
+            connection = self.get_connection()
+            cursor = connection.cursor(dictionary=True)
+            cursor.execute(
+                "SELECT id, title, company, job_link, status, applied_date, follow_up, deadline, last_reminder_at "
+                "FROM applications WHERE status IN ('applied', 'interviewing')"
+            )
+            return cursor.fetchall()
+        finally:
+            if cursor:
+                cursor.close()
+            if connection:
+                connection.close()
+
+    def mark_reminded(self, job_ids):
+        """Registra que ya se avisó hoy por estas postulaciones."""
+        if not job_ids:
+            return True
+        marks = ', '.join(['%s'] * len(job_ids))
+        return self._execute(f"UPDATE applications SET last_reminder_at = NOW() WHERE id IN ({marks})", tuple(job_ids))
+
+
 # Initialize database manager
 db_manager = DatabaseManager()
