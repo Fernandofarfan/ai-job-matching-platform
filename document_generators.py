@@ -14,7 +14,8 @@ GEMINI_ERROR_PREFIXES = ("⚠️ Gemini no está configurado", "Error al contact
 
 def _generated_dir(kind: str) -> str:
     """GENERATED_DIR es la carpeta compartida entre la web y el worker de Celery."""
-    return os.path.join(os.getenv("GENERATED_DIR", "temp"), kind)
+    import accounts
+    return os.path.join(accounts.user_subdir(os.getenv("GENERATED_DIR", "temp")), kind)
 
 
 def _safe_filename(prefix: str, job_title: str, company: str, ext: str) -> str:

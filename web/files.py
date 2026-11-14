@@ -1,4 +1,5 @@
 """Archivos de resultados: ver, descargar, borrar, extraer empresas y conexiones."""
+import accounts
 import os
 import pandas as pd
 from db_config import db_manager
@@ -17,7 +18,7 @@ from app import (  # noqa: F401
 @app.route('/view/<filename>')
 def view_file(filename):
     try:
-        file_path = os.path.join('results', filename)
+        file_path = os.path.join(accounts.results_dir(), filename)
         if os.path.exists(file_path) and filename.endswith('.csv'):
             # Los scrapers escriben UTF-8 (Bumeran con BOM); latin-1 queda para CSVs viejos
             try:
@@ -206,17 +207,17 @@ def debug_directories():
 
 @app.route('/status')
 def status():
-    return jsonify(job_dispatch.refresh(job_status))
+    return jsonify(dict(job_dispatch.refresh(job_status)))
 
 @app.route('/results/<filename>')
 def download_file(filename):
-    return send_from_directory('results', filename, as_attachment=True)
+    return send_from_directory(accounts.results_dir(), filename, as_attachment=True)
 
 
 @app.route('/download_csv/<filename>')
 def download_csv_file(filename):
     try:
-        file_path = os.path.join('results', filename)
+        file_path = os.path.join(accounts.results_dir(), filename)
         if os.path.exists(file_path) and filename.endswith('.csv'):
             return send_file(file_path, as_attachment=True, download_name=filename)
         else:
@@ -229,7 +230,7 @@ def download_csv_file(filename):
 @app.route('/extract_companies/<filename>')
 def extract_companies_from_file(filename):
     try:
-        file_path = os.path.join('results', filename)
+        file_path = os.path.join(accounts.results_dir(), filename)
         if os.path.exists(file_path) and filename.endswith('.csv'):
             df = pd.read_csv(file_path, encoding='latin-1')
             
@@ -280,7 +281,7 @@ def download_resume(filename):
 @app.route('/delete_csv/<filename>')
 def delete_csv(filename):
     try:
-        results_dir = 'results'
+        results_dir = accounts.results_dir()
         filepath = os.path.join(results_dir, filename)
         
         if os.path.exists(filepath):

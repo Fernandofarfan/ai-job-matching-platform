@@ -33,8 +33,14 @@ def _month():
     return datetime.now(timezone.utc).strftime('%Y-%m')
 
 
-def _key(kind, month=None):
-    return f"ai_usage:{month or _month()}:{kind}"
+def _key(kind, month=None, user=None):
+    scope = '' if user is None else f':u{user}'
+    return f"ai_usage:{month or _month()}{scope}:{kind}"
+
+
+def _uid():
+    import accounts
+    return accounts.current_user_id()
 
 
 def _env_int(name, default=0):
@@ -58,9 +64,14 @@ def monthly_limit():
     return max(_env_int('AI_MONTHLY_TOKEN_LIMIT'), 0)
 
 
-def _get(kind):
+def user_monthly_limit():
+    """AI_USER_MONTHLY_TOKEN_LIMIT: tope por cuenta; 0 o vacío = sin tope."""
+    return max(_env_int('AI_USER_MONTHLY_TOKEN_LIMIT'), 0)
+
+
+def _get(kind, user=None):
     try:
-        return int(_storage().get(_key(kind)) or 0)
+        return int(_storage().get(_key(kind, user=user)) or 0)
     except Exception as e:
         logger.warning(f"Contador de IA no disponible ({e})")
         return 0
@@ -75,16 +86,22 @@ def record(input_tokens, output_tokens):
         logger.debug(f"Métricas de IA no registradas ({e})")
     try:
         storage = _storage()
-        for kind, amount in (('input', input_tokens), ('output', output_tokens), ('calls', 1)):
-            if amount:
-                storage.incr(_key(kind), MONTH_SECONDS, amount=int(amount))
+        uid = _uid()
+        for user in ([None] if uid is None else [None, uid]):
+            for kind, amount in (('input', input_tokens), ('output', output_tokens), ('calls', 1)):
+                if amount:
+                    storage.incr(_key(kind, user=user), MONTH_SECONDS, amount=int(amount))
     except Exception as e:
         logger.warning(f"No se pudo registrar el consumo de IA ({e})")
 
 
 def budget_exceeded():
+    """True si se llegó al tope de la instancia o al de la cuenta actual."""
     limit = monthly_limit()
-    return bool(limit) and _get('input') + _get('output') >= limit
+    if limit and _get('input') + _get('output') >= limit:
+        return True
+    uid, user_limit = _uid(), user_monthly_limit()
+    return uid is not None and bool(user_limit) and _get('input', uid) + _get('output', uid) >= user_limit
 
 
 def summary():
@@ -99,6 +116,16 @@ def summary():
         'monthly_token_limit': monthly_limit() or None,
         'cached_responses': len(_cache),
     }
+    uid = _uid()
+    if uid is not None:
+        mine_in, mine_out = _get('input', uid), _get('output', uid)
+        data['account'] = {
+            'calls': _get('calls', uid),
+            'input_tokens': mine_in,
+            'output_tokens': mine_out,
+            'total_tokens': mine_in + mine_out,
+            'monthly_token_limit': user_monthly_limit() or None,
+        }
     price_in = _env_float('AI_PRICE_INPUT_PER_MTOK')
     price_out = _env_float('AI_PRICE_OUTPUT_PER_MTOK')
     if price_in or price_out:

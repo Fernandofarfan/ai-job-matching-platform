@@ -123,6 +123,22 @@ def test_bookmarked_job_rejected_keeps_saved_date(migrated_db):
     db.delete_tracked_job(job_id)
 
 
+def test_status_history_records_transitions(migrated_db):
+    """Cada cambio de estado queda en el historial y se borra con la postulación."""
+    from db_config import DatabaseManager
+    db = DatabaseManager()
+    job_id = db.add_job_to_tracker({'title': f'QA {uuid.uuid4().hex[:8]}', 'company': 'Despegar',
+                                    'status': 'bookmarked'})
+    assert db.update_job_status(job_id, 'applied')
+    assert db.update_job_status(job_id, 'applied')
+    assert db.update_job_status(job_id, 'rejected')
+    changes = [(c['old_status'], c['new_status']) for c in db.get_status_history(job_id)]
+    assert changes == [(None, 'bookmarked'), ('bookmarked', 'applied'), ('applied', 'rejected')]
+    assert not db.update_job_status(10**9, 'applied')
+    db.delete_tracked_job(job_id)
+    assert db.get_status_history(job_id) == []
+
+
 def test_applications_filters_and_connections(migrated_db):
     """Filtros de postulaciones, CSV procesados y empresas excluidas del networking sobre MySQL."""
     from db_config import DatabaseManager

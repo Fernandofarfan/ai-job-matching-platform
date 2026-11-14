@@ -2,6 +2,7 @@
 tasks/scraping_tasks.py — Tareas de scraping asíncronas vía Celery
 Reemplaza el uso de threading.Thread en app.py para scrapers robustos.
 """
+import accounts
 import os
 import logging
 import random
@@ -31,7 +32,7 @@ def _save_jobs_csv(jobs: list, prefix: str, has_matches: bool) -> str:
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     suffix = "_with_matches" if has_matches else ""
     filename = f"{prefix}{suffix}_{timestamp}.csv"
-    path = os.path.join("results", filename)
+    path = os.path.join(accounts.results_dir(), filename)
     df = pd.DataFrame(jobs)
     df.to_csv(path, index=False)
     logger.info(f"Saved {len(jobs)} jobs to {path}")
@@ -339,14 +340,14 @@ def run_web_job(self, key: str, name: str, args: list, poll_seconds: float = 2.0
 
     func = job_dispatch.resolve(name)
     status = web_app.job_status
-    status[key] = {**status.get(key, {}), "status": "running", "progress": 0, "message": "Iniciando..."}
     with accounts.as_user(user_id):
+        status[key] = {**status.get(key, {}), "status": "running", "progress": 0, "message": "Iniciando..."}
         worker = accounts.thread(target=func, args=args, daemon=True)
-    worker.start()
-    while worker.is_alive():
-        self.update_state(state="PROGRESS", meta=copy.deepcopy(status.get(key, {})))
-        worker.join(poll_seconds)
-    final = copy.deepcopy(status.get(key, {}))
+        worker.start()
+        while worker.is_alive():
+            self.update_state(state="PROGRESS", meta=copy.deepcopy(status.get(key, {})))
+            worker.join(poll_seconds)
+        final = copy.deepcopy(status.get(key, {}))
     if final.get("status") in job_dispatch.ACTIVE:
         final["status"] = "completed"
     return final

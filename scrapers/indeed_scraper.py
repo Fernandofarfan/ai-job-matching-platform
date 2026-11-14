@@ -1,3 +1,4 @@
+import accounts
 import sys
 sys.path.append('/Users/chandrashakargudipally/miniconda3/lib/python3.12/site-packages')
 import undetected_chromedriver as uc
@@ -1971,7 +1972,7 @@ class indeedScraper:
                     
                     df = pd.DataFrame(jobs)
                     os.makedirs('results', exist_ok=True)
-                    file_path = os.path.join('results', final_filename)
+                    file_path = os.path.join(accounts.results_dir(), final_filename)
                     df.to_csv(file_path, index=False)
                     logger.info(f"Final results saved to {file_path} with {len(jobs)} jobs")
                     
@@ -1989,7 +1990,7 @@ class indeedScraper:
                         
                         df = pd.DataFrame(self.all_jobs)
                         os.makedirs('results', exist_ok=True)
-                        file_path = os.path.join('results', final_filename)
+                        file_path = os.path.join(accounts.results_dir(), final_filename)
                         df.to_csv(file_path, index=False)
                         logger.info(f"Partial results saved to {file_path} with {len(self.all_jobs)} jobs")
                     

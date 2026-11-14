@@ -110,3 +110,51 @@ def test_launch_remembers_task_in_redis(monkeypatch):
     with mock.patch.object(job_dispatch, 'resolve'), mock.patch('celery_app.celery', fake):
         job_dispatch.launch({}, 'bumeran_scraping', 'run_bumeran_job', [])
     fake.backend.client.set.assert_called_once_with('empleoia:scraper_task:bumeran_scraping', 'abc', ex=86400)
+
+
+def test_per_user_status_is_isolated():
+    """El progreso de una búsqueda solo lo ve la cuenta que la lanzó."""
+    import accounts
+    status = job_dispatch.PerUserStatus({'indeed_scraping': {'status': 'idle'}})
+    with accounts.as_user(1):
+        status['indeed_scraping'] = {'status': 'running'}
+    with accounts.as_user(2):
+        assert status['indeed_scraping'] == {'status': 'idle'}
+        assert job_dispatch._task_key('indeed_scraping') == 'empleoia:scraper_task:u2:indeed_scraping'
+    with accounts.as_user(1):
+        assert status['indeed_scraping'] == {'status': 'running'}
+
+
+def test_results_dir_is_per_account(tmp_path, monkeypatch):
+    """Cada cuenta escribe sus CSV en results/u<id>; sin cuenta, en results/."""
+    import accounts
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / 'results').mkdir()
+    (tmp_path / 'results' / 'viejo.csv').write_text('a')
+    assert accounts.results_dir() == 'results'
+    accounts.claim_legacy_files(7)
+    with accounts.as_user(7):
+        assert sorted(p.name for p in (tmp_path / accounts.results_dir()).iterdir()) == ['viejo.csv']
+    with accounts.as_user(8):
+        assert list((tmp_path / accounts.results_dir()).iterdir()) == []
+
+
+def test_generated_dirs_include_account_folders(tmp_path, monkeypatch):
+    """La retención también recorre los documentos generados de cada cuenta."""
+    import cv_storage
+    monkeypatch.setenv('GENERATED_DIR', str(tmp_path))
+    (tmp_path / 'u3' / 'resumes').mkdir(parents=True)
+    assert str(tmp_path / 'u3' / 'resumes') in cv_storage.generated_dirs()
+
+
+def test_adopt_legacy_files_moves_to_first_account(tmp_path, monkeypatch):
+    """Si ya había cuentas, los CSV sueltos de results/ pasan a la primera."""
+    import accounts
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / 'results').mkdir()
+    (tmp_path / 'results' / 'jobs.csv').write_text('a')
+    (tmp_path / 'results' / '.gitkeep').write_text('')
+    monkeypatch.setattr(accounts, 'first_user_id', lambda: 7)
+    accounts.adopt_legacy_files()
+    assert (tmp_path / 'results' / 'u7' / 'jobs.csv').exists()
+    assert (tmp_path / 'results' / '.gitkeep').exists()

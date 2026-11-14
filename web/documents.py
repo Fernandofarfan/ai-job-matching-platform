@@ -1,4 +1,5 @@
 """Cartas de presentación y optimización de CV."""
+import accounts
 import os
 import ats_score
 from document_generators import ResumeOptimizer
@@ -15,7 +16,7 @@ from app import (  # noqa: F401
 @app.route('/batch_cover_letters')
 def batch_cover_letters():
     try:
-        results_dir = 'results'
+        results_dir = accounts.results_dir()
         if not os.path.exists(results_dir):
             os.makedirs(results_dir)
         

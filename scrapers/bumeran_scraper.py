@@ -1,3 +1,4 @@
+import accounts
 import time
 import logging
 import os
@@ -261,7 +262,7 @@ class BumeranScraper:
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                 filename = f"bumeran_jobs_{timestamp}.csv"
             
-            filepath = os.path.join('results', filename)
+            filepath = os.path.join(accounts.results_dir(), filename)
             
             df = pd.DataFrame(jobs)
             df.to_csv(filepath, index=False, encoding='utf-8-sig')

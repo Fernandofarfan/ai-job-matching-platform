@@ -1,3 +1,4 @@
+import accounts
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -16,7 +17,7 @@ def get_user_profile():
         return None
 
 def get_recent_job_files():
-    csv_files = glob.glob(os.path.join('results', '*.csv'))
+    csv_files = glob.glob(os.path.join(accounts.results_dir(), '*.csv'))
     files_with_time = [(f, os.path.getmtime(f)) for f in csv_files]
     files_with_time.sort(key=lambda x: x[1], reverse=True)
     return [os.path.basename(f[0]) for f in files_with_time[:10]]

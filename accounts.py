@@ -179,8 +179,57 @@ def authenticate(email: str, password: str) -> Optional[int]:
         return user.id if check_password_hash(user.password_hash, password or '') else None
 
 
-OWNED_TABLES = ('applications', 'user_profiles', 'saved_searches', 'seen_jobs',
+OWNED_TABLES = ('applications', 'application_status_history', 'user_profiles', 'saved_searches', 'seen_jobs',
                 'networking_exclusions', 'connection_requests', 'processed_files')
+
+
+RESULTS_ROOT = 'results'
+GENERATED_KINDS = ('cover_letters', 'resumes')
+
+
+def results_dir() -> str:
+    """Carpeta de CSV de la cuenta actual (results/u<id>); sin cuenta, la raíz heredada."""
+    uid = current_user_id()
+    path = RESULTS_ROOT if uid is None else os.path.join(RESULTS_ROOT, f'u{uid}')
+    os.makedirs(path, exist_ok=True)
+    return path
+
+
+def user_subdir(base: str) -> str:
+    """`base/u<id>` para la cuenta actual, o `base` sin cuenta."""
+    uid = current_user_id()
+    return base if uid is None else os.path.join(base, f'u{uid}')
+
+
+def _move_files(src_dir: str, dst_dir: str):
+    """Mueve los archivos (no carpetas) de src_dir a dst_dir."""
+    import shutil
+    if not os.path.isdir(src_dir):
+        return
+    os.makedirs(dst_dir, exist_ok=True)
+    for name in os.listdir(src_dir):
+        src = os.path.join(src_dir, name)
+        if os.path.isfile(src) and not name.startswith('.'):
+            shutil.move(src, os.path.join(dst_dir, name))
+
+
+def claim_legacy_files(user_id: int):
+    """Pasa a la primera cuenta los CSV de results/ y los documentos generados antes del multiusuario."""
+    import logging
+    try:
+        _move_files(RESULTS_ROOT, os.path.join(RESULTS_ROOT, f'u{user_id}'))
+        base = os.getenv('GENERATED_DIR', 'temp')
+        for kind in GENERATED_KINDS:
+            _move_files(os.path.join(base, kind), os.path.join(base, f'u{user_id}', kind))
+    except OSError as e:
+        logging.getLogger(__name__).error(f'No se pudieron mover los archivos previos: {e}')
+
+
+def adopt_legacy_files():
+    """Instancias que ya tenían cuentas antes de separar archivos: los sueltos pasan a la primera cuenta."""
+    uid = first_user_id()
+    if uid is not None:
+        claim_legacy_files(uid)
 
 
 def claim_orphans(user_id: int):
@@ -192,3 +241,4 @@ def claim_orphans(user_id: int):
             if inspector.has_table(table) and 'user_id' in {c['name'] for c in inspector.get_columns(table)}:
                 session.execute(text(f'UPDATE {table} SET user_id = :uid WHERE user_id IS NULL'), {'uid': user_id})
         session.commit()
+    claim_legacy_files(user_id)

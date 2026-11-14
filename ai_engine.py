@@ -73,8 +73,8 @@ def _call_gemini(prompt: str, temperature: float = 0.7) -> str:
     if cached is not None:
         return cached
     if ai_usage.budget_exceeded():
-        logger.warning("Límite mensual de tokens de IA alcanzado (AI_MONTHLY_TOKEN_LIMIT)")
-        return "Error al contactar Gemini: se alcanzó el límite mensual de tokens (AI_MONTHLY_TOKEN_LIMIT)"
+        logger.warning("Límite mensual de tokens de IA alcanzado (instancia o cuenta)")
+        return "Error al contactar Gemini: se alcanzó el límite mensual de tokens"
     try:
         response = _gemini_client.models.generate_content(
             model=GEMINI_MODEL,

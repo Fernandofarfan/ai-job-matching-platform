@@ -657,7 +657,7 @@ def run_universal_job(position, location):
             # Save to CSV
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"universal_jobs_{timestamp}.csv"
-            filepath = os.path.join('results', filename)
+            filepath = os.path.join(accounts.results_dir(), filename)
             df.to_csv(filepath, index=False, encoding='utf-8-sig')
 
             job_status['universal_scraping']['status'] = 'completed'
