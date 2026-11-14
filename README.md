@@ -118,7 +118,7 @@
 - **Puntaje ATS** (`/optimize_resume` → "Calcular puntaje ATS", o `POST /api/ats_score`): puntaje de 0 a 100 sin IA con contacto, secciones, extensión, logros medibles, fechas y palabras clave de la oferta que faltan en el CV.
 - **Recordatorios del tracker:** cada postulación acepta fecha de seguimiento, fecha límite y notas. Celery Beat manda un solo aviso diario por email o Telegram con los seguimientos vencidos; sin fecha, avisa `FOLLOWUP_DAYS` días después de postular. Cada recordatorio se manda una vez.
 - **Ranking personal:** aprende del tracker a qué ofertas te postulás y cuáles dejás guardadas sin postular (más de `RANKING_STALE_DAYS` días), por palabras del título, empresa, ubicación y portal. Reordena los avisos de alertas y los resultados de búsqueda (columna "Afinidad") mezclando el match del CV con lo aprendido (`RANKING_WEIGHT`, 0.3 por defecto). `/api/ranking` muestra qué aprendió; necesita al menos 3 ejemplos de cada tipo.
-- **Alertas de empleo** (`/alerts`): guardá una búsqueda y recibí por email o Telegram solo las ofertas nuevas, sin duplicados entre portales y con match mínimo opcional contra tu CV. Configurá `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` y `ALERTS_INTERVAL_HOURS` en `.env`.
+- **Alertas de empleo** (`/alerts`): guardá una búsqueda y recibí por email o Telegram solo las ofertas nuevas, sin duplicados entre portales y con match mínimo opcional contra tu CV. Configurá `TELEGRAM_BOT_TOKEN` y `ALERTS_INTERVAL_HOURS` en `.env`; cada cuenta carga su chat de Telegram en **Mi cuenta** (`TELEGRAM_CHAT_ID` queda como chat de la primera cuenta).
 
 ### ⚡ **Rendimiento y Modo Offline (PWA)**
 - Soporte para Progressive Web App (PWA) con modo de instalación
@@ -418,7 +418,9 @@ PUBLIC_BASE_URL=               # URL pública de la app para los enlaces de los 
 LOGIN_REQUIRED=true    # false = sin login (solo local)
 CV_ENCRYPTION_KEY=     # cifra los CVs en uploads/ y los perfiles (texto del CV incluido) en MySQL (Fernet). Sin ella no se pueden leer los ya cifrados
 CV_RETENTION_DAYS=0    # >0: Celery borra cada día CVs, perfiles y documentos más viejos que N días
-EXTENSION_TOKEN=       # token que se configura en la extensión de Chrome cuando hay login
+EXTENSION_TOKEN=       # (viejo) token de la extensión para la primera cuenta; cada cuenta genera el suyo en Mi cuenta
+GMAIL_OAUTH_CLIENT_FILE=credentials.json  # cliente OAuth "aplicación web" de Google para "Conectar Gmail" en Mi cuenta
+                       # (redirect URI: PUBLIC_BASE_URL + /account/gmail/callback)
 SESSION_COOKIE_SECURE=0  # 1 detrás de HTTPS
 CORS_ALLOWED_ORIGINS=  # orígenes WebSocket permitidos, separados por coma (vacío = mismo origen)
 FLASK_HOST=127.0.0.1   # python app.py solo escucha en localhost; usá 0.0.0.0 para exponerlo
@@ -493,7 +495,7 @@ La extensión **EmpleoIA Saver** permite guardar ofertas de trabajo con 1 click.
 
 ### Servidor y token
 
-En ⚙️ cargá la URL de tu EmpleoIA y el `EXTENSION_TOKEN`. Para un servidor que no sea `localhost:5000` (por ejemplo Cloud Run), tocá **Permitir acceso a este servidor**: la extensión solo pide permiso para ese origen.
+En ⚙️ cargá la URL de tu EmpleoIA y el token que generás en **Mi cuenta → Extensión de Chrome** (guarda en el tracker de esa cuenta). Para un servidor que no sea `localhost:5000` (por ejemplo Cloud Run), tocá **Permitir acceso a este servidor**: la extensión solo pide permiso para ese origen.
 
 ### Publicar en el Chrome Web Store
 

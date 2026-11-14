@@ -55,15 +55,23 @@ def is_session_valid(session_data, secret_key) -> bool:
     return session_user_id(session_data, secret_key) is not None
 
 
-def extension_user_id() -> Optional[int]:
-    """La extensión de Chrome (EXTENSION_TOKEN) guarda en el tracker de la primera cuenta."""
-    return accounts.first_user_id()
+def extension_token_user(candidate: str) -> Optional[int]:
+    """Cuenta del token de la extensión: el generado en "Mi cuenta", o EXTENSION_TOKEN para la primera cuenta."""
+    if not candidate:
+        return None
+    import integrations
+    uid = integrations.user_for_extension_token(candidate)
+    if uid is not None:
+        return uid
+    return accounts.first_user_id() if legacy_extension_token(candidate) else None
 
 
-def check_extension_token(candidate: str) -> bool:
-    """Valida el token que envía la extensión de Chrome (EXTENSION_TOKEN)."""
+def legacy_extension_token(candidate: str) -> bool:
+    """True si es el EXTENSION_TOKEN del .env y la primera cuenta no generó ni revocó su propio token."""
+    import integrations
     expected = os.getenv('EXTENSION_TOKEN', '')
-    return bool(expected) and hmac.compare_digest((candidate or '').encode(), expected.encode())
+    return (bool(expected and candidate) and hmac.compare_digest(candidate.encode(), expected.encode())
+            and integrations.legacy_allowed(accounts.first_user_id(), 'extension'))
 
 
 def load_session_cookie(flask_app, cookie_value) -> dict:
