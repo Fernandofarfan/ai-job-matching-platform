@@ -178,6 +178,7 @@ def test_entry_points_serve_fastapi_app():
 def test_fastapi_serves_ai_routes():
     """Copilot y analyze-job los atiende FastAPI (routers/ai.py), que usa el CV y el perfil guardados."""
     from starlette.routing import Match
+
     import main
     for path in ('/api/ai/copilot', '/api/ai/analyze-job'):
         scope = {'type': 'http', 'path': path, 'method': 'POST', 'root_path': ''}

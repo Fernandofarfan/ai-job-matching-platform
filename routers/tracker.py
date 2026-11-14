@@ -2,11 +2,10 @@
 
 Usa la sesión y el token CSRF de Flask: el navegador sigue mandando la misma cookie y el
 header X-CSRFToken que agrega base.html."""
-from collections.abc import Callable, Coroutine
-from starlette.types import Message
 import logging
+from collections.abc import Callable, Coroutine
 from datetime import date, datetime
-from typing import Any, Literal, Optional, cast
+from typing import Any, Literal, cast
 
 from fastapi import APIRouter, Body, Depends, Request, Response
 from fastapi.exceptions import RequestValidationError
@@ -14,6 +13,7 @@ from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from starlette.exceptions import HTTPException
+from starlette.types import Message
 
 import accounts
 import auth
@@ -47,9 +47,9 @@ class BodyTooLarge(Exception):
     """El cuerpo del pedido supera MAX_CONTENT_LENGTH."""
 
 
-def _body_limit(request: Request) -> Optional[int]:
+def _body_limit(request: Request) -> int | None:
     web_factory = request.app.dependency_overrides.get(get_web_app, get_web_app)
-    return cast(Optional[int], web_factory().config.get('MAX_CONTENT_LENGTH'))
+    return cast(int | None, web_factory().config.get('MAX_CONTENT_LENGTH'))
 
 
 def _limit_body(request: Request, limit: int) -> Request:
@@ -140,13 +140,13 @@ def require_browser_session(request: Request, session: dict[str, Any] = Depends(
 class TrackerDates(BaseModel):
     """Recordatorio del tracker: fechas AAAA-MM-DD; vacío ('') equivale a sin dato."""
 
-    follow_up: Optional[date] = None
-    deadline: Optional[date] = None
-    notes: Optional[str] = None
+    follow_up: date | None = None
+    deadline: date | None = None
+    notes: str | None = None
 
     @field_validator('follow_up', 'deadline', 'notes', mode='before')
     @classmethod
-    def _blank_is_none(cls, value: Optional[str]) -> Optional[str]:
+    def _blank_is_none(cls, value: str | None) -> str | None:
         return value or None
 
 
@@ -173,7 +173,7 @@ def with_iso_dates(job: dict[str, Any]) -> dict[str, Any]:
     return job
 
 
-def _save_dates(db: Any, job_id: int, dates: TrackerDates) -> Optional[str]:
+def _save_dates(db: Any, job_id: int, dates: TrackerDates) -> str | None:
     """Guarda follow_up/deadline/notes; devuelve un mensaje de error o None."""
     if not db.update_tracker_dates(job_id, dates.follow_up, dates.deadline, dates.notes):
         return 'No se pudieron guardar las fechas'

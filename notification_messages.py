@@ -2,9 +2,9 @@
 
 Funciones puras (sin envío ni base): las tareas de Celery de tasks/notification_tasks.py las arman y las mandan.
 """
-from typing import Any
 import os
 from datetime import date, datetime, timedelta
+from typing import Any
 
 
 def _get_email_template(title: str, body: str, cta_url: str = "", cta_text: str = "") -> str:

@@ -4,7 +4,7 @@ import logging
 import os
 import uuid
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from dotenv import dotenv_values
 from fastapi import APIRouter, Request
@@ -14,7 +14,7 @@ from starlette.concurrency import run_in_threadpool
 import accounts
 import i18n
 import job_dispatch
-from fastapi_web import TextForm, flash, services_for, read_form, redirect, url_for
+from fastapi_web import TextForm, flash, read_form, redirect, services_for, url_for
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["scrapers"], include_in_schema=False)
@@ -23,7 +23,7 @@ _PORTAL_PREFIXES = ('INDEED_', 'LINKEDIN_', 'LI_AT', 'COMPUTRABAJO_', 'BUMERAN_'
 TEST_MAX_JOBS = 20
 
 
-def _reload_portal_credentials(path: Optional[str] = None) -> None:
+def _reload_portal_credentials(path: str | None = None) -> None:
     """Relee del .env solo las credenciales de portales; no pisa SCRAPER_BACKEND ni otra config del entorno."""
     for name, value in dotenv_values(path).items():
         if value is not None and name.startswith(_PORTAL_PREFIXES):
@@ -149,10 +149,7 @@ async def start_universal_scraper(request: Request) -> Response:
 
 def _plain(jobs: Any, limit: int) -> list[Any]:
     """Ofertas serializables a JSON."""
-    out = []
-    for job in (jobs or [])[:limit]:
-        out.append(job if isinstance(job, dict) else getattr(job, '__dict__', str(job)))
-    return out
+    return [job if isinstance(job, dict) else getattr(job, '__dict__', str(job)) for job in (jobs or [])[:limit]]
 
 
 def _close(scraper: Any) -> None:

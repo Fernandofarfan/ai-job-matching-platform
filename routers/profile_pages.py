@@ -9,8 +9,14 @@ from starlette.concurrency import run_in_threadpool
 from werkzeug.utils import secure_filename
 
 import cv_storage
-from fastapi_web import (flash, services_for, read_form, read_upload,
-                         render, upload_max_bytes)
+from fastapi_web import (
+    flash,
+    read_form,
+    read_upload,
+    render,
+    services_for,
+    upload_max_bytes,
+)
 from routers.content_pages import _go
 
 logger = logging.getLogger(__name__)

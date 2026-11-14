@@ -82,10 +82,11 @@ def test_local_mode_without_account_needs_no_consent():
 
 
 def test_export_includes_consent_dates(accounts_db):
-    import data_export
     import io
     import json
     import zipfile
+
+    import data_export
     user_id = accounts.register('ana@example.com', PASSWORD)
     accounts.accept_terms(user_id)
     with zipfile.ZipFile(io.BytesIO(data_export.build(user_id))) as zf:

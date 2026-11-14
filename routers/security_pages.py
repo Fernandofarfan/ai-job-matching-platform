@@ -1,6 +1,6 @@
 """Segundo factor (TOTP y códigos de recuperación) y passkeys de Mi cuenta, en FastAPI."""
-from typing import Any
 import logging
+from typing import Any
 
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse, Response
@@ -10,10 +10,10 @@ from starlette.concurrency import run_in_threadpool
 import accounts
 import passkeys
 import two_factor
-from fastapi_web import (TextForm, flash, get_session, limit_key, save_session)
+from fastapi_web import TextForm, flash, get_session, limit_key, save_session
+from routers.account_pages import _form, _to_account, _user_id, render_account
 from routers.auth_pages import audit
 from routers.login_providers import passkey_json, request_origin
-from routers.account_pages import _form, _to_account, _user_id, render_account
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["account"], include_in_schema=False)
@@ -26,7 +26,7 @@ def _setup_context(user_id: int) -> dict[str, Any]:
     if not secret or not user:
         return {}
     uri = two_factor.provisioning_uri(user['email'], secret)
-    return {'totp_setup': {'secret': secret, 'qr': Markup(two_factor.qr_svg(uri))}}
+    return {'totp_setup': {'secret': secret, 'qr': Markup(two_factor.qr_svg(uri))}}  # noqa: S704 - SVG generado por qrcode
 
 
 @router.post("/account/2fa/setup", name="two_factor_setup")
@@ -172,7 +172,7 @@ def _passkey_register(request: Request, data: dict[str, Any]) -> Response:
 @router.post("/account/passkeys/{passkey_id}/delete", name="passkey_delete")
 async def passkey_delete(request: Request, passkey_id: int) -> Response:
     """Borra una passkey de la cuenta."""
-    form, error = await _form(request, '10 per minute', 'passkey_delete')
+    _, error = await _form(request, '10 per minute', 'passkey_delete')
     if error:
         return error
     return await run_in_threadpool(_passkey_delete, request, passkey_id)

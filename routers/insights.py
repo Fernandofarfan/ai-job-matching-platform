@@ -1,10 +1,9 @@
 """API JSON de estadísticas, perfiles y ranking servida por FastAPI (antes Flask).
 Comparte con routers/tracker.py la sesión, el login y el formato de error."""
-from collections.abc import Callable
-from typing import Any
 import logging
 from collections import Counter
-from typing import Optional
+from collections.abc import Callable
+from typing import Any
 
 from fastapi import APIRouter, Depends
 
@@ -15,7 +14,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix='/api', tags=['insights'], route_class=TrackerRoute, dependencies=browser)
 
 
-def get_profiles() -> tuple[Callable[[], dict[str, Any]], Callable[[], Optional[dict[str, Any]]]]:
+def get_profiles() -> tuple[Callable[[], dict[str, Any]], Callable[[], dict[str, Any] | None]]:
     """Funciones de perfiles (services/profiles.py); se sobrescriben en tests."""
     from services import profiles
     return profiles.get_all_user_profiles, profiles.get_user_profile
@@ -49,7 +48,7 @@ def analytics_advanced(db: Any = Depends(get_db)) -> dict[str, Any]:
 
 
 @router.get('/get_applications', response_model=None)
-def get_applications(status: Optional[str] = None, company: Optional[str] = None, db: Any = Depends(get_db)) -> dict[str, Any]:
+def get_applications(status: str | None = None, company: str | None = None, db: Any = Depends(get_db)) -> dict[str, Any]:
     """Postulaciones con filtros opcionales por estado y empresa."""
     try:
         applications = db.get_applications({'status': status, 'company': company}) or []

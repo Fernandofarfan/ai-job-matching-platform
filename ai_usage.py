@@ -4,9 +4,9 @@ import logging
 import os
 import threading
 import time
-from typing import Any, Optional
 from collections import OrderedDict
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from typing import Any
 
 from limits.storage import storage_from_string
 
@@ -43,7 +43,7 @@ def _redis() -> Any:
 
 
 def _month() -> str:
-    return datetime.now(timezone.utc).strftime('%Y-%m')
+    return datetime.now(UTC).strftime('%Y-%m')
 
 
 def _key(kind: str, month: str | None = None, user: int | None = None) -> str:
@@ -154,7 +154,7 @@ def summary() -> dict[str, Any]:
 
 
 def _cache_key(model: str, prompt: str, temperature: float) -> str:
-    return hashlib.sha256(f"{model}\0{temperature}\0{prompt}".encode('utf-8')).hexdigest()
+    return hashlib.sha256(f"{model}\0{temperature}\0{prompt}".encode()).hexdigest()
 
 
 def _cache_ttl() -> int:
@@ -176,7 +176,7 @@ def _count_hit() -> None:
         logger.debug(f"Acierto de caché no registrado ({e})")
 
 
-def cache_get(model: str, prompt: str, temperature: float) -> Optional[str]:
+def cache_get(model: str, prompt: str, temperature: float) -> str | None:
     """Respuesta guardada para el mismo modelo, prompt y temperatura (memoria o Redis), o None."""
     ttl = _cache_ttl()
     if temperature > CACHE_MAX_TEMPERATURE or not ttl:

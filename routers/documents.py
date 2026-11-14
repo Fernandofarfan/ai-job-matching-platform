@@ -1,9 +1,9 @@
 """API de documentos (lotes de cartas/CVs, puntaje ATS y CV optimizado) servida por FastAPI.
 Antes vivía en web/documents.py. Comparte sesión, CSRF y formato
 de error con routers/tracker.py."""
-from collections.abc import Callable
-from typing import Any, Optional
 import logging
+from collections.abc import Callable
+from typing import Any
 
 from fastapi import APIRouter, Body, Depends, Response
 from fastapi.responses import JSONResponse
@@ -19,7 +19,7 @@ router = APIRouter(prefix='/api', tags=['documents'], route_class=TrackerRoute, 
 JsonBody = Body(default_factory=dict)
 
 
-def get_resume_text() -> Callable[[], Optional[str]]:
+def get_resume_text() -> Callable[[], str | None]:
     """Lector del CV guardado en el perfil (services/profiles.py); se sobrescribe en tests."""
     from services import profiles
     return profiles.get_resume_text_from_profile
@@ -31,7 +31,7 @@ def get_optimizer() -> Any:
     return ResumeOptimizer()
 
 
-def _start_batch(kind: str, payload: dict[str, Any], resume_text: Callable[[], Optional[str]]) -> Response | dict[str, Any]:
+def _start_batch(kind: str, payload: dict[str, Any], resume_text: Callable[[], str | None]) -> Response | dict[str, Any]:
     """Genera el lote en el pedido o lo encola en Celery (AI_BACKEND=celery) y devuelve el id."""
     filename, num_jobs = payload.get('filename'), payload.get('num_jobs', 5)
     try:
@@ -48,13 +48,13 @@ def _start_batch(kind: str, payload: dict[str, Any], resume_text: Callable[[], O
 
 
 @router.post('/batch_cover_letters', response_model=None)
-def batch_cover_letters(payload: dict[str, Any] = JsonBody, resume_text: Callable[[], Optional[str]] = Depends(get_resume_text)) -> Response | dict[str, Any]:
+def batch_cover_letters(payload: dict[str, Any] = JsonBody, resume_text: Callable[[], str | None] = Depends(get_resume_text)) -> Response | dict[str, Any]:
     """Cartas de presentación para las primeras ofertas de un CSV de results/."""
     return _start_batch('cover_letters', payload, resume_text)
 
 
 @router.post('/batch_optimize', response_model=None)
-def batch_optimize(payload: dict[str, Any] = JsonBody, resume_text: Callable[[], Optional[str]] = Depends(get_resume_text)) -> Response | dict[str, Any]:
+def batch_optimize(payload: dict[str, Any] = JsonBody, resume_text: Callable[[], str | None] = Depends(get_resume_text)) -> Response | dict[str, Any]:
     """CVs adaptados a las primeras ofertas de un CSV de results/."""
     return _start_batch('resumes', payload, resume_text)
 
@@ -63,7 +63,7 @@ def batch_optimize(payload: dict[str, Any] = JsonBody, resume_text: Callable[[],
 def document_task(task_id: str) -> dict[str, Any]:
     """Progreso y resultado de un lote encolado en Celery."""
     try:
-        state: Optional[dict[str, Any]] = document_batch.status(task_id)
+        state: dict[str, Any] | None = document_batch.status(task_id)
     except Exception as e:
         logger.warning(f"No se pudo consultar la tarea {task_id}: {e}")
         raise ApiError(503, 'No se pudo consultar la tarea')
@@ -73,7 +73,7 @@ def document_task(task_id: str) -> dict[str, Any]:
 
 
 @router.post('/ats_score', response_model=None)
-def ats(payload: dict[str, Any] = JsonBody, resume_text: Callable[[], Optional[str]] = Depends(get_resume_text)) -> dict[str, Any]:
+def ats(payload: dict[str, Any] = JsonBody, resume_text: Callable[[], str | None] = Depends(get_resume_text)) -> dict[str, Any]:
     """Puntaje ATS (0-100, sin IA) del CV enviado o del guardado contra una oferta."""
     text = payload.get('resume_text') or resume_text()
     if not text:
@@ -82,7 +82,7 @@ def ats(payload: dict[str, Any] = JsonBody, resume_text: Callable[[], Optional[s
 
 
 @router.post('/optimize_resume', response_model=None)
-def optimize_resume(payload: dict[str, Any] = JsonBody, resume_text: Callable[[], Optional[str]] = Depends(get_resume_text),
+def optimize_resume(payload: dict[str, Any] = JsonBody, resume_text: Callable[[], str | None] = Depends(get_resume_text),
                     optimizer: Any = Depends(get_optimizer)) -> dict[str, Any]:
     """CV adaptado a una oferta con Gemini; lo guarda en results/ y devuelve el texto."""
     title, company = payload.get('job_title', ''), payload.get('company', '')

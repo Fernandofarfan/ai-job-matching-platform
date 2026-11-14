@@ -1,12 +1,11 @@
 """Versión de la app (archivo VERSION, la cambia scripts/release.py) y commit del build (APP_COMMIT)."""
 import os
 from pathlib import Path
-from typing import Optional
 
 __version__ = Path(__file__).with_name('VERSION').read_text(encoding='utf-8').strip()
 
 
-def commit() -> Optional[str]:
+def commit() -> str | None:
     """Commit corto de la imagen: el Dockerfile lo recibe como build-arg APP_COMMIT."""
     value = os.getenv('APP_COMMIT', '').strip()
     return value[:12] or None

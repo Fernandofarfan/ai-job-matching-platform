@@ -2,10 +2,10 @@
 tasks/ai_tasks.py — Tareas de IA asíncronas vía Celery
 Para procesamiento por lotes, análisis semántico masivo y exportaciones.
 """
-from typing import Any, Optional
-import os
 import glob
 import logging
+import os
+from typing import Any
 
 from celery_app import celery
 
@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 @celery.task(bind=True, name="tasks.ai_tasks.generate_documents_batch")
 def generate_documents_batch(self: Any, kind: str, filename: str, num_jobs: int,
-                             user_id: Optional[int] = None) -> dict[str, Any]:
+                             user_id: int | None = None) -> dict[str, Any]:
     """Genera los documentos como `user_id` (lee su CSV y guarda en su carpeta)."""
     import accounts
     with accounts.as_user(user_id):
@@ -102,8 +102,9 @@ def auto_apply_jobs(self: Any, resume_path: str, user_profile: dict[str, Any], j
         logger.warning("Auto-Apply pedido con AUTO_APPLY_ENABLED apagado; no se hace nada")
         return {"status": "disabled", "message": AUTO_APPLY_DISABLED_MESSAGE}
 
-    from scrapers.linkedin_pw import linkedinClass
     import time
+
+    from scrapers.linkedin_pw import linkedinClass
 
     links = [link for link in job_links if _is_linkedin_job(link)][:AUTO_APPLY_MAX_JOBS]
     submit = _env_flag("AUTO_APPLY_SUBMIT")

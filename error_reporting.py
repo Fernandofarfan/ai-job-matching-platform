@@ -4,10 +4,10 @@ Se reportan las excepciones no atrapadas de la web (500) y las tareas de Celery 
 Los eventos llevan solo el id de la cuenta: sin cookies, cabeceras de autenticación,
 cuerpos de pedidos, query strings ni emails.
 """
-from typing import TYPE_CHECKING, Any, cast
 import logging
 import os
 import re
+from typing import TYPE_CHECKING, Any, cast
 
 import version
 

@@ -1,14 +1,13 @@
-import accounts
-import time
-import random
 import logging
 import os
-import pandas as pd
-from typing import Optional
-
-from bs4 import BeautifulSoup, Tag
+import random
+import time
 from datetime import datetime
 
+import pandas as pd
+from bs4 import BeautifulSoup, Tag
+
+import accounts
 from scrapers.common import Browser, Job, get_with_retries, hrefs
 
 logging.basicConfig(level=logging.INFO)
@@ -18,12 +17,12 @@ BASE_URL = "https://www.computrabajo.com.ar"
 JOB_CARD_SELECTORS = ["article.box_offer", "div.bRS", "article[data-test='job-card']"]
 
 
-def _text(card: Tag, selector: str) -> Optional[str]:
+def _text(card: Tag, selector: str) -> str | None:
     elem = card.select_one(selector)
     return elem.get_text(" ", strip=True) if elem else None
 
 
-def parse_job_card(card: Tag, base_url: str = BASE_URL) -> Optional[Job]:
+def parse_job_card(card: Tag, base_url: str = BASE_URL) -> Job | None:
     """Datos de una oferta a partir del HTML de su tarjeta (BeautifulSoup); None si no tiene título."""
     from urllib.parse import urljoin
     title_elem = card.select_one("h2.fs16 a, a.js-o-link")
@@ -89,62 +88,58 @@ class ComputrabajoScraper:
             logger.error(f"Login failed with exception: {e}")
             return False
 
-    def _get_apply_url(self, job_url: str) -> Optional[str]:
+    def _get_apply_url(self, job_url: str) -> str | None:
         """
         Visit job page and extract the direct apply URL.
         Returns the external URL if found, otherwise returns the job_url.
         """
         if not job_url:
             return None
-            
+
         try:
             logger.info(f"Visiting job page: {job_url}")
             get_with_retries(self.page, job_url)
             time.sleep(random.uniform(2, 4))
-            
+
             # Look for "Postularme" button
             # In Computrabajo, sometimes it's an external link, sometimes internal.
             # We look for an anchor tag that might lead outside.
-            
+
             apply_selectors = [
                 "a#btnApply",
                 "a.btn_apply",
                 "a[href*='postular']",
                 "a.js-o-link.btn_big"
             ]
-            
+
             for selector in apply_selectors:
                 try:
                     for href in hrefs(self.page, selector):
-                        if href and href != '#' and 'javascript' not in href:
-                            # If it's an external link (not computrabajo), return it
-                            if 'computrabajo' not in href:
-                                logger.info(f"Found external apply URL: {href}")
-                                return href
-                            # If it's a redirect to another internal page that eventually leads out?
-                            # For now, if it's internal, we might just return the job_url 
-                            # because the user can apply via Computrabajo.
-                except:
+                        # If it's an external link (not computrabajo), return it
+                        if href and href != '#' and 'javascript' not in href and 'computrabajo' not in href:
+                            logger.info(f"Found external apply URL: {href}")
+                            return href
+                except Exception:
                     continue
-            
+
             return job_url
-            
+
         except Exception as e:
             logger.error(f"Error getting apply URL: {e}")
             return job_url
 
     def search_jobs(self, position: str, location: str = "", max_jobs: int = 50,
-                    email: Optional[str] = None, password: Optional[str] = None) -> list[Job]:
+                    email: str | None = None, password: str | None = None) -> list[Job]:
         """
         Search for jobs on Computrabajo
         """
         jobs: list[Job] = []
-        
+
         try:
             # Login if credentials provided
             if email and password:
                 self._login(email, password)
-            
+
             # Build search URL
             position_slug = position.lower().replace(' ', '-')
             if location:
@@ -152,43 +147,43 @@ class ComputrabajoScraper:
                 search_url = f"{self.base_url}/trabajo-de-{position_slug}-en-{location_slug}"
             else:
                 search_url = f"{self.base_url}/trabajo-de-{position_slug}"
-            
+
             logger.info(f"Searching Computrabajo: {search_url}")
             get_with_retries(self.page, search_url)
             time.sleep(random.uniform(3, 5))
-            
+
             page = 1
             while len(jobs) < max_jobs:
                 logger.info(f"Extracting jobs from page {page}...")
-                
+
                 listing_url = self.page.url
                 # Extract jobs from current page
                 page_jobs = self._extract_jobs_from_page()
-                
+
                 if not page_jobs:
                     logger.info("No more jobs found")
                     break
-                
+
                 # Process each job
                 for job in page_jobs:
                     if len(jobs) >= max_jobs:
                         break
-                    
+
                     # If logged in, visit page to get real apply URL
                     if email and password:
                         real_apply_url = self._get_apply_url(job['URL'])
                         job['Apply_URL'] = real_apply_url
                     else:
                         job['Apply_URL'] = job['URL']
-                        
+
                     jobs.append(job)
                     logger.info(f"Added job: {job['Title']}")
-                
+
                 logger.info(f"Extracted {len(page_jobs)} jobs from page {page}. Total: {len(jobs)}")
-                
+
                 if len(jobs) >= max_jobs:
                     break
-                
+
                 # Con login se visitó cada oferta: hay que volver al listado para encontrar "Siguiente"
                 if email and password:
                     get_with_retries(self.page, listing_url)
@@ -196,20 +191,20 @@ class ComputrabajoScraper:
                 if not self._go_to_next_page():
                     logger.info("No more pages available")
                     break
-                    
+
                 page += 1
                 time.sleep(random.uniform(2, 4))
-            
+
             logger.info(f"Total jobs extracted: {len(jobs)}")
             return jobs
-            
+
         except Exception as e:
             logger.error(f"Error searching jobs: {e}")
             return jobs
         finally:
             # Don't close here if called from app, let app manage it or close explicitly
             pass
-            
+
     def _extract_jobs_from_page(self) -> list[Job]:
         """Extract all jobs from current page"""
         for selector in JOB_CARD_SELECTORS:
@@ -232,7 +227,7 @@ class ComputrabajoScraper:
         try:
             # Note: Computrabajo pagination is tricky. Sometimes it's a span that acts as a button.
             # We look for the element that has the 'next' class or similar.
-            
+
             # Try finding the 'Siguiente' button by text if CSS fails
             try:
                 next_button = self.page.locator(
@@ -241,15 +236,15 @@ class ComputrabajoScraper:
                     next_button.click()
                     self.page.wait_for_load_state('domcontentloaded')
                     return True
-            except:
+            except Exception:
                 pass
-                
+
             return False
         except Exception as e:
             logger.error(f"Error going to next page: {e}")
             return False
-            
-    def save_to_csv(self, jobs: list[Job], filename: Optional[str] = None) -> Optional[str]:
+
+    def save_to_csv(self, jobs: list[Job], filename: str | None = None) -> str | None:
         """Save jobs to CSV file"""
         try:
             if not jobs:
@@ -259,24 +254,24 @@ class ComputrabajoScraper:
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                 filename = f"computrabajo_jobs_{timestamp}.csv"
             filepath = os.path.join(accounts.results_dir(), filename)
-            
+
             # Ensure consistent columns
             df = pd.DataFrame(jobs)
-            
+
             # Reorder columns if possible
             desired_columns = ['Title', 'Company', 'Location', 'Salary', 'URL', 'Apply_URL', 'Description', 'Source']
             existing_columns = [col for col in desired_columns if col in df.columns]
             other_columns = [col for col in df.columns if col not in desired_columns]
-            
+
             df = df[existing_columns + other_columns]
-            
+
             df.to_csv(filepath, index=False, encoding='utf-8-sig')
             logger.info(f"Saved {len(jobs)} jobs to {filepath}")
             return filepath
         except Exception as e:
             logger.error(f"Error saving to CSV: {e}")
             return None
-            
+
     def close(self) -> None:
         """Cierra el navegador."""
         self.browser.close()

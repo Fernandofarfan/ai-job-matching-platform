@@ -1,9 +1,10 @@
 """
 test_resume_parser.py – Tests unitarios para el módulo resume_parser.
 """
-import pytest
-import sys
 import os
+import sys
+
+import pytest
 
 # Añadir raíz del proyecto al path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

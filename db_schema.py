@@ -1,6 +1,6 @@
 """Metadata de todos los modelos y comparación con el esquema real (Alembic y CI)."""
-from typing import Any
 import importlib
+from typing import Any
 
 # Módulos con su propia Base declarativa
 BASE_MODULES = ('models', 'accounts', 'job_alerts', 'profile_store')

@@ -7,19 +7,29 @@ import hashlib
 import logging
 import re
 import unicodedata
-from datetime import datetime
 from collections.abc import Callable, Iterable
+from datetime import datetime
 from typing import Any
 
-from sqlalchemy import JSON, Boolean, DateTime, Float, Integer, String, UniqueConstraint, func, select
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    DateTime,
+    Float,
+    Integer,
+    String,
+    UniqueConstraint,
+    func,
+    select,
+)
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
 
 import accounts
 import scraper_stats
 
 Job = dict[str, Any]
 Notify = Callable[[dict[str, Any], list[Job]], dict[str, bool]]
-from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
-from sqlalchemy.exc import IntegrityError
 
 logger = logging.getLogger(__name__)
 

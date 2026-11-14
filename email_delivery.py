@@ -6,7 +6,6 @@
 - Rebotes y denuncias de spam que informa SendGrid (`POST /webhooks/sendgrid`, firmado) también la suprimen.
   A una dirección suprimida no se le manda más. Se guarda solo el SHA-256 del email, no el email.
 """
-from typing import Any
 import base64
 import hashlib
 import logging
@@ -16,6 +15,7 @@ import time
 from datetime import datetime
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from typing import Any
 
 from sqlalchemy import DateTime, Integer, String, select
 from sqlalchemy.exc import IntegrityError

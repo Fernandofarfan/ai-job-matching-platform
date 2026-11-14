@@ -31,8 +31,9 @@ def _seed_results(user_id: int, title: str) -> str:
 def test_signup_to_export(browser, live_server, credentials, tmp_path):
     """Con la cuenta de administración ya creada (`credentials`), una cuenta nueva se registra, sube su CV, guarda una oferta de sus resultados, la ve en el tracker,
     la exporta a Excel y, al salir, el tracker vuelve a pedir login."""
-    import accounts
     from openpyxl import load_workbook
+
+    import accounts
 
     context = browser.new_context(base_url=live_server, reduced_motion='reduce', accept_downloads=True)
     page = context.new_page()

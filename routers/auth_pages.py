@@ -6,7 +6,7 @@ import hmac
 import logging
 import os
 import time
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 from fastapi import APIRouter, Request
 from fastapi.responses import Response
@@ -20,9 +20,23 @@ import google_oauth
 import passkeys
 import two_factor
 import user_sessions
-from fastapi_web import (TextForm, clear_offline_data, client_info, client_ip, flash, web_app_for, get_session,
-                         hit_limit, public_url, read_form, redirect, render, safe_next,
-                         too_many_requests, url_for)
+from fastapi_web import (
+    TextForm,
+    clear_offline_data,
+    client_info,
+    client_ip,
+    flash,
+    get_session,
+    hit_limit,
+    public_url,
+    read_form,
+    redirect,
+    render,
+    safe_next,
+    too_many_requests,
+    url_for,
+    web_app_for,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["auth"], include_in_schema=False)
@@ -42,7 +56,7 @@ def _email_key(form: TextForm) -> str:
     return (form.get('email') or '').strip().lower()[:254]
 
 
-def audit(request: Request, user_id: Optional[int], kind: str) -> bool:
+def audit(request: Request, user_id: int | None, kind: str) -> bool:
     """Registra el evento de seguridad con la IP y el navegador del pedido."""
     return account_notify.audit(user_id, kind, *client_info(request))
 
@@ -58,7 +72,7 @@ def send_verification(request: Request, user: dict[str, Any]) -> bool:
     return account_notify.send_verification(user, public_url(request, 'verify_email', token=token))
 
 
-async def _post(request: Request, limits: list[Any]) -> tuple[Optional[TextForm], Optional[Response]]:
+async def _post(request: Request, limits: list[Any]) -> tuple[TextForm | None, Response | None]:
     """Formulario del POST (None en GET) con CSRF y límites [(spec, namespace, key_fn(form))]."""
     if request.method != 'POST':
         return None, None
@@ -71,7 +85,7 @@ async def _post(request: Request, limits: list[Any]) -> tuple[Optional[TextForm]
     return form, None
 
 
-def begin_login(request: Request, user: dict[str, Any], kind: str, next_url: str) -> Optional[Response]:
+def begin_login(request: Request, user: dict[str, Any], kind: str, next_url: str) -> Response | None:
     """Con segundo factor activo deja el login pendiente y devuelve la redirección; si no, None."""
     if not two_factor.is_enabled(user['id']):
         return None
@@ -97,7 +111,7 @@ async def login(request: Request) -> Response:
     return await run_in_threadpool(_login, request, form)
 
 
-def _login(request: Request, form: Optional[TextForm]) -> Response:
+def _login(request: Request, form: TextForm | None) -> Response:
     """Muestra el login o comprueba el formulario (corre fuera del event loop)."""
     next_url = request.query_params.get('next', '')
     session = get_session(request)
@@ -143,7 +157,7 @@ async def register(request: Request) -> Response:
     return await run_in_threadpool(_register, request, form)
 
 
-def _register(request: Request, form: Optional[TextForm]) -> Response:
+def _register(request: Request, form: TextForm | None) -> Response:
     """Muestra el registro o crea la cuenta (corre fuera del event loop)."""
     next_url = request.query_params.get('next', '')
     if not auth.auth_enabled():
@@ -208,7 +222,7 @@ async def forgot_password(request: Request) -> Response:
     return await run_in_threadpool(_forgot_password, request, form)
 
 
-def _forgot_password(request: Request, form: Optional[TextForm]) -> Response:
+def _forgot_password(request: Request, form: TextForm | None) -> Response:
     """Muestra el formulario o manda el enlace de recuperación."""
     if not auth.auth_enabled():
         return redirect(request, url_for(request, 'index'))
@@ -232,7 +246,7 @@ async def reset_password(request: Request, token: str) -> Response:
     return await run_in_threadpool(_reset_password, request, token, form)
 
 
-def _reset_password(request: Request, token: str, form: Optional[TextForm]) -> Response:
+def _reset_password(request: Request, token: str, form: TextForm | None) -> Response:
     """Comprueba el enlace y guarda la contraseña nueva."""
     if not auth.auth_enabled():
         return redirect(request, url_for(request, 'index'))
@@ -277,7 +291,7 @@ def verify_email(request: Request, token: str) -> Response:
     return redirect(request, url_for(request, 'account' if logged_in else 'login'))
 
 
-def _pending(request: Request) -> Optional[dict[str, Any]]:
+def _pending(request: Request) -> dict[str, Any] | None:
     """Login pendiente del segundo factor, si no venció."""
     session = get_session(request)
     pending = session.get('two_factor')
@@ -299,7 +313,7 @@ async def login_two_factor(request: Request) -> Response:
     return await run_in_threadpool(_login_two_factor, request, form)
 
 
-def _login_two_factor(request: Request, form: Optional[TextForm]) -> Response:
+def _login_two_factor(request: Request, form: TextForm | None) -> Response:
     """Muestra el pedido de código o lo comprueba y termina el login pendiente."""
     session = get_session(request)
     pending = _pending(request)

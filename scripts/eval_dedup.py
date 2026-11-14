@@ -13,7 +13,7 @@ from typing import Any
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import job_dedup  # noqa: E402
+import job_dedup
 
 DATASET = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'eval', 'dedup_pairs.json')
 

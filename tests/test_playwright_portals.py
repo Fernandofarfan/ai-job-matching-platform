@@ -2,7 +2,8 @@
 from unittest import mock
 from urllib.parse import parse_qs, urlparse
 
-from scrapers import indeed_scraper, linkedin_connection as lc
+from scrapers import indeed_scraper
+from scrapers import linkedin_connection as lc
 
 
 class Node:

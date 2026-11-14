@@ -1,13 +1,12 @@
-import accounts
-import time
 import logging
 import os
-import pandas as pd
-from typing import Optional
-
-from bs4 import BeautifulSoup, Tag
+import time
 from datetime import datetime
 
+import pandas as pd
+from bs4 import BeautifulSoup, Tag
+
+import accounts
 from scrapers.common import Browser, Job, get_with_retries, hrefs
 
 logging.basicConfig(level=logging.INFO)
@@ -18,7 +17,7 @@ BADGES = {"apto discapacidad", "postulación rápida", "destacado", "urgente"}
 PROVINCES = ["Buenos Aires", "Capital Federal", "CABA", "Córdoba", "Santa Fe", "Mendoza", "Neuquén", "Rosario", "Tucumán"]
 
 
-def parse_job_card(card: Tag, base_url: str = BASE_URL, source: str = 'Bumeran') -> Optional[Job]:
+def parse_job_card(card: Tag, base_url: str = BASE_URL, source: str = 'Bumeran') -> Job | None:
     """Datos de una oferta a partir de su <a href=".../empleos/..."> (BeautifulSoup); None si no es una oferta."""
     from urllib.parse import urljoin
     href = str(card.get('href') or '')
@@ -70,7 +69,7 @@ class BumeranScraper:
         self.page = self.browser.page
 
     def search_jobs(self, position: str, location: str = "", max_jobs: int = 50,
-                    email: Optional[str] = None, password: Optional[str] = None) -> list[Job]:
+                    email: str | None = None, password: str | None = None) -> list[Job]:
         """
         Search for jobs on Bumeran
         If email/password provided, logs in first to get better access to apply URLs
@@ -86,19 +85,19 @@ class BumeranScraper:
                 # Build search URL with pagination
                 # NOTE: Bumeran doesn't support location in the URL slug
                 position_slug = position.lower().replace(' ', '-')
-                
+
                 if page == 1:
                     search_url = f"{self.base_url}/empleos-busqueda-{position_slug}.html"
                 else:
                     search_url = f"{self.base_url}/empleos-busqueda-{position_slug}-pagina-{page}.html"
-                
+
                 logger.info(f"Searching {self.source} page {page}: {search_url}")
                 get_with_retries(self.page, search_url)
-                
+
                 # Scroll to trigger lazy loading
                 self.page.evaluate("window.scrollTo(0, document.body.scrollHeight/2)")
                 time.sleep(2)
-                
+
                 # Check for 404 or no results
                 if "404" in self.page.title() or "no encontrada" in self.page.content().lower():
                     logger.info("Reached end of results")
@@ -106,34 +105,34 @@ class BumeranScraper:
 
                 # Extract jobs from current page
                 page_jobs = self._extract_jobs_from_page()
-                
+
                 if not page_jobs:
                     logger.info("No more jobs found on this page")
                     break
-                
+
                 # Process each job to get apply URL if logged in
                 for job in page_jobs:
                     if len(jobs) >= max_jobs:
                         break
-                        
+
                     # If logged in, visit page to get real apply URL
                     if email and password:
                         real_apply_url = self._get_apply_url(job['URL'])
                         if real_apply_url:
                             job['Apply_URL'] = real_apply_url
-                    
+
                     jobs.append(job)
                     logger.info(f"Added job: {job['Title']}")
-                
+
                 logger.info(f"Extracted {len(page_jobs)} jobs from page {page}. Total: {len(jobs)}")
-                
+
                 page += 1
-                
+
         except Exception as e:
             logger.error(f"Error during search: {e}")
         finally:
             pass
-            
+
         return jobs
 
     def _login(self, email: str, password: str) -> None:
@@ -148,7 +147,7 @@ class BumeranScraper:
             # Wait for login to complete
             time.sleep(8)
             logger.info("Login submitted")
-            
+
         except Exception as e:
             logger.error(f"Login failed: {e}")
 
@@ -158,19 +157,19 @@ class BumeranScraper:
             logger.info(f"Visiting job page: {job_url}")
             get_with_retries(self.page, job_url)
             time.sleep(3) # Wait for load
-            
+
             try:
                 # Look for "Postular" button/link
                 for href in hrefs(self.page, "a[href*='postula'], a[href*='apply']"):
                     if href and href != job_url and 'bumeran' not in href:
                         return href # External link
-                
+
                 # If no external link, return job_url (internal apply)
                 return job_url
-                
-            except:
+
+            except Exception:
                 return job_url
-                
+
         except Exception as e:
             logger.error(f"Error getting apply URL: {e}")
             return job_url
@@ -191,32 +190,32 @@ class BumeranScraper:
             logger.warning("No job cards found on page")
         return jobs
 
-    def save_to_csv(self, jobs: list[Job], filename: Optional[str] = None) -> Optional[str]:
+    def save_to_csv(self, jobs: list[Job], filename: str | None = None) -> str | None:
         """Save jobs to CSV file"""
         try:
             if not jobs:
                 logger.warning("No jobs to save")
                 return None
-                
+
             # Ensure results directory exists
             os.makedirs('results', exist_ok=True)
-            
+
             if not filename:
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                 filename = f"bumeran_jobs_{timestamp}.csv"
-            
+
             filepath = os.path.join(accounts.results_dir(), filename)
-            
+
             df = pd.DataFrame(jobs)
             df.to_csv(filepath, index=False, encoding='utf-8-sig')
-            
+
             logger.info(f"Saved {len(jobs)} jobs to {filepath}")
             return filepath
-            
+
         except Exception as e:
             logger.error(f"Error saving to CSV: {e}")
             return None
-            
+
     def close(self) -> None:
         """Close the browser"""
         self.browser.close()

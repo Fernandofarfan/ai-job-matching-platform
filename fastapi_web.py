@@ -3,12 +3,12 @@
 El formato de la cookie y del token CSRF es el que usaban Flask y Flask-WTF (ver web_settings.py),
 así las sesiones abiertas antes de quitar Flask siguen valiendo.
 """
-from collections.abc import Iterable, Iterator, Mapping
 import logging
 import os
 import secrets
-from datetime import datetime, timezone
-from typing import Any, Optional, TypeVar
+from collections.abc import Iterable, Iterator, Mapping
+from datetime import UTC, datetime
+from typing import Any, TypeVar
 from urllib.parse import urlencode
 
 from fastapi import Request
@@ -88,7 +88,7 @@ def get_session(request: Request) -> WebSession:
 ResponseT = TypeVar('ResponseT', bound=Response)
 
 
-def save_session(request: Request, response: ResponseT) -> ResponseT:
+def save_session[ResponseT: Response](request: Request, response: ResponseT) -> ResponseT:
     """Escribe la cookie si la sesión cambió, con los mismos atributos que pone Flask."""
     web_app = web_app_for(request)
     config = web_app.config
@@ -109,7 +109,7 @@ def save_session(request: Request, response: ResponseT) -> ResponseT:
     value = web_app.session_serializer().dumps(dict(session))
     expires = None
     if session.get('_permanent'):
-        expires = datetime.now(timezone.utc) + web_app.permanent_session_lifetime
+        expires = datetime.now(UTC) + web_app.permanent_session_lifetime
     response.set_cookie(name, value, expires=expires, **common)
     return response
 
@@ -158,7 +158,7 @@ def url_for(request: Request, endpoint: str, **values: Any) -> str:
     return f'{path}?{urlencode(values, safe=QUERY_SAFE)}' if values else path
 
 
-def current_user_id() -> Optional[int]:
+def current_user_id() -> int | None:
     return accounts.current_user_id() if auth.auth_enabled() else None
 
 
@@ -223,7 +223,7 @@ def client_ip(request: Request) -> str:
                                 request.headers.get('x-forwarded-for'))
 
 
-def client_info(request: Request) -> tuple[str, Optional[str]]:
+def client_info(request: Request) -> tuple[str, str | None]:
     """IP y navegador del pedido, para registrar la sesión y los eventos de seguridad."""
     return client_ip(request), request.headers.get('user-agent')
 
@@ -268,7 +268,7 @@ async def _body_within(request: Request, limit: int) -> bool:
     return True
 
 
-def _csrf_ok(request: Request, token: Optional[str]) -> bool:
+def _csrf_ok(request: Request, token: str | None) -> bool:
     """Token del formulario o de los headers X-CSRFToken/X-CSRF-Token (como CSRFProtect de Flask)."""
     web_app = web_app_for(request)
     if not web_app.config.get('WTF_CSRF_ENABLED', True):
@@ -285,7 +285,7 @@ def csrf_error(request: Request) -> Response:
     return render(request, 'error.html', 400, code=400, message='The CSRF token is missing or invalid.')
 
 
-async def _parse(request: Request, max_bytes: int, max_files: int) -> tuple[TextForm, dict[str, Any], Optional[Response]]:
+async def _parse(request: Request, max_bytes: int, max_files: int) -> tuple[TextForm, dict[str, Any], Response | None]:
     """Cuerpo limitado a `max_bytes`, campos de texto, archivos y error (413/400) si corresponde."""
     if not await _body_within(request, max_bytes):
         return TextForm(), {}, render(request, 'error.html', 413, code=413, message='Request Entity Too Large')
@@ -297,7 +297,7 @@ async def _parse(request: Request, max_bytes: int, max_files: int) -> tuple[Text
     return form, files, None
 
 
-async def read_form(request: Request) -> tuple[TextForm, Optional[Response]]:
+async def read_form(request: Request) -> tuple[TextForm, Response | None]:
     """Formulario del POST (`get`/`getlist`) y, si el token CSRF no es válido, la respuesta 400."""
     form, _files, error = await _parse(request, FORM_MAX_BYTES, 0)
     return form, error
@@ -308,12 +308,12 @@ def upload_max_bytes(request: Request) -> int:
     return int(web_app_for(request).config.get('MAX_CONTENT_LENGTH') or 16 * 1024 * 1024)
 
 
-async def read_upload(request: Request) -> tuple[TextForm, dict[str, Any], Optional[Response]]:
+async def read_upload(request: Request) -> tuple[TextForm, dict[str, Any], Response | None]:
     """Formulario con un archivo (hasta MAX_CONTENT_LENGTH): campos, {nombre: UploadFile} y error (413/400)."""
     return await _parse(request, upload_max_bytes(request), 1)
 
 
-def clear_offline_data(response: ResponseT) -> ResponseT:
+def clear_offline_data[ResponseT: Response](response: ResponseT) -> ResponseT:
     """Sin sesión no deben quedar páginas ni datos del tracker en el caché del service worker ni en IndexedDB."""
     response.headers['Clear-Site-Data'] = '"cache", "storage"'
     return response
@@ -326,7 +326,7 @@ def safe_next(target: str) -> str:
     return target if is_local and not loops else '/'
 
 
-def public_url(request: Request, endpoint: str, **values: Any) -> Optional[str]:
+def public_url(request: Request, endpoint: str, **values: Any) -> str | None:
     """URL absoluta para los emails (ver account_notify.public_base)."""
     base = account_notify.public_base(request.headers.get('host', ''), str(request.base_url))
     return base + url_for(request, endpoint, **values) if base else None

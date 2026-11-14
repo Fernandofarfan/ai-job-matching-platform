@@ -3,7 +3,7 @@ import hashlib
 import logging
 import os
 from datetime import datetime, timedelta
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy import DateTime, Integer, String, delete, select
 from sqlalchemy.orm import Mapped, mapped_column
@@ -62,12 +62,12 @@ class SecurityEvent(accounts.Base):
     created_at: Mapped[datetime | None] = mapped_column(DateTime, default=datetime.now, index=True)
 
 
-def device_id(user_agent: Optional[str]) -> str:
+def device_id(user_agent: str | None) -> str:
     """Huella corta del navegador (hash del user agent)."""
     return hashlib.sha256((user_agent or '').encode()).hexdigest()[:16]
 
 
-def record(user_id: Optional[int], kind: str, ip: Optional[str] = None, user_agent: Optional[str] = None) -> bool:
+def record(user_id: int | None, kind: str, ip: str | None = None, user_agent: str | None = None) -> bool:
     """Guarda el evento; un fallo de la base se registra en el log y no corta el pedido."""
     if not user_id or kind not in LABELS:
         return False
@@ -82,7 +82,7 @@ def record(user_id: Optional[int], kind: str, ip: Optional[str] = None, user_age
         return False
 
 
-def is_new_device(user_id: int, user_agent: Optional[str], days: int = 180) -> bool:
+def is_new_device(user_id: int, user_agent: str | None, days: int = 180) -> bool:
     """True si la cuenta ya entró antes pero nunca desde este navegador en los últimos `days` días."""
     since = datetime.now() - timedelta(days=days)
     with accounts._sessions()() as session:
@@ -93,7 +93,7 @@ def is_new_device(user_id: int, user_agent: Optional[str], days: int = 180) -> b
     return bool(devices) and device_id(user_agent) not in devices
 
 
-def recent(user_id: Optional[int], limit: int = 20) -> list[dict[str, Any]]:
+def recent(user_id: int | None, limit: int = 20) -> list[dict[str, Any]]:
     """Últimos eventos de la cuenta, del más nuevo al más viejo."""
     if not user_id:
         return []
@@ -109,7 +109,7 @@ def recent(user_id: Optional[int], limit: int = 20) -> list[dict[str, Any]]:
         return []
 
 
-def purge(days: Optional[int] = None) -> int:
+def purge(days: int | None = None) -> int:
     """Borra los eventos más viejos que SECURITY_EVENTS_DAYS (180 por defecto)."""
     days = days if days is not None else int(os.getenv('SECURITY_EVENTS_DAYS', '180') or 180)
     if days <= 0:

@@ -10,12 +10,13 @@ import json
 import logging
 import os
 import time
-from datetime import datetime, timedelta
 from collections.abc import MutableMapping
-from typing import Any, Optional
+from datetime import datetime, timedelta
+from typing import Any
 from urllib.parse import urlparse
 
-from sqlalchemy import DateTime, Integer, String, Text, delete as sql_delete, func, select
+from sqlalchemy import DateTime, Integer, String, Text, func, select
+from sqlalchemy import delete as sql_delete
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -87,7 +88,7 @@ def _unb64(value: str) -> bytes:
     return bytes(base64url_to_bytes(value))
 
 
-def new_challenge(session: MutableMapping[str, Any], purpose: str, user_id: Optional[int] = None) -> bytes:
+def new_challenge(session: MutableMapping[str, Any], purpose: str, user_id: int | None = None) -> bytes:
     """Desafío de un solo uso, guardado en la sesión por `CHALLENGE_MAX_AGE` segundos."""
     challenge = os.urandom(32)
     now = datetime.now()
@@ -100,7 +101,7 @@ def new_challenge(session: MutableMapping[str, Any], purpose: str, user_id: Opti
     return challenge
 
 
-def take_challenge(session: MutableMapping[str, Any], purpose: str, user_id: Optional[int] = None) -> Optional[bytes]:
+def take_challenge(session: MutableMapping[str, Any], purpose: str, user_id: int | None = None) -> bytes | None:
     """Saca el desafío de la sesión y lo borra de la base (sirve una vez, aunque se restaure una cookie vieja);
     None si no hay, es de otro uso, venció o ya se usó."""
     data = session.pop('webauthn', None)
@@ -121,10 +122,14 @@ def take_challenge(session: MutableMapping[str, Any], purpose: str, user_id: Opt
 def registration_options(user_id: int, email: str, site: str, challenge: bytes) -> str:
     """Opciones de `navigator.credentials.create` en JSON."""
     import webauthn
-    from webauthn.helpers.structs import (AuthenticatorSelectionCriteria, PublicKeyCredentialDescriptor,
-                                          ResidentKeyRequirement, UserVerificationRequirement)
+    from webauthn.helpers.structs import (
+        AuthenticatorSelectionCriteria,
+        PublicKeyCredentialDescriptor,
+        ResidentKeyRequirement,
+        UserVerificationRequirement,
+    )
     with accounts._sessions()() as session:
-        existing = session.scalars(select(Passkey.credential_id).where(Passkey.user_id == user_id)).all()  # noqa: E501
+        existing = session.scalars(select(Passkey.credential_id).where(Passkey.user_id == user_id)).all()
     options = webauthn.generate_registration_options(
         rp_id=rp_id(site), rp_name=RP_NAME, user_name=email, user_display_name=email,
         user_id=str(user_id).encode(), challenge=challenge,
@@ -192,7 +197,7 @@ def authenticate(credential: dict[str, Any], challenge: bytes, site: str) -> int
         return int(row.user_id)
 
 
-def list_for(user_id: Optional[int]) -> list[dict[str, Any]]:
+def list_for(user_id: int | None) -> list[dict[str, Any]]:
     """Passkeys de la cuenta para Mi cuenta."""
     with accounts._sessions()() as session:
         rows = session.scalars(select(Passkey).where(Passkey.user_id == user_id).order_by(Passkey.id)).all()
