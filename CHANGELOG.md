@@ -6,6 +6,11 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar] - E2E del recorrido completo
+
+- `tests_integration/test_main_flow.py`: con Chromium contra la app levantada, una cuenta nueva se registra, sube su CV, marca una oferta de sus resultados como postulada, la ve en el tracker, lo exporta a Excel y sale. Corre en el job `integration`.
+- Fix: "Guardar" en la página de resultados no guardaba nada en MySQL (respondía `saved: 0`), porque la fecha llegaba como `2026-11-12T17:04:46.496Z`. Ahora se convierte a UTC.
+
 ## [Sin publicar] - Chequeo de que la app está lista
 
 - `GET /api/ready`: 200 si la base responde a `SELECT 1` y, si `RATELIMIT_STORAGE_URI` es Redis, ese Redis a `PING` (sin él no andan login ni APIs; `REDIS_URL` tiene respaldo local); 503 si algo falla, sin el error interno. `/api/health` sigue diciendo solo que el proceso está vivo.

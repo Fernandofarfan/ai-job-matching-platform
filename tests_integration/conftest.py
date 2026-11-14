@@ -61,7 +61,8 @@ def live_server(migrated_db, tmp_path_factory):
     env = {
         **{k: v for k, v in os.environ.items() if k not in ('APP_PASSWORD', 'ADMIN_EMAIL')},
         'LOGIN_REQUIRED': 'true',
-        'ALLOW_SIGNUP': 'false',
+        # el flujo principal arranca por el registro
+        'ALLOW_SIGNUP': 'true',
         # la cuenta de los E2E administra la instancia, así /admin también se revisa
         'ADMIN_EMAIL': E2E_EMAIL,
         'SECRET_KEY': secrets.token_hex(32),

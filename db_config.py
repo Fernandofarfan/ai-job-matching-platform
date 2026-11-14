@@ -4,7 +4,7 @@
 Cada consulta se limita a las filas del usuario actual (`accounts.current_user_id()`, parámetro :uid;
 `<=>` también empareja NULL, que es el dueño de las filas cuando no hay usuario)."""
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
 from dotenv import load_dotenv
 from sqlalchemy import bindparam, text
@@ -46,6 +46,18 @@ def _application_values(job_data, **overrides):
     }
     values.update(overrides)
     return values
+
+
+def _applied_date(value):
+    """Fecha de postulación como datetime UTC sin zona (MySQL DATETIME); acepta ISO 8601 con `Z`, como manda
+    `new Date().toISOString()` en la página de resultados. Sin fecha o ilegible: ahora."""
+    if isinstance(value, datetime):
+        return value
+    try:
+        parsed = datetime.fromisoformat(str(value).replace('Z', '+00:00'))
+    except ValueError:
+        return datetime.now()
+    return parsed.astimezone(timezone.utc).replace(tzinfo=None) if parsed.tzinfo else parsed
 
 
 class DatabaseManager:
@@ -115,7 +127,7 @@ class DatabaseManager:
     def save_application(self, job_data):
         """Guarda una postulación enviada y devuelve su id."""
         result = self._write(_INSERT_APPLICATION, _application_values(
-            job_data, applied_date=job_data.get('applied_date', datetime.now()), status='applied'))
+            job_data, applied_date=_applied_date(job_data.get('applied_date')), status='applied'))
         if result is None:
             return None
         self._log_status(result.lastrowid, None, 'applied')
