@@ -8,17 +8,22 @@ import logging
 import re
 import unicodedata
 from datetime import datetime
+from typing import Any
 
-from sqlalchemy import JSON, Boolean, Column, DateTime, Float, Integer, String, UniqueConstraint, select
+from sqlalchemy import JSON, Boolean, DateTime, Float, Integer, String, UniqueConstraint, select
 
 import accounts
 import scraper_stats
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.exc import IntegrityError
 
 logger = logging.getLogger(__name__)
 
-Base = declarative_base()
+
+class Base(DeclarativeBase):
+    """Base declarativa de los modelos de este módulo."""
+
+
 PORTALS = ('computrabajo', 'bumeran', 'zonajobs', 'getonboard')
 CHANNELS = ('email', 'telegram', 'push')
 MAX_JOBS_PER_PORTAL = 30
@@ -29,22 +34,22 @@ _ANONYMOUS = {'', 'confidential', 'confidencial', 'empresa confidencial', 'impor
 _session_factory = None
 
 
-class SavedSearch(Base):  # type: ignore[misc,valid-type]
+class SavedSearch(Base):
     """Búsqueda que se repite periódicamente y avisa por los canales elegidos."""
     __tablename__ = 'saved_searches'
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, index=True)
-    name = Column(String(120), nullable=False)
-    position = Column(String(200), nullable=False)
-    location = Column(String(200), nullable=False, default='')
-    portals = Column(JSON, nullable=False)
-    channels = Column(JSON, nullable=False)
-    min_score = Column(Float, nullable=False, default=0)
-    active = Column(Boolean, nullable=False, default=True)
-    created_at = Column(DateTime, default=datetime.now)
-    last_run_at = Column(DateTime)
-    last_result = Column(String(255))
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int | None] = mapped_column(Integer, index=True)
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    position: Mapped[str] = mapped_column(String(200), nullable=False)
+    location: Mapped[str] = mapped_column(String(200), nullable=False, default='')
+    portals: Mapped[Any] = mapped_column(JSON, nullable=False)
+    channels: Mapped[Any] = mapped_column(JSON, nullable=False)
+    min_score: Mapped[float] = mapped_column(Float, nullable=False, default=0)
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    created_at: Mapped[datetime | None] = mapped_column(DateTime, default=datetime.now)
+    last_run_at: Mapped[datetime | None] = mapped_column(DateTime)
+    last_result: Mapped[str | None] = mapped_column(String(255))
 
     def to_dict(self):
         """Representación serializable (vista y tareas de Celery)."""
@@ -57,21 +62,21 @@ class SavedSearch(Base):  # type: ignore[misc,valid-type]
         }
 
 
-class SeenJob(Base):  # type: ignore[misc,valid-type]
+class SeenJob(Base):
     """Oferta ya avisada; su huella evita repetirla aunque aparezca en otro portal."""
     __tablename__ = 'seen_jobs'
 
     __table_args__ = (UniqueConstraint('user_id', 'fingerprint', name='uq_seen_jobs_user_fingerprint'),)
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, index=True)
-    fingerprint = Column(String(40), nullable=False)
-    title = Column(String(300))
-    company = Column(String(200))
-    url = Column(String(1000))
-    source = Column(String(50))
-    search_id = Column(Integer)
-    first_seen_at = Column(DateTime, default=datetime.now)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int | None] = mapped_column(Integer, index=True)
+    fingerprint: Mapped[str] = mapped_column(String(40), nullable=False)
+    title: Mapped[str | None] = mapped_column(String(300))
+    company: Mapped[str | None] = mapped_column(String(200))
+    url: Mapped[str | None] = mapped_column(String(1000))
+    source: Mapped[str | None] = mapped_column(String(50))
+    search_id: Mapped[int | None] = mapped_column(Integer)
+    first_seen_at: Mapped[datetime | None] = mapped_column(DateTime, default=datetime.now)
 
 
 def configure(session_factory):

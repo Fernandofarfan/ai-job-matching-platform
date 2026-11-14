@@ -8,11 +8,12 @@ import logging
 import os
 import time
 from datetime import datetime
+from typing import Any
 
 from cryptography.fernet import InvalidToken
-from sqlalchemy import JSON, Column, DateTime, Integer, String, UniqueConstraint, delete, select, text
+from sqlalchemy import JSON, DateTime, Integer, String, UniqueConstraint, delete, select, text
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.orm.attributes import flag_modified
 from sqlalchemy.types import TypeDecorator
 
@@ -21,7 +22,11 @@ import cv_storage
 
 logger = logging.getLogger(__name__)
 
-Base = declarative_base()
+
+class Base(DeclarativeBase):
+    """Base declarativa de los modelos de este módulo."""
+
+
 JSON_PATH = os.path.join('profiles', 'user_profiles.json')
 # Roles borrados mientras MySQL no respondía; se borran en MySQL al volver
 DELETED_KEY = '_deleted'
@@ -71,17 +76,17 @@ class SealedJSON(TypeDecorator):
         return _unseal(value)
 
 
-class UserProfile(Base):  # type: ignore[misc,valid-type]
+class UserProfile(Base):
     """Un perfil (CV parseado) por tipo de rol."""
     __tablename__ = 'user_profiles'
 
     __table_args__ = (UniqueConstraint('user_id', 'role_type', name='uq_user_profiles_user_role_type'),)
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, index=True)
-    role_type = Column(String(100), nullable=False)
-    data = Column(SealedJSON, nullable=False)
-    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int | None] = mapped_column(Integer, index=True)
+    role_type: Mapped[str] = mapped_column(String(100), nullable=False)
+    data: Mapped[Any] = mapped_column(SealedJSON, nullable=False)
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now)
 
 
 def configure(session_factory):

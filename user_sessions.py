@@ -5,7 +5,8 @@ import secrets
 from datetime import datetime, timedelta
 from typing import Optional
 
-from sqlalchemy import Column, DateTime, Integer, String, delete, or_, select, update
+from sqlalchemy import DateTime, Integer, String, delete, or_, select, update
+from sqlalchemy.orm import Mapped, mapped_column
 
 import accounts
 
@@ -15,19 +16,19 @@ LIFETIME = timedelta(days=31)  # igual que PERMANENT_SESSION_LIFETIME (web_setti
 TOUCH_EVERY = timedelta(minutes=5)
 
 
-class UserSession(accounts.Base):  # type: ignore[misc,valid-type]
+class UserSession(accounts.Base):
     """Una sesión; la cookie lleva el id aleatorio y acá solo se guarda su hash."""
 
     __tablename__ = 'user_sessions'
     __table_args__ = {'extend_existing': True}
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, nullable=False, index=True)
-    sid_hash = Column(String(64), nullable=False, unique=True)
-    ip = Column(String(45), nullable=True)
-    user_agent = Column(String(255), nullable=True)
-    created_at = Column(DateTime, default=datetime.now)
-    last_seen_at = Column(DateTime, default=datetime.now)
-    revoked_at = Column(DateTime, nullable=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    sid_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    ip: Mapped[str | None] = mapped_column(String(45), nullable=True)
+    user_agent: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    created_at: Mapped[datetime | None] = mapped_column(DateTime, default=datetime.now)
+    last_seen_at: Mapped[datetime | None] = mapped_column(DateTime, default=datetime.now)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
 def _hash(sid: str) -> str:

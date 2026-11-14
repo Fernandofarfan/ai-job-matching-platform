@@ -5,7 +5,8 @@ import os
 from datetime import datetime, timedelta
 from typing import Optional
 
-from sqlalchemy import Column, DateTime, Integer, String, delete, select
+from sqlalchemy import DateTime, Integer, String, delete, select
+from sqlalchemy.orm import Mapped, mapped_column
 
 import accounts
 
@@ -43,18 +44,18 @@ LABELS = {
 LOGIN_KINDS = ('login', 'login_google')
 
 
-class SecurityEvent(accounts.Base):  # type: ignore[misc,valid-type]
+class SecurityEvent(accounts.Base):
     """Un evento; `device` es un hash del user agent para reconocer dispositivos sin compararlo entero."""
 
     __tablename__ = 'security_events'
     __table_args__ = {'extend_existing': True}
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, nullable=False, index=True)
-    kind = Column(String(40), nullable=False)
-    ip = Column(String(45), nullable=True)
-    user_agent = Column(String(255), nullable=True)
-    device = Column(String(16), nullable=True)
-    created_at = Column(DateTime, default=datetime.now, index=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    kind: Mapped[str] = mapped_column(String(40), nullable=False)
+    ip: Mapped[str | None] = mapped_column(String(45), nullable=True)
+    user_agent: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    device: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    created_at: Mapped[datetime | None] = mapped_column(DateTime, default=datetime.now, index=True)
 
 
 def device_id(user_agent: Optional[str]) -> str:

@@ -11,33 +11,37 @@ from contextlib import contextmanager
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Column, DateTime, Integer, String, select
+from sqlalchemy import DateTime, Integer, String, select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from werkzeug.security import check_password_hash, generate_password_hash
 
 logger = logging.getLogger(__name__)
 
-Base = declarative_base()
+
+class Base(DeclarativeBase):
+    """Base declarativa de los modelos de este módulo."""
+
+
 MIN_PASSWORD = 10
 EMAIL_RE = re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
 _current: contextvars.ContextVar[Optional[int]] = contextvars.ContextVar('current_user_id', default=None)
 _session_factory = None
 
 
-class User(Base):  # type: ignore[misc,valid-type]
+class User(Base):
     """Cuenta con email único y hash de contraseña."""
     __tablename__ = 'users'
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    email = Column(String(255), nullable=False, unique=True)
-    password_hash = Column(String(255), nullable=False)
-    created_at = Column(DateTime, default=datetime.now)
-    email_verified_at = Column(DateTime, nullable=True)
-    disabled_at = Column(DateTime, nullable=True)
-    terms_accepted_at = Column(DateTime, nullable=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    email: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_at: Mapped[datetime | None] = mapped_column(DateTime, default=datetime.now)
+    email_verified_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    disabled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    terms_accepted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     # permiso para mandar el CV y las ofertas a Gemini; sin él las funciones de IA no se llaman
-    ai_consent_at = Column(DateTime, nullable=True)
+    ai_consent_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
 class AccountError(ValueError):

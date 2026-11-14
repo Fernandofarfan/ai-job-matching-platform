@@ -6,6 +6,12 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar] - Modelos `Mapped[...]` y SQLAlchemy 2.1
+
+- Todos los modelos (`models.py`, `accounts.py`, `job_alerts.py`, `profile_store.py`, `two_factor.py`, `user_sessions.py`, `security_events.py`, `push.py`, `integrations.py`) usan `DeclarativeBase` y `Mapped[...] = mapped_column(...)` en vez de `declarative_base()` y `Column`. El esquema que generan es idéntico (mismas columnas, nulos, índices y defaults).
+- SQLAlchemy sube de 2.0.57 a 2.1.8. `models.py`, `accounts.py`, `push.py` e `integrations.py` pasan a revisarse con mypy.
+- `session.query(Model).get(id)`, obsoleto, pasa a `session.get(Model, id)`.
+
 ## [Sin publicar] - Medición de la calidad del matching
 
 - `eval/matching_dataset.json`: 6 CVs y 12 ofertas etiquetadas a mano (2 = buena opción, 1 = parcial).

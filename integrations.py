@@ -5,14 +5,15 @@ import secrets
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Boolean, Column, DateTime, Integer, String, Text, select
+from sqlalchemy import Boolean, DateTime, Integer, String, Text, select
+from sqlalchemy.orm import Mapped, mapped_column
 
 import accounts
 
 CHAT_ID = re.compile(r'^-?\d{1,20}$')
 
 
-class UserIntegration(accounts.Base):  # type: ignore[misc,valid-type]
+class UserIntegration(accounts.Base):
     """Una fila por cuenta; el token de la extensión se guarda solo como hash y el de Gmail cifrado.
 
     '' en `telegram_chat_id` o `gmail_token` = la cuenta lo desconectó: no se vuelve al chat/token.json de la instancia.
@@ -20,12 +21,12 @@ class UserIntegration(accounts.Base):  # type: ignore[misc,valid-type]
 
     __tablename__ = 'user_integrations'
     __table_args__ = {'extend_existing': True}  # los tests reimportan el módulo
-    user_id = Column(Integer, primary_key=True, autoincrement=False)
-    telegram_chat_id = Column(String(64), nullable=True)
-    extension_token_hash = Column(String(64), nullable=True, unique=True)
-    gmail_token = Column(Text, nullable=True)
-    legacy_extension_off = Column(Boolean, nullable=False, default=False)
-    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+    user_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=False)
+    telegram_chat_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    extension_token_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, unique=True)
+    gmail_token: Mapped[str | None] = mapped_column(Text, nullable=True)
+    legacy_extension_off: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now)
 
 
 class IntegrationError(ValueError):
