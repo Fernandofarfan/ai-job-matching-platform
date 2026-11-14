@@ -14,4 +14,4 @@ ignore = ["B904", "B007", "B008"]
 python_version = "3.12"
 ignore_missing_imports = true
 follow_imports = "silent"
-files = ["ai_usage.py", "ats_score.py", "auth.py", "cv_storage.py", "embeddings.py", "job_alerts.py", "job_dispatch.py", "rate_limit.py", "profile_store.py", "scripts/scraper_health.py"]
+files = ["ai_usage.py", "ats_score.py", "auth.py", "cv_storage.py", "embeddings.py", "job_alerts.py", "job_dispatch.py", "rate_limit.py", "routers/tracker.py", "profile_store.py", "scripts/scraper_health.py"]

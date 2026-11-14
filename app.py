@@ -73,7 +73,7 @@ limiter = Limiter(
 if not auth.auth_enabled():
     logger.warning("APP_PASSWORD no definida: la app no pide login (usala solo en local)")
 
-PUBLIC_ENDPOINTS = {'login', 'static', 'health', 'service_worker', 'api_save_from_extension'}
+PUBLIC_ENDPOINTS = {'login', 'static', 'health', 'service_worker'}
 
 
 @app.before_request
@@ -825,10 +825,11 @@ from web import (  # noqa: E402,F401
 
 
 if __name__ == '__main__':
-    socketio.run(
-        app,
+    # Se sirve main:app (FastAPI + Flask montado), igual que en Docker: parte de la API vive solo en FastAPI
+    import uvicorn
+    uvicorn.run(
+        'main:app',
         host=os.getenv('FLASK_HOST', '127.0.0.1'),
         port=int(os.getenv('FLASK_PORT', '5000')),
-        debug=os.getenv('FLASK_DEBUG', '0') == '1',
-        allow_unsafe_werkzeug=True,
+        reload=os.getenv('FLASK_DEBUG', '0') == '1',
     )

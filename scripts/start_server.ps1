@@ -1,14 +1,10 @@
-# EmpleoIA — Servidor de Producción (Waitress)
-# Uso: .\.venv\Scripts\python.exe scripts\start_server.ps1
-# O directamente: python -c "from waitress import serve; from app import app; serve(app, host='0.0.0.0', port=5000, threads=4)"
-
-# Alternativa PowerShell:
-# .\venv\Scripts\Activate.ps1
-# waitress-serve --host=0.0.0.0 --port=5000 --threads=4 app:app
+# EmpleoIA — Servidor de Producción (uvicorn)
+# Uso: .\scripts\start_server.ps1 [-Port 5000] [-Workers 1] [-ServerHost 0.0.0.0]
+# Sirve main:app (FastAPI + Flask montado): parte de la API vive solo en FastAPI, así que no alcanza con app:app.
 
 param(
     [int]$Port    = 5000,
-    [int]$Threads = 4,
+    [int]$Workers = 1,   # job_status de scraping vive en memoria: más de 1 worker requiere SCRAPER_BACKEND=celery
     [string]$ServerHost = "0.0.0.0"
 )
 
@@ -24,17 +20,10 @@ if (-not (Test-Path $venvPython)) {
     $venvPython = "python"
 }
 
-Write-Host "🚀 Iniciando EmpleoIA con Waitress..." -ForegroundColor Cyan
+Write-Host "🚀 Iniciando EmpleoIA con uvicorn..." -ForegroundColor Cyan
 Write-Host "   Host   : $ServerHost" -ForegroundColor Gray
 Write-Host "   Puerto : $Port" -ForegroundColor Gray
-Write-Host "   Threads: $Threads" -ForegroundColor Gray
+Write-Host "   Workers: $Workers" -ForegroundColor Gray
 Write-Host ""
 
-& $venvPython -c @"
-from waitress import serve
-from app import app
-import logging
-logging.basicConfig(level=logging.INFO)
-print(f'EmpleoIA corriendo en http://localhost:$Port')
-serve(app, host='$ServerHost', port=$Port, threads=$Threads)
-"@
+& $venvPython -m uvicorn main:app --host $ServerHost --port $Port --workers $Workers

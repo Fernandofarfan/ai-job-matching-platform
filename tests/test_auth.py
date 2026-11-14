@@ -19,7 +19,7 @@ def test_pages_redirect_to_login_when_enabled(client, monkeypatch):
     response = client.get('/tracker')
     assert response.status_code == 302
     assert '/login' in response.headers['Location']
-    assert client.get('/api/tracker/jobs').status_code == 401
+    assert client.get('/api/tracker/stats').status_code == 401
     assert client.get('/api/health').status_code == 200
 
 
@@ -41,16 +41,6 @@ def test_login_ignores_external_next(client, monkeypatch):
     assert response.headers['Location'] == '/'
     response = client.post('/login?next=/%5Cevil.com', data={'password': 'secreta'})
     assert response.headers['Location'] == '/'
-
-
-def test_extension_requires_token_when_login_enabled(client, monkeypatch):
-    """La extensión necesita EXTENSION_TOKEN cuando hay login."""
-    monkeypatch.setenv('APP_PASSWORD', 'secreta')
-    monkeypatch.setenv('EXTENSION_TOKEN', 'tok')
-    url = '/api/tracker/save-from-extension'
-    assert client.post(url, json={'title': 'x'}).status_code == 401
-    response = client.post(url, json={'title': 'x'}, headers={'X-Extension-Token': 'tok'})
-    assert response.status_code != 401
 
 
 def test_csrf_blocks_post_without_token(client, app, monkeypatch):
