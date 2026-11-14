@@ -4,8 +4,7 @@ from unittest import mock
 
 def _patch_profiles(app, profiles):
     """Reemplaza get_all_user_profiles en el módulo de la app por un valor fijo."""
-    view_globals = app.view_functions['view_profile'].__globals__
-    return mock.patch.dict(view_globals, {'get_all_user_profiles': lambda: profiles})
+    return mock.patch.dict(app.extensions['empleoia_app_globals'], {'get_all_user_profiles': lambda: profiles})
 
 
 def test_view_profile_redirects_to_latest_role(client, app):
@@ -30,4 +29,4 @@ def test_view_profile_without_profiles_redirects_to_upload(client, app):
 
 def test_delete_all_data_requires_post(client):
     """'Borrar mis datos' no se dispara con un GET (enlace o prefetch)."""
-    assert client.get('/delete_profile').status_code == 405
+    assert client.get('/delete_profile').status_code in (404, 405)

@@ -4,6 +4,7 @@ La cookie `session` se lee y se escribe con el serializador de la app Flask mont
 así una sesión abierta en Flask sirve en FastAPI y viceversa mientras dure la migración.
 """
 import logging
+import os
 import secrets
 from datetime import datetime, timezone
 from typing import Any, Optional, TypeVar
@@ -15,6 +16,7 @@ from fastapi.templating import Jinja2Templates
 from itsdangerous import URLSafeTimedSerializer
 from limits import parse
 from jinja2 import pass_context
+from starlette.datastructures import ImmutableMultiDict
 from starlette.routing import NoMatchFound
 
 import account_notify
@@ -24,7 +26,7 @@ import i18n
 import rate_limit
 
 logger = logging.getLogger(__name__)
-templates = Jinja2Templates(directory='templates')
+templates = Jinja2Templates(directory=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates'))
 # Caracteres que Werkzeug deja sin escapar en la query: mismas URLs que el url_for de Flask
 QUERY_SAFE = "!$'()*,/:;?@"
 
@@ -236,6 +238,11 @@ def too_many_requests() -> JSONResponse:
 
 
 FORM_MAX_BYTES = 64 * 1024
+
+
+class TextForm(ImmutableMultiDict[str, str]):
+    """Campos de texto del formulario (`get` y `getlist`, como request.form de Flask)."""
+
 FORM_MAX_FIELDS = 50
 
 
@@ -253,19 +260,49 @@ async def _body_within(request: Request, limit: int) -> bool:
     return True
 
 
-async def read_form(request: Request) -> tuple[dict, Optional[Response]]:
-    """Formulario del POST y, si el token CSRF no es válido, la respuesta 400 (como CSRFProtect de Flask)."""
+def _csrf_ok(request: Request, token: Optional[str]) -> bool:
+    """Token del formulario o de los headers X-CSRFToken/X-CSRF-Token (como CSRFProtect de Flask)."""
     flask_app = flask_app_for(request)
-    if not await _body_within(request, FORM_MAX_BYTES):
-        return {}, render(request, 'error.html', 413, code=413, message='Request Entity Too Large')
-    parsed = await request.form(max_files=0, max_fields=FORM_MAX_FIELDS)
-    form = {k: v for k, v in parsed.items() if isinstance(v, str)}
-    if flask_app.config.get('WTF_CSRF_ENABLED', True):
-        token = form.get('csrf_token') or request.headers.get('x-csrftoken') or request.headers.get('x-csrf-token')
-        if not token or not auth.check_csrf_token(get_session(request), token, flask_app.secret_key,
-                                                  flask_app.config.get('WTF_CSRF_TIME_LIMIT', 3600)):
-            return form, render(request, 'error.html', 400, code=400, message='The CSRF token is missing or invalid.')
-    return form, None
+    if not flask_app.config.get('WTF_CSRF_ENABLED', True):
+        return True
+    token = token or request.headers.get('x-csrftoken') or request.headers.get('x-csrf-token')
+    if not token:
+        return False
+    return auth.check_csrf_token(get_session(request), token, flask_app.secret_key,
+                                                 flask_app.config.get('WTF_CSRF_TIME_LIMIT', 3600))
+
+
+def csrf_error(request: Request) -> Response:
+    """Página 400 por token CSRF faltante o inválido."""
+    return render(request, 'error.html', 400, code=400, message='The CSRF token is missing or invalid.')
+
+
+async def _parse(request: Request, max_bytes: int, max_files: int) -> tuple[TextForm, dict, Optional[Response]]:
+    """Cuerpo limitado a `max_bytes`, campos de texto, archivos y error (413/400) si corresponde."""
+    if not await _body_within(request, max_bytes):
+        return TextForm(), {}, render(request, 'error.html', 413, code=413, message='Request Entity Too Large')
+    parsed = await request.form(max_files=max_files, max_fields=FORM_MAX_FIELDS)
+    form = TextForm([(k, v) for k, v in parsed.multi_items() if isinstance(v, str)])
+    files = {k: v for k, v in parsed.multi_items() if not isinstance(v, str)}
+    if not _csrf_ok(request, str(form.get('csrf_token') or '')):
+        return form, files, csrf_error(request)
+    return form, files, None
+
+
+async def read_form(request: Request) -> tuple[TextForm, Optional[Response]]:
+    """Formulario del POST (`get`/`getlist`) y, si el token CSRF no es válido, la respuesta 400."""
+    form, _files, error = await _parse(request, FORM_MAX_BYTES, 0)
+    return form, error
+
+
+def upload_max_bytes(request: Request) -> int:
+    """MAX_CONTENT_LENGTH de Flask (MAX_UPLOAD_MB)."""
+    return int(flask_app_for(request).config.get('MAX_CONTENT_LENGTH') or 16 * 1024 * 1024)
+
+
+async def read_upload(request: Request) -> tuple[TextForm, dict, Optional[Response]]:
+    """Formulario con un archivo (hasta MAX_CONTENT_LENGTH): campos, {nombre: UploadFile} y error (413/400)."""
+    return await _parse(request, upload_max_bytes(request), 1)
 
 
 def clear_offline_data(response: ResponseT) -> ResponseT:

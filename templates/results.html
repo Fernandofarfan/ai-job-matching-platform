@@ -84,10 +84,13 @@
               <hr class="dropdown-divider">
             </li>
             <li>
-              <a class="dropdown-item text-danger" href="/delete_csv/{{ filename }}"
-                onclick="return confirm('¿Estás seguro de eliminar este archivo?');">
-                <i class="bi bi-trash me-2"></i>Eliminar Archivo
-              </a>
+              <form method="POST" action="{{ url_for('delete_csv', filename=filename) }}"
+                onsubmit="return confirm('¿Estás seguro de eliminar este archivo?');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="dropdown-item text-danger">
+                  <i class="bi bi-trash me-2"></i>Eliminar Archivo
+                </button>
+              </form>
             </li>
           </ul>
         </div>

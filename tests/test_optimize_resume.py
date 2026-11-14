@@ -12,8 +12,8 @@ def test_optimize_resume_post_shows_result(client, app):
     optimizer = mock.Mock()
     optimizer.optimize_resume.return_value = 'CV OPTIMIZADO'
     optimizer.save_resume.return_value = 'resume_Dev_Acme.docx'
-    module = app.view_functions['optimize_resume'].__globals__
-    with mock.patch.dict(module, {'ResumeOptimizer': lambda: optimizer}):
+    from routers import content_pages
+    with mock.patch.object(content_pages, 'ResumeOptimizer', lambda: optimizer):
         response = client.post('/optimize_resume', data={
             'job_title': 'Dev', 'company': 'Acme', 'job_description': 'Python', 'resume_text': 'mi cv',
         })

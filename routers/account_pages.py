@@ -24,7 +24,7 @@ import security_events
 import tracker_export
 import two_factor
 import user_sessions
-from fastapi_web import (clear_offline_data, client_info, flash, flask_app_for, get_session, hit_limit, legacy,
+from fastapi_web import (TextForm, clear_offline_data, client_info, flash, flask_app_for, get_session, hit_limit, legacy,
                          limit_key, public_url, read_form, redirect, render, save_session, too_many_requests,
                          url_for)
 from routers.auth_pages import audit, send_verification
@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["account"], include_in_schema=False)
 
 
-async def _form(request: Request, spec: Optional[str] = None, namespace: str = '') -> tuple[dict, Optional[Response]]:
+async def _form(request: Request, spec: Optional[str] = None, namespace: str = '') -> tuple[TextForm, Optional[Response]]:
     """Formulario con CSRF y, si hay `spec`, el límite por cuenta del endpoint (como @limiter.limit de Flask)."""
     form, error = await read_form(request)
     if error:

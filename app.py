@@ -808,6 +808,21 @@ ACCOUNT_PAGES = {  # routers/account_pages.py
     'export_tracker_pdf': '/export/tracker/pdf', 'export_results_excel': '/export/results/<filename>/excel',
 }
 
+CONTENT_PAGES = {  # routers/content_pages.py
+    'view_file': '/view/<filename>', 'api_save_applications': '/api/save_applications',
+    'exclude_company_from_networking': '/exclude_company_from_networking', 'connections': '/connections',
+    'debug_directories': '/debug/directories', 'status': '/status', 'download_file': '/results/<filename>',
+    'download_csv_file': '/download_csv/<filename>', 'extract_companies_from_file': '/extract_companies/<filename>',
+    'download_resume': '/download_resume/<filename>', 'delete_csv': '/delete_csv/<filename>',
+    'batch_cover_letters': '/batch_cover_letters', 'batch_optimize_page': '/batch_optimize',
+    'optimize_resume_page': '/optimize_resume', 'optimize_resume': '/optimize_resume', 'ats_score_page': '/ats_score',
+    'view_profile': '/view_profile', 'upload_resume': '/upload_resume', 'delete_profile': '/delete_profile',
+    'view_profile_by_role': '/view_profile/<role_type>', 'delete_profile_by_role': '/delete_profile/<role_type>',
+    'confirm_delete_profile': '/delete_profile/<role_type>/confirm', 'alerts': '/alerts', 'create_alert': '/alerts',
+    'delete_alert': '/alerts/<int:search_id>/delete', 'toggle_alert': '/alerts/<int:search_id>/toggle',
+    'run_alert': '/alerts/<int:search_id>/run', 'analytics': '/analytics',
+}
+
 # Páginas que ya atiende FastAPI (routers/pages.py): Flask solo las usa para armar URLs con url_for
 for _rule, _endpoint in [('/', 'index'), ('/scraper', 'scraper'), ('/results', 'results'), ('/profile', 'profile'),
                          ('/mock-interview', 'mock_interview'), ('/tracker', 'tracker'),
@@ -816,13 +831,11 @@ for _rule, _endpoint in [('/', 'index'), ('/scraper', 'scraper'), ('/results', '
                          ('/forgot_password', 'forgot_password'), ('/reset_password/<token>', 'reset_password'),
                          ('/verify_email/<token>', 'verify_email'), ('/login/2fa', 'login_two_factor'),
                          ('/login/google', 'google_login'), ('/login/google/callback', 'google_callback'),
-                         *[(r, e) for e, r in ACCOUNT_PAGES.items()]]:
+                         *[(r, e) for e, r in {**ACCOUNT_PAGES, **CONTENT_PAGES}.items()]]:
     app.url_map.add(Rule(_rule, endpoint=_endpoint, build_only=True))
 
 # Las rutas viven en web/ y se registran sobre `app` al importarse
-from web import (  # noqa: E402,F401
-    alerts, analytics, documents, files, profiles, scrapers,
-)
+from web import scrapers  # noqa: E402,F401
 
 
 # Helpers de este módulo para las páginas que ya sirve FastAPI (fastapi_web.legacy)
