@@ -2,6 +2,7 @@
 
 Positivas: las que pasaron a "postulando" o más (entrevista, negociación y aceptada pesan doble).
 Negativas: las guardadas que llevan `RANKING_STALE_DAYS` días sin que te postules.
+"Me interesa" / "no me interesa" (job_feedback.py) pesan doble de cada lado: es lo que dijiste explícitamente.
 Modelo: Naive Bayes con suavizado de Laplace sobre palabras del título, empresa, ubicación y portal.
 Con menos de `MIN_EXAMPLES` ejemplos de cada clase no personaliza.
 """
@@ -17,6 +18,7 @@ from datetime import date, datetime
 logger = logging.getLogger(__name__)
 
 MIN_EXAMPLES = 3
+FEEDBACK_WEIGHT = 2
 POSITIVE = {'applying': 1, 'applied': 1, 'rejected': 1, 'interviewing': 2, 'negotiating': 2, 'accepted': 2}
 _STOPWORDS = {
     'para', 'con', 'por', 'los', 'las', 'del', 'una', 'and', 'the', 'for', 'with', 'sin',
@@ -87,6 +89,8 @@ def _as_date(value):
 
 def label(job, today=None):
     """Peso positivo (>0), negativo (<0) o 0 si la postulación todavía no dice nada."""
+    if job.get('interested') is not None:
+        return FEEDBACK_WEIGHT if job['interested'] else -FEEDBACK_WEIGHT
     status = job.get('status')
     if status in POSITIVE:
         return POSITIVE[status]
@@ -110,8 +114,8 @@ def train(applications, today=None):
             n_pos += weight
             pos.update({f: weight for f in feats})
         else:
-            n_neg += 1
-            neg.update(feats)
+            n_neg += -weight
+            neg.update({f: -weight for f in feats})
     if n_pos < MIN_EXAMPLES or n_neg < MIN_EXAMPLES:
         return None
     return {'pos': pos, 'neg': neg, 'n_pos': n_pos, 'n_neg': n_neg}
@@ -140,18 +144,36 @@ def top_signals(model, n=8):
             'dislikes': [p for p in reversed(pretty) if p['weight'] < 0][:n]}
 
 
+def _cache_key():
+    """Un modelo por cuenta: el ranking de una no puede mostrar las empresas que eligió otra."""
+    import accounts
+    return accounts.current_user_id()
+
+
+def invalidate():
+    """Descarta el modelo cacheado de la cuenta actual (p. ej. después de marcar una oferta)."""
+    _cache.pop(_cache_key(), None)
+
+
 def load_model():
-    """Entrena con el tracker (cacheado unos minutos); None sin datos o sin MySQL."""
-    cached = _cache.get('model')
+    """Entrena con el tracker y lo marcado en las ofertas (cacheado unos minutos por cuenta); None sin datos."""
+    key = _cache_key()
+    cached = _cache.get(key)
     if cached and time.monotonic() - cached[0] < _CACHE_SECONDS:
         return cached[1]
+    examples = []
     try:
         from db_config import db_manager
-        model = train(db_manager.get_applications() or [])
+        examples += db_manager.get_applications() or []
     except Exception as e:
         logger.warning(f"Ranking personal sin datos del tracker: {e}")
-        model = None
-    _cache['model'] = (time.monotonic(), model)
+    try:
+        import job_feedback
+        examples += job_feedback.examples()
+    except Exception as e:
+        logger.warning(f"Ranking personal sin \"me interesa\": {e}")
+    model = train(examples) if examples else None
+    _cache[key] = (time.monotonic(), model)
     return model
 
 

@@ -59,6 +59,12 @@ COLUMNS = {'Title': 'Título', 'Company': 'Empresa', 'Location': 'Ubicación', '
            'Experience_Category': 'Categoría de Experiencia'}
 
 
+def _match_of(job: dict):
+    """Match 0-100 de una fila del CSV, o None."""
+    value = job.get('overall_match')
+    return None if value is None or pd.isna(value) else float(value)
+
+
 def _job_table(file_path: str) -> dict:
     """Tabla HTML del CSV (primeras 100 filas), ordenada por match y por el ranking aprendido."""
     import job_ranking
@@ -72,6 +78,14 @@ def _job_table(file_path: str) -> dict:
     model = job_ranking.load_model()
     if model is not None:
         df = pd.DataFrame(job_ranking.rank(df.to_dict('records'), model, match_key='overall_match'))
+    shown = df.head(100).to_dict('records')
+    try:
+        import job_feedback
+        marks = job_feedback.states(shown)
+    except Exception as e:
+        logger.warning(f'Sin "me interesa" guardados: {e}')
+        marks = [None] * len(shown)
+    feedback = [{'interested': mark, 'match': _match_of(job)} for mark, job in zip(marks, shown, strict=True)]
     df = df.rename(columns=COLUMNS)
     display_columns = ['Título', 'Empresa', 'Ubicación', 'Enlace', 'URL', 'Apply_URL']
     if 'preference' in df.columns:
@@ -91,7 +105,7 @@ def _job_table(file_path: str) -> dict:
     table_html = display_df.head(100).to_html(classes='table table-striped table-hover table-sm', table_id='jobTable',
                                               escape=False, index=False)
     return {'table_html': table_html, 'has_matches': has_matches, 'total_jobs': len(df),
-            'display_columns': display_columns}
+            'display_columns': display_columns, 'feedback': feedback}
 
 
 @router.get('/view/{filename}', name='view_file')
@@ -559,3 +573,30 @@ async def run_alert(request: Request, search_id: int):
     await run_in_threadpool(_start_alert, search_id)
     flash(request, 'Buscando ofertas nuevas; recargá en unos minutos para ver el resultado.', 'info')
     return _go(request, 'alerts')
+
+
+@router.post('/api/job_feedback', name='api_job_feedback')
+async def api_job_feedback(request: Request):
+    """"Me interesa" (`interested: true`), "no me interesa" (`false`) o quitar la marca (`null`) en una oferta."""
+    if not await _body_within(request, 16 * 1024):
+        return _json_error('Pedido demasiado grande', 413)
+    if not _csrf_ok(request, None):
+        return _json_error('Token CSRF inválido o vencido: recargá la página', 400)
+    try:
+        data = json.loads(await request.body())
+        job, interested = data.get('job'), data.get('interested')
+    except (ValueError, AttributeError):
+        return _json_error('JSON inválido', 400)
+    if not isinstance(job, dict) or interested not in (True, False, None):
+        return _json_error('Datos inválidos', 400)
+    import job_feedback
+    import job_ranking
+    try:
+        await run_in_threadpool(job_feedback.set_feedback, job, interested, data.get('match_score'))
+    except ValueError:
+        return _json_error('La oferta no tiene título', 400)
+    except Exception as e:
+        logger.error(f'Error guardando "me interesa": {e}')
+        return _json_error('Error interno del servidor', 500)
+    job_ranking.invalidate()
+    return JSONResponse({'success': True, 'interested': interested})

@@ -103,7 +103,12 @@ def _normalize(text):
 
 def _field(job, name):
     """Lee un campo de oferta con la mayúscula de los scrapers ('Title') o en minúscula."""
-    return job.get(name.capitalize()) or job.get(name) or ''
+    for key in (name.capitalize(), name):
+        value = job.get(key)
+        # NaN de pandas (celda vacía del CSV) es truthy: cuenta como vacío, igual que en la tabla
+        if value and value == value:
+            return value
+    return ''
 
 
 def fingerprint(job):
@@ -341,7 +346,9 @@ def run_search(search_id, notify, make_scraper=None, profile=None):
     if profile and search['min_score']:
         jobs = [j for j in jobs if j.get('match_percent', 0) >= search['min_score']]
     new = find_new(jobs)
+    import job_feedback
     import job_ranking
+    new = job_feedback.drop_rejected(new)
     new = job_ranking.rank(new)
     pending = len(new)
     new = new[:MAX_JOBS_PER_ALERT]

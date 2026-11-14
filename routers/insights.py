@@ -80,11 +80,18 @@ def profile_summary(profiles=Depends(get_profiles)):
 
 @router.get('/ranking')
 def ranking(model=Depends(get_ranking_model)):
-    """Qué aprendió el ranking personal del tracker (palabras, empresas y portales que suben o bajan)."""
+    """Qué aprendió el ranking personal (palabras, empresas y portales que suben o bajan) y, en `feedback`,
+    cuántas ofertas marcaste y qué tan seguido el match ordena "me interesa" por encima de "no me interesa"."""
+    import job_feedback
     import job_ranking
+    try:
+        feedback = job_feedback.my_agreement()
+    except Exception as e:
+        logger.warning(f'Sin "me interesa" guardados: {e}')
+        feedback = None
     if model is None:
-        return {'success': True, 'enabled': False,
+        return {'success': True, 'enabled': False, 'feedback': feedback,
                 'message': f'Hacen falta al menos {job_ranking.MIN_EXAMPLES} postulaciones y '
                            f'{job_ranking.MIN_EXAMPLES} ofertas guardadas sin postular'}
-    return {'success': True, 'enabled': True, 'positives': model['n_pos'],
+    return {'success': True, 'enabled': True, 'feedback': feedback, 'positives': model['n_pos'],
             'negatives': model['n_neg'], **job_ranking.top_signals(model)}
