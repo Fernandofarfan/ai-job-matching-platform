@@ -13,6 +13,7 @@ from fastapi.routing import APIRoute
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from starlette.exceptions import HTTPException
 
+import accounts
 import auth
 
 logger = logging.getLogger(__name__)
@@ -120,7 +121,7 @@ def flask_session(request: Request, flask_app=Depends(get_flask_app)) -> dict:
 
 def require_browser_session(request: Request, session: dict = Depends(flask_session),
                             flask_app=Depends(get_flask_app)) -> None:
-    """Login (si hay APP_PASSWORD) y CSRF en los métodos que modifican datos, igual que en Flask."""
+    """Login y CSRF en los métodos que modifican datos, igual que en Flask."""
     if auth.auth_enabled() and not auth.is_session_valid(session, flask_app.secret_key):
         raise ApiError(401, 'No autenticado')
     if request.method in SAFE_METHODS or not flask_app.config.get('WTF_CSRF_ENABLED', True):
@@ -242,9 +243,10 @@ def delete_job(job_id: int, db=Depends(get_db)):
 def save_from_extension(request: Request, data: dict = Body(...), session: dict = Depends(flask_session),
                         flask_app=Depends(get_flask_app), db=Depends(get_db)):
     """Extensión de Chrome: sin CSRF (viene de otro origen); con login exige sesión o EXTENSION_TOKEN."""
-    if auth.auth_enabled() and not auth.is_session_valid(session, flask_app.secret_key) \
-            and not auth.check_extension_token(request.headers.get('X-Extension-Token', '')):
-        raise ApiError(401, 'Token de extensión inválido')
+    if auth.auth_enabled() and not auth.is_session_valid(session, flask_app.secret_key):
+        if not auth.check_extension_token(request.headers.get('X-Extension-Token', '')):
+            raise ApiError(401, 'Token de extensión inválido')
+        accounts.set_current_user(auth.extension_user_id())
     if not data:
         raise ApiError(400, 'No data received')
     job_data = {

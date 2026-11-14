@@ -6,7 +6,8 @@ publica el progreso como estado de la tarea y `refresh()` lo copia a `job_status
 import importlib
 import logging
 import os
-import threading
+
+import accounts
 
 logger = logging.getLogger(__name__)
 
@@ -60,14 +61,15 @@ def launch(job_status, key, name, *args):
     func = resolve(name)
     if use_celery():
         from celery_app import celery
-        result = celery.send_task(TASK_NAME, args=[key, name, list(args)])
+        result = celery.send_task(TASK_NAME, args=[key, name, list(args)],
+                                 kwargs={'user_id': accounts.current_user_id()})
         _remember(celery, key, result.id)
         job_status[key] = {
             **job_status.get(key, {}),
             'status': 'queued', 'progress': 0, 'message': 'En cola...', 'task_id': result.id,
         }
         return result.id
-    threading.Thread(target=func, args=args, daemon=True).start()
+    accounts.thread(target=func, args=args, daemon=True).start()
     return None
 
 

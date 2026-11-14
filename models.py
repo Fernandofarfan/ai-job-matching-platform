@@ -62,6 +62,7 @@ class Application(Base):
     __tablename__ = "applications"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, index=True)
     title = Column(String(255), nullable=False)
     company = Column(String(255), nullable=False)
     location = Column(String(255))

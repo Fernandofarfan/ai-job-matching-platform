@@ -154,8 +154,9 @@ def app():
 
 @pytest.fixture(autouse=True)
 def _no_login_by_default(monkeypatch, tmp_path):
-    """Los tests corren sin login salvo que definan APP_PASSWORD (ignora el .env local)."""
-    monkeypatch.delenv('APP_PASSWORD', raising=False)
+    """Los tests corren sin login salvo que pongan LOGIN_REQUIRED=true (ignora el .env local)."""
+    monkeypatch.setenv('LOGIN_REQUIRED', 'false')
+    monkeypatch.delenv('ALLOW_SIGNUP', raising=False)
     monkeypatch.delenv('EXTENSION_TOKEN', raising=False)
     monkeypatch.delenv('CV_ENCRYPTION_KEY', raising=False)
     # Perfiles en un JSON temporal: los tests no tocan MySQL ni profiles/ real
@@ -207,3 +208,29 @@ def api(app, tracker_db):
     fastapi_app.dependency_overrides[insights.get_profiles] = lambda: (
         flask_globals['get_all_user_profiles'], flask_globals['get_user_profile'])
     return TestClient(fastapi_app)
+
+
+@pytest.fixture(autouse=True)
+def _accounts_sqlite():
+    """Cuentas en SQLite en memoria (vacía): los tests no tocan MySQL; sin cuentas no hay usuario actual."""
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+    from sqlalchemy.pool import StaticPool
+    import accounts
+    engine = create_engine('sqlite://', poolclass=StaticPool, connect_args={'check_same_thread': False})
+    accounts.Base.metadata.create_all(engine)
+    accounts.configure(sessionmaker(bind=engine))
+    yield engine
+    accounts.configure(None)
+    accounts.set_current_user(None)
+
+
+@pytest.fixture
+def accounts_db(monkeypatch, app, _accounts_sqlite):
+    """Login obligatorio, sin el límite de intentos de login/registro (lo cubre test_ops)."""
+    # El módulo app se importa dentro de patch.dict(sys.modules): el limiter se busca en la app
+    limiters = app.extensions['limiter']
+    for limiter in limiters if isinstance(limiters, (set, list, tuple)) else [limiters]:
+        monkeypatch.setattr(limiter, 'enabled', False)
+    monkeypatch.setenv('LOGIN_REQUIRED', 'true')
+    return _accounts_sqlite

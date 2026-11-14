@@ -15,7 +15,9 @@ import urllib.request
 import pytest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-APP_PASSWORD = secrets.token_urlsafe(16)
+# Cuenta de los E2E (en CI la base arranca vacía; en local conviene crear antes tu cuenta, que reclama los datos previos)
+E2E_EMAIL = f'e2e-{secrets.token_hex(4)}@example.com'
+E2E_PASSWORD = secrets.token_urlsafe(16)
 # Con la clave del .env local la app de desarrollo sigue leyendo los perfiles que escribe el E2E (misma base)
 CV_ENCRYPTION_KEY = os.getenv('CV_ENCRYPTION_KEY') or base64.urlsafe_b64encode(secrets.token_bytes(32)).decode()
 
@@ -29,9 +31,13 @@ def pytest_collection_modifyitems(config, items):
 
 
 @pytest.fixture(scope='session')
-def app_password():
-    """Contraseña con la que se levanta la app en los E2E."""
-    return APP_PASSWORD
+def credentials(migrated_db):
+    """(email, contraseña) de una cuenta creada para los E2E."""
+    from unittest import mock
+    import accounts
+    with mock.patch.dict(os.environ, {'ALLOW_SIGNUP': 'true'}):
+        accounts.register(E2E_EMAIL, E2E_PASSWORD)
+    return E2E_EMAIL, E2E_PASSWORD
 
 
 @pytest.fixture(scope='session')
@@ -53,8 +59,9 @@ def live_server(migrated_db, tmp_path_factory):
     """La app completa (FastAPI + Flask) con uvicorn, login activo y almacenamiento real."""
     port = _free_port()
     env = {
-        **os.environ,
-        'APP_PASSWORD': APP_PASSWORD,
+        **{k: v for k, v in os.environ.items() if k not in ('APP_PASSWORD', 'ADMIN_EMAIL')},
+        'LOGIN_REQUIRED': 'true',
+        'ALLOW_SIGNUP': 'false',
         'SECRET_KEY': secrets.token_hex(32),
         'SCRAPER_BACKEND': 'thread',
         'CV_ENCRYPTION_KEY': CV_ENCRYPTION_KEY,
@@ -98,11 +105,11 @@ def browser(playwright):
 
 
 @pytest.fixture
-def page(browser, live_server, app_password):
+def page(browser, live_server, credentials):
     """Pestaña nueva apuntando a la app levantada."""
     context = browser.new_context(base_url=live_server, reduced_motion='reduce')
     page = context.new_page()
     page.set_default_timeout(20000)
-    page.app_password = app_password
+    page.credentials = credentials
     yield page
     context.close()

@@ -7,6 +7,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from flask_wtf.csrf import generate_csrf
 
+import accounts
 import auth
 from routers import tracker
 
@@ -97,13 +98,17 @@ def test_internal_errors_do_not_leak_details(api, db):
     assert resp.status_code == 500 and 'secreta' not in resp.text
 
 
-def test_login_required_with_app_password(api, app, monkeypatch):
-    monkeypatch.setenv('APP_PASSWORD', 'secreta')
+def test_login_required(api, app, accounts_db):
+    """Sin sesión 401; con la sesión de una cuenta 200; al cambiar su contraseña vuelve a 401."""
     assert api.get('/api/tracker/jobs').status_code == 401
-    cookie, _ = _session_cookie(app, authenticated=True, auth_fp=auth.session_fingerprint(app.secret_key))
+    user_id = accounts.register('ana@example.com', 'clave-larga-1')
+    user = accounts.get_user(user_id)
+    cookie, _ = _session_cookie(app, user_id=user_id, auth_fp=auth.session_fingerprint(app.secret_key, user))
     api.cookies.set('session', cookie)
     assert api.get('/api/tracker/jobs').status_code == 200
-    monkeypatch.setenv('APP_PASSWORD', 'rotada')
+    from sqlalchemy import text
+    with accounts_db.begin() as conn:
+        conn.execute(text("UPDATE users SET password_hash = 'otro'"))
     assert api.get('/api/tracker/jobs').status_code == 401
 
 
@@ -118,8 +123,7 @@ def test_csrf_required_for_writes(api, app, monkeypatch):
     assert api.get('/api/tracker/jobs').status_code == 200
 
 
-def test_extension_token_and_no_csrf(api, app, monkeypatch):
-    monkeypatch.setenv('APP_PASSWORD', 'secreta')
+def test_extension_token_and_no_csrf(api, app, monkeypatch, accounts_db):
     monkeypatch.setenv('EXTENSION_TOKEN', 'tok')
     monkeypatch.setitem(app.config, 'WTF_CSRF_ENABLED', True)
     url = '/api/tracker/save-from-extension'

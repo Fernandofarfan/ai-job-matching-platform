@@ -66,7 +66,7 @@ variable "enable_worker" {
 }
 
 variable "public_access" {
-  description = "Permitir el acceso sin IAM de Google (la app igual pide APP_PASSWORD)"
+  description = "Permitir el acceso sin IAM de Google (la app igual pide login con cuenta)"
   type        = bool
   default     = true
 }
@@ -107,14 +107,13 @@ variable "gemini_api_key" {
   sensitive   = true
 }
 
-variable "app_password" {
-  description = "Contraseña de acceso a la app (login de usuario único). Obligatoria porque el servicio es público."
+variable "admin_email" {
+  description = "Email de la primera cuenta (ADMIN_EMAIL). Obligatorio porque el servicio es público: nadie más puede reclamar la instancia."
   type        = string
-  sensitive   = true
 
   validation {
-    condition     = length(var.app_password) >= 12
-    error_message = "app_password debe tener al menos 12 caracteres (vacía dejaría el servicio sin login)."
+    condition     = can(regex("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$", var.admin_email))
+    error_message = "admin_email debe ser un email válido."
   }
 }
 

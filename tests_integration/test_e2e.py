@@ -13,9 +13,10 @@ CV = (
 
 
 def _login(page, password=None):
-    """Inicia sesión desde /login con la contraseña dada (por defecto la correcta)."""
+    """Inicia sesión desde /login con la cuenta de los E2E y la contraseña dada (por defecto la correcta)."""
     page.goto('/login')
-    page.fill('#password', password or page.app_password)
+    page.fill('#email', page.credentials[0])
+    page.fill('#password', password or page.credentials[1])
     page.click('button[type=submit]')
 
 

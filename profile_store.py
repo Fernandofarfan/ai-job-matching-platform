@@ -10,12 +10,13 @@ import time
 from datetime import datetime
 
 from cryptography.fernet import InvalidToken
-from sqlalchemy import JSON, Column, DateTime, Integer, String, delete, select, text
+from sqlalchemy import JSON, Column, DateTime, Integer, String, UniqueConstraint, delete, select, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm.attributes import flag_modified
 from sqlalchemy.types import TypeDecorator
 
+import accounts
 import cv_storage
 
 logger = logging.getLogger(__name__)
@@ -74,8 +75,11 @@ class UserProfile(Base):  # type: ignore[misc,valid-type]
     """Un perfil (CV parseado) por tipo de rol."""
     __tablename__ = 'user_profiles'
 
+    __table_args__ = (UniqueConstraint('user_id', 'role_type', name='uq_user_profiles_user_role_type'),)
+
     id = Column(Integer, primary_key=True, autoincrement=True)
-    role_type = Column(String(100), nullable=False, unique=True)
+    user_id = Column(Integer, index=True)
+    role_type = Column(String(100), nullable=False)
     data = Column(SealedJSON, nullable=False)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
@@ -124,73 +128,109 @@ def _run(db_op, json_op):
     return json_op()
 
 
-def _read_json_raw():
+def _json_path(user_id=None):
+    """JSON de respaldo del usuario (el de JSON_PATH es el de antes del multiusuario)."""
+    return JSON_PATH if user_id is None else JSON_PATH.replace('.json', f'.u{int(user_id)}.json')
+
+
+def _current_json():
+    return _json_path(accounts.current_user_id())
+
+
+def _read_json_raw(path=None):
     """Contenido completo del JSON (perfiles y lista de borrados)."""
-    if not os.path.exists(JSON_PATH):
+    path = path or _current_json()
+    if not os.path.exists(path):
         return {}
-    with open(JSON_PATH, 'r', encoding='utf-8') as f:
+    with open(path, 'r', encoding='utf-8') as f:
         return json.load(f)
 
 
-def _read_json():
-    return {k: _unseal(v) for k, v in _read_json_raw().items() if isinstance(v, dict)}
+def _read_json(path=None):
+    return {k: _unseal(v) for k, v in _read_json_raw(path).items() if isinstance(v, dict)}
 
 
-def _write_json(profiles, deleted):
-    os.makedirs(os.path.dirname(JSON_PATH), exist_ok=True)
+def _write_json(profiles, deleted, path=None):
+    path = path or _current_json()
+    os.makedirs(os.path.dirname(path), exist_ok=True)
     data = {role: _seal(profile) for role, profile in profiles.items()}
     if deleted:
         data[DELETED_KEY] = sorted(deleted)
     data[WRITTEN_KEY] = time.time()
-    with open(JSON_PATH, 'w', encoding='utf-8') as f:
+    with open(path, 'w', encoding='utf-8') as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
 
 
-def _json_deleted():
+def _json_deleted(path=None):
     """Roles borrados mientras MySQL no respondía."""
-    deleted = _read_json_raw().get(DELETED_KEY, [])
+    deleted = _read_json_raw(path).get(DELETED_KEY, [])
     return set(deleted) if isinstance(deleted, list) else set()
 
 
+def _json_files():
+    """(ruta, user_id) de los JSON de respaldo; el viejo (sin usuario) va a la primera cuenta."""
+    import glob
+    files = [(path, int(path.rsplit('.u', 1)[1][:-5])) for path in glob.glob(_json_path(0).replace('.u0.', '.u*.'))
+             if path.rsplit('.u', 1)[1][:-5].isdigit()]
+    if os.path.exists(JSON_PATH):
+        try:
+            owner = accounts.first_user_id()
+        except SQLAlchemyError:
+            owner = None
+        files.append((JSON_PATH, owner))
+    return files
+
+
 def _import_legacy_json():
-    """Pasa a MySQL lo escrito en el JSON (perfiles viejos o cambios durante una caída).
+    """Pasa a MySQL lo escrito en los JSON (perfiles viejos o cambios durante una caída).
 
     Solo se aplica sobre filas que no cambiaron después de la última escritura del JSON, para no
     pisar cambios hechos en MySQL por otra instancia. Después se renombra a .migrated.
     """
-    legacy, deleted = _read_json(), _json_deleted()
+    for path, user_id in _json_files():
+        _import_json(path, user_id)
+
+
+def _import_json(path, user_id):
+    legacy, deleted = _read_json(path), _json_deleted(path)
     if not legacy and not deleted:
         return
     with _session_factory() as session:
-        stamp = _read_json_raw().get(WRITTEN_KEY)
+        stamp = _read_json_raw(path).get(WRITTEN_KEY)
         if not isinstance(stamp, (int, float)):
-            stamp = os.path.getmtime(JSON_PATH)
+            stamp = os.path.getmtime(path)
         written_at = datetime.fromtimestamp(stamp)
-        rows = {row.role_type: row for row in session.scalars(select(UserProfile))}
+        owner = UserProfile.user_id.is_(None) if user_id is None else UserProfile.user_id == user_id
+        rows = {row.role_type: row for row in session.scalars(select(UserProfile).where(owner))}
         stale = {role for role, row in rows.items()
                  if row.updated_at and row.updated_at > written_at}
         for role, data in legacy.items():
             if role not in rows:
-                session.add(UserProfile(role_type=role, data=data))
+                session.add(UserProfile(role_type=role, data=data, user_id=user_id))
             elif role not in stale:
                 rows[role].data = data
         for role in deleted - set(legacy) - stale:
             if role in rows:
                 session.delete(rows[role])
         session.commit()
-    os.replace(JSON_PATH, JSON_PATH + '.migrated')
-    logger.info(f"Migrados {len(legacy)} perfiles y {len(deleted)} borrados de {JSON_PATH} a MySQL")
+    os.replace(path, path + '.migrated')
+    logger.info(f"Migrados {len(legacy)} perfiles y {len(deleted)} borrados de {path} a MySQL")
+
+
+def _mine():
+    uid = accounts.current_user_id()
+    return UserProfile.user_id.is_(None) if uid is None else UserProfile.user_id == uid
 
 
 def _find(session, role_type):
     """Fila del rol en MySQL o None."""
-    return session.scalars(select(UserProfile).where(UserProfile.role_type == role_type)).first()
+    return session.scalars(select(UserProfile).where(_mine(), UserProfile.role_type == role_type)).first()
 
 
 def get_all_profiles():
     """{role_type: perfil} de todos los perfiles."""
     def db_op(session):
-        rows = session.scalars(select(UserProfile).order_by(UserProfile.id))
+        rows = session.scalars(select(UserProfile).where(_mine()).order_by(UserProfile.id))
         return {row.role_type: row.data for row in rows}
     return _run(db_op, _read_json)
 
@@ -212,7 +252,7 @@ def save_profile(role_type, data):
         if row:
             row.data = data
         else:
-            session.add(UserProfile(role_type=role_type, data=data))
+            session.add(UserProfile(role_type=role_type, data=data, user_id=accounts.current_user_id()))
         session.commit()
 
     def json_op():
@@ -249,7 +289,7 @@ def primary_available():
 
 
 def delete_all():
-    """Borra todos los perfiles, incluido el JSON de respaldo y su copia .migrated.
+    """Borra todos los perfiles del usuario, incluido su JSON de respaldo y la copia .migrated.
 
     Si MySQL está configurado pero caído, falla: borrar solo el JSON dejaría los perfiles en la base.
     """
@@ -258,11 +298,15 @@ def delete_all():
     sessions = _sessions()
     if sessions is not None:
         with sessions() as session:
-            session.execute(delete(UserProfile))
+            session.execute(delete(UserProfile).where(_mine()))
             session.commit()
-    for path in (JSON_PATH, JSON_PATH + '.migrated'):
-        if os.path.exists(path):
-            os.remove(path)
+    paths = [_current_json()]
+    if accounts.current_user_id() is not None and accounts.current_user_id() == accounts.first_user_id():
+        paths.append(JSON_PATH)  # el JSON de antes del multiusuario es de la primera cuenta
+    for path in paths:
+        for candidate in (path, path + '.migrated'):
+            if os.path.exists(candidate):
+                os.remove(candidate)
 
 
 def _seal_json_file(path) -> int:
@@ -293,6 +337,7 @@ def encrypt_existing() -> int:
                     flag_modified(row, 'data')
                     done += 1
             session.commit()
-    for path in (JSON_PATH, JSON_PATH + '.migrated'):
+    import glob
+    for path in glob.glob(JSON_PATH.replace('.json', '*.json*')):
         done += _seal_json_file(path)
     return done

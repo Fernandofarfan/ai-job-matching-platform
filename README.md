@@ -411,7 +411,9 @@ GEMINI_API_KEY=tu_api_key_aqui
 
 # === Seguridad ===
 SECRET_KEY=            # obligatoria en producción: python -c "import secrets; print(secrets.token_hex(32))"
-APP_PASSWORD=          # activa el login; vacía = sin login (solo local). Obligatoria en Cloud Run
+ADMIN_EMAIL=           # email obligatorio de la primera cuenta (la que se queda con los datos previos)
+ALLOW_SIGNUP=false     # true = registro abierto en /register; por defecto solo se crea la primera cuenta
+LOGIN_REQUIRED=true    # false = sin login (solo local)
 CV_ENCRYPTION_KEY=     # cifra los CVs en uploads/ y los perfiles (texto del CV incluido) en MySQL (Fernet). Sin ella no se pueden leer los ya cifrados
 CV_RETENTION_DAYS=0    # >0: Celery borra cada día CVs, perfiles y documentos más viejos que N días
 EXTENSION_TOKEN=       # token que se configura en la extensión de Chrome cuando hay login
@@ -509,7 +511,7 @@ En ⚙️ cargá la URL de tu EmpleoIA y el `EXTENSION_TOKEN`. Para un servidor 
 | Memorystore Redis 7 | Rate limit, caché de IA y broker de Celery (HA en prod) |
 | Bucket `<proyecto>-empleoia-uploads-<env>` | CVs montados en `/app/uploads`; privado, sin versionado y con borrado por antigüedad si `cv_retention_days > 0` |
 | Bucket `<proyecto>-empleoia-results-<env>` | Resultados de búsqueda montados en `/app/results`, compartidos entre el worker y la web |
-| Secret Manager | `DB_PASSWORD`, `SECRET_KEY`, `APP_PASSWORD`, `GEMINI_API_KEY`, `CV_ENCRYPTION_KEY` y `extra_secrets` |
+| Secret Manager | `DB_PASSWORD`, `SECRET_KEY`, `GEMINI_API_KEY`, `CV_ENCRYPTION_KEY` y `extra_secrets` |
 
 Los valores no secretos de cada ambiente están en `terraform/envs/<env>.tfvars`. Los secretos se pasan como `TF_VAR_*` y nunca van al repo (quedan en el estado de Terraform, así que el bucket del estado debe ser privado).
 
@@ -520,7 +522,7 @@ Los valores no secretos de cada ambiente están en `terraform/envs/<env>.tfvars`
 
 El deploy se saltea hasta que crees la variable de repositorio `GCP_DEPLOY_ENABLED=true` y configures, en cada GitHub Environment (`staging`, `prod`):
 - **Variables:** `GCP_PROJECT_ID`, `GCP_WORKLOAD_IDENTITY_PROVIDER`, `GCP_DEPLOY_SA`, `TF_STATE_BUCKET` y, opcionalmente, `GCP_REGION`.
-- **Secretos:** `DB_PASSWORD`, `GEMINI_API_KEY`, `APP_PASSWORD`, `SECRET_KEY`, `CV_ENCRYPTION_KEY` y, opcionalmente, `EXTRA_SECRETS_JSON` (p. ej. `{"TELEGRAM_BOT_TOKEN":"..."}`).
+- **Secretos:** `DB_PASSWORD`, `GEMINI_API_KEY`, `SECRET_KEY`, `CV_ENCRYPTION_KEY` y, opcionalmente, `EXTRA_SECRETS_JSON` (p. ej. `{"TELEGRAM_BOT_TOKEN":"..."}`).
 
 Conviene exigir aprobación manual en el environment `prod`. La autenticación es por Workload Identity Federation: no hay claves JSON de cuentas de servicio.
 

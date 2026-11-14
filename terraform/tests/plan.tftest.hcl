@@ -18,7 +18,7 @@ variables {
   image             = "southamerica-east1-docker.pkg.dev/demo/empleoia-staging/web:test"
   db_password       = "0123456789abcdef0123"
   gemini_api_key    = "test"
-  app_password      = "una-contrasena-larga"
+  admin_email       = "admin@example.com"
   secret_key        = "0123456789abcdef0123456789abcdef"
   cv_encryption_key = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
 }
@@ -62,7 +62,7 @@ run "staging" {
   }
 
   assert {
-    condition     = length(google_secret_manager_secret_iam_member.app) == 5
+    condition     = length(google_secret_manager_secret_iam_member.app) == 4
     error_message = "La cuenta de servicio debe poder leer cada secreto"
   }
 
@@ -113,12 +113,12 @@ run "worker_requires_redis" {
   expect_failures = [google_cloud_run_v2_worker_pool.celery]
 }
 
-run "rejects_short_app_password" {
+run "rejects_invalid_admin_email" {
   command = plan
 
   variables {
-    app_password = "corta"
+    admin_email = "no-es-email"
   }
 
-  expect_failures = [var.app_password]
+  expect_failures = [var.admin_email]
 }

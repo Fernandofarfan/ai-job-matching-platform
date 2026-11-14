@@ -30,6 +30,7 @@ locals {
       DB_NAME               = google_sql_database.job_tracker.name
       PROFILE_STORAGE       = "mysql"
       SESSION_COOKIE_SECURE = "1"
+      ADMIN_EMAIL           = var.admin_email
       CV_RETENTION_DAYS     = tostring(var.cv_retention_days)
       SCRAPER_BACKEND       = var.enable_worker ? "celery" : "thread"
       AI_BACKEND            = var.enable_worker ? "celery" : "sync"
@@ -45,7 +46,6 @@ locals {
     {
       DB_PASSWORD       = var.db_password
       SECRET_KEY        = var.secret_key
-      APP_PASSWORD      = var.app_password
       GEMINI_API_KEY    = var.gemini_api_key
       CV_ENCRYPTION_KEY = var.cv_encryption_key
     },
@@ -389,7 +389,7 @@ resource "google_cloud_run_v2_service" "empleoia_web" {
   ]
 }
 
-# La app tiene login propio (APP_PASSWORD); public_access=false exige IAM de Cloud Run para entrar.
+# La app tiene login propio (cuentas; la primera es ADMIN_EMAIL); public_access=false exige IAM de Cloud Run para entrar.
 resource "google_cloud_run_v2_service_iam_member" "public_access" {
   count    = var.public_access ? 1 : 0
   location = var.region

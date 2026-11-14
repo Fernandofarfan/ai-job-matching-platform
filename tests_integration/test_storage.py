@@ -138,3 +138,45 @@ def test_applications_filters_and_connections(migrated_db):
     assert company not in {c['company'] for c in db.get_companies_for_connections()}
     assert isinstance(db.save_connection_request(company, [job_id]), int)
     assert db.delete_tracked_job(job_id)
+
+
+def test_accounts_isolate_data(mysql, monkeypatch, tmp_path):
+    """Con dos cuentas, cada una ve y modifica solo su tracker, sus perfiles y sus alertas."""
+    import accounts
+    import job_alerts
+    import profile_store
+    from db_config import DatabaseManager
+    from sqlalchemy import text
+    monkeypatch.setattr(profile_store, 'JSON_PATH', str(tmp_path / 'profiles.json'))
+    tag = uuid.uuid4().hex[:8]
+    monkeypatch.setenv('ALLOW_SIGNUP', 'true')
+    ana = accounts.register(f'ana-{tag}@example.com', 'clave-larga-1')
+    beto = accounts.register(f'beto-{tag}@example.com', 'clave-larga-2')
+    db = DatabaseManager()
+    role = f'it_{tag}'
+    job = {'title': 'Dev', 'company': f'Iso {tag}', 'job_link': f'https://example.com/{tag}', 'status': 'applied'}
+    try:
+        with accounts.as_user(ana):
+            job_id = db.add_job_to_tracker(job)
+            profile_store.save_profile(role, {'name': 'Ana', 'skills': ['python']})
+            search_id = job_alerts.create_search({'position': f'python {tag}', 'portals': ['computrabajo']})['id']
+        with accounts.as_user(beto):
+            assert all(j['id'] != job_id for j in db.get_all_tracked_jobs())
+            assert db.get_tracked_job_by_id(job_id) is None
+            assert not db.update_job_status(job_id, 'rejected')
+            assert not db.delete_tracked_job(job_id)
+            assert profile_store.get_profile(role) is None
+            assert job_alerts.get_search(search_id) is None
+            assert not job_alerts.delete_search(search_id)
+            other = db.add_job_to_tracker(job)
+            assert isinstance(other, int) and other != job_id, 'el mismo link tiene que poder guardarse en otra cuenta'
+            assert db.delete_tracked_job(other)
+        with accounts.as_user(ana):
+            assert db.get_tracked_job_by_id(job_id)['status'] == 'applied'
+            assert profile_store.get_profile(role)['name'] == 'Ana'
+            assert job_alerts.delete_search(search_id)
+            assert profile_store.delete_profile(role)
+            assert db.delete_tracked_job(job_id)
+    finally:
+        with db.engine.begin() as conn:
+            conn.execute(text('DELETE FROM users WHERE id IN (:a, :b)'), {'a': ana, 'b': beto})

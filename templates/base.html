@@ -339,7 +339,8 @@
                     </li>
                 </ul>
                 {% if auth_enabled %}
-                <form method="POST" action="{{ url_for('logout') }}" class="d-flex">
+                <form method="POST" action="{{ url_for('logout') }}" class="d-flex align-items-center">
+                    {% if current_user_email %}<span class="navbar-text text-white small me-2">{{ current_user_email }}</span>{% endif %}
                     <button type="submit" class="btn btn-sm btn-light"><i class="bi bi-box-arrow-right me-1" aria-hidden="true"></i>Salir</button>
                 </form>
                 {% endif %}

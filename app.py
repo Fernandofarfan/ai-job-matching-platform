@@ -1,9 +1,12 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session, send_from_directory, make_response
+from flask import (Flask, render_template, request, redirect, url_for, flash, jsonify, session, send_from_directory,
+                   make_response, g)
+from sqlalchemy.exc import SQLAlchemyError
 from flask_limiter import Limiter
 import rate_limit
 import cv_storage
 import profile_store
 from flask_wtf.csrf import CSRFProtect
+import accounts
 import auth
 from flask_limiter.util import get_remote_address
 from flask_socketio import SocketIO, emit
@@ -71,14 +74,16 @@ limiter = Limiter(
 )
 
 if not auth.auth_enabled():
-    logger.warning("APP_PASSWORD no definida: la app no pide login (usala solo en local)")
+    logger.warning("LOGIN_REQUIRED=false: la app no pide login (usala solo en local)")
 
-PUBLIC_ENDPOINTS = {'login', 'static', 'health', 'service_worker'}
+PUBLIC_ENDPOINTS = {'login', 'register', 'static', 'health', 'service_worker'}
 
 
 @app.before_request
 def require_login():
-    if not auth.auth_enabled() or auth.is_session_valid(session, app.secret_key) or request.endpoint in PUBLIC_ENDPOINTS:
+    g.user_id = auth.session_user_id(session, app.secret_key) if auth.auth_enabled() else None
+    accounts.set_current_user(g.user_id)
+    if not auth.auth_enabled() or g.user_id is not None or request.endpoint in PUBLIC_ENDPOINTS:
         return None
     if request.path.startswith('/api/'):
         return jsonify({'error': 'No autenticado'}), 401
@@ -87,7 +92,7 @@ def require_login():
 
 def _safe_next(target):
     is_local = target and target.startswith('/') and not target.startswith('//') and '\\' not in target
-    loops = is_local and target.split('?')[0].rstrip('/') in ('/login', '/logout')
+    loops = is_local and target.split('?')[0].rstrip('/') in ('/login', '/logout', '/register')
     return target if is_local and not loops else url_for('index')
 
 
@@ -99,15 +104,53 @@ def login():
         return redirect(_safe_next(next_url))
     if request.method == 'GET' and auth.is_session_valid(session, app.secret_key):
         return redirect(_safe_next(next_url))
-    if request.method == 'POST':
-        if auth.check_password(request.form.get('password', '')):
-            session.clear()
-            session['authenticated'] = True
-            session['auth_fp'] = auth.session_fingerprint(app.secret_key)
-            session.permanent = True
-            return redirect(_safe_next(next_url))
-        flash('Contraseña incorrecta', 'danger')
-    return _clear_offline_data(make_response(render_template('login.html', next_url=next_url)))
+    try:
+        if accounts.count_users() == 0:
+            return redirect(url_for('register', next=next_url))
+        if request.method == 'POST':
+            user_id = accounts.authenticate(request.form.get('email', ''), request.form.get('password', ''))
+            if user_id:
+                auth.start_session(session, app.secret_key, user_id)
+                return redirect(_safe_next(next_url))
+            flash('Email o contraseña incorrectos', 'danger')
+        signup = accounts.signup_open()
+    except SQLAlchemyError as e:
+        logger.error(f"Login sin base de datos: {e}")
+        flash('La base de datos no responde; probá de nuevo en unos minutos', 'danger')
+        signup = False
+    return _clear_offline_data(make_response(render_template('login.html', next_url=next_url, signup_open=signup)))
+
+
+@app.route('/register', methods=['GET', 'POST'])
+@limiter.limit('5 per minute', methods=['POST'])
+def register():
+    """Alta de cuenta: siempre para la primera; después solo con ALLOW_SIGNUP=true."""
+    next_url = request.args.get('next', '')
+    if not auth.auth_enabled():
+        return redirect(_safe_next(next_url))
+    try:
+        first = accounts.count_users() == 0
+        if not accounts.signup_open():
+            flash('El registro está cerrado: pedile una cuenta al administrador', 'warning')
+            return redirect(url_for('login', next=next_url))
+        if request.method == 'POST':
+            password = request.form.get('password', '')
+            if password != request.form.get('confirm', ''):
+                flash('Las contraseñas no coinciden', 'danger')
+            else:
+                try:
+                    user_id = accounts.register(request.form.get('email', ''), password)
+                except accounts.AccountError as e:
+                    flash(str(e), 'danger')
+                else:
+                    auth.start_session(session, app.secret_key, user_id)
+                    return redirect(_safe_next(next_url))
+    except SQLAlchemyError as e:
+        logger.error(f"Registro sin base de datos: {e}")
+        flash('La base de datos no responde; probá de nuevo en unos minutos', 'danger')
+        first = False
+    return _clear_offline_data(make_response(render_template(
+        'register.html', next_url=next_url, first_account=first, min_password=accounts.MIN_PASSWORD)))
 
 
 @app.route('/logout', methods=['POST'])
@@ -124,7 +167,8 @@ def _clear_offline_data(response):
 
 @app.context_processor
 def inject_auth():
-    return {'auth_enabled': auth.auth_enabled()}
+    user = accounts.get_user(g.get('user_id')) if auth.auth_enabled() and g.get('user_id') else None
+    return {'auth_enabled': auth.auth_enabled(), 'current_user_email': user['email'] if user else ''}
 
 
 @app.before_request
@@ -252,9 +296,15 @@ def delete_user_profile_by_role(role_type):
     return True
 
 def delete_user_profile():
-    """Borra todos los datos personales: perfiles de todos los roles, CVs y documentos generados."""
+    """Borra los datos personales: perfiles de todos los roles y CVs (sin cuentas, también los documentos generados)."""
     profile_path = os.path.join('profiles', 'user_profile.json')
     try:
+        if accounts.current_user_id() is not None:
+            resumes = {p.get('resume_filename') for p in profile_store.get_all_profiles().values()} - {None, ''}
+            profile_store.delete_all()
+            for name in resumes:
+                cv_storage.delete(name)
+            return True
         if os.path.exists(profile_path):
             os.remove(profile_path)
         profile_store.delete_all()

@@ -18,10 +18,15 @@
         {% endwith %}
         <form method="POST" action="{{ url_for('login', next=next_url) }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <label for="email" class="form-label">Email</label>
+          <input type="email" class="form-control mb-3" id="email" name="email" required autofocus autocomplete="username">
           <label for="password" class="form-label">Contraseña</label>
-          <input type="password" class="form-control mb-3" id="password" name="password" required autofocus autocomplete="current-password">
+          <input type="password" class="form-control mb-3" id="password" name="password" required autocomplete="current-password">
           <button type="submit" class="btn btn-primary w-100">Ingresar</button>
         </form>
+        {% if signup_open %}
+        <p class="text-center mt-3 mb-0"><a href="{{ url_for('register', next=next_url) }}">Crear una cuenta</a></p>
+        {% endif %}
       </div>
     </div>
   </main>

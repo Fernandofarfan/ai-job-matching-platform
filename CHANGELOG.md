@@ -5,6 +5,16 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+
+## [Sin publicar] - Multiusuario
+
+- Cuentas con email y contraseña (hash de Werkzeug) en la tabla `users` (migración `0005_users`); reemplazan a `APP_PASSWORD`.
+- La primera cuenta se crea en `/register` (con `ADMIN_EMAIL`, solo con ese email) y se queda con los datos previos; después el registro requiere `ALLOW_SIGNUP=true`.
+- `user_id` en tracker, perfiles, alertas, ofertas vistas, exclusiones, solicitudes y archivos procesados: cada cuenta ve y modifica solo lo suyo. Los índices únicos pasan a ser por usuario.
+- El usuario se propaga a Flask, FastAPI, threads y tareas de Celery; las tareas periódicas (alertas, recordatorios, retención) corren una vez por cuenta.
+- "Borrar mis datos" borra solo los perfiles y CVs de la cuenta. Telegram, Gmail y `EXTENSION_TOKEN` son de la primera cuenta.
+- `LOGIN_REQUIRED=false` desactiva el login (solo uso local). Terraform: `admin_email` reemplaza a `app_password`.
+
 ## [Unreleased]
 
 ### Cambiado
