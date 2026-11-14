@@ -326,6 +326,9 @@ jobs:
       LOGIN_REQUIRED: "true"
       SCRAPER_BACKEND: thread
       LOADTEST_EMAIL: carga@example.com
+      # Los 20 usuarios comparten una cuenta (~310 pedidos/min a /api/*): el límite por cuenta
+      # (300/min por defecto) daba 429 al azar. Acá se mide latencia; el límite tiene sus propios tests.
+      API_RATE_LIMIT: "100000 per minute"
       # límites del gate; la línea base local está en docs/load-testing.md
       LOADTEST_P95_MS: "800"
       LOADTEST_MAX_FAIL_RATIO: "0.01"
