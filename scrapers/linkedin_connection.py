@@ -8,10 +8,13 @@ import logging
 import random
 import re
 import time
-from typing import Optional, Tuple
+from typing import TYPE_CHECKING, Callable, Optional, Tuple
 from urllib.parse import urlencode
 
 from scrapers.common import Browser, get_with_retries
+
+if TYPE_CHECKING:
+    from playwright.sync_api import ElementHandle
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +36,7 @@ def people_search_url(keywords: str, page: int = 1) -> str:
     return 'https://www.linkedin.com/search/results/people/?' + urlencode(params)
 
 
-def card_name_and_profile(card) -> Tuple[Optional[str], Optional[str]]:
+def card_name_and_profile(card: 'ElementHandle') -> Tuple[Optional[str], Optional[str]]:
     """Nombre y URL del perfil de una tarjeta de resultados."""
     link = card.query_selector("a[href*='/in/']")
     if not link:
@@ -43,14 +46,14 @@ def card_name_and_profile(card) -> Tuple[Optional[str], Optional[str]]:
     return name, href
 
 
-def card_is_pending(card) -> bool:
+def card_is_pending(card: 'ElementHandle') -> bool:
     """True si la tarjeta ya tiene una invitación pendiente."""
     labels = card.eval_on_selector_all(
         'button', "els => els.map(e => (e.innerText || '') + ' ' + (e.getAttribute('aria-label') || ''))")
     return any(word in ' '.join(labels).lower() for word in PENDING_WORDS)
 
 
-def card_works_at(card, company: str) -> bool:
+def card_works_at(card: 'ElementHandle', company: str) -> bool:
     """True si el texto de la tarjeta (cargo o "Actual:") nombra a la empresa; sin empresa, siempre True."""
     target = (company or '').strip().lower()
     return not target or target in card.inner_text().lower()
@@ -68,14 +71,15 @@ def format_message(template: str, name: Optional[str], company: Optional[str]) -
 class linkedinConnections:
     """Bot de solicitudes de conexión (misma interfaz que la versión de Selenium)."""
 
-    def __init__(self, email=None, password=None, li_at_token=None, browser_factory=Browser):
+    def __init__(self, email: Optional[str] = None, password: Optional[str] = None, li_at_token: Optional[str] = None,
+                 browser_factory: Callable[[], Browser] = Browser) -> None:
         self.email = email
         self.password = password
         self.li_at_token = li_at_token
-        self.processed_profiles: set = set()
+        self.processed_profiles: set[str] = set()
         self.connection_count = 0
         self.total_connections_sent = 0
-        self._browser = browser_factory()
+        self._browser: Optional[Browser] = browser_factory()
         self.page = self._browser.page
 
     def _logged_in(self, timeout: int = 20_000) -> bool:
@@ -140,7 +144,7 @@ class linkedinConnections:
         finally:
             tab.close()
 
-    def _invite(self, card) -> bool:
+    def _invite(self, card: 'ElementHandle') -> bool:
         """Conectar desde la tarjeta o, si no tiene el botón, desde el perfil."""
         if card_is_pending(card):
             return False
@@ -152,7 +156,7 @@ class linkedinConnections:
         return self._connect_on_profile(profile) if profile else False
 
     def send_connection_requests_with_rules(self, keywords: str, company: str, target_min: int, target_max: int,
-                                            max_pages: int = 5, stop_check_callback=None) -> bool:
+                                            max_pages: int = 5, stop_check_callback: Optional[Callable[[], bool]] = None) -> bool:
         """Entre `target_min` y `target_max` invitaciones (al azar) recorriendo hasta `max_pages` páginas."""
         target = random.randint(target_min, target_max)
         sent = 0
@@ -190,7 +194,7 @@ class linkedinConnections:
         return sent > 0
 
     def process_company(self, company: str, message: str = '', max_connections: int = 25, max_pages: int = 5,
-                        stop_check_callback=None) -> bool:
+                        stop_check_callback: Optional[Callable[[], bool]] = None) -> bool:
         """Entre 10 y 15 invitaciones a personas que hoy trabajan en `company`."""
         if stop_check_callback and stop_check_callback():
             return False
@@ -204,7 +208,7 @@ class linkedinConnections:
             return False
 
     def process_general_search(self, search_term: str, message: str = '', max_connections: int = 25,
-                               max_pages: int = 5, stop_check_callback=None) -> bool:
+                               max_pages: int = 5, stop_check_callback: Optional[Callable[[], bool]] = None) -> bool:
         """Entre 50 y 100 invitaciones a personas que coinciden con `search_term` (p. ej. "Recruiter")."""
         if stop_check_callback and stop_check_callback():
             return False
@@ -216,7 +220,7 @@ class linkedinConnections:
             logger.error(f"Error en la búsqueda {search_term}: {type(e).__name__}")
             return False
 
-    def cleanup(self):
+    def cleanup(self) -> None:
         """Cierra el navegador; se puede llamar más de una vez."""
         if self._browser is not None:
             self._browser.close()

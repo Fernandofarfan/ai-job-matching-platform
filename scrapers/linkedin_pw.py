@@ -3,7 +3,7 @@ import re
 import time
 import logging
 from typing import Any, Dict, List, Optional
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import Playwright, sync_playwright
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -82,7 +82,7 @@ class linkedinClass:
         self.li_at_token = li_at_token
         self.email = email
         self.password = password
-        self.playwright = sync_playwright().start()
+        self.playwright: Optional[Playwright] = sync_playwright().start()
         
         # Lógica de proxy rotation
         proxy_server = os.getenv('PROXY_SERVER')
@@ -96,7 +96,7 @@ class linkedinClass:
         )
         self.page = self.context.new_page()
 
-    def login_with_cookie(self):
+    def login_with_cookie(self) -> bool:
         try:
             self.page.goto("https://www.linkedin.com")
             if self.li_at_token:
@@ -112,11 +112,11 @@ class linkedinClass:
             logger.error(f"Login cookie failed: {e}")
             return False
 
-    def login_with_credentials(self):
+    def login_with_credentials(self) -> bool:
         try:
             self.page.goto("https://www.linkedin.com/login")
-            self.page.fill("#username", self.email)
-            self.page.fill("#password", self.password)
+            self.page.fill("#username", self.email or "")
+            self.page.fill("#password", self.password or "")
             self.page.click("button[type='submit']")
             self.page.wait_for_selector(".feed-identity-module", timeout=20000)
             return True
@@ -124,8 +124,9 @@ class linkedinClass:
             logger.error(f"Credentials login failed: {e}")
             return False
 
-    def search_jobs(self, keyword: str, location: str, filters: Optional[dict] = None, max_jobs_per_search: int = 50) -> List[Dict]:
-        jobs = []
+    def search_jobs(self, keyword: str, location: str, filters: Optional[Dict[str, Any]] = None,
+                    max_jobs_per_search: int = 50) -> List[Dict[str, str]]:
+        jobs: List[Dict[str, str]] = []
         try:
             search_url = f"https://www.linkedin.com/jobs/search/?keywords={keyword}&location={location}"
             self.page.goto(search_url)
@@ -153,7 +154,7 @@ class linkedinClass:
             logger.error(f"Search failed: {e}")
         return jobs
 
-    def close(self):
+    def close(self) -> None:
         """Cierra el navegador y Playwright; se puede llamar más de una vez."""
         for name in ('context', 'browser'):
             try:
@@ -163,11 +164,11 @@ class linkedinClass:
                 pass
             setattr(self, name, None)
         try:
-            if getattr(self, 'playwright', None):
+            if getattr(self, 'playwright', None) and self.playwright:
                 self.playwright.stop()
         except Exception:
             pass
         self.playwright = None
 
-    def __del__(self):
+    def __del__(self) -> None:
         self.close()

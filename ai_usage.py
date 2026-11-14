@@ -4,6 +4,7 @@ import logging
 import os
 import threading
 import time
+from typing import Optional
 from collections import OrderedDict
 from datetime import datetime, timezone
 
@@ -89,7 +90,7 @@ def _get(kind, user=None):
         return 0
 
 
-def record(input_tokens, output_tokens):
+def record(input_tokens: int, output_tokens: int) -> None:
     """Suma los tokens de una llamada al mes en curso."""
     try:
         import observability
@@ -107,7 +108,7 @@ def record(input_tokens, output_tokens):
         logger.warning(f"No se pudo registrar el consumo de IA ({e})")
 
 
-def budget_exceeded():
+def budget_exceeded() -> bool:
     """True si se llegó al tope de la instancia o al de la cuenta actual."""
     limit = monthly_limit()
     if limit and _get('input') + _get('output') >= limit:
@@ -175,7 +176,7 @@ def _count_hit():
         logger.debug(f"Acierto de caché no registrado ({e})")
 
 
-def cache_get(model, prompt, temperature):
+def cache_get(model: str, prompt: str, temperature: float) -> Optional[str]:
     """Respuesta guardada para el mismo modelo, prompt y temperatura (memoria o Redis), o None."""
     ttl = _cache_ttl()
     if temperature > CACHE_MAX_TEMPERATURE or not ttl:
@@ -209,7 +210,7 @@ def cache_get(model, prompt, temperature):
     return text
 
 
-def cache_set(model, prompt, temperature, text):
+def cache_set(model: str, prompt: str, temperature: float, text: str) -> None:
     """Guarda la respuesta en memoria y, con Redis, para las demás instancias (AI_CACHE_TTL s)."""
     ttl = _cache_ttl()
     if temperature > CACHE_MAX_TEMPERATURE or not ttl:

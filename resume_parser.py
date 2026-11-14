@@ -5,6 +5,7 @@ import docx
 import pypdf
 import json
 from datetime import datetime
+from typing import Any, Optional, cast
 
 import skill_catalog
 
@@ -20,7 +21,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class resumeParser:
-    def __init__(self):
+    def __init__(self) -> None:
         self.configure_genai()
         
         self.technical_skills = {k: list(v) for k, v in skill_catalog.TECHNICAL_SKILLS.items()}
@@ -29,7 +30,7 @@ class resumeParser:
         for category in self.technical_skills.values():
             self.all_technical_skills.extend(category)
 
-    def configure_genai(self):
+    def configure_genai(self) -> None:
         if not getattr(self, '__module__', None) and not globals().get('_GENAI_AVAILABLE', False):
             self.use_ai = False
             print("Warning: AI API not available (import failed). Using regex-based parsing.")
@@ -52,7 +53,7 @@ class resumeParser:
             self.use_ai = False
             print("Warning: AI API key not found. Using regex-based parsing.")
 
-    def extract_text_from_file(self, file_path):
+    def extract_text_from_file(self, file_path: str) -> str:
         
         text = ""
         file_extension = os.path.splitext(file_path)[1].lower()
@@ -78,10 +79,10 @@ class resumeParser:
             print(f"Error extracting text from {file_path}: {str(e)}")
             return ""
 
-    def extract_skills(self, text):
+    def extract_skills(self, text: str) -> list[str]:
 
         text_lower = text.lower()
-        found_skills = []
+        found_skills: list[str] = []
 
         for skill in self.all_technical_skills:
 
@@ -92,7 +93,7 @@ class resumeParser:
 
         return list(set(found_skills))
 
-    def parse_date_range(self, date_string):
+    def parse_date_range(self, date_string: str) -> float:
        
         try:
             # Normalize separators
@@ -144,13 +145,13 @@ class resumeParser:
                             end_date = datetime.now()
                         
                         elif pattern_type == 'mm_yyyy':
-                            start_month, start_year, end_month, end_year = groups
-                            start_date = datetime(int(start_year), int(start_month), 1)
-                            end_date = datetime(int(end_year), int(end_month), 1)
+                            start_mm, start_year, end_mm, end_year = groups
+                            start_date = datetime(int(start_year), int(start_mm), 1)
+                            end_date = datetime(int(end_year), int(end_mm), 1)
                         
                         elif pattern_type == 'mm_yyyy_present':
-                            start_month, start_year = groups
-                            start_date = datetime(int(start_year), int(start_month), 1)
+                            start_mm, start_year = groups
+                            start_date = datetime(int(start_year), int(start_mm), 1)
                             end_date = datetime.now()
                         
                         elif pattern_type == 'yyyy':
@@ -175,10 +176,10 @@ class resumeParser:
             print(f"Error parsing date range '{date_string}': {str(e)}")
             return 0
 
-    def extract_experience_years(self, text):
+    def extract_experience_years(self, text: str) -> float:
         """Extract years of experience from text using multiple methods"""
         text_lower = text.lower()
-        years = []
+        years: list[float] = []
         
        
         explicit_patterns = [
@@ -206,9 +207,9 @@ class resumeParser:
         
         return max(years) if years else 0
 
-    def calculate_work_experience(self, text):
+    def calculate_work_experience(self, text: str) -> float:
         """Calculate total work experience from job date ranges, excluding internships"""
-        total_years = 0
+        total_years: float = 0
         lines = text.split('\n')
         # cada línea con fechas cuenta una sola vez, aunque la vean como contexto las 3 líneas anteriores
         seen_dates = set()
@@ -312,7 +313,7 @@ class resumeParser:
         # Cap at realistic maximum
         return min(total_years, 20) 
 
-    def extract_education(self, text):
+    def extract_education(self, text: str) -> list[str]:
         """Extract education information, excluding internship locations"""
         education_keywords = [
             'bachelor', 'master', 'phd', 'doctorate', 'degree', 'university', 
@@ -320,7 +321,7 @@ class resumeParser:
             'b.sc', 'b.tech', 'm.tech', 'mca', 'bca'
         ]
         
-        education_info = []
+        education_info: list[str] = []
         lines = text.split('\n')
         
         
@@ -354,7 +355,7 @@ class resumeParser:
         
         return education_info
 
-    def parse_with_ai(self, text):
+    def parse_with_ai(self, text: str) -> Optional[dict[str, Any]]:
         if not self.use_ai:
             return None
             
@@ -397,19 +398,19 @@ class resumeParser:
                 getattr(usage, 'prompt_token_count', 0) or 0,
                 (getattr(usage, 'candidates_token_count', 0) or 0) + (getattr(usage, 'thoughts_token_count', 0) or 0),
             )
-            json_str = response.text.strip()
+            json_str = (response.text or '').strip()
             # Clean up potential markdown code blocks
             if json_str.startswith("```json"):
                 json_str = json_str[7:]
             if json_str.endswith("```"):
                 json_str = json_str[:-3]
             
-            return json.loads(json_str.strip())
+            return cast(dict[str, Any], json.loads(json_str.strip()))
         except Exception as e:
             print(f"Error parsing with AI: {e}")
             return None
 
-    def parse_resume(self, file_path):
+    def parse_resume(self, file_path: str) -> Optional[dict[str, Any]]:
        
         text = self.extract_text_from_file(file_path)
         
@@ -419,7 +420,7 @@ class resumeParser:
         print("Parsing resume...")
         print(f"Text length: {len(text)} characters")
         
-        profile = {
+        profile: dict[str, Any] = {
             'raw_text': text,
             'skills': [],
             'experience_years': 0,

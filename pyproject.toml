@@ -41,6 +41,17 @@ disallow_any_generics = true
 check_untyped_defs = true
 warn_return_any = true
 
+# Etapa 3: scrapers, IA y parser de CVs. Playwright, BeautifulSoup y google-genai traen tipos; se exige todo.
+[[tool.mypy.overrides]]
+module = ["scrapers.*", "ai_engine", "resume_parser", "embeddings", "scraping_jobs"]
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+disallow_untyped_calls = true
+disallow_untyped_decorators = true
+disallow_any_generics = true
+check_untyped_defs = true
+warn_return_any = true
+
 # Celery no trae tipos: @celery.task deja la tarea sin tipar, así que en tasks.* no se exige
 # disallow_untyped_decorators; el resto sí.
 [[tool.mypy.overrides]]

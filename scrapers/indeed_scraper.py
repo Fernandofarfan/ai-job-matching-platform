@@ -9,13 +9,16 @@ import random
 import re
 import time
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
 from urllib.parse import urlencode
 
 import pandas as pd
 
 import accounts
-from scrapers.common import Browser, PortalBlocked, get_with_retries
+from scrapers.common import Browser, Job, PortalBlocked, get_with_retries
+
+if TYPE_CHECKING:
+    from playwright.sync_api import ElementHandle, Page
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +43,7 @@ def save_without_description() -> bool:
     return os.getenv('INDEED_SAVE_WITHOUT_DESCRIPTION', 'false').strip().lower() in ('1', 'true', 'yes', 'on')
 
 
-def search_url(job_title: str, location: str, filters: Optional[Dict] = None, start: int = 0,
+def search_url(job_title: str, location: str, filters: Optional[Dict[str, Any]] = None, start: int = 0,
                base_url: str = BASE_URL) -> str:
     """URL de búsqueda con los filtros del formulario como parámetros de Indeed.
 
@@ -65,9 +68,9 @@ def search_url(job_title: str, location: str, filters: Optional[Dict] = None, st
     return f"{base_url}/jobs?{urlencode(params)}"
 
 
-def parse_card(card) -> Optional[Dict]:
+def parse_card(card: 'ElementHandle') -> Optional[Job]:
     """Datos de una tarjeta del listado; None si falta el título o el id, o si es "Easily apply"."""
-    def text(selector):
+    def text(selector: str) -> str:
         node = card.query_selector(selector)
         return node.inner_text().strip() if node else ''
     link = card.query_selector(TITLE_LINK)
@@ -87,18 +90,19 @@ def parse_card(card) -> Optional[Dict]:
 class indeedScraper:
     """Búsqueda de Indeed en Chromium sin ventana (misma interfaz que la versión de Selenium)."""
 
-    def __init__(self, email=None, password=None, user_skills=None, browser_factory=Browser):
+    def __init__(self, email: Optional[str] = None, password: Optional[str] = None,
+                 user_skills: Optional[List[str]] = None, browser_factory: Callable[[], Browser] = Browser) -> None:
         self.email = email
         self.password = password
         self.user_skills = user_skills or []
-        self.all_jobs: List[Dict] = []
+        self.all_jobs: List[Job] = []
         self._browser_factory = browser_factory
-        self._browser = None
+        self._browser: Optional[Browser] = None
         self.base_url = BASE_URL
         self.descriptions_blocked = False
 
     @property
-    def page(self):
+    def page(self) -> 'Page':
         """Pestaña del navegador; lo abre la primera vez."""
         if self._browser is None:
             self._browser = self._browser_factory()
@@ -112,7 +116,7 @@ class indeedScraper:
         """La búsqueda pública no necesita sesión; queda por compatibilidad con los llamadores."""
         return True
 
-    def _blocked(self, page) -> bool:
+    def _blocked(self, page: 'Page') -> bool:
         """True si Indeed muestra un captcha, una verificación anti-bot o pide login."""
         try:
             content = page.content()
@@ -153,7 +157,7 @@ class indeedScraper:
         finally:
             page.close()
 
-    def _without_description(self, card_data: Dict) -> Dict:
+    def _without_description(self, card_data: Job) -> Job:
         """Oferta con los datos del listado, sin abrirla: no se pueden aplicar los filtros de experiencia ni de visa."""
         job = {key: value for key, value in card_data.items() if key not in ('id', 'Snippet')}
         job.update({'Job_Description': card_data.get('Snippet') or NO_DESCRIPTION,
@@ -161,7 +165,7 @@ class indeedScraper:
                     'Job_Link': self._link(card_data['id']), 'Apply_Type': 'Not specified'})
         return job
 
-    def extract_job_details(self, card_data: Dict) -> Optional[Dict]:
+    def extract_job_details(self, card_data: Job) -> Optional[Job]:
         """Completa una tarjeta con la descripción y aplica los filtros de ciudadanía y experiencia.
 
         Si Indeed pide login para ver la oferta, lanza `PortalBlocked`, salvo con
@@ -196,7 +200,8 @@ class indeedScraper:
                     'Apply_Type': 'Apply on company site'})
         return job
 
-    def extract_jobs(self, job_title: str, location: str, filters=None, max_jobs: int = 50, max_pages: int = 5):
+    def extract_jobs(self, job_title: str, location: str, filters: Optional[Dict[str, Any]] = None,
+                     max_jobs: int = 50, max_pages: int = 5) -> List[Job]:
         """Recorre hasta `max_pages` páginas del listado y suma a `all_jobs` hasta `max_jobs` ofertas nuevas."""
         seen = {job.get('Job_Link') for job in self.all_jobs}
         found = 0
@@ -226,7 +231,7 @@ class indeedScraper:
                 break
         return self.all_jobs
 
-    def _save(self, jobs: List[Dict], job_title: str, location: str, partial: bool = False):
+    def _save(self, jobs: List[Job], job_title: str, location: str, partial: bool = False) -> None:
         """CSV en la carpeta de resultados de la cuenta."""
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         prefix = 'indeed_jobs_partial' if partial else 'indeed_jobs'
@@ -235,8 +240,8 @@ class indeedScraper:
         os.makedirs(folder, exist_ok=True)
         pd.DataFrame(jobs).to_csv(os.path.join(folder, name), index=False)
 
-    def search_jobs_with_filters(self, job_title: str, location: str, filters=None, clear_previous=True,
-                                 max_jobs=50) -> List[Dict]:
+    def search_jobs_with_filters(self, job_title: str, location: str, filters: Optional[Dict[str, Any]] = None,
+                                 clear_previous: bool = True, max_jobs: int = 50) -> List[Job]:
         """Busca con filtros (hasta 3 intentos) y guarda el CSV; si todo falla, guarda lo parcial."""
         if clear_previous:
             self.all_jobs = []
@@ -253,7 +258,7 @@ class indeedScraper:
             self._save(self.all_jobs, job_title, location, partial=True)
         return self.all_jobs
 
-    def listing(self, job_title: str, location: str = '', max_jobs: int = 5) -> List[Dict]:
+    def listing(self, job_title: str, location: str = '', max_jobs: int = 5) -> List[Job]:
         """Tarjetas de la primera página del listado, sin abrir descripciones ni guardar nada.
 
         Sirve para el monitor de scrapers: si Indeed cambia su HTML devuelve una lista vacía;
@@ -264,11 +269,12 @@ class indeedScraper:
             raise PortalBlocked('Indeed pidió una verificación anti-bot')
         return [card for card in map(parse_card, self.page.query_selector_all(CARD)) if card][:max_jobs]
 
-    def search_jobs(self, job_title: str, location: str, clear_previous=True, max_jobs_per_search=5) -> List[Dict]:
+    def search_jobs(self, job_title: str, location: str, clear_previous: bool = True,
+                    max_jobs_per_search: int = 5) -> List[Job]:
         """Búsqueda sin filtros (prueba de scrapers)."""
         return self.search_jobs_with_filters(job_title, location, {}, clear_previous, max_jobs=max_jobs_per_search)
 
-    def _check_citizenship_requirements(self, description_lower):
+    def _check_citizenship_requirements(self, description_lower: str) -> bool:
         
         skip_patterns = [
             r'(?:current\s+and\s+future\s+)?sponsorship\s+(?:is\s+|are\s+)?not\s+(?:available|provided|offered)',
@@ -336,7 +342,7 @@ class indeedScraper:
         
         return cleaned_text if cleaned_text else "Job description not available"
 
-    def extract_years_of_experience(self, description_text):
+    def extract_years_of_experience(self, description_text: str) -> str:
         """'2-3', '2+', 'Entry Level', 'Not specified' o 'SKIP_HIGH_EXPERIENCE' (más de 3 años)."""
 
         
@@ -387,7 +393,7 @@ class indeedScraper:
                     min_years = int(match)
                     if min_years > 3:
                         return "SKIP_HIGH_EXPERIENCE"
-                    return match
+                    return str(match)
         
         entry_level_terms = [
             'entry level', 'junior', 'no experience required', 'entry-level',
@@ -399,7 +405,7 @@ class indeedScraper:
         
         return "Not specified"
 
-    def categorize_experience(self, description_text):
+    def categorize_experience(self, description_text: str) -> str:
         years = self.extract_years_of_experience(description_text)
         
         if years == "SKIP_HIGH_EXPERIENCE":
@@ -457,7 +463,7 @@ class indeedScraper:
             
         return "Unknown"
 
-    def extract_salary_from_description(self, description_text):
+    def extract_salary_from_description(self, description_text: str) -> Optional[str]:
         
         salary_patterns = [
             r'\$[\d,]+(?:/year|/yr|\/year|\/yr)?\s+to\s+\$[\d,]+(?:/year|/yr|\/year|\/yr)?(?:\s*\+\s*(?:bonus|equity|benefits))*',
@@ -481,7 +487,7 @@ class indeedScraper:
         return None
 
 
-    def close(self):
+    def close(self) -> None:
         """Cierra el navegador; se puede llamar más de una vez."""
         if self._browser is not None:
             self._browser.close()

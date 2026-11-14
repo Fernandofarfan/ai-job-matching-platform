@@ -3,10 +3,12 @@ import time
 import logging
 import os
 import pandas as pd
-from bs4 import BeautifulSoup
+from typing import Optional
+
+from bs4 import BeautifulSoup, Tag
 from datetime import datetime
 
-from scrapers.common import Browser, get_with_retries, hrefs
+from scrapers.common import Browser, Job, get_with_retries, hrefs
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -16,16 +18,16 @@ BADGES = {"apto discapacidad", "postulación rápida", "destacado", "urgente"}
 PROVINCES = ["Buenos Aires", "Capital Federal", "CABA", "Córdoba", "Santa Fe", "Mendoza", "Neuquén", "Rosario", "Tucumán"]
 
 
-def parse_job_card(card, base_url=BASE_URL, source='Bumeran'):
+def parse_job_card(card: Tag, base_url: str = BASE_URL, source: str = 'Bumeran') -> Optional[Job]:
     """Datos de una oferta a partir de su <a href=".../empleos/..."> (BeautifulSoup); None si no es una oferta."""
     from urllib.parse import urljoin
-    href = card.get('href') or ''
+    href = str(card.get('href') or '')
     title_elem = card.find('h2')
     if '/empleos/' not in href or not title_elem or not title_elem.get_text(strip=True):
         return None
     url = urljoin(base_url, href)
     title = title_elem.get_text(" ", strip=True)
-    job = {
+    job: Job = {
         'URL': url, 'Apply_URL': url, 'Title': title,
         'Company': "Confidencial", 'Location': "Argentina", 'Date_Posted': "Reciente",
         'Salary': "No especificado", 'Job_Type': "Full-time", 'Level': "No especificado",
@@ -46,9 +48,10 @@ def parse_job_card(card, base_url=BASE_URL, source='Bumeran'):
     return job
 
 
-def parse_listing(html, base_url=BASE_URL, source='Bumeran'):
+def parse_listing(html: str, base_url: str = BASE_URL, source: str = 'Bumeran') -> list[Job]:
     """Ofertas únicas (por URL) de una página de resultados."""
-    jobs, seen = [], set()
+    jobs: list[Job] = []
+    seen: set[str] = set()
     for card in BeautifulSoup(html, 'lxml').select("a[href*='/empleos/']"):
         job = parse_job_card(card, base_url, source)
         if job and job['URL'] not in seen:
@@ -61,17 +64,18 @@ class BumeranScraper:
     base_url = BASE_URL
     source = 'Bumeran'
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Abre Chromium (Playwright) para el portal."""
         self.browser = Browser()
         self.page = self.browser.page
 
-    def search_jobs(self, position, location="", max_jobs=50, email=None, password=None):
+    def search_jobs(self, position: str, location: str = "", max_jobs: int = 50,
+                    email: Optional[str] = None, password: Optional[str] = None) -> list[Job]:
         """
         Search for jobs on Bumeran
         If email/password provided, logs in first to get better access to apply URLs
         """
-        jobs = []
+        jobs: list[Job] = []
         try:
             # Login if credentials provided
             if email and password:
@@ -132,7 +136,7 @@ class BumeranScraper:
             
         return jobs
 
-    def _login(self, email, password):
+    def _login(self, email: str, password: str) -> None:
         """Login to Bumeran"""
         try:
             logger.info("Attempting to login to Bumeran...")
@@ -148,7 +152,7 @@ class BumeranScraper:
         except Exception as e:
             logger.error(f"Login failed: {e}")
 
-    def _get_apply_url(self, job_url):
+    def _get_apply_url(self, job_url: str) -> str:
         """Visit job page and extract apply URL"""
         try:
             logger.info(f"Visiting job page: {job_url}")
@@ -171,7 +175,7 @@ class BumeranScraper:
             logger.error(f"Error getting apply URL: {e}")
             return job_url
 
-    def _extract_jobs_from_page(self):
+    def _extract_jobs_from_page(self) -> list[Job]:
         """Extract all jobs from current page"""
         # Bumeran renderiza con React: se espera a que aparezca alguna tarjeta
         try:
@@ -187,7 +191,7 @@ class BumeranScraper:
             logger.warning("No job cards found on page")
         return jobs
 
-    def save_to_csv(self, jobs, filename=None):
+    def save_to_csv(self, jobs: list[Job], filename: Optional[str] = None) -> Optional[str]:
         """Save jobs to CSV file"""
         try:
             if not jobs:
@@ -213,7 +217,7 @@ class BumeranScraper:
             logger.error(f"Error saving to CSV: {e}")
             return None
             
-    def close(self):
+    def close(self) -> None:
         """Close the browser"""
         self.browser.close()
         logger.info("Browser closed")

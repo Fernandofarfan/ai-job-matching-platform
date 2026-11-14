@@ -2,8 +2,16 @@
 import logging
 import os
 import time
+from typing import TYPE_CHECKING, Any, Callable, Optional
+
+if TYPE_CHECKING:
+    from playwright.sync_api import Browser as PlaywrightBrowser
+    from playwright.sync_api import Page, Playwright
 
 logger = logging.getLogger(__name__)
+
+# Una oferta como la devuelven los scrapers: Title, URL, Company, Location, Description, Source...
+Job = dict[str, Any]
 
 PAGE_LOAD_TIMEOUT = int(os.getenv('SCRAPER_PAGE_TIMEOUT', '30'))
 MAX_ATTEMPTS = int(os.getenv('SCRAPER_MAX_ATTEMPTS', '3'))
@@ -22,14 +30,15 @@ class Browser:
     SCRAPER_HEADLESS=false abre la ventana (útil para depurar). Si algo falla al arrancar, cierra lo ya abierto.
     """
 
-    def __init__(self, playwright_factory=None):
+    def __init__(self, playwright_factory: Optional[Callable[[], Any]] = None) -> None:
         if playwright_factory is None:
-            from playwright.sync_api import sync_playwright as playwright_factory
-        self._playwright = playwright_factory().start()
-        self.browser = None
+            from playwright.sync_api import sync_playwright
+            playwright_factory = sync_playwright
+        self._playwright: Optional[Playwright] = playwright_factory().start()
+        self.browser: Optional[PlaywrightBrowser] = None
         try:
             endpoint = os.getenv('PLAYWRIGHT_WS_ENDPOINT')
-            proxy = {'proxy': {'server': os.environ['PROXY_SERVER']}} if os.getenv('PROXY_SERVER') else {}
+            proxy: dict[str, Any] = {'proxy': {'server': os.environ['PROXY_SERVER']}} if os.getenv('PROXY_SERVER') else {}
             if endpoint:
                 self.browser = self._playwright.chromium.connect(endpoint)
             else:
@@ -48,7 +57,7 @@ class Browser:
             self.close()
             raise
 
-    def close(self):
+    def close(self) -> None:
         """Cierra el navegador y Playwright; nunca lanza."""
         for closer in (getattr(self.browser, 'close', None), getattr(self._playwright, 'stop', None)):
             try:
@@ -59,7 +68,8 @@ class Browser:
         self.browser = self._playwright = None
 
 
-def get_with_retries(page, url, attempts=None, backoff=2.0, sleep=time.sleep):
+def get_with_retries(page: 'Page', url: str, attempts: Optional[int] = None, backoff: float = 2.0,
+                     sleep: Callable[[float], None] = time.sleep) -> None:
     """page.goto con reintentos y espera exponencial; relanza el último error."""
     attempts = attempts or MAX_ATTEMPTS
     for attempt in range(1, attempts + 1):
@@ -74,6 +84,7 @@ def get_with_retries(page, url, attempts=None, backoff=2.0, sleep=time.sleep):
             sleep(wait)
 
 
-def hrefs(page, selector):
+def hrefs(page: 'Page', selector: str) -> list[str]:
     """href absolutos de los elementos que coinciden con `selector`."""
-    return page.eval_on_selector_all(selector, 'els => els.map(e => e.href).filter(Boolean)')
+    urls: list[str] = page.eval_on_selector_all(selector, 'els => els.map(e => e.href).filter(Boolean)')
+    return urls

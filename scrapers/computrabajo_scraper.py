@@ -4,10 +4,12 @@ import random
 import logging
 import os
 import pandas as pd
-from bs4 import BeautifulSoup
+from typing import Optional
+
+from bs4 import BeautifulSoup, Tag
 from datetime import datetime
 
-from scrapers.common import Browser, get_with_retries, hrefs
+from scrapers.common import Browser, Job, get_with_retries, hrefs
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -16,12 +18,12 @@ BASE_URL = "https://www.computrabajo.com.ar"
 JOB_CARD_SELECTORS = ["article.box_offer", "div.bRS", "article[data-test='job-card']"]
 
 
-def _text(card, selector):
+def _text(card: Tag, selector: str) -> Optional[str]:
     elem = card.select_one(selector)
     return elem.get_text(" ", strip=True) if elem else None
 
 
-def parse_job_card(card, base_url=BASE_URL):
+def parse_job_card(card: Tag, base_url: str = BASE_URL) -> Optional[Job]:
     """Datos de una oferta a partir del HTML de su tarjeta (BeautifulSoup); None si no tiene título."""
     from urllib.parse import urljoin
     title_elem = card.select_one("h2.fs16 a, a.js-o-link")
@@ -31,7 +33,7 @@ def parse_job_card(card, base_url=BASE_URL):
                    if '$' in t or 'ARS' in t), '')
     return {
         'Title': title_elem.get_text(" ", strip=True),
-        'URL': urljoin(base_url, title_elem.get('href', '')),
+        'URL': urljoin(base_url, str(title_elem.get('href') or '')),
         'Company': _text(card, "p.fs16.fc_base.mt5, .company-name, span.company") or "Confidential",
         'Location': _text(card, "p.fs13.fc_base, .location") or "",
         'Salary': salary if ('$' in salary or 'ARS' in salary) else 'Not specified',
@@ -40,7 +42,7 @@ def parse_job_card(card, base_url=BASE_URL):
     }
 
 
-def parse_listing(html, base_url=BASE_URL):
+def parse_listing(html: str, base_url: str = BASE_URL) -> list[Job]:
     """Todas las ofertas de una página de resultados."""
     soup = BeautifulSoup(html, 'lxml')
     for selector in JOB_CARD_SELECTORS:
@@ -51,13 +53,13 @@ def parse_listing(html, base_url=BASE_URL):
 
 
 class ComputrabajoScraper:
-    def __init__(self):
+    def __init__(self) -> None:
         """Abre Chromium (Playwright) para Computrabajo."""
         self.base_url = BASE_URL
         self.browser = Browser()
         self.page = self.browser.page
 
-    def _login(self, email, password):
+    def _login(self, email: str, password: str) -> bool:
         """Login to Computrabajo"""
         try:
             logger.info("Attempting to login to Computrabajo...")
@@ -87,7 +89,7 @@ class ComputrabajoScraper:
             logger.error(f"Login failed with exception: {e}")
             return False
 
-    def _get_apply_url(self, job_url):
+    def _get_apply_url(self, job_url: str) -> Optional[str]:
         """
         Visit job page and extract the direct apply URL.
         Returns the external URL if found, otherwise returns the job_url.
@@ -131,11 +133,12 @@ class ComputrabajoScraper:
             logger.error(f"Error getting apply URL: {e}")
             return job_url
 
-    def search_jobs(self, position, location="", max_jobs=50, email=None, password=None):
+    def search_jobs(self, position: str, location: str = "", max_jobs: int = 50,
+                    email: Optional[str] = None, password: Optional[str] = None) -> list[Job]:
         """
         Search for jobs on Computrabajo
         """
-        jobs = []
+        jobs: list[Job] = []
         
         try:
             # Login if credentials provided
@@ -207,7 +210,7 @@ class ComputrabajoScraper:
             # Don't close here if called from app, let app manage it or close explicitly
             pass
             
-    def _extract_jobs_from_page(self):
+    def _extract_jobs_from_page(self) -> list[Job]:
         """Extract all jobs from current page"""
         for selector in JOB_CARD_SELECTORS:
             try:
@@ -224,7 +227,7 @@ class ComputrabajoScraper:
             logger.warning("No job cards found on page")
         return jobs
 
-    def _go_to_next_page(self):
+    def _go_to_next_page(self) -> bool:
         """Navigate to next page of results"""
         try:
             # Note: Computrabajo pagination is tricky. Sometimes it's a span that acts as a button.
@@ -246,7 +249,7 @@ class ComputrabajoScraper:
             logger.error(f"Error going to next page: {e}")
             return False
             
-    def save_to_csv(self, jobs, filename=None):
+    def save_to_csv(self, jobs: list[Job], filename: Optional[str] = None) -> Optional[str]:
         """Save jobs to CSV file"""
         try:
             if not jobs:
@@ -274,7 +277,7 @@ class ComputrabajoScraper:
             logger.error(f"Error saving to CSV: {e}")
             return None
             
-    def close(self):
+    def close(self) -> None:
         """Cierra el navegador."""
         self.browser.close()
 

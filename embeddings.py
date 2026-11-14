@@ -14,7 +14,7 @@ import math
 import os
 import re
 from collections import OrderedDict
-from typing import Optional
+from typing import Any, Iterable, Optional, Sequence
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +39,7 @@ _STOPWORDS = {
 _WORD = re.compile(r"[^\W\d_]+", re.UNICODE)
 
 _client = None
-_cache: "OrderedDict[str, list]" = OrderedDict()
+_cache: "OrderedDict[str, list[float]]" = OrderedDict()
 
 
 def detect_language(text: str) -> str:
@@ -52,7 +52,7 @@ def detect_language(text: str) -> str:
 
 def backends_by_language() -> dict[str, str]:
     """MATCHING_BACKEND_BY_LANGUAGE como {idioma: backend}; ignora idiomas o backends desconocidos."""
-    found = {}
+    found: dict[str, str] = {}
     for part in os.getenv('MATCHING_BACKEND_BY_LANGUAGE', '').split(','):
         lang, _, backend = (x.strip().lower() for x in part.partition('='))
         if lang in LANGUAGES and backend in BACKENDS:
@@ -71,7 +71,7 @@ def backend_for(language: Optional[str] = None) -> str:
     return os.getenv('MATCHING_BACKEND', 'tfidf').strip().lower()
 
 
-def enabled(language: Optional[str] = None):
+def enabled(language: Optional[str] = None) -> bool:
     """True si el backend para ese idioma es embeddings y hay GEMINI_API_KEY (o un cliente inyectado)."""
     return backend_for(language) == 'embeddings' and available()
 
@@ -81,14 +81,14 @@ def available() -> bool:
     return _client is not None or bool(os.getenv('GEMINI_API_KEY'))
 
 
-def configure(client):
+def configure(client: Any) -> None:
     """Inyecta un cliente de google-genai (tests) o None para crearlo desde GEMINI_API_KEY."""
     global _client
     _client = client
     _cache.clear()
 
 
-def _get_client():
+def _get_client() -> Any:
     global _client
     if _client is None:
         from google import genai
@@ -96,18 +96,18 @@ def _get_client():
     return _client
 
 
-def _model():
+def _model() -> str:
     return os.getenv('GEMINI_EMBEDDING_MODEL', 'gemini-embedding-001')
 
 
-def _key(text):
+def _key(text: str) -> str:
     return hashlib.sha256(f"{_model()}\0{text}".encode('utf-8')).hexdigest()
 
 
-def embed(texts):
+def embed(raw_texts: Iterable[object]) -> Optional[list[list[float]]]:
     """Vectores de cada texto (con caché en memoria), o None si no se pudo."""
-    texts = [str(t or '')[:MAX_CHARS] for t in texts]
-    found = {}
+    texts = [str(t or '')[:MAX_CHARS] for t in raw_texts]
+    found: dict[str, list[float]] = {}
     for text in dict.fromkeys(texts):
         key = _key(text)
         if key in _cache:
@@ -145,18 +145,18 @@ def embed(texts):
     return [found[t] for t in texts]
 
 
-def cosine(a, b):
+def cosine(a: Sequence[float], b: Sequence[float]) -> float:
     """Similitud coseno entre dos vectores (0 si alguno es nulo)."""
     dot = sum(x * y for x, y in zip(a, b, strict=True))
     norm = math.sqrt(sum(x * x for x in a)) * math.sqrt(sum(y * y for y in b))
     return dot / norm if norm else 0.0
 
 
-def similarity(profile_text, job_text):
+def similarity(profile_text: object, job_text: object) -> Optional[float]:
     """Similitud semántica 0-100 entre CV y oferta, o None para usar TF-IDF."""
     if not str(profile_text or '').strip() or not str(job_text or '').strip():
         return None
-    if not enabled(detect_language(profile_text) if backends_by_language() else None):
+    if not enabled(detect_language(str(profile_text)) if backends_by_language() else None):
         return None
     vectors = embed([profile_text, job_text])
     if vectors is None:
