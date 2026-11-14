@@ -24,6 +24,7 @@
           <input type="password" class="form-control mb-3" id="password" name="password" required autocomplete="current-password">
           <button type="submit" class="btn btn-primary w-100">Ingresar</button>
         </form>
+        <p class="text-center mt-3 mb-0"><a href="{{ url_for('forgot_password') }}">¿Olvidaste tu contraseña?</a></p>
         {% if signup_open %}
         <p class="text-center mt-3 mb-0"><a href="{{ url_for('register', next=next_url) }}">Crear una cuenta</a></p>
         {% endif %}

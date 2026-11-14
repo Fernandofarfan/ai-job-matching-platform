@@ -413,6 +413,8 @@ GEMINI_API_KEY=tu_api_key_aqui
 SECRET_KEY=            # obligatoria en producción: python -c "import secrets; print(secrets.token_hex(32))"
 ADMIN_EMAIL=           # email obligatorio de la primera cuenta (la que se queda con los datos previos)
 ALLOW_SIGNUP=false     # true = registro abierto en /register; por defecto solo se crea la primera cuenta
+REQUIRE_EMAIL_VERIFICATION=false  # true = las cuentas nuevas entran solo después de confirmar el email (necesita SMTP)
+PUBLIC_BASE_URL=               # URL pública de la app para los enlaces de los emails (obligatoria en Cloud Run)
 LOGIN_REQUIRED=true    # false = sin login (solo local)
 CV_ENCRYPTION_KEY=     # cifra los CVs en uploads/ y los perfiles (texto del CV incluido) en MySQL (Fernet). Sin ella no se pueden leer los ya cifrados
 CV_RETENTION_DAYS=0    # >0: Celery borra cada día CVs, perfiles y documentos más viejos que N días

@@ -1,4 +1,5 @@
 """Login con cuentas de usuario (accounts.py) compartido por Flask y FastAPI."""
+import hashlib
 import hmac
 import logging
 import os
@@ -43,7 +44,7 @@ def session_user_id(session_data, secret_key) -> Optional[int]:
     except SQLAlchemyError as e:
         logger.error(f"No se pudo validar la sesión: {e}")
         return None
-    if user is None:
+    if user is None or (verification_required() and not user.get('email_verified', True)):
         return None
     ok = hmac.compare_digest(str(session_data.get('auth_fp', '')), session_fingerprint(secret_key, user))
     return user['id'] if ok else None
@@ -93,3 +94,38 @@ def check_csrf_token(session_data: dict, token: str, secret_key, time_limit=3600
     except BadData:
         return False
     return hmac.compare_digest(str(expected), str(raw))
+
+
+RESET_MAX_AGE = 3600
+VERIFY_MAX_AGE = 3 * 86400
+
+
+def verification_required() -> bool:
+    """REQUIRE_EMAIL_VERIFICATION=true: las cuentas nuevas no entran hasta confirmar el email."""
+    return os.getenv('REQUIRE_EMAIL_VERIFICATION', 'false').strip().lower() == 'true'
+
+
+def _token_fp(purpose: str, user: dict) -> str:
+    """Lo que invalida el enlace: la contraseña (recuperar) o el email (verificar)."""
+    basis = user['password_hash'] if purpose == 'reset' else user['email']
+    return hashlib.sha256(basis.encode()).hexdigest()[:16]
+
+
+def account_token(secret_key, purpose: str, user: dict) -> str:
+    """Enlace firmado para recuperar la contraseña o verificar el email; deja de valer al usarse."""
+    from itsdangerous import URLSafeTimedSerializer
+    return URLSafeTimedSerializer(secret_key, salt=f'account-{purpose}').dumps(
+        {'uid': user['id'], 'fp': _token_fp(purpose, user)})
+
+
+def read_account_token(secret_key, purpose: str, token: str, max_age: int) -> Optional[dict]:
+    """Cuenta del enlace si es válido, no venció y no se usó; None si no."""
+    from itsdangerous import BadData, URLSafeTimedSerializer
+    try:
+        data = URLSafeTimedSerializer(secret_key, salt=f'account-{purpose}').loads(token, max_age=max_age)
+        user = accounts.get_user(int(data['uid']))
+    except (BadData, KeyError, TypeError, ValueError):
+        return None
+    if user is None or not hmac.compare_digest(str(data.get('fp', '')), _token_fp(purpose, user)):
+        return None
+    return user

@@ -77,7 +77,8 @@ limiter = Limiter(
 if not auth.auth_enabled():
     logger.warning("LOGIN_REQUIRED=false: la app no pide login (usala solo en local)")
 
-PUBLIC_ENDPOINTS = {'login', 'register', 'static', 'health', 'service_worker'}
+PUBLIC_ENDPOINTS = {'login', 'register', 'static', 'health', 'service_worker',
+                    'forgot_password', 'reset_password', 'verify_email'}
 
 
 @app.before_request
@@ -110,10 +111,17 @@ def login():
             return redirect(url_for('register', next=next_url))
         if request.method == 'POST':
             user_id = accounts.authenticate(request.form.get('email', ''), request.form.get('password', ''))
-            if user_id:
-                auth.start_session(session, app.secret_key, user_id)
+            user = accounts.get_user(user_id) if user_id else None
+            if user and auth.verification_required() and not user['email_verified']:
+                if account.send_verification(user):
+                    flash('Antes de entrar confirmá tu email: te mandamos un enlace', 'warning')
+                else:
+                    flash('Tenés que confirmar tu email, pero no se pudo mandar el enlace: avisale al administrador', 'danger')
+            elif user:
+                auth.start_session(session, app.secret_key, user['id'])
                 return redirect(_safe_next(next_url))
-            flash('Email o contraseña incorrectos', 'danger')
+            else:
+                flash('Email o contraseña incorrectos', 'danger')
         signup = accounts.signup_open()
     except SQLAlchemyError as e:
         logger.error(f"Login sin base de datos: {e}")
@@ -144,6 +152,15 @@ def register():
                 except accounts.AccountError as e:
                     flash(str(e), 'danger')
                 else:
+                    user = accounts.get_user(user_id)
+                    sent = not user['email_verified'] and account.send_verification(user)
+                    if auth.verification_required() and not user['email_verified']:
+                        if sent:
+                            flash('Te mandamos un enlace para confirmar tu email', 'info')
+                        else:
+                            flash('Cuenta creada, pero no se pudo mandar el enlace para confirmar el email: '
+                                  'avisale al administrador', 'danger')
+                        return redirect(url_for('login', next=next_url))
                     auth.start_session(session, app.secret_key, user_id)
                     return redirect(_safe_next(next_url))
     except SQLAlchemyError as e:
@@ -876,7 +893,7 @@ def emit_scraper_progress(scraper_key: str):
 
 # Las rutas viven en web/ y se registran sobre `app` al importarse
 from web import (  # noqa: E402,F401
-    alerts, analytics, documents, exports, files, pages, profiles, scrapers, tracker,
+    account, alerts, analytics, documents, exports, files, pages, profiles, scrapers, tracker,
 )
 
 

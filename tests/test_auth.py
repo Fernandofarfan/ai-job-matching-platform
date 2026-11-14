@@ -1,4 +1,5 @@
 """Tests de cuentas (email + contraseña), login y protección CSRF."""
+import inspect
 import io
 
 import pytest
@@ -143,3 +144,105 @@ def test_first_account_requires_admin_email_on_cloud_run(accounts_db, monkeypatc
     monkeypatch.delenv('ADMIN_EMAIL', raising=False)
     with pytest.raises(accounts.AccountError):
         accounts.register('a@example.com', 'x' * 10)
+
+
+@pytest.fixture
+def outbox(monkeypatch, app):
+    """Emails que mandaría la app (enlace incluido) en vez de usar SMTP."""
+    sent = []
+    monkeypatch.setitem(inspect.unwrap(app.view_functions['forgot_password']).__globals__, '_deliver',
+                        lambda to, subject, body, link, cta: sent.append((to, link)) or True)
+    return sent
+
+
+def _path(link):
+    """Ruta relativa de un enlace absoluto del email."""
+    from urllib.parse import urlparse
+    return urlparse(link).path
+
+
+def test_password_reset_flow(registered, outbox):
+    """El enlace del email cambia la contraseña, es de un solo uso y no revela si la cuenta existe."""
+    registered.post('/forgot_password', data={'email': 'nadie@example.com'})
+    assert outbox == []
+    response = registered.post('/forgot_password', data={'email': 'ANA@example.com'})
+    assert response.status_code == 302 and len(outbox) == 1 and outbox[0][0] == 'ana@example.com'
+    link = _path(outbox[0][1])
+    assert registered.get(link).status_code == 200
+    assert registered.post(link, data={'password': 'nueva-clave-99', 'confirm': 'nueva-clave-99'}).status_code == 302
+    assert accounts.authenticate('ana@example.com', PASSWORD) is None
+    assert accounts.authenticate('ana@example.com', 'nueva-clave-99')
+    assert 'forgot_password' in registered.get(link).headers['Location']
+
+
+def test_change_password_closes_other_sessions(registered, app):
+    """Cambiar la contraseña mantiene esta sesión y cierra las demás."""
+    other = app.test_client()
+    _login(other)
+    _login(registered)
+    bad = registered.post('/account/password', data={'current': 'mal', 'password': 'otra-clave-12', 'confirm': 'otra-clave-12'})
+    assert bad.status_code == 302 and accounts.authenticate('ana@example.com', PASSWORD)
+    registered.post('/account/password', data={'current': PASSWORD, 'password': 'otra-clave-12', 'confirm': 'otra-clave-12'})
+    assert registered.get('/account').status_code == 200
+    assert other.get('/tracker').status_code == 302
+
+
+def test_email_verification_required(registered, outbox, monkeypatch):
+    """Con REQUIRE_EMAIL_VERIFICATION, una cuenta nueva entra solo después de confirmar el email."""
+    monkeypatch.setenv('ALLOW_SIGNUP', 'true')
+    monkeypatch.setenv('REQUIRE_EMAIL_VERIFICATION', 'true')
+    _register(registered, 'beto@example.com')
+    assert registered.get('/tracker').status_code == 302
+    assert outbox[-1][0] == 'beto@example.com'
+    _login(registered, 'beto@example.com')
+    assert registered.get('/tracker').status_code == 302
+    registered.get(_path(outbox[-1][1]))
+    _login(registered, 'beto@example.com')
+    assert registered.get('/tracker').status_code == 200
+
+
+def test_first_account_is_verified(registered):
+    """La primera cuenta (administrador) no espera el email de verificación."""
+    assert accounts.get_user(accounts.find_user_id('ana@example.com'))['email_verified']
+
+
+def test_delete_account_needs_password(registered, monkeypatch, app):
+    """Borrar la cuenta pide la contraseña y después la cuenta deja de existir."""
+    monkeypatch.setitem(inspect.unwrap(app.view_functions['delete_account']).__globals__, 'delete_user_profile', lambda: True)
+    _login(registered)
+    registered.post('/account/delete', data={'password': 'mal'})
+    assert accounts.find_user_id('ana@example.com')
+    response = registered.post('/account/delete', data={'password': PASSWORD})
+    assert response.status_code == 302 and accounts.find_user_id('ana@example.com') is None
+    assert registered.get('/tracker').status_code == 302
+
+
+def test_reset_link_ignores_foreign_host(registered, outbox):
+    """Sin PUBLIC_BASE_URL, un Host que no es local no recibe el enlace (evita robar el token)."""
+    registered.post('/forgot_password', data={'email': 'ana@example.com'}, headers={'Host': 'evil.example'})
+    assert outbox == []
+
+
+def test_reset_link_is_single_use_under_race(registered):
+    """Dos usos del mismo enlace: el segundo falla porque la contraseña ya cambió."""
+    user = accounts.get_user(accounts.find_user_id('ana@example.com'))
+    accounts.set_password(user['id'], 'primera-clave-1', expected_hash=user['password_hash'])
+    with pytest.raises(accounts.AccountError):
+        accounts.set_password(user['id'], 'segunda-clave-2', expected_hash=user['password_hash'])
+    assert accounts.authenticate('ana@example.com', 'primera-clave-1')
+
+
+def test_admin_account_kept_while_others_exist(registered, monkeypatch, app):
+    """La primera cuenta no se borra si hay otras (Telegram, Gmail y la extensión son suyos)."""
+    monkeypatch.setitem(inspect.unwrap(app.view_functions['delete_account']).__globals__, 'delete_user_profile', lambda: True)
+    monkeypatch.setenv('ALLOW_SIGNUP', 'true')
+    accounts.register('beto@example.com', PASSWORD)
+    _login(registered)
+    registered.post('/account/delete', data={'password': PASSWORD})
+    assert accounts.find_user_id('ana@example.com')
+
+
+def test_reset_link_on_ipv6_loopback(registered, outbox):
+    """[::1] es local: recibe el enlace aunque no haya PUBLIC_BASE_URL."""
+    registered.post('/forgot_password', data={'email': 'ana@example.com'}, headers={'Host': '[::1]:5000'})
+    assert len(outbox) == 1

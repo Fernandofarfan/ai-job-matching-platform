@@ -1,0 +1,172 @@
+"""Cuenta: cambiar y recuperar la contraseña, verificar el email y borrar la cuenta."""
+import logging
+import os
+from urllib.parse import urlsplit
+
+from flask import flash, make_response, redirect, render_template, request, session, url_for
+
+import accounts
+import auth
+from app import _clear_offline_data, app, delete_user_profile, limiter
+
+logger = logging.getLogger(__name__)
+LOCAL_HOSTS = {'localhost', '127.0.0.1', '::1'}
+
+
+def _public_url(endpoint: str, **values):
+    """URL absoluta para los emails: PUBLIC_BASE_URL (obligatoria en Cloud Run, evita usar el Host del pedido)."""
+    base = os.getenv('PUBLIC_BASE_URL', '').rstrip('/')
+    if not base:
+        # sin PUBLIC_BASE_URL solo se confía en el Host si es local: si no, un Host falso robaría el enlace
+        if urlsplit('//' + request.host).hostname not in LOCAL_HOSTS:
+            logger.error('Definí PUBLIC_BASE_URL para mandar enlaces por email')
+            return None
+        base = request.url_root.rstrip('/')
+    return base + url_for(endpoint, **values)
+
+
+def _deliver(to: str, subject: str, body: str, link: str, cta: str) -> bool:
+    """Manda el email con el enlace por SMTP."""
+    from tasks.notification_tasks import _get_email_template, _send_email
+    return _send_email(to, subject, _get_email_template(subject, body, link, cta))
+
+
+def send_verification(user: dict) -> bool:
+    """Email con el enlace para confirmar la cuenta."""
+    link = _public_url('verify_email', token=auth.account_token(app.secret_key, 'verify', user))
+    return bool(link) and _deliver(user['email'], 'Confirmá tu email en EmpleoIA',
+                                   '<p>Entrá al enlace para confirmar tu cuenta. Vence en 3 días.</p>',
+                                   link, 'Confirmar email')
+
+
+def _account_enabled():
+    """Las páginas de cuenta solo existen con login."""
+    return auth.auth_enabled()
+
+
+@app.route('/forgot_password', methods=['GET', 'POST'])
+@limiter.limit('5 per minute', methods=['POST'])
+def forgot_password():
+    """Pide el email y manda el enlace de recuperación (la respuesta no dice si la cuenta existe)."""
+    if not _account_enabled():
+        return redirect(url_for('index'))
+    if request.method == 'POST':
+        user_id = accounts.find_user_id(request.form.get('email', ''))
+        user = accounts.get_user(user_id) if user_id else None
+        if user:
+            link = _public_url('reset_password', token=auth.account_token(app.secret_key, 'reset', user))
+            if link:
+                _deliver(user['email'], 'Recuperar tu contraseña de EmpleoIA',
+                         '<p>Entrá al enlace para elegir una contraseña nueva. Vence en 1 hora. '
+                         'Si no lo pediste, ignorá este email.</p>', link, 'Elegir contraseña')
+        flash('Si hay una cuenta con ese email, te mandamos un enlace para recuperar la contraseña', 'info')
+        return redirect(url_for('login'))
+    return render_template('forgot_password.html')
+
+
+@app.route('/reset_password/<token>', methods=['GET', 'POST'])
+@limiter.limit('10 per minute', methods=['POST'])
+def reset_password(token):
+    """Elige una contraseña nueva con el enlace del email; cierra las sesiones abiertas."""
+    if not _account_enabled():
+        return redirect(url_for('index'))
+    user = auth.read_account_token(app.secret_key, 'reset', token, auth.RESET_MAX_AGE)
+    if user is None:
+        flash('El enlace venció o ya se usó: pedí uno nuevo', 'danger')
+        return redirect(url_for('forgot_password'))
+    if request.method == 'POST':
+        password = request.form.get('password', '')
+        if password != request.form.get('confirm', ''):
+            flash('Las contraseñas no coinciden', 'danger')
+        else:
+            try:
+                accounts.set_password(user['id'], password, expected_hash=user['password_hash'])
+            except accounts.AccountError as e:
+                flash(str(e), 'danger')
+            else:
+                accounts.mark_verified(user['id'])  # recibió el email: la dirección es suya
+                session.clear()
+                flash('Listo: ya podés entrar con la contraseña nueva', 'success')
+                return _clear_offline_data(redirect(url_for('login')))
+    response = make_response(render_template('reset_password.html', token=token, min_password=accounts.MIN_PASSWORD))
+    response.headers['Referrer-Policy'] = 'no-referrer'
+    return response
+
+
+@app.route('/verify_email/<token>')
+def verify_email(token):
+    """Confirma el email con el enlace que se mandó al registrarse."""
+    user = auth.read_account_token(app.secret_key, 'verify', token, auth.VERIFY_MAX_AGE)
+    if user is None:
+        flash('El enlace de verificación venció o no es válido', 'danger')
+    else:
+        accounts.mark_verified(user['id'])
+        flash('Email confirmado', 'success')
+    return redirect(url_for('account') if auth.is_session_valid(session, app.secret_key) else url_for('login'))
+
+
+@app.route('/account')
+def account():
+    """Datos de la cuenta, cambio de contraseña y borrado."""
+    if not _account_enabled():
+        return redirect(url_for('index'))
+    user = accounts.get_user(accounts.current_user_id())
+    return render_template('account.html', user=user, min_password=accounts.MIN_PASSWORD)
+
+
+@app.route('/account/resend_verification', methods=['POST'])
+@limiter.limit('3 per hour')
+def resend_verification():
+    """Reenvía el email de verificación."""
+    user = accounts.get_user(accounts.current_user_id())
+    if user and not user['email_verified']:
+        if send_verification(user):
+            flash('Te mandamos el enlace de nuevo', 'info')
+        else:
+            flash('No se pudo mandar el email: revisá la configuración de SMTP', 'danger')
+    return redirect(url_for('account'))
+
+
+@app.route('/account/password', methods=['POST'])
+@limiter.limit('10 per minute')
+def change_password():
+    """Cambia la contraseña; las otras sesiones se cierran y esta sigue abierta."""
+    user_id = accounts.current_user_id()
+    new = request.form.get('password', '')
+    if new != request.form.get('confirm', ''):
+        flash('Las contraseñas nuevas no coinciden', 'danger')
+        return redirect(url_for('account'))
+    try:
+        accounts.change_password(user_id, request.form.get('current', ''), new)
+    except accounts.AccountError as e:
+        flash(str(e), 'danger')
+        return redirect(url_for('account'))
+    auth.start_session(session, app.secret_key, user_id)
+    flash('Contraseña cambiada; se cerraron las otras sesiones', 'success')
+    return redirect(url_for('account'))
+
+
+@app.route('/account/delete', methods=['POST'])
+@limiter.limit('5 per minute')
+def delete_account():
+    """Borra la cuenta y todos sus datos (tracker, perfiles, CVs, alertas, resultados)."""
+    user_id = accounts.current_user_id()
+    if not accounts.check_password(user_id, request.form.get('password', '')):
+        flash('La contraseña no es correcta: la cuenta no se borró', 'danger')
+        return redirect(url_for('account'))
+    if user_id == accounts.first_user_id() and accounts.count_users() > 1:
+        # Telegram, Gmail y la extensión son de la primera cuenta: pasarían a la siguiente
+        flash('La primera cuenta (administradora) no se puede borrar mientras haya otras cuentas', 'danger')
+        return redirect(url_for('account'))
+    if not delete_user_profile():
+        flash('No se pudieron borrar tus CVs: la cuenta no se borró', 'danger')
+        return redirect(url_for('account'))
+    try:
+        accounts.delete_account(user_id)
+    except Exception as e:
+        logger.error(f'No se pudo borrar la cuenta {user_id}: {e}')
+        flash('No se pudo borrar la cuenta; probá de nuevo', 'danger')
+        return redirect(url_for('account'))
+    session.clear()
+    flash('Tu cuenta y todos tus datos se borraron', 'success')
+    return _clear_offline_data(redirect(url_for('login')))
