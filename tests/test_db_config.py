@@ -32,3 +32,30 @@ def test_tracked_jobs_hide_db_errors_unless_asked(monkeypatch):
     assert manager.get_all_tracked_jobs() == []
     with pytest.raises(OperationalError):
         manager.get_all_tracked_jobs(raise_errors=True)
+
+
+def test_every_query_survives_a_database_error(monkeypatch):
+    """Si MySQL falla (acá: SQLite sin tablas), cada método devuelve su valor de error en vez de lanzar."""
+    from sqlalchemy import create_engine
+
+    import accounts
+    from db_config import DatabaseManager
+    monkeypatch.setattr(accounts, 'current_user_id', lambda: 7)
+    db = DatabaseManager(engine=create_engine('sqlite://'))
+    job = {'title': 'Dev', 'company': 'Acme', 'applied_date': '2026-11-12T17:04:46Z'}
+    assert db.save_application(job) is None
+    assert db.add_job_to_tracker(job) is None
+    assert db.get_applications({'status': 'applied', 'company': 'Ac', 'date_from': '2026-01-01',
+                                'date_to': '2026-12-31'}) == []
+    assert db.get_status_history() == [] and db.get_status_history(job_id=1) == []
+    assert db.create_networking_exclusions_table() is False
+    assert db.exclude_company('Acme') is False
+    assert db.get_companies_for_connections() == []
+    assert db.save_processed_file('jobs.csv', 3, 1) is False
+    assert db.get_tracked_job_by_id(1) is None
+    assert db.update_job_status(1, 'applied') is False
+    assert db.update_job_status(1, 'interviewing') is False
+    assert db.delete_tracked_job(1) is False
+    assert db.update_tracker_dates(1, follow_up='2026-12-01') is False
+    assert db.mark_reminded([]) is True
+    assert db.mark_reminded([1, 2]) is False
