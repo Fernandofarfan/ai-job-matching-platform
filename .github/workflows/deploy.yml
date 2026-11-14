@@ -113,21 +113,51 @@ jobs:
             -target=google_cloud_run_v2_job.migrate
           gcloud run jobs execute "$(terraform output -raw migrate_job)" --region "$REGION" --wait
 
+      - name: Revisión que atiende hoy
+        if: github.event_name != 'pull_request'
+        run: |
+          # La revisión nueva entra sin tráfico (etiqueta candidate) y esta sigue atendiendo hasta que la nueva pase el smoke test.
+          prev="$(gcloud run services describe "empleoia-web-${ENVIRONMENT}" --region "$REGION" --format=json 2>/dev/null \
+            | jq -r '[.status.traffic[]? | select(.percent == 100 and .revisionName != null)][0].revisionName // empty' || true)"
+          echo "Revisión que atiende hoy: ${prev:-ninguna (primer deploy)}"
+          echo "SERVING_REVISION=$prev" >> "$GITHUB_ENV"
+          echo "TF_VAR_serving_revision=$prev" >> "$GITHUB_ENV"
+
       - name: terraform apply
         if: github.event_name != 'pull_request'
         run: terraform apply -input=false -auto-approve -var-file="envs/${ENVIRONMENT}.tfvars"
 
-      - name: Smoke test
+      - name: Smoke test y pase de tráfico
         if: github.event_name != 'pull_request'
         run: |
           url="$(terraform output -raw web_url)"
-          if [ "$(terraform output -raw public_access)" != "true" ]; then
+          svc="$(terraform output -raw web_service)"
+          public="$(terraform output -raw public_access)"
+          ready() {
+            for i in 1 2 3 4 5; do
+              curl -fsS "$1/api/ready" && return 0
+              sleep 10
+            done
+            return 1
+          }
+          if [ -n "$SERVING_REVISION" ]; then
+            candidate="$(gcloud run services describe "$svc" --region "$REGION" --format=json \
+              | jq -r '.status.traffic[] | select(.tag == "candidate") | .url')"
             # Servicio privado: sin token de IAM Cloud Run responde 403; terraform apply ya esperó la revisión lista.
+            if [ "$public" = "true" ] && ! ready "$candidate"; then
+              echo "::error::La revisión nueva no pasa /api/ready y no recibió tráfico: sigue atendiendo $SERVING_REVISION"
+              exit 1
+            fi
+            gcloud run services update-traffic "$svc" --region "$REGION" --to-latest
+          fi
+          if [ "$public" != "true" ]; then
             echo "Servicio privado: se omite el smoke test HTTP"
             exit 0
           fi
-          for i in 1 2 3 4 5; do
-            curl -fsS "$url/api/ready" && exit 0
-            sleep 10
-          done
-          exit 1
+          if ! ready "$url"; then
+            if [ -n "$SERVING_REVISION" ]; then
+              gcloud run services update-traffic "$svc" --region "$REGION" --to-revisions "$SERVING_REVISION=100"
+              echo "::error::/api/ready falla con la revisión nueva: el tráfico volvió a $SERVING_REVISION"
+            fi
+            exit 1
+          fi

@@ -6,6 +6,11 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar] - Deploy sin tráfico y vuelta atrás automática
+
+- `deploy.yml` crea la revisión nueva de la web sin tráfico, con la etiqueta `candidate`, prueba `/api/ready` en su URL y recién ahí le pasa el tráfico. Si `/api/ready` falla después del pase, el tráfico vuelve a la revisión anterior.
+- Terraform: variable `serving_revision` (vacía: todo el tráfico a la última, como antes) y output `web_service`.
+
 ## [Sin publicar] - Arquitectura y runbook
 
 - `docs/architecture.md`: componentes, flujos de búsqueda, CV y alertas, despliegue local y en GCP, observabilidad y CI.

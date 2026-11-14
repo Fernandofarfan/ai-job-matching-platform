@@ -30,6 +30,12 @@ variable "image" {
   type        = string
 }
 
+variable "serving_revision" {
+  description = "Revisión que atiende hoy; la nueva entra sin tráfico hasta pasar el smoke test. Vacía: todo el tráfico a la última"
+  type        = string
+  default     = ""
+}
+
 variable "subnet_cidr" {
   description = "Rango de la subred de Cloud Run (distinto por ambiente si comparten proyecto)"
   type        = string

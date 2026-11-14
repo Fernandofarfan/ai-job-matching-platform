@@ -392,6 +392,23 @@ resource "google_cloud_run_v2_service" "empleoia_web" {
     }
   }
 
+  # Con serving_revision (deploy.yml la pasa) la revisión nueva entra sin tráfico y con la etiqueta "candidate":
+  # el workflow la prueba en su URL y recién ahí le pasa el tráfico. Vacía (primer deploy o apply a mano): todo a la última.
+  dynamic "traffic" {
+    for_each = var.serving_revision == "" ? [] : [var.serving_revision]
+    content {
+      type     = "TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION"
+      revision = traffic.value
+      percent  = 100
+    }
+  }
+
+  traffic {
+    type    = "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST"
+    percent = var.serving_revision == "" ? 100 : 0
+    tag     = "candidate"
+  }
+
   depends_on = [
     google_secret_manager_secret_iam_member.app,
     google_secret_manager_secret_version.app,

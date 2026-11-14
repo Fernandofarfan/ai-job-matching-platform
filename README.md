@@ -560,7 +560,7 @@ Los valores no secretos de cada ambiente están en `terraform/envs/<env>.tfvars`
 ### Deploy automático (GitHub Actions)
 
 - **`Terraform`**: en cada PR que toca `terraform/` corre `fmt`, `validate` y `terraform test` (con un provider simulado, sin credenciales).
-- **`Deploy a GCP`**: cada push a `main` despliega en staging: build de la imagen con el SHA del commit, migraciones, `terraform apply` y smoke test de `/api/ready`. Producción se despliega con "Run workflow" eligiendo `prod` y un tag de versión. En los PRs publica el `terraform plan` de staging en el resumen del job.
+- **`Deploy a GCP`**: cada push a `main` despliega en staging: build de la imagen con el SHA del commit, migraciones y `terraform apply`. La revisión nueva entra sin tráfico y recibe el tráfico solo si pasa `/api/ready`; si falla después, vuelve a la anterior. Producción se despliega con "Run workflow" eligiendo `prod` y un tag de versión. En los PRs publica el `terraform plan` de staging en el resumen del job.
 
 El deploy se saltea hasta que crees la variable de repositorio `GCP_DEPLOY_ENABLED=true` y configures, en cada GitHub Environment (`staging`, `prod`):
 - **Variables:** `GCP_PROJECT_ID`, `GCP_WORKLOAD_IDENTITY_PROVIDER`, `GCP_DEPLOY_SA`, `TF_STATE_BUCKET` y, opcionalmente, `GCP_REGION`.

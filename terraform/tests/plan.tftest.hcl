@@ -103,6 +103,38 @@ run "staging" {
   }
 }
 
+run "candidate_without_traffic" {
+  command = plan
+
+  variables {
+    environment      = "staging"
+    serving_revision = "empleoia-web-staging-00007-abc"
+  }
+
+  assert {
+    condition     = length(google_cloud_run_v2_service.empleoia_web.traffic) == 2 && google_cloud_run_v2_service.empleoia_web.traffic[0].revision == "empleoia-web-staging-00007-abc" && google_cloud_run_v2_service.empleoia_web.traffic[0].percent == 100
+    error_message = "Con serving_revision, la revisión que atiende hoy conserva el 100% del tráfico"
+  }
+
+  assert {
+    condition     = google_cloud_run_v2_service.empleoia_web.traffic[1].percent == 0 && google_cloud_run_v2_service.empleoia_web.traffic[1].tag == "candidate"
+    error_message = "La revisión nueva entra sin tráfico y con la etiqueta candidate"
+  }
+}
+
+run "first_deploy_all_traffic_to_latest" {
+  command = plan
+
+  variables {
+    environment = "staging"
+  }
+
+  assert {
+    condition     = length(google_cloud_run_v2_service.empleoia_web.traffic) == 1 && google_cloud_run_v2_service.empleoia_web.traffic[0].percent == 100
+    error_message = "Sin serving_revision, todo el tráfico va a la última revisión"
+  }
+}
+
 run "prod" {
   command = plan
 

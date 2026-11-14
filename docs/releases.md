@@ -32,10 +32,13 @@ Cada PR agrega su entrada `## [Sin publicar] - Título` arriba del `CHANGELOG.md
 
 ## Volver a la versión anterior
 
+- **Automático, en cada deploy:** la revisión nueva entra sin tráfico, con la etiqueta `candidate`. El workflow
+  prueba `/api/ready` en su URL y recién ahí le pasa el tráfico; si `/api/ready` falla después, lo devuelve a la
+  revisión anterior. No aplica al primer deploy ni al servicio privado, donde no hay smoke test HTTP.
 - **Rápido (sin rebuild):** Actions → "Deploy a GCP" con `environment=prod` y el tag anterior. La imagen de ese
   commit ya está en Artifact Registry, así que no se reconstruye; Terraform apunta Cloud Run a ella.
 - **Inmediato, desde la consola:** `gcloud run services update-traffic empleoia-web-prod --region <región>
-  --to-revisions <revisión anterior>=100`. Sirve mientras se corre lo anterior; el próximo deploy lo pisa.
+  --to-revisions <revisión anterior>=100`. Sirve mientras se corre lo anterior; el próximo deploy parte de esa revisión.
 - **Base de datos:** el deploy corre `alembic upgrade head`, y volver la imagen atrás no revierte migraciones.
   Por eso las migraciones tienen que ser compatibles con la versión anterior (agregar columnas con default,
   borrar recién en la versión siguiente). Si una no lo es, va en una versión mayor y su nota dice cómo revertirla
