@@ -21,7 +21,7 @@ _TRACKER_ORDER = """
         WHEN 'bookmarked' THEN 1 WHEN 'applying' THEN 2 WHEN 'applied' THEN 3
         WHEN 'interviewing' THEN 4 WHEN 'negotiating' THEN 5 WHEN 'accepted' THEN 6
         WHEN 'rejected' THEN 7
-    END, applied_date DESC"""
+    END, applied_date DESC, id DESC"""
 
 _INSERT_APPLICATION = text("""
     INSERT INTO applications
@@ -150,7 +150,7 @@ class DatabaseManager:
             query += " AND applied_date <= :date_to"
             params['date_to'] = filters['date_to']
         try:
-            return self._rows(query + " ORDER BY applied_date DESC", params)
+            return self._rows(query + " ORDER BY applied_date DESC, id DESC", params)
         except SQLAlchemyError as err:
             logger.error(f"Error retrieving applications: {err}")
             return []
@@ -184,7 +184,7 @@ class DatabaseManager:
                     ON a.company = ne.company_name COLLATE utf8mb4_unicode_ci AND ne.user_id <=> a.user_id
                 WHERE a.user_id <=> :uid AND a.status = 'applied' AND ne.company_name IS NULL
                 GROUP BY a.company
-                ORDER BY MAX(a.applied_date) DESC
+                ORDER BY MAX(a.applied_date) DESC, a.company
             """)
         except SQLAlchemyError as err:
             logger.error(f"Error getting companies: {err}")
