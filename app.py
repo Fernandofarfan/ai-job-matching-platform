@@ -78,7 +78,8 @@ if not auth.auth_enabled():
     logger.warning("LOGIN_REQUIRED=false: la app no pide login (usala solo en local)")
 
 PUBLIC_ENDPOINTS = {'login', 'register', 'static', 'health', 'service_worker',
-                    'forgot_password', 'reset_password', 'verify_email'}
+                    'forgot_password', 'reset_password', 'verify_email',
+                    'google_login', 'google_callback'}
 
 
 @app.before_request
@@ -893,7 +894,7 @@ def emit_scraper_progress(scraper_key: str):
 
 # Las rutas viven en web/ y se registran sobre `app` al importarse
 from web import (  # noqa: E402,F401
-    account, alerts, analytics, documents, exports, files, pages, profiles, scrapers, tracker,
+    account, alerts, analytics, documents, exports, files, google_login, pages, profiles, scrapers, tracker,
 )
 
 

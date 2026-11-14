@@ -419,6 +419,8 @@ LOGIN_REQUIRED=true    # false = sin login (solo local)
 CV_ENCRYPTION_KEY=     # cifra los CVs en uploads/ y los perfiles (texto del CV incluido) en MySQL (Fernet). Sin ella no se pueden leer los ya cifrados
 CV_RETENTION_DAYS=0    # >0: Celery borra cada día CVs, perfiles y documentos más viejos que N días
 EXTENSION_TOKEN=       # (viejo) token de la extensión para la primera cuenta; cada cuenta genera el suyo en Mi cuenta
+GOOGLE_OAUTH_CLIENT_ID=      # "Entrar con Google" (cliente OAuth web; redirect: PUBLIC_BASE_URL + /login/google/callback)
+GOOGLE_OAUTH_CLIENT_SECRET=
 GMAIL_OAUTH_CLIENT_FILE=credentials.json  # cliente OAuth "aplicación web" de Google para "Conectar Gmail" en Mi cuenta
                        # (redirect URI: PUBLIC_BASE_URL + /account/gmail/callback)
 SESSION_COOKIE_SECURE=0  # 1 detrás de HTTPS
