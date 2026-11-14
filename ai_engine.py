@@ -56,7 +56,7 @@ try:
     from google.genai import types as genai_types
     _api_key = os.getenv("GEMINI_API_KEY", "")
     if _api_key:
-        _gemini_client = genai.Client(api_key=_api_key)
+        _gemini_client = genai.Client(api_key=_api_key, http_options={'api_version': 'v1beta'})
         GEMINI_AVAILABLE = True
         logger.info("Gemini AI engine initialized ✓")
     else:

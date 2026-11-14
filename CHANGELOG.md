@@ -6,6 +6,15 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar] - Dependencias actualizadas
+
+- `python-docx` 0.8.11 → 1.2.0, `pywebpush` 1.14.1 → 2.5.0, `webauthn` 2.7.1 → 3.0.1, `google-genai` 2.33.0 → 3.3.0,
+  `beautifulsoup4` 4.12.2 → 4.15.0, `pyotp` 2.9.0 → 2.10.0 y `sentry-sdk` 2.74.0 → 2.75.0.
+- `google-genai` 3 usa por defecto la API `v1` de Gemini. Los clientes fijan `v1beta`, la versión que usaba la 2.x,
+  así el comportamiento no cambia.
+- `pywebpush` 2 suma `aiohttp` como dependencia. También dejó de aceptar las claves GCM/FCM viejas, que la app no usa:
+  manda con VAPID.
+
 ## [Sin publicar] - Tests de los scrapers y de los errores de la base
 
 - Computrabajo, Bumeran y LinkedIn se prueban en Chromium con login, varias páginas, enlace de postulación y CSV.
