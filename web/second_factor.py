@@ -1,73 +1,15 @@
 """Segundo factor: paso extra del login y configuración en Mi cuenta."""
-import hmac
 import logging
-import time
 
-from flask import flash, redirect, render_template, request, session, url_for
+from flask import flash, redirect, request, url_for
 from markupsafe import Markup
 
 import accounts
-import auth
 import two_factor
-from app import _safe_next, app, client_ip, limiter
-from web.account import _render_account, audit, audit_login, client_info
+from app import app, limiter
+from web.account import _render_account, audit
 
 logger = logging.getLogger(__name__)
-PENDING_MAX_AGE = 300
-
-
-def begin_login(user: dict, kind: str, next_url: str):
-    """Con segundo factor activo deja el login pendiente y devuelve la redirección; si no, None."""
-    if not two_factor.is_enabled(user['id']):
-        return None
-    session['two_factor'] = {'uid': user['id'], 'kind': kind, 'next': next_url or '', 'ts': time.time(),
-                             'fp': auth.session_fingerprint(app.secret_key, user)}
-    return redirect(url_for('login_two_factor'))
-
-
-def _pending():
-    """Login pendiente del segundo factor, si no venció."""
-    pending = session.get('two_factor')
-    if not pending or time.time() - pending.get('ts', 0) > PENDING_MAX_AGE:
-        session.pop('two_factor', None)
-        return None
-    return pending
-
-
-def _pending_key() -> str:
-    """Límite por cuenta pendiente: frena probar códigos desde muchas IPs."""
-    return f"two_factor:{(_pending() or {}).get('uid')}"
-
-
-@app.route('/login/2fa', methods=['GET', 'POST'])
-@limiter.limit('10 per minute', methods=['POST'], key_func=client_ip)
-@limiter.limit('10 per 15 minutes', methods=['POST'], key_func=_pending_key)
-def login_two_factor():
-    """Pide el código de la app autenticadora (o uno de recuperación) después de la contraseña."""
-    pending = _pending()
-    user = accounts.get_user(pending['uid']) if pending else None
-    if not user or not hmac.compare_digest(str(pending.get('fp', '')), auth.session_fingerprint(app.secret_key, user)):
-        session.pop('two_factor', None)
-        flash('Volvé a ingresar tu email y contraseña', 'warning')
-        return redirect(url_for('login'))
-    if request.method == 'POST':
-        try:
-            method = two_factor.verify(user['id'], request.form.get('code', '').strip())
-        except two_factor.TwoFactorError as e:
-            logger.error(f'Segundo factor ilegible para la cuenta {user["id"]}: {e}')
-            flash('No se pudo comprobar el código: avisale al administrador', 'danger')
-            return render_template('login_2fa.html')
-        if method:
-            auth.start_session(session, app.secret_key, user['id'], *client_info())
-            audit_login(user, pending['kind'])
-            if method == 'recovery':
-                audit(user['id'], 'recovery_code_used')
-                flash(f'Usaste un código de recuperación: te quedan {two_factor.recovery_codes_left(user["id"])}',
-                      'warning')
-            return redirect(_safe_next(pending.get('next', '')))
-        audit(user['id'], 'two_factor_failed')
-        flash('El código no es correcto', 'danger')
-    return render_template('login_2fa.html')
 
 
 def _setup_context(user_id: int) -> dict:

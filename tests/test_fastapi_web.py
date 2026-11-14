@@ -21,8 +21,48 @@ def test_csrf_token_from_fastapi_page_is_valid_in_flask(client, app, monkeypatch
     """El token que pone una página de FastAPI sirve para un POST de Flask (misma sesión, mismo formato)."""
     monkeypatch.setitem(app.config, 'WTF_CSRF_ENABLED', True)
     token = _csrf(client.get('/').get_data(as_text=True))
+    body = {'applied_jobs': {}}
+    assert client.post('/api/save_applications', json=body).status_code == 400
+    assert client.post('/api/save_applications', json=body, headers={'X-CSRFToken': token}).status_code != 400
+
+
+def test_fastapi_auth_forms_check_csrf(client, app, monkeypatch):
+    """Login y logout en FastAPI rechazan el POST sin token, como CSRFProtect de Flask."""
+    monkeypatch.setitem(app.config, 'WTF_CSRF_ENABLED', True)
+    token = _csrf(client.get('/').get_data(as_text=True))
     assert client.post('/logout').status_code == 400
+    assert client.post('/login', data={'email': 'a@b.c', 'password': 'x'}).status_code == 400
     assert client.post('/logout', data={'csrf_token': token}).status_code == 302
+    assert client.post('/logout', data={'csrf_token': 'otro'}).status_code == 400
+
+
+def test_auth_pages_are_served_by_fastapi(client, app):
+    """Login, registro, recuperación, segundo factor y Google ya no son vistas de Flask."""
+    moved = {'login', 'register', 'logout', 'forgot_password', 'login_two_factor', 'google_login', 'google_callback'}
+    for name in moved:
+        assert client.app.url_path_for(name)
+    assert client.app.url_path_for('reset_password', token='t') == '/reset_password/t'
+    assert client.app.url_path_for('verify_email', token='t') == '/verify_email/t'
+    assert not (moved | {'reset_password', 'verify_email'}) & set(app.view_functions)
+    with app.test_request_context():
+        from flask import url_for
+        assert url_for('reset_password', token='t') == '/reset_password/t'
+
+
+def test_logout_clears_session_and_offline_data(client, app):
+    """Salir borra la sesión y pide al navegador borrar el caché offline."""
+    client._c.cookies.set('session', app.session_interface.get_signing_serializer(app).dumps({'uid': 1, 'x': 1}))
+    response = client.post('/logout')
+    assert response.status_code == 302 and response.headers['location'].endswith('/login')
+    assert response.headers['Clear-Site-Data'] == '"cache", "storage"'
+    cookie = re.search(r'session=([^;]*)', response.headers.get('set-cookie', ''))
+    assert cookie is None or 'uid' not in auth.load_session_cookie(app, cookie.group(1).strip('"'))
+
+
+def test_safe_next_only_allows_local_pages():
+    assert fastapi_web.safe_next('/results?x=1') == '/results?x=1'
+    for target in ('//evil.example', 'https://evil.example', '/login', '/logout/', '/register?next=/'):
+        assert fastapi_web.safe_next(target) == '/'
 
 
 def test_flash_from_fastapi_is_shown_once_and_readable_by_flask(client, app):
@@ -86,3 +126,10 @@ def test_permanent_session_is_renewed_on_fastapi_pages(client, app):
     client._c.cookies.set('session', cookie)
     renewed = re.search(r'session=([^;]+);.*expires=', client.get('/').headers.get('set-cookie', ''), re.I)
     assert renewed and auth.load_session_cookie(app, renewed.group(1).strip('"'))['n'] == 1
+
+
+def test_auth_form_rejects_oversized_body(client):
+    """Un formulario de login enorme se corta con 413 antes de parsearlo."""
+    big = {'email': 'a@b.c', 'password': 'x' * (fastapi_web.FORM_MAX_BYTES + 1)}
+    assert client.post('/login', data=big).status_code == 413
+    assert client.post('/login', data={'email': 'a@b.c', 'password': 'x'}).status_code != 413
