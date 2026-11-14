@@ -348,6 +348,8 @@ docker-compose logs -f web
 
 ## 📁 Estructura del Proyecto
 
+El mapa de componentes, flujos y despliegue está en [docs/architecture.md](docs/architecture.md).
+
 ```
 EmpleoIA/
 │
@@ -589,6 +591,8 @@ terraform apply -var-file=envs/staging.tfvars
 ---
 
 ## 🔧 Solución de Problemas
+
+Para un incidente en staging o producción (base, Redis, worker, scrapers, 5xx, volver a la versión anterior) seguí [docs/runbook.md](docs/runbook.md).
 
 ### ❌ Error: "MySQL connection failed"
 ```bash

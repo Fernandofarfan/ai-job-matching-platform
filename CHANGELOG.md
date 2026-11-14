@@ -6,6 +6,11 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar] - Arquitectura y runbook
+
+- `docs/architecture.md`: componentes, flujos de búsqueda, CV y alertas, despliegue local y en GCP, observabilidad y CI.
+- `docs/runbook.md`: primeros pasos ante un incidente y qué hacer si se cae la base, Redis o el worker, si falla un scraper, con 5xx o latencia alta, con la IA, los emails o una sospecha de seguridad, y cómo volver a la versión anterior.
+
 ## [Sin publicar] - Ofertas repetidas entre portales
 
 - La búsqueda universal unifica la misma oferta publicada en varios portales (`job_dedup.unify`): misma URL, o mismo título y empresa sin tildes, puntuación ni sufijos societarios, en ubicaciones compatibles. Se queda la copia con la descripción más larga y completa los datos que le falten con las otras.
