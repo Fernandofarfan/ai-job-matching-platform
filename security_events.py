@@ -32,6 +32,11 @@ LABELS = {
     'recovery_codes_regenerated': 'Códigos de recuperación nuevos',
     'session_revoked': 'Sesión cerrada desde Mi cuenta',
     'sessions_revoked': 'Otras sesiones cerradas',
+    'login_blocked': 'Intento de entrar con la cuenta bloqueada',
+    'account_blocked': 'Cuenta bloqueada por el administrador',
+    'account_unblocked': 'Cuenta desbloqueada por el administrador',
+    'two_factor_reset': 'Verificación en dos pasos quitada por el administrador',
+    'admin_deleted_account': 'Cuenta de otra persona borrada (administración)',
 }
 LOGIN_KINDS = ('login', 'login_google')
 

@@ -346,7 +346,14 @@ def run_search(search_id, notify, make_scraper=None, profile=None):
 def run_all(notify, make_scraper=None):
     """Corre las búsquedas activas de todos los usuarios, cada una con el perfil de su dueño."""
     results, profiles = [], {}
+    try:
+        blocked = accounts.blocked_ids()
+    except Exception as e:
+        logger.error(f'No se pudieron leer las cuentas bloqueadas: {e}')
+        blocked = set()
     for search_id, user_id in active_search_ids():
+        if user_id in blocked:
+            continue
         with accounts.as_user(user_id):
             if user_id not in profiles:
                 profiles[user_id] = _load_profile()

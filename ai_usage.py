@@ -104,6 +104,12 @@ def budget_exceeded():
     return uid is not None and bool(user_limit) and _get('input', uid) + _get('output', uid) >= user_limit
 
 
+def account_usage(user_id) -> dict:
+    """Llamadas y tokens del mes en curso de una cuenta (panel de administración)."""
+    tokens_in, tokens_out = _get('input', user_id), _get('output', user_id)
+    return {'calls': _get('calls', user_id), 'total_tokens': tokens_in + tokens_out}
+
+
 def summary():
     """Consumo del mes en curso, con costo estimado si se configuraron los precios."""
     input_tokens, output_tokens = _get('input'), _get('output')

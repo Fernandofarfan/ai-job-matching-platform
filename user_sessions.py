@@ -114,3 +114,12 @@ def purge() -> int:
             UserSession.revoked_at < limit, UserSession.last_seen_at < limit - LIFETIME)))
         session.commit()
         return result.rowcount or 0
+
+
+def last_seen_by_user() -> dict:
+    """Última actividad de cada cuenta (panel de administración)."""
+    from sqlalchemy import func
+    with accounts._sessions()() as session:
+        rows = session.execute(select(UserSession.user_id, func.max(UserSession.last_seen_at))
+                               .group_by(UserSession.user_id))
+        return {user_id: seen for user_id, seen in rows}
