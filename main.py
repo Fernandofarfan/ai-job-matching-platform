@@ -19,14 +19,14 @@ import fastapi_web
 import observability
 import rate_limit
 import security_headers
-from routers import (account_pages, admin_pages, ai, alert_pages, analytics, auth_pages, content_pages, documents,
-                     export_pages, insights, pages, profile_pages, scraper_pages, security_pages, tracker)
+from routers import (account_integrations, account_pages, admin_pages, ai, alert_pages, analytics, auth_pages, content_pages, documents,
+                     export_pages, insights, login_providers, pages, profile_pages, scraper_pages, security_pages, tracker)
 from routers import push as push_router
 from routers import webhooks
 
 PUBLIC_API_PATHS = {"/api/health", "/api/ready"}
 EXTENSION_API_PATHS = {"/api/tracker/save-from-extension"}
-LOGIN_ROUTERS = [account_pages.router, security_pages.router, admin_pages.router, export_pages.router, content_pages.router,
+LOGIN_ROUTERS = [account_pages.router, account_integrations.router, security_pages.router, admin_pages.router, export_pages.router, content_pages.router,
                  profile_pages.router, alert_pages.router, scraper_pages.router, ai.router, analytics.router, pages.router]
 PUBLIC_PAGES = {"set_language", "service_worker", "health_check", "readiness_check"}
 
@@ -181,7 +181,9 @@ def create_app(web_app=None) -> FastAPI:
     app.include_router(push_router.router)
     app.include_router(pages.router)
     app.include_router(auth_pages.router)
+    app.include_router(login_providers.router)
     app.include_router(account_pages.router)
+    app.include_router(account_integrations.router)
     app.include_router(security_pages.router)
     app.include_router(admin_pages.router)
     app.include_router(export_pages.router)

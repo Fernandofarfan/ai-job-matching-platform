@@ -6,6 +6,13 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar] - Cuentas y rutas de login partidas
+
+- `accounts.py` deja en `account_lifecycle.py` el resumen semanal, la actividad, el aviso por inactividad y el borrado.
+- `routers/auth_pages.py` deja en `routers/login_providers.py` el login con passkey y con Google.
+- `routers/account_pages.py` deja en `routers/account_integrations.py` Telegram, la extensión de Chrome y Gmail.
+- Las rutas, sus nombres y el comportamiento no cambian.
+
 ## [Sin publicar] - CSP sin estilos inline
 
 - `style-src` ya no permite `'unsafe-inline'`: un HTML inyectado no puede cambiar cómo se ve la página. Los 74

@@ -6,6 +6,7 @@ import pyotp
 import pytest
 from cryptography.fernet import Fernet
 
+import account_lifecycle
 import accounts
 import google_oauth
 import security_events
@@ -132,7 +133,7 @@ def test_account_deletion_and_export_skip_totp(client, ana):
     _enable(client)
     import data_export
     assert 'user_totp' not in data_export.EXPORTED_TABLES
-    accounts.delete_account(ana)
+    account_lifecycle.delete_account(ana)
     assert two_factor._row(ana) is None
 
 

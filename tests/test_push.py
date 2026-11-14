@@ -6,6 +6,7 @@ from unittest import mock
 
 import pytest
 
+import account_lifecycle
 import accounts
 import push
 
@@ -134,5 +135,5 @@ def test_account_deletion_removes_subscriptions(vapid):
     """Borrar la cuenta borra sus dispositivos."""
     uid = accounts.register('ana@example.com', 'clave-larga-1')
     push.subscribe(uid, FCM, 'k', 'a')
-    accounts.delete_account(uid)
+    account_lifecycle.delete_account(uid)
     assert push.device_count(uid) == 0

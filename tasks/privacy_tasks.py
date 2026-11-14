@@ -42,6 +42,7 @@ def enforce_cv_retention() -> dict[str, Any]:
 
     import accounts
 
+
     old = set(cv_storage.expired(days))
     deleted_profiles = 0
     for uid in accounts.owner_ids():
@@ -69,6 +70,7 @@ STALE_CLAIM = timedelta(hours=1)
 
 def _delete_inactive(user_id: int, notice_at: datetime) -> bool:
     """Borra la cuenta si sigue con el aviso `notice_at` (entrar lo anula) y después sus perfiles y CVs."""
+    import account_lifecycle
     import accounts
     import cv_storage
     import profile_store
@@ -76,7 +78,7 @@ def _delete_inactive(user_id: int, notice_at: datetime) -> bool:
     try:
         with accounts.as_user(user_id):
             resumes = {p.get("resume_filename") for p in profile_store.get_all_profiles().values()} - {None, ""}
-        if not accounts.delete_account(user_id, notice_at=notice_at):
+        if not account_lifecycle.delete_account(user_id, notice_at=notice_at):
             return False
     except Exception as e:
         logger.error(f"No se pudo borrar la cuenta inactiva {user_id}: {e}")
@@ -101,6 +103,7 @@ def enforce_account_inactivity() -> dict[str, Any]:
     """Avisa por email a las cuentas sin entrar hace ACCOUNT_INACTIVITY_DAYS menos el aviso, y borra las que siguen
     sin entrar al vencer el aviso. Sin aviso enviado no se borra nada; la primera cuenta (administradora) no se toca."""
     import account_notify
+    import account_lifecycle
     import accounts
     import profile_store
 
@@ -113,18 +116,18 @@ def enforce_account_inactivity() -> dict[str, Any]:
     now = datetime.now().replace(microsecond=0)  # MySQL guarda DATETIME sin microsegundos; si no, == nunca coincide
     first = accounts.first_user_id()
     notified = deleted = 0
-    for user in accounts.inactive_accounts(now - timedelta(days=days - notice)):
+    for user in account_lifecycle.inactive_accounts(now - timedelta(days=days - notice)):
         if user["id"] == first:
             continue
         stale = not user["notice_sent"] and user["notice_at"] is not None and user["notice_at"] <= now - STALE_CLAIM
         if user["notice_at"] is None or stale:
             # se reserva antes de mandar: si dos workers corren a la vez, uno solo manda el email.
             # Una reserva vieja sin confirmar es de un worker que se cortó: se vuelve a mandar.
-            if accounts.set_inactivity_notice(user["id"], now, previous=user["notice_at"] if stale else None):
+            if account_lifecycle.set_inactivity_notice(user["id"], now, previous=user["notice_at"] if stale else None):
                 if account_notify.send_inactivity_notice(user, now + timedelta(days=notice)):
-                    notified += accounts.confirm_inactivity_notice(user["id"], now)
+                    notified += account_lifecycle.confirm_inactivity_notice(user["id"], now)
                 else:
-                    accounts.clear_inactivity_notice(user["id"], now)
+                    account_lifecycle.clear_inactivity_notice(user["id"], now)
         elif user["notice_sent"] and user["notice_at"] <= now - timedelta(days=notice):
             deleted += _delete_inactive(user["id"], user["notice_at"])
     logger.info(f"Cuentas inactivas ({days} días, aviso de {notice}): {notified} avisadas, {deleted} borradas")

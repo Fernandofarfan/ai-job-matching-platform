@@ -7,6 +7,7 @@ import pytest
 
 import account_notify
 import accounts
+import account_lifecycle
 import security_events
 
 PASSWORD = 'clave-larga-1'
@@ -106,7 +107,7 @@ def test_purge_removes_old_events(_accounts_sqlite):
 def test_account_deletion_removes_events(_accounts_sqlite):
     uid = accounts.register('ana@example.com', PASSWORD)
     security_events.record(uid, 'login', '1.2.3.4', CHROME)
-    accounts.delete_account(uid)
+    account_lifecycle.delete_account(uid)
     assert security_events.recent(uid) == []
 
 

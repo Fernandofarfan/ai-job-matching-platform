@@ -8,6 +8,7 @@ from typing import Any, Optional
 from sqlalchemy import DateTime, Integer, String, delete, or_, select, update
 from sqlalchemy.orm import Mapped, mapped_column
 
+import account_lifecycle
 import accounts
 
 logger = logging.getLogger(__name__)
@@ -41,7 +42,7 @@ def create(user_id: int, ip: Optional[str] = None, user_agent: Optional[str] = N
     with accounts._sessions()() as session:
         session.add(UserSession(user_id=user_id, sid_hash=_hash(sid), ip=(ip or '')[:45] or None,
                                 user_agent=(user_agent or '')[:255] or None))
-        accounts.mark_active(user_id, session)
+        account_lifecycle.mark_active(user_id, session)
         session.commit()
     return sid
 
@@ -60,7 +61,7 @@ def is_active(user_id: int, sid: Optional[str]) -> bool:
             return False
         if row.last_seen_at is None or row.last_seen_at < now - TOUCH_EVERY:
             row.last_seen_at = now
-            accounts.mark_active(user_id, session)
+            account_lifecycle.mark_active(user_id, session)
             session.commit()
         return True
 
