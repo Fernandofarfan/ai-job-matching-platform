@@ -415,6 +415,7 @@ MAX_UPLOAD_MB=16       # tamaño máximo de CV
 AI_RATE_LIMIT=30 per minute     # límite por IP para /api/ai/*
 RATELIMIT_STORAGE_URI=memory:// # usá redis://... con varias instancias
 AI_MONTHLY_TOKEN_LIMIT=0        # tope mensual de tokens de Gemini (0 = sin tope); consumo en GET /api/ai/usage.
+MATCHING_BACKEND=tfidf          # embeddings = match CV-oferta por significado con Gemini (cuenta en el tope); tfidf = palabras en común.
                                 # Al llegar al tope, la carga de CV sigue funcionando con el parser local (regex + spaCy), sin IA
 AI_CACHE_TTL=3600               # caché de respuestas de IA deterministas (temperatura ≤ 0.5); 0 la apaga
 AI_PRICE_INPUT_PER_MTOK=        # USD por millón de tokens, para el costo estimado (opcional)
