@@ -40,7 +40,8 @@ def main(argv: list[str] | None = None) -> int:
         if not args.json:
             print(f"{len(dataset['profiles'])} cuentas, {len(dataset['jobs'])} ofertas marcadas")
     if args.compare:
-        return compare(args.min_ndcg, args.json, dataset, args.min_profile_ndcg)
+        # con --feedback cada perfil es una cuenta: el mínimo por perfil no se aplica para no nombrarla
+        return compare(args.min_ndcg, args.json, dataset, 0.0 if args.feedback else args.min_profile_ndcg)
     result = matching_eval.evaluate(dataset)
     if args.feedback:
         result = {'accounts': len((dataset or {}).get('profiles', {})), 'mean': result['mean'], 'by_language': result['by_language']}
@@ -121,7 +122,8 @@ def compare(min_ndcg: float = 0.0, as_json: bool = False, dataset: dict[str, Any
                             'by_language': {lang: _diff(emb['by_language'][lang], tfidf['by_language'][lang])
                                             for lang in tfidf['by_language']}}
     if as_json:
-        print(json.dumps(results, indent=2))
+        failing = {backend: names for backend, names in below.items() if names}
+        print(json.dumps({**results, 'below_min_profile_ndcg': failing} if failing else results, indent=2))
     else:
         print(f"{'backend':<12} {'idioma':<8} {'NDCG@5':>7} {'P@3':>6} {'MRR':>6}")
         for backend, row in results.items():

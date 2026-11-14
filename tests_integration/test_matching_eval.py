@@ -58,6 +58,8 @@ def test_compare_honors_json_and_threshold(monkeypatch, capsys):
     assert 'mean' in out['tfidf'] and 'skipped' in out['embeddings']
     assert eval_matching.main(['--compare', '--min-profile-ndcg', '0.95']) == 1
     assert 'tfidf: por debajo de 0.95' in capsys.readouterr().out
+    assert eval_matching.main(['--compare', '--json', '--min-profile-ndcg', '0.95']) == 1
+    assert 'seguridad_es' in json.loads(capsys.readouterr().out)['below_min_profile_ndcg']['tfidf']
     assert eval_matching.main(['--compare', '--min-profile-ndcg', str(MIN_PROFILE['ndcg@5'])]) == 0
 
 
