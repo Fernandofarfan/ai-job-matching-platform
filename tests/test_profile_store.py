@@ -102,3 +102,22 @@ def test_recovery_keeps_rows_updated_after_the_json(db):
     profile_store._import_legacy_json()
     assert profile_store.get_all_profiles() == {
         'backend': {'skills': ['nuevo']}, 'data': {'skills': ['sql']}}
+
+
+def test_delete_all_clears_db_and_json_copies(db, tmp_path, monkeypatch):
+    """Borra las filas, el JSON de respaldo y la copia .migrated."""
+    monkeypatch.setattr(profile_store, 'JSON_PATH', str(tmp_path / 'p.json'))
+    (tmp_path / 'p.json.migrated').write_text('{}')
+    profile_store.save_profile('backend', {'raw_text': 'CV'})
+    profile_store.delete_all()
+    assert profile_store.get_all_profiles() == {}
+    assert not (tmp_path / 'p.json.migrated').exists()
+
+
+def test_delete_all_fails_while_mysql_is_down(monkeypatch):
+    """Con MySQL caído no informa éxito borrando solo el JSON."""
+    monkeypatch.setenv('PROFILE_STORAGE', 'mysql')
+    monkeypatch.setattr(profile_store, '_sessions', lambda: None)
+    with pytest.raises(RuntimeError):
+        profile_store.delete_all()
+

@@ -5,7 +5,7 @@ import os
 import time
 from datetime import datetime
 
-from sqlalchemy import JSON, Column, DateTime, Integer, String, select
+from sqlalchemy import JSON, Column, DateTime, Integer, String, delete, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import declarative_base
 
@@ -194,3 +194,25 @@ def delete_profile(role_type):
             _write_json(profiles, _json_deleted() | {role_type})
         return removed
     return _run(db_op, json_op)
+
+
+def primary_available():
+    """False si los perfiles van en MySQL pero ahora no responde (solo se vería el JSON de respaldo)."""
+    return os.getenv('PROFILE_STORAGE', 'mysql') != 'mysql' or _sessions() is not None
+
+
+def delete_all():
+    """Borra todos los perfiles, incluido el JSON de respaldo y su copia .migrated.
+
+    Si MySQL está configurado pero caído, falla: borrar solo el JSON dejaría los perfiles en la base.
+    """
+    if not primary_available():
+        raise RuntimeError('MySQL no disponible: no se pueden borrar los perfiles guardados ahí')
+    sessions = _sessions()
+    if sessions is not None:
+        with sessions() as session:
+            session.execute(delete(UserProfile))
+            session.commit()
+    for path in (JSON_PATH, JSON_PATH + '.migrated'):
+        if os.path.exists(path):
+            os.remove(path)

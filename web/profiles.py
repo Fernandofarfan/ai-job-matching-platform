@@ -4,6 +4,8 @@ from datetime import datetime
 from flask import flash, jsonify, redirect, render_template, request, url_for
 from werkzeug.utils import secure_filename
 
+import cv_storage
+
 from app import (  # noqa: F401
     app,
     delete_user_profile,
@@ -49,9 +51,6 @@ def upload_resume():
         return redirect(url_for('profile'))
     
     if file:
-        uploads_dir = 'uploads'
-        os.makedirs(uploads_dir, exist_ok=True)
-        
         original_name = secure_filename(file.filename)
         extension = os.path.splitext(original_name)[1].lower()
         if extension not in ALLOWED_RESUME_EXTENSIONS:
@@ -60,11 +59,11 @@ def upload_resume():
 
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         filename = f"resume_{role_type}_{timestamp}_{original_name}"
-        filepath = os.path.join(uploads_dir, filename)
-        file.save(filepath)
-        
+        cv_storage.save(file.read(), filename)
+
         try:
-            profile = resume_parser.parse_resume(filepath)
+            with cv_storage.plaintext_path(filename) as filepath:
+                profile = resume_parser.parse_resume(filepath)
             
             if profile:
                 if additional_skills:
@@ -87,10 +86,11 @@ def upload_resume():
     
     return redirect(url_for('profile'))
 
-@app.route('/delete_profile')
+@app.route('/delete_profile', methods=['POST'])
 def delete_profile():
+    """"Borrar mis datos": perfiles, CVs y documentos generados (derecho de supresión, Ley 25.326)."""
     if delete_user_profile():
-        flash('Profile deleted successfully', 'success')
+        flash('Se borraron tus perfiles, CVs y documentos generados', 'success')
     else:
         flash('Error deleting profile', 'danger')
     return redirect(url_for('profile'))

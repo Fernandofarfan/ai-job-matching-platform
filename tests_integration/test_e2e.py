@@ -1,7 +1,11 @@
 """E2E con Chromium (Playwright) contra la app levantada: login, subida de CV y tracker."""
+import glob
+import os
 import uuid
 
 import pytest
+
+from tests_integration.conftest import ROOT
 
 CV = (
     "Ana Pérez\nana.perez@example.com\n+54 11 5555-0000\n\n"
@@ -58,6 +62,8 @@ def test_upload_resume_creates_profile(page, tmp_path):
     page.wait_for_load_state('networkidle')
     assert '/profile' in page.url
     assert page.get_by_text('uploaded successfully').count() or page.get_by_text('subido').count()
+    saved = max(glob.glob(os.path.join(ROOT, 'uploads', '*_cv_ana.txt')), key=os.path.getmtime)
+    assert 'Ana' not in open(saved, 'rb').read().decode('latin-1'), 'el CV quedó sin cifrar en disco'
 
 
 def test_tracker_add_job(page):

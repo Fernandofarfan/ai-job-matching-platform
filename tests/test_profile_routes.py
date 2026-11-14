@@ -26,3 +26,8 @@ def test_view_profile_without_profiles_redirects_to_upload(client, app):
         response = client.get('/view_profile')
     assert response.status_code == 302
     assert response.headers['Location'].endswith('/profile')
+
+
+def test_delete_all_data_requires_post(client):
+    """'Borrar mis datos' no se dispara con un GET (enlace o prefetch)."""
+    assert client.get('/delete_profile').status_code == 405

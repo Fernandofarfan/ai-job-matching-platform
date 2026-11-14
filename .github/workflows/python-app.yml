@@ -75,6 +75,7 @@ jobs:
             pytest-mock \
             pydantic \
             pypdf \
+            cryptography==50.0.2 \
             python-docx \
             scikit-learn \
             spacy \

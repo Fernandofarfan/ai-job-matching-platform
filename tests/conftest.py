@@ -63,9 +63,6 @@ _ALL_MOCKS = [
     'apscheduler.triggers', 'apscheduler.triggers.cron', 'apscheduler.triggers.interval',
     # Google AI
     'google', 'google.genai', 'google.genai.types',
-    # Security
-    'cryptography', 'cryptography.fernet', 'cryptography.hazmat',
-    'cryptography.hazmat.primitives', 'cryptography.hazmat.backends',
     # Database (usar mock en CI, real app usa MySQL)
     'mysql', 'mysql.connector', 'mysql.connector.pooling', 'mysql.connector.errors',
     # Selenium remote (needed by indeed_scraper.py)
