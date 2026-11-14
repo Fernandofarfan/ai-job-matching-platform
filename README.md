@@ -114,6 +114,7 @@
 - Digest de nuevas ofertas encontradas
 - Resumen semanal de actividad (postulaciones, entrevistas, tasa de respuesta)
 - Template HTML premium en dark mode
+- **Alertas de empleo** (`/alerts`): guardá una búsqueda y recibí por email o Telegram solo las ofertas nuevas, sin duplicados entre portales y con match mínimo opcional contra tu CV. Configurá `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` y `ALERTS_INTERVAL_HOURS` en `.env`.
 
 ### ⚡ **Rendimiento y Modo Offline (PWA)**
 - Soporte para Progressive Web App (PWA) con modo de instalación

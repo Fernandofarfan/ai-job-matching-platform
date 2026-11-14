@@ -222,3 +222,127 @@ def check_and_send_followup_reminders():
 
     logger.info(f"Queued {sent} follow-up reminders")
     return {"sent": sent, "checked": len(jobs)}
+
+
+# ── Alertas de empleo (búsquedas guardadas) ──────────────────────────────────
+def telegram_configured() -> bool:
+    """True si hay bot y chat de Telegram configurados."""
+    return bool(os.getenv("TELEGRAM_BOT_TOKEN") and os.getenv("TELEGRAM_CHAT_ID"))
+
+
+def email_configured() -> bool:
+    """True si el SMTP tiene credenciales y destinatario."""
+    return bool(SMTP_USER and SMTP_PASSWORD and NOTIFICATION_EMAIL)
+
+
+TELEGRAM_MAX_CHARS = 4096
+
+
+def _telegram_chunks(text: str, size: int = TELEGRAM_MAX_CHARS) -> list:
+    """Parte el texto en mensajes de hasta `size` caracteres, cortando entre ofertas (líneas '• ')."""
+    chunks, current = [], ""
+    for block in text.split("\n• "):
+        block = block if not current and not chunks else "• " + block
+        candidate = f"{current}\n{block}" if current else block
+        if len(candidate) <= size:
+            current = candidate
+            continue
+        if current:
+            chunks.append(current)
+        current = block[:size]
+    if current:
+        chunks.append(current)
+    return chunks
+
+
+def send_telegram(text: str) -> bool:
+    """Envía un mensaje HTML al chat configurado vía Bot API (en partes si supera el límite)."""
+    if not telegram_configured():
+        logger.warning("Telegram no configurado. Configurá TELEGRAM_BOT_TOKEN y TELEGRAM_CHAT_ID en .env")
+        return False
+    import requests
+    try:
+        for chunk in _telegram_chunks(text):
+            resp = requests.post(
+                f"https://api.telegram.org/bot{os.getenv('TELEGRAM_BOT_TOKEN')}/sendMessage",
+                json={
+                    "chat_id": os.getenv("TELEGRAM_CHAT_ID"), "text": chunk,
+                    "parse_mode": "HTML", "disable_web_page_preview": True,
+                },
+                timeout=10,
+            )
+            if not resp.ok:
+                logger.error(f"Telegram respondió {resp.status_code}")
+                return False
+        return True
+    except Exception as e:
+        logger.error(f"Error enviando a Telegram: {type(e).__name__}")
+        return False
+
+
+def _job_line(job: dict) -> tuple:
+    """(título, empresa, ubicación, url, match) escapados para HTML."""
+    from html import escape
+    get = lambda k: escape(str(job.get(k.capitalize()) or job.get(k.upper()) or job.get(k) or ""))  # noqa: E731
+    match = job.get("match_percent")
+    return get("title"), get("company"), get("location"), get("url"), match
+
+
+def alert_telegram_text(search: dict, jobs: list, limit: int = 15) -> str:
+    """Mensaje de Telegram con las ofertas nuevas de una búsqueda (máx. `limit`)."""
+    from html import escape
+    lines = [f"🔔 <b>{len(jobs)} ofertas nuevas</b> · {escape(search['name'])}"]
+    for job in jobs[:limit]:
+        title, company, location, url, match = _job_line(job)
+        head = f'<a href="{url}">{title}</a>' if url else title
+        details = [company, location] + ([f"{match:.0f}%"] if match is not None else [])
+        lines.append(f"• {head}\n  " + " · ".join(d for d in details if d))
+    return "\n".join(lines)
+
+
+def alert_email_html(search: dict, jobs: list, limit: int = 15) -> str:
+    """Email con las ofertas nuevas de una búsqueda (máx. `limit`)."""
+    from html import escape
+    items = ""
+    for job in jobs[:limit]:
+        title, company, location, url, match = _job_line(job)
+        link = f'<a href="{url}" style="color:white;">{title}</a>' if url else title
+        details = [f'<span style="color:#a78bfa;">{company}</span>' if company else "",
+                   f'<span style="color:#94a3b8;">{location}</span>' if location else "",
+                   f'<span style="color:#22c55e;">{match:.0f}%</span>' if match is not None else ""]
+        items += (
+            '<div style="background:#232336;padding:12px;border-radius:10px;margin:8px 0;">'
+            f'<strong>{link}</strong><br>{" · ".join(d for d in details if d)}</div>'
+        )
+    base_url = os.getenv("APP_BASE_URL", "http://localhost:5000").rstrip("/")
+    return _get_email_template(
+        f"🔔 {len(jobs)} ofertas nuevas: {escape(search['name'])}", items,
+        f"{base_url}/alerts", "Ver mis alertas",
+    )
+
+
+def notify_alert(search: dict, jobs: list) -> dict:
+    """Avisa por cada canal de la búsqueda; devuelve {canal: enviado}."""
+    sent = {}
+    if "email" in search["channels"]:
+        sent["email"] = _send_email(
+            NOTIFICATION_EMAIL, f"🔔 EmpleoIA: {len(jobs)} ofertas nuevas ({search['name']})",
+            alert_email_html(search, jobs),
+        )
+    if "telegram" in search["channels"]:
+        sent["telegram"] = send_telegram(alert_telegram_text(search, jobs))
+    return sent
+
+
+@celery.task(name="tasks.notification_tasks.run_job_alerts")
+def run_job_alerts():
+    """Corre todas las búsquedas guardadas activas (Celery Beat)."""
+    import job_alerts
+    return job_alerts.run_all(notify_alert)
+
+
+@celery.task(name="tasks.notification_tasks.run_job_alert")
+def run_job_alert(search_id: int):
+    """Corre una búsqueda guardada ahora (botón "Buscar ahora")."""
+    import job_alerts
+    return job_alerts.run_search(search_id, notify_alert)

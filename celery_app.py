@@ -74,6 +74,11 @@ celery.conf.beat_schedule = {
         "task": "tasks.notification_tasks.check_and_send_followup_reminders",
         "schedule": 86400,  # 24 horas en segundos
     },
+    # Búsquedas guardadas: avisa solo por ofertas nuevas
+    "run-job-alerts": {
+        "task": "tasks.notification_tasks.run_job_alerts",
+        "schedule": float(os.getenv("ALERTS_INTERVAL_HOURS", "6")) * 3600,
+    },
     # Limpiar archivos tmp antiguos cada semana
     "cleanup-old-temp-files": {
         "task": "tasks.ai_tasks.cleanup_old_temp_files",
