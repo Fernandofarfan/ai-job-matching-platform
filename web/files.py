@@ -18,13 +18,21 @@ def view_file(filename):
     try:
         file_path = os.path.join('results', filename)
         if os.path.exists(file_path) and filename.endswith('.csv'):
-            # SOLUCIÓN: latin-1 puede decodificar cualquier byte (0-255) sin errores
-            df = pd.read_csv(file_path, encoding='latin-1')
+            # Los scrapers escriben UTF-8 (Bumeran con BOM); latin-1 queda para CSVs viejos
+            try:
+                df = pd.read_csv(file_path, encoding='utf-8-sig')
+            except UnicodeDecodeError:
+                df = pd.read_csv(file_path, encoding='latin-1')
             
             has_matches = 'overall_match' in df.columns
             
             if has_matches:
                 df = df.sort_values('overall_match', ascending=False)
+            import job_ranking
+            model = job_ranking.load_model()
+            if model is not None:
+                ranked = job_ranking.rank(df.to_dict('records'), model, match_key='overall_match')
+                df = pd.DataFrame(ranked)
             
             # Select columns to display (excluding match scores)
             # Define column mapping (English -> Spanish)
@@ -44,16 +52,24 @@ def view_file(filename):
 
             # Select columns to display (using Spanish names)
             display_columns = ['Título', 'Empresa', 'Ubicación', 'Enlace', 'URL', 'Apply_URL']
+            if 'preference' in df.columns:
+                df = df.rename(columns={'preference': 'Afinidad'})
+                display_columns.insert(0, 'Afinidad')
             
             display_columns = [col for col in display_columns if col in df.columns]
             
             display_df = df[display_columns].copy()
             
-            # Make job links clickable
+            # Los CSV traen texto de portales externos: todo se escapa antes de armar la tabla (escape=False)
+            from html import escape
+            for col in display_df.columns:
+                if col != 'Enlace':
+                    display_df[col] = display_df[col].apply(lambda v: '' if pd.isna(v) else escape(str(v)))
             if 'Enlace' in display_df.columns:
                 display_df['Enlace'] = display_df['Enlace'].apply(
-                    lambda x: f'<a href="{x}" target="_blank" class="btn btn-sm btn-primary">Postular</a>' 
-                    if pd.notna(x) and str(x).startswith('http') else 'N/A'
+                    lambda x: f'<a href="{escape(str(x))}" target="_blank" rel="noopener noreferrer" '
+                              'class="btn btn-sm btn-primary">Postular</a>'
+                    if pd.notna(x) and str(x).startswith(('http://', 'https://')) else 'N/A'
                 )
             
             table_html = display_df.head(100).to_html(

@@ -117,6 +117,7 @@
 - **Portales:** Computrabajo, Bumeran, ZonaJobs (misma plataforma que Bumeran) y GetOnBoard (API pública, sin navegador) en la búsqueda universal, las alertas y el monitor diario.
 - **Puntaje ATS** (`/optimize_resume` → "Calcular puntaje ATS", o `POST /api/ats_score`): puntaje de 0 a 100 sin IA con contacto, secciones, extensión, logros medibles, fechas y palabras clave de la oferta que faltan en el CV.
 - **Recordatorios del tracker:** cada postulación acepta fecha de seguimiento, fecha límite y notas. Celery Beat manda un solo aviso diario por email o Telegram con los seguimientos vencidos; sin fecha, avisa `FOLLOWUP_DAYS` días después de postular. Cada recordatorio se manda una vez.
+- **Ranking personal:** aprende del tracker a qué ofertas te postulás y cuáles dejás guardadas sin postular (más de `RANKING_STALE_DAYS` días), por palabras del título, empresa, ubicación y portal. Reordena los avisos de alertas y los resultados de búsqueda (columna "Afinidad") mezclando el match del CV con lo aprendido (`RANKING_WEIGHT`, 0.3 por defecto). `/api/ranking` muestra qué aprendió; necesita al menos 3 ejemplos de cada tipo.
 - **Alertas de empleo** (`/alerts`): guardá una búsqueda y recibí por email o Telegram solo las ofertas nuevas, sin duplicados entre portales y con match mínimo opcional contra tu CV. Configurá `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` y `ALERTS_INTERVAL_HOURS` en `.env`.
 
 ### ⚡ **Rendimiento y Modo Offline (PWA)**
