@@ -6,6 +6,11 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar] - Política de seguridad y CODEOWNERS
+
+- `SECURITY.md`: cómo reportar una vulnerabilidad en privado (formulario de GitHub), plazos de respuesta, versiones con soporte y qué entra.
+- `.github/CODEOWNERS`: @Fernandofarfan queda como revisor pedido en todos los PRs.
+
 ## [Sin publicar] - SLOs y presupuesto de errores
 
 - `terraform/slo.tf`: servicio de Cloud Monitoring con 2 SLOs sobre 28 días, con métricas de Cloud Run: 99,5 % de pedidos sin 5xx (`slo_availability_goal`) y 95 % en 1 s o menos (`slo_latency_goal`, `slo_latency_ms`).

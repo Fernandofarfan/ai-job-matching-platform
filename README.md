@@ -671,7 +671,7 @@ docker run -d -p 6379:6379 redis:7-alpine
 - 🌍 Soporte para más países latinoamericanos
 - 🧪 Tests adicionales
 
-Ver [CONTRIBUTING.md](CONTRIBUTING.md) para más detalles.
+Ver [CONTRIBUTING.md](CONTRIBUTING.md) para más detalles. Las vulnerabilidades no van en issues públicos: ver [SECURITY.md](SECURITY.md).
 
 ---
 
