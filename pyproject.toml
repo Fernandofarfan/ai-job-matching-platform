@@ -21,7 +21,7 @@ exclude = ["^alembic/", "^chrome_extension/", "^build/", "^venv"]
 # mypy estricto por etapas: los módulos de esta lista ya cumplen --strict y no pueden volver atrás.
 # Etapa 1: cuentas, sesiones, segundo factor, passkeys y modelos.
 [[tool.mypy.overrides]]
-module = ["accounts", "auth", "models", "passkeys", "security_events", "two_factor", "user_sessions"]
+module = ["accounts", "auth", "models", "passkeys", "security_events", "two_factor", "user_sessions", "version"]
 disallow_untyped_defs = true
 disallow_incomplete_defs = true
 disallow_untyped_calls = true

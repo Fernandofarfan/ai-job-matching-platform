@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 
 import accounts
 import error_reporting
+import version
 
 
 def test_setup_is_noop_without_dsn(monkeypatch):
@@ -21,7 +22,7 @@ def test_setup_with_dsn(monkeypatch):
     monkeypatch.setattr(error_reporting, '_enabled', False)
     monkeypatch.setenv('SENTRY_DSN', 'https://key@example.ingest.sentry.io/1')
     monkeypatch.setenv('SENTRY_ENVIRONMENT', 'staging')
-    monkeypatch.setenv('K_REVISION', 'empleoia-web-00042')
+    monkeypatch.setenv('APP_COMMIT', 'abc1234def5678')
     monkeypatch.setenv('SENTRY_TRACES_SAMPLE_RATE', 'nope')
     with mock.patch('sentry_sdk.init') as init, mock.patch('sentry_sdk.set_tag') as set_tag:
         assert error_reporting.setup('worker') is True
@@ -29,7 +30,7 @@ def test_setup_with_dsn(monkeypatch):
     kwargs = init.call_args.kwargs
     assert init.call_count == 1
     assert kwargs['environment'] == 'staging'
-    assert kwargs['release'] == 'empleoia-web-00042'
+    assert kwargs['release'] == f'empleoia@{version.__version__}+abc1234def56'
     assert kwargs['traces_sample_rate'] == 0.0
     assert kwargs['send_default_pii'] is False
     assert kwargs['before_send'] is error_reporting.before_send

@@ -21,6 +21,12 @@ RUN pip install --no-cache-dir --require-hashes -r requirements.txt
 # Copia todo el código fuente del proyecto (queda de root: la app no puede modificar su propio código)
 COPY . .
 
+# Commit del build (deploy.yml y release.yml lo pasan): lo muestran /api/health y Sentry
+ARG APP_COMMIT=""
+ENV APP_COMMIT=${APP_COMMIT}
+LABEL org.opencontainers.image.source="https://github.com/Fernandofarfan/ai-job-matching-platform" \
+      org.opencontainers.image.revision="${APP_COMMIT}"
+
 # Usuario sin privilegios. UID 1000 es el usuario habitual del host, así los volúmenes ./uploads, ./results, etc.
 # de docker compose quedan escribibles; solo esos directorios son del usuario de la app.
 ARG APP_UID=1000

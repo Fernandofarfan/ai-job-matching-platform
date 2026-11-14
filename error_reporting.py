@@ -8,6 +8,8 @@ import logging
 import os
 import re
 
+import version
+
 logger = logging.getLogger(__name__)
 
 _SENSITIVE_HEADERS = {'authorization', 'cookie', 'set-cookie', 'x-csrftoken', 'x-csrf-token',
@@ -75,8 +77,8 @@ def setup(component: str) -> bool:
     sentry_sdk.init(
         dsn=dsn,
         environment=os.getenv('SENTRY_ENVIRONMENT') or 'development',
-        # en Cloud Run, K_REVISION identifica el deploy
-        release=os.getenv('SENTRY_RELEASE') or os.getenv('K_REVISION') or None,
+        # versión y commit de la imagen (VERSION y APP_COMMIT); SENTRY_RELEASE lo reemplaza
+        release=os.getenv('SENTRY_RELEASE') or version.release(),
         traces_sample_rate=_float_env('SENTRY_TRACES_SAMPLE_RATE', '0'),
         send_default_pii=False,
         max_request_body_size='never',

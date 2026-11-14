@@ -11,6 +11,14 @@ def test_health_endpoint(client):
     assert response.get_json()['status'] == 'ok'
 
 
+def test_health_reports_version_and_commit(client, monkeypatch):
+    """Con /api/health se ve qué versión y qué commit corre después de un deploy o un rollback."""
+    import version
+    monkeypatch.setenv('APP_COMMIT', '0123456789abcdef')
+    data = client.get('/api/health').get_json()
+    assert data['version'] == version.__version__ and data['commit'] == '0123456789ab'
+
+
 def test_ready_ok_without_redis(client, monkeypatch):
     """Con la base respondiendo y sin Redis configurado, /api/ready da 200."""
     import main

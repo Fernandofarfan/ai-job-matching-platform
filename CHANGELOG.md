@@ -6,6 +6,14 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar] - Versiones y releases
+
+- `VERSION` es la versión de la app (semver). `/api/health` muestra la versión y el commit de la imagen, y Sentry reporta `empleoia@X.Y.Z+<commit>`.
+- `scripts/release.py prepare X.Y.Z` sube `VERSION` y junta las entradas "Sin publicar" del CHANGELOG bajo la versión; `notes X.Y.Z` imprime sus notas.
+- `release.yml`: al pushear el tag `vX.Y.Z`, verifica que coincida con `VERSION`, publica la imagen en `ghcr.io` y crea el release de GitHub con las notas del CHANGELOG.
+- `deploy.yml`: producción solo se despliega desde un tag. Volver atrás es desplegar el tag anterior; si la imagen de ese commit ya existe, no se reconstruye.
+- `docs/releases.md`: cuándo sube cada número, cómo sacar una versión y cómo volver a la anterior.
+
 ## [Sin publicar] - OWASP ZAP sobre la app levantada
 
 - Job `zap`: levanta la app con MySQL y Redis, entra con una cuenta con datos y corre el baseline de ZAP (spider + reglas pasivas) con la sesión iniciada (`scripts/zap_scan.sh`). La imagen de ZAP va fijada por digest. Cualquier alerta WARN o FAIL corta el CI; las aceptadas están en `.zap/rules.tsv`, cada una con su motivo. El reporte queda en el artefacto `zap` y en el resumen del job.

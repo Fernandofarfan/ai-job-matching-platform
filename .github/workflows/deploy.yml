@@ -1,7 +1,8 @@
 name: Deploy a GCP
 
-# Push a main -> staging. Producción: "Run workflow" con environment=prod
-# (conviene exigir aprobación en Settings > Environments > prod).
+# Push a main -> staging. Producción: "Run workflow" con environment=prod, eligiendo un tag vX.Y.Z en
+# "Use workflow from" (conviene exigir aprobación en Settings > Environments > prod). Volver atrás es lo mismo
+# con el tag anterior: la imagen de ese commit ya existe y no se reconstruye. Ver docs/releases.md.
 # Necesita, por GitHub Environment:
 #   variables: GCP_PROJECT_ID, GCP_REGION (opcional), GCP_WORKLOAD_IDENTITY_PROVIDER, GCP_DEPLOY_SA, TF_STATE_BUCKET
 #   secretos:  DB_PASSWORD, GEMINI_API_KEY, SECRET_KEY, CV_ENCRYPTION_KEY, EXTRA_SECRETS_JSON (opcional)
@@ -64,6 +65,12 @@ jobs:
         with:
           terraform_version: 1.9.8
 
+      - name: Producción solo desde un tag de versión
+        if: env.ENVIRONMENT == 'prod' && !startsWith(github.ref, 'refs/tags/v')
+        run: |
+          echo "::error::Producción se despliega desde un tag vX.Y.Z (elegilo en 'Use workflow from'), no desde $GITHUB_REF"
+          exit 1
+
       - name: Imagen a desplegar
         run: |
           echo "TF_VAR_image=${REGION}-docker.pkg.dev/${TF_VAR_project_id}/empleoia-${ENVIRONMENT}/web:${GITHUB_SHA}" >> "$GITHUB_ENV"
@@ -92,7 +99,11 @@ jobs:
         working-directory: .
         run: |
           gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
-          docker build -t "$TF_VAR_image" .
+          if gcloud artifacts docker images describe "$TF_VAR_image" > /dev/null 2>&1; then
+            echo "La imagen de este commit ya existe: se despliega la misma"
+            exit 0
+          fi
+          docker build --build-arg APP_COMMIT="$GITHUB_SHA" -t "$TF_VAR_image" .
           docker push "$TF_VAR_image"
 
       - name: Migraciones de Alembic
