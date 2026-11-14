@@ -1,7 +1,8 @@
 """Unifica la misma oferta publicada en varios portales (búsqueda universal).
 
 Dos ofertas son la misma si tienen la misma URL, o el mismo título y la misma empresa (sin tildes,
-mayúsculas, puntuación ni sufijos societarios, y con "Senior" igual a "Sr") en ubicaciones compatibles.
+mayúsculas, puntuación ni sufijos societarios, con "Senior" igual a "Sr", sin el nombre de la empresa en el título y con
+las palabras en inglés traducidas: "Data Analyst" es "Analista de Datos") en ubicaciones compatibles.
 La precisión y la cobertura se miden con los pares etiquetados de eval/dedup_pairs.json (scripts/eval_dedup.py). Las empresas
 "Confidencial" o vacías no se unifican: sin empresa no hay forma de saber si es la misma oferta.
 """

@@ -4,7 +4,7 @@ import json
 from scripts import eval_dedup
 
 MIN_PRECISION = 1.0
-MIN_RECALL = 0.9
+MIN_RECALL = 1.0
 
 
 def test_dataset_is_balanced_and_well_formed():

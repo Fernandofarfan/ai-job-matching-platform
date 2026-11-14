@@ -738,6 +738,96 @@
     "Location": "Villa Carlos Paz, Córdoba",
     "URL": "https://computrabajo.example/88412"
    }
+  },
+  {
+   "case": "Título traducido de otro puesto",
+   "same": false,
+   "a": {
+    "Fuente": "LinkedIn",
+    "Title": "Data Engineer",
+    "Company": "Rappi",
+    "Location": "Buenos Aires",
+    "URL": "https://linkedin.example/7781"
+   },
+   "b": {
+    "Fuente": "Bumeran",
+    "Title": "Analista de Datos",
+    "Company": "Rappi",
+    "Location": "Buenos Aires",
+    "URL": "https://bumeran.example/7782"
+   }
+  },
+  {
+   "case": "Título con un lugar que coincide en parte con la empresa",
+   "same": false,
+   "a": {
+    "Fuente": "ZonaJobs",
+    "Title": "Analista en Sistemas",
+    "Company": "Sistemas Globales",
+    "Location": "CABA",
+    "URL": "https://zonajobs.example/7783"
+   },
+   "b": {
+    "Fuente": "Bumeran",
+    "Title": "Analista",
+    "Company": "Sistemas Globales",
+    "Location": "CABA",
+    "URL": "https://bumeran.example/7784"
+   }
+  },
+  {
+   "case": "Título con la empresa y otro puesto",
+   "same": false,
+   "a": {
+    "Fuente": "ZonaJobs",
+    "Title": "Repositor - Coto",
+    "Company": "Coto CICSA",
+    "Location": "La Plata",
+    "URL": "https://zonajobs.example/7785"
+   },
+   "b": {
+    "Fuente": "Bumeran",
+    "Title": "Cajero",
+    "Company": "Coto",
+    "Location": "La Plata",
+    "URL": "https://bumeran.example/7786"
+   }
+  },
+  {
+   "case": "Título traducido con seniority distinto",
+   "same": false,
+   "a": {
+    "Fuente": "LinkedIn",
+    "Title": "Senior Software Developer",
+    "Company": "Globant",
+    "Location": "Córdoba",
+    "URL": "https://linkedin.example/7787"
+   },
+   "b": {
+    "Fuente": "Computrabajo",
+    "Title": "Desarrollador de Software Junior",
+    "Company": "Globant",
+    "Location": "Córdoba",
+    "URL": "https://computrabajo.example/7788"
+   }
+  },
+  {
+   "case": "Título traducido con seniority, en otro orden",
+   "same": true,
+   "a": {
+    "Fuente": "LinkedIn",
+    "Title": "Senior Software Developer",
+    "Company": "Globant",
+    "Location": "Córdoba",
+    "URL": "https://linkedin.example/7789"
+   },
+   "b": {
+    "Fuente": "Computrabajo",
+    "Title": "Desarrollador de Software Sr",
+    "Company": "Globant",
+    "Location": "Córdoba",
+    "URL": "https://computrabajo.example/7790"
+   }
   }
  ]
 }
