@@ -6,6 +6,12 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar] - Pruebas de mutación
+
+- mutmut sobre `auth.py`, `accounts.py`, `rate_limit.py` y `job_dedup.py`: 80,1 % de mutantes detectados (988 de 1233). Corre los lunes y a mano (`.github/workflows/mutation.yml`), con un reporte por módulo (`scripts/mutation_report.py`). No frena PRs.
+- `tests/test_account_rules.py`: reglas de registro, administrador, bloqueo de cuentas, verificación de email, huella de la sesión y límites de pedidos que ningún test detectaba al cambiarlas. Subió el puntaje de 67,7 % a 80,1 %.
+- `tests/test_mutmut_config.py` avisa si un módulo nuevo de la raíz falta en `also_copy`. Explicado en `docs/mutation-testing.md`.
+
 ## [Sin publicar] - Política de seguridad y CODEOWNERS
 
 - `SECURITY.md`: cómo reportar una vulnerabilidad en privado (formulario de GitHub), plazos de respuesta, versiones con soporte y qué entra.

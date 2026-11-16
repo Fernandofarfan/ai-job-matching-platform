@@ -1,0 +1,2 @@
+# Pruebas de mutación (workflow mutation.yml). pytest y el resto vienen de requirements.txt.
+mutmut==3.8.1
