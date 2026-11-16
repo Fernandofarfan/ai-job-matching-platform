@@ -90,7 +90,7 @@ def test_check_interview_emails_per_account(monkeypatch, gmail_tracker):  # noqa
     assert set(gmail_tracker.check_interview_emails()) == {1, 2}
     monkeypatch.setattr(integrations, 'gmail_token', lambda uid: 'roto')
     assert 'vencido' in gmail_tracker.check_interview_emails()[1]
-    monkeypatch.setattr(integrations, 'gmail_user_ids', lambda: [])
+    monkeypatch.setattr(integrations, 'gmail_user_ids', list)
     monkeypatch.setattr(integrations, 'legacy_allowed', lambda uid, kind: True)
     monkeypatch.setattr(gmail_tracker, 'get_gmail_service', lambda: None)
     assert 'skipped' in gmail_tracker.check_interview_emails()

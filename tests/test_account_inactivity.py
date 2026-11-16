@@ -3,9 +3,9 @@ from datetime import datetime, timedelta
 
 import pytest
 
+import account_lifecycle
 import account_notify
 import accounts
-import account_lifecycle
 import profile_store
 import user_sessions
 from tasks import privacy_tasks
@@ -48,7 +48,7 @@ def test_off_by_default(three_accounts, monkeypatch):
 
 def test_notice_then_delete_except_first_account(three_accounts):
     """Primero avisa (una sola vez); al vencer el aviso borra; la primera cuenta no se toca."""
-    (admin, a, b), sent = three_accounts
+    (admin, _a, _b), sent = three_accounts
     assert privacy_tasks.enforce_account_inactivity.run() == {'notified': 2, 'deleted': 0}
     assert sent == ['u1@example.com', 'u2@example.com']
     assert privacy_tasks.enforce_account_inactivity.run() == {'notified': 0, 'deleted': 0}
@@ -107,7 +107,7 @@ def test_interrupted_notice_is_sent_again_not_deleted(three_accounts):
 
 def test_recent_claim_is_left_to_its_worker(three_accounts):
     """Una reserva reciente sin confirmar es de otro worker que está mandando el email: no se duplica."""
-    (_, a, b), sent = three_accounts
+    (_, a, _b), sent = three_accounts
     assert account_lifecycle.set_inactivity_notice(a, datetime.now().replace(microsecond=0))
     assert privacy_tasks.enforce_account_inactivity.run() == {'notified': 1, 'deleted': 0}
     assert sent == ['u2@example.com']

@@ -1,11 +1,11 @@
 """Exportar mis datos: un ZIP con todo lo que la app guarda de una cuenta (sin secretos)."""
-from typing import Any
 import io
 import json
 import logging
 import os
 import zipfile
 from datetime import datetime
+from typing import Any
 
 import accounts
 import cv_storage
@@ -27,7 +27,7 @@ def _rows(session: Any, inspector: Any, table: str, user_id: int) -> list[Any]:
     from sqlalchemy import text
     if not inspector.has_table(table) or 'user_id' not in {c['name'] for c in inspector.get_columns(table)}:
         return []
-    result = session.execute(text(f'SELECT * FROM {table} WHERE user_id = :uid'), {'uid': user_id})
+    result = session.execute(text(f'SELECT * FROM {table} WHERE user_id = :uid'), {'uid': user_id})  # noqa: S608 - tabla/orden de una lista fija, no del usuario
     return [dict(row._mapping) for row in result]
 
 

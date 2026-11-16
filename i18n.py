@@ -4,11 +4,11 @@ Los textos se escriben en español en las plantillas (`{{ _('Texto') }}`) y los 
 `translations/<idioma>.json` los traducen; lo que falta en un catálogo se muestra en español.
 El idioma sale de la cookie `lang` (selector de la barra) o, sin ella, de `Accept-Language`.
 """
-from typing import Any
 import json
 import os
 from contextvars import ContextVar
-from functools import lru_cache
+from functools import cache
+from typing import Any
 
 from markupsafe import Markup, escape
 
@@ -19,7 +19,7 @@ _DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'translations')
 _current: ContextVar[str] = ContextVar('lang', default=DEFAULT)
 
 
-@lru_cache(maxsize=None)
+@cache
 def catalog(lang: str) -> dict[str, Any]:
     """Traducciones de un idioma, con el texto en español como clave."""
     if lang == DEFAULT or lang not in LANGUAGES:
@@ -80,5 +80,6 @@ def jinja_gettext(text: str, **values: Any) -> Markup:
     """`_()` de las plantillas: el texto se escapa y los valores también, salvo los marcados como seguros."""
     if not isinstance(text, str):
         return escape(text)
-    translated = Markup(escape(catalog(get_locale()).get(text, text)))
+    translated = Markup(escape(  # noqa: S704 - el texto ya está escapado
+        catalog(get_locale()).get(text, text)))
     return translated % values if values else translated

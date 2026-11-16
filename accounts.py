@@ -7,11 +7,23 @@ import logging
 import os
 import re
 import threading
+from collections.abc import Callable, Iterable, Iterator
 from contextlib import contextmanager
 from datetime import datetime
-from typing import Any, Callable, Iterable, Iterator, Optional, cast
+from typing import Any, cast
 
-from sqlalchemy import Boolean, CursorResult, DateTime, Integer, Result, String, false, func, select, update
+from sqlalchemy import (
+    Boolean,
+    CursorResult,
+    DateTime,
+    Integer,
+    Result,
+    String,
+    false,
+    func,
+    select,
+    update,
+)
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -25,7 +37,7 @@ class Base(DeclarativeBase):
 
 MIN_PASSWORD = 10
 EMAIL_RE = re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
-_current: contextvars.ContextVar[Optional[int]] = contextvars.ContextVar('current_user_id', default=None)
+_current: contextvars.ContextVar[int | None] = contextvars.ContextVar('current_user_id', default=None)
 _session_factory = None
 
 
@@ -78,23 +90,23 @@ def _sessions() -> sessionmaker[Session]:
     return SessionLocal
 
 
-def current_user_id() -> Optional[int]:
+def current_user_id() -> int | None:
     """Id de la cuenta del pedido o tarea actual (None sin login)."""
     return _current.get()
 
 
-def set_current_user(user_id: Optional[int]) -> contextvars.Token[Optional[int]]:
+def set_current_user(user_id: int | None) -> contextvars.Token[int | None]:
     """Fija el usuario del pedido actual; devuelve el token para `reset_current_user`."""
     return _current.set(user_id)
 
 
-def reset_current_user(token: contextvars.Token[Optional[int]]) -> None:
+def reset_current_user(token: contextvars.Token[int | None]) -> None:
     """Restaura el usuario anterior con el token de `set_current_user`."""
     _current.reset(token)
 
 
 @contextmanager
-def as_user(user_id: Optional[int]) -> Iterator[None]:
+def as_user(user_id: int | None) -> Iterator[None]:
     """Corre un bloque (p. ej. una tarea de Celery) con los datos de ese usuario."""
     token = _current.set(user_id)
     try:
@@ -136,17 +148,17 @@ def user_ids() -> list[int]:
         return list(session.execute(select(User.id).order_by(User.id)).scalars())
 
 
-def first_user_id() -> Optional[int]:
+def first_user_id() -> int | None:
     """Id de la primera cuenta (dueña de Telegram, Gmail y la extensión)."""
     ids = user_ids()
     return ids[0] if ids else None
 
 
-def owner_ids(active_only: bool = False) -> list[Optional[int]]:
+def owner_ids(active_only: bool = False) -> list[int | None]:
     """Dueños por los que corren las tareas periódicas; None cubre los datos sin cuenta (sin login).
 
     `active_only` deja afuera las cuentas bloqueadas (avisos); la retención de datos sí las recorre."""
-    ids: list[Optional[int]] = list(user_ids())
+    ids: list[int | None] = list(user_ids())
     if active_only and ids:
         blocked = blocked_ids()
         ids = [i for i in ids if i not in blocked]
@@ -161,7 +173,7 @@ def blocked_ids() -> set[int]:
         return set(session.execute(select(User.id).where(User.disabled_at.isnot(None))).scalars())
 
 
-def get_user(user_id: Optional[int]) -> Optional[dict[str, Any]]:
+def get_user(user_id: int | None) -> dict[str, Any] | None:
     """Cuenta por id como dict, o None."""
     if not user_id:
         return None
@@ -177,7 +189,7 @@ def get_user(user_id: Optional[int]) -> Optional[dict[str, Any]]:
                 'weekly_digest_sent_at': user.weekly_digest_sent_at}
 
 
-def is_admin(user_id: Optional[int]) -> bool:
+def is_admin(user_id: int | None) -> bool:
     """Administra la instancia la cuenta de ADMIN_EMAIL o, sin esa variable, la primera cuenta."""
     user = get_user(user_id)
     if user is None or user['disabled']:
@@ -246,7 +258,7 @@ def register(email: str, password: str, terms_accepted: bool = False) -> int:
     return int(user_id)
 
 
-def authenticate(email: str, password: str) -> Optional[int]:
+def authenticate(email: str, password: str) -> int | None:
     """Id del usuario si email y contraseña coinciden; None si no."""
     with _sessions()() as session:
         user = session.execute(select(User).where(User.email == normalize_email(email))).scalar_one_or_none()
@@ -322,7 +334,7 @@ def claim_orphans(user_id: int) -> None:
     from sqlalchemy import inspect, text
     with _sessions()() as session:
         for table in _owned_tables(inspect(session.get_bind())):
-            session.execute(text(f'UPDATE {table} SET user_id = :uid WHERE user_id IS NULL'), {'uid': user_id})
+            session.execute(text(f'UPDATE {table} SET user_id = :uid WHERE user_id IS NULL'), {'uid': user_id})  # noqa: S608 - tabla/orden de una lista fija, no del usuario
         session.commit()
     claim_legacy_files(user_id)
 
@@ -333,14 +345,14 @@ def _check_password(password: str) -> None:
         raise AccountError(f'La contraseña debe tener al menos {MIN_PASSWORD} caracteres')
 
 
-def find_user_id(email: str) -> Optional[int]:
+def find_user_id(email: str) -> int | None:
     """Id de la cuenta con ese email, o None."""
     with _sessions()() as session:
-        user_id: Optional[int] = session.execute(select(User.id).where(User.email == normalize_email(email))).scalar_one_or_none()
+        user_id: int | None = session.execute(select(User.id).where(User.email == normalize_email(email))).scalar_one_or_none()
         return user_id
 
 
-def set_password(user_id: int, password: str, expected_hash: Optional[str] = None) -> None:
+def set_password(user_id: int, password: str, expected_hash: str | None = None) -> None:
     """Reemplaza la contraseña (invalida las sesiones abiertas y los enlaces de recuperación).
 
     Con `expected_hash`, solo si la contraseña sigue siendo esa: dos usos simultáneos del mismo enlace no ganan ambos.

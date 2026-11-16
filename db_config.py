@@ -5,13 +5,13 @@ Cada consulta se limita a las filas del usuario actual (`accounts.current_user_i
 `<=>` también empareja NULL, que es el dueño de las filas cuando no hay usuario)."""
 import logging
 from collections.abc import Iterable
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from dotenv import load_dotenv
 from sqlalchemy import bindparam, text
-from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.engine import Engine
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.sql.elements import TextClause
 
 import accounts
@@ -64,7 +64,7 @@ def _applied_date(value: Any) -> datetime:
         parsed = datetime.fromisoformat(str(value).replace('Z', '+00:00'))
     except ValueError:
         return datetime.now()
-    return parsed.astimezone(timezone.utc).replace(tzinfo=None) if parsed.tzinfo else parsed
+    return parsed.astimezone(UTC).replace(tzinfo=None) if parsed.tzinfo else parsed
 
 
 class DatabaseManager:
@@ -247,7 +247,7 @@ class DatabaseManager:
         no la confunde con un tracker vacío.
         """
         try:
-            return self._rows(f"SELECT * FROM applications WHERE user_id <=> :uid ORDER BY {_TRACKER_ORDER}")
+            return self._rows(f"SELECT * FROM applications WHERE user_id <=> :uid ORDER BY {_TRACKER_ORDER}")  # noqa: S608 - tabla/orden de una lista fija, no del usuario
         except SQLAlchemyError as err:
             logger.error(f"Error getting tracked jobs: {err}")
             if raise_errors:

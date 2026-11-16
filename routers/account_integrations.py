@@ -2,7 +2,7 @@
 import logging
 import os
 import re
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Request
 from fastapi.responses import Response
@@ -11,8 +11,14 @@ from starlette.concurrency import run_in_threadpool
 import auth
 import integrations
 from fastapi_web import TextForm, flash, get_session, public_url, redirect, render
+from routers.account_pages import (
+    _form,
+    _gmail_client_file,
+    _not_found,
+    _to_account,
+    _user_id,
+)
 from routers.auth_pages import audit
-from routers.account_pages import _form, _gmail_client_file, _not_found, _to_account, _user_id
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["account"], include_in_schema=False)
@@ -62,7 +68,7 @@ def _test_telegram(request: Request) -> Response:
 EXTENSION_STATE = re.compile(r'^[A-Za-z0-9_-]{16,128}$')
 
 
-def _extension_page(request: Request, state: str, token: Optional[str] = None) -> Response:
+def _extension_page(request: Request, state: str, token: str | None = None) -> Response:
     response = render(request, 'extension_link.html', state=state, token=token)
     response.headers['Cache-Control'] = 'no-store'
     return response
@@ -113,7 +119,7 @@ def _revoke_extension_token(request: Request) -> Response:
     return _to_account(request)
 
 
-def _gmail_flow(request: Request, state: Optional[str] = None) -> Any:
+def _gmail_flow(request: Request, state: str | None = None) -> Any:
     """Flujo OAuth web para conectar Gmail, o None si falta el cliente o la URL pública."""
     from tasks.gmail_tracker import SCOPES
     redirect_uri = public_url(request, 'gmail_callback')

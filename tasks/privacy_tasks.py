@@ -1,8 +1,8 @@
 """Privacidad: cifrado de CVs y perfiles viejos, retención de CVs (CV_RETENTION_DAYS) y borrado de cuentas inactivas."""
-from datetime import datetime, timedelta
-from typing import Any
 import logging
 import os
+from datetime import datetime, timedelta
+from typing import Any
 
 from celery_app import celery
 
@@ -102,8 +102,8 @@ def _delete_inactive(user_id: int, notice_at: datetime) -> bool:
 def enforce_account_inactivity() -> dict[str, Any]:
     """Avisa por email a las cuentas sin entrar hace ACCOUNT_INACTIVITY_DAYS menos el aviso, y borra las que siguen
     sin entrar al vencer el aviso. Sin aviso enviado no se borra nada; la primera cuenta (administradora) no se toca."""
-    import account_notify
     import account_lifecycle
+    import account_notify
     import accounts
     import profile_store
 

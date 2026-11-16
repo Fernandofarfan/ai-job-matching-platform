@@ -3,12 +3,27 @@ target-version = "py312"
 extend-exclude = ["alembic/versions", "chrome_extension", "static"]
 
 [tool.ruff.lint]
-# Errores reales (pyflakes + bugbear); estilo y formato quedan fuera por ahora
-select = ["E9", "F", "B"]
-ignore = ["B904", "B007", "B008"]
+# pycodestyle, pyflakes, bugbear, imports ordenados, sintaxis de Python 3.12, simplificaciones, seguridad (bandit)
+# y complejidad. El largo de línea no se controla.
+select = ["E", "W", "F", "B", "I", "UP", "SIM", "C4", "PIE", "RET", "PERF", "RUF", "S", "C90"]
+ignore = [
+    "B904", "B007", "B008",
+    "E501",                        # largo de línea
+    "RUF001", "RUF002", "RUF003",  # caracteres "ambiguos": los textos en español y portugués los usan a propósito
+    "S311",                        # random para jitter y muestras, no para secretos
+    "S110", "S112",                # try/except/pass en limpiezas que no deben cortar el flujo (cerrar el navegador, etc.)
+    "SIM105",                      # contextlib.suppress no es más claro que try/except/pass
+    "RUF012",                      # __table_args__ de SQLAlchemy es un dict de clase por diseño
+]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 15
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["B011", "B017"]
+"tests/*" = ["B011", "B017", "S", "SIM115", "SIM117"]
+"tests_integration/*" = ["S", "SIM115"]
+"loadtest/*" = ["S"]
+"scripts/*" = ["S603", "S607"]
 
 [tool.mypy]
 python_version = "3.12"

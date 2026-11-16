@@ -8,8 +8,9 @@ import os
 import random
 import re
 import time
+from collections.abc import Callable
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
+from typing import TYPE_CHECKING, Any
 from urllib.parse import urlencode
 
 import pandas as pd
@@ -43,7 +44,7 @@ def save_without_description() -> bool:
     return os.getenv('INDEED_SAVE_WITHOUT_DESCRIPTION', 'false').strip().lower() in ('1', 'true', 'yes', 'on')
 
 
-def search_url(job_title: str, location: str, filters: Optional[Dict[str, Any]] = None, start: int = 0,
+def search_url(job_title: str, location: str, filters: dict[str, Any] | None = None, start: int = 0,
                base_url: str = BASE_URL) -> str:
     """URL de búsqueda con los filtros del formulario como parámetros de Indeed.
 
@@ -51,7 +52,7 @@ def search_url(job_title: str, location: str, filters: Optional[Dict[str, Any]] 
     Indeed no tiene un parámetro público para el nivel de estudios: education_level se ignora.
     """
     filters = filters or {}
-    params: Dict[str, str] = {'q': job_title, 'l': location}
+    params: dict[str, str] = {'q': job_title, 'l': location}
     if str(filters.get('date_posted') or '') in DATE_POSTED:
         params['fromage'] = str(filters['date_posted'])
     chips = []
@@ -68,7 +69,7 @@ def search_url(job_title: str, location: str, filters: Optional[Dict[str, Any]] 
     return f"{base_url}/jobs?{urlencode(params)}"
 
 
-def parse_card(card: 'ElementHandle') -> Optional[Job]:
+def parse_card(card: 'ElementHandle') -> Job | None:
     """Datos de una tarjeta del listado; None si falta el título o el id, o si es "Easily apply"."""
     def text(selector: str) -> str:
         node = card.query_selector(selector)
@@ -90,14 +91,14 @@ def parse_card(card: 'ElementHandle') -> Optional[Job]:
 class indeedScraper:
     """Búsqueda de Indeed en Chromium sin ventana (misma interfaz que la versión de Selenium)."""
 
-    def __init__(self, email: Optional[str] = None, password: Optional[str] = None,
-                 user_skills: Optional[List[str]] = None, browser_factory: Callable[[], Browser] = Browser) -> None:
+    def __init__(self, email: str | None = None, password: str | None = None,
+                 user_skills: list[str] | None = None, browser_factory: Callable[[], Browser] = Browser) -> None:
         self.email = email
         self.password = password
         self.user_skills = user_skills or []
-        self.all_jobs: List[Job] = []
+        self.all_jobs: list[Job] = []
         self._browser_factory = browser_factory
-        self._browser: Optional[Browser] = None
+        self._browser: Browser | None = None
         self.base_url = BASE_URL
         self.descriptions_blocked = False
 
@@ -127,7 +128,7 @@ class indeedScraper:
             return True
         return False
 
-    def _description(self, job_id: str) -> Optional[str]:
+    def _description(self, job_id: str) -> str | None:
         """Texto de la oferta; None si no carga o si se postula con Indeed Apply.
 
         Lanza `PortalBlocked` si Indeed pide una verificación o login en vez de mostrarla.
@@ -165,7 +166,7 @@ class indeedScraper:
                     'Job_Link': self._link(card_data['id']), 'Apply_Type': 'Not specified'})
         return job
 
-    def extract_job_details(self, card_data: Job) -> Optional[Job]:
+    def extract_job_details(self, card_data: Job) -> Job | None:
         """Completa una tarjeta con la descripción y aplica los filtros de ciudadanía y experiencia.
 
         Si Indeed pide login para ver la oferta, lanza `PortalBlocked`, salvo con
@@ -200,8 +201,8 @@ class indeedScraper:
                     'Apply_Type': 'Apply on company site'})
         return job
 
-    def extract_jobs(self, job_title: str, location: str, filters: Optional[Dict[str, Any]] = None,
-                     max_jobs: int = 50, max_pages: int = 5) -> List[Job]:
+    def extract_jobs(self, job_title: str, location: str, filters: dict[str, Any] | None = None,
+                     max_jobs: int = 50, max_pages: int = 5) -> list[Job]:
         """Recorre hasta `max_pages` páginas del listado y suma a `all_jobs` hasta `max_jobs` ofertas nuevas."""
         seen = {job.get('Job_Link') for job in self.all_jobs}
         found = 0
@@ -231,7 +232,7 @@ class indeedScraper:
                 break
         return self.all_jobs
 
-    def _save(self, jobs: List[Job], job_title: str, location: str, partial: bool = False) -> None:
+    def _save(self, jobs: list[Job], job_title: str, location: str, partial: bool = False) -> None:
         """CSV en la carpeta de resultados de la cuenta."""
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         prefix = 'indeed_jobs_partial' if partial else 'indeed_jobs'
@@ -240,8 +241,8 @@ class indeedScraper:
         os.makedirs(folder, exist_ok=True)
         pd.DataFrame(jobs).to_csv(os.path.join(folder, name), index=False)
 
-    def search_jobs_with_filters(self, job_title: str, location: str, filters: Optional[Dict[str, Any]] = None,
-                                 clear_previous: bool = True, max_jobs: int = 50) -> List[Job]:
+    def search_jobs_with_filters(self, job_title: str, location: str, filters: dict[str, Any] | None = None,
+                                 clear_previous: bool = True, max_jobs: int = 50) -> list[Job]:
         """Busca con filtros (hasta 3 intentos) y guarda el CSV; si todo falla, guarda lo parcial."""
         if clear_previous:
             self.all_jobs = []
@@ -258,7 +259,7 @@ class indeedScraper:
             self._save(self.all_jobs, job_title, location, partial=True)
         return self.all_jobs
 
-    def listing(self, job_title: str, location: str = '', max_jobs: int = 5) -> List[Job]:
+    def listing(self, job_title: str, location: str = '', max_jobs: int = 5) -> list[Job]:
         """Tarjetas de la primera página del listado, sin abrir descripciones ni guardar nada.
 
         Sirve para el monitor de scrapers: si Indeed cambia su HTML devuelve una lista vacía;
@@ -270,12 +271,12 @@ class indeedScraper:
         return [card for card in map(parse_card, self.page.query_selector_all(CARD)) if card][:max_jobs]
 
     def search_jobs(self, job_title: str, location: str, clear_previous: bool = True,
-                    max_jobs_per_search: int = 5) -> List[Job]:
+                    max_jobs_per_search: int = 5) -> list[Job]:
         """Búsqueda sin filtros (prueba de scrapers)."""
         return self.search_jobs_with_filters(job_title, location, {}, clear_previous, max_jobs=max_jobs_per_search)
 
     def _check_citizenship_requirements(self, description_lower: str) -> bool:
-        
+
         skip_patterns = [
             r'(?:current\s+and\s+future\s+)?sponsorship\s+(?:is\s+|are\s+)?not\s+(?:available|provided|offered)',
             r'(?:no|not\s+providing|will\s+not\s+provide|cannot\s+provide|does\s+not\s+provide)\s+(?:visa\s+)?sponsorship',
@@ -288,12 +289,12 @@ class indeedScraper:
             r'must\s+possess.*(?:dod|department\s+of\s+defense).*clearance',
             r'united\s+states\s+citizen(?:ship)?\s+(?:is\s+)?required'
         ]
-        
+
         for pattern in skip_patterns:
             if re.search(pattern, description_lower, re.IGNORECASE):
                 logger.debug(f"Found citizenship/sponsorship restriction: {pattern}")
                 return True
-        
+
         return False
 
 
@@ -301,10 +302,10 @@ class indeedScraper:
     def _clean_job_description(self, description: str) -> str:
         if not description:
             return "Job description not available"
-        
+
         lines = description.split('\n')
         cleaned_lines = []
-        
+
         useful_keywords = [
             'responsibilities', 'duties', 'requirements', 'qualifications',
             'skills', 'experience', 'technical', 'develop', 'design',
@@ -313,7 +314,7 @@ class indeedScraper:
             'role', 'position', 'seeking', 'looking for', 'will be',
             'about the role', 'what you\'ll do', 'what you bring'
         ]
-        
+
         skip_keywords = [
             'benefits', 'compensation', 'salary', 'perks', 'amenities',
             'physical requirements', 'disabilities', 'accommodation',
@@ -323,60 +324,60 @@ class indeedScraper:
             '401k', 'health insurance', 'dental', 'vision', 'pto',
             'vacation', 'holidays', 'remote work', 'flexible schedule'
         ]
-        
+
         for line in lines:
             line = line.strip()
             if not line:
                 continue
-                
+
             if any(keyword.lower() in line.lower() for keyword in skip_keywords):
                 continue
-                
+
             if (any(keyword.lower() in line.lower() for keyword in useful_keywords) or
                 len(line) < 200):
                 cleaned_lines.append(line)
-        
+
         cleaned_text = '\n'.join(cleaned_lines)
         if len(cleaned_text) > 800:
             cleaned_text = cleaned_text[:800] + '...'
-        
+
         return cleaned_text if cleaned_text else "Job description not available"
 
     def extract_years_of_experience(self, description_text: str) -> str:
         """'2-3', '2+', 'Entry Level', 'Not specified' o 'SKIP_HIGH_EXPERIENCE' (más de 3 años)."""
 
-        
+
         description_text = description_text.lower()
-        
+
         basic_qual_section = ""
-        
+
         basic_qual_patterns = [
             r'basic qualifications?:?(.*?)(?:preferred qualifications?|what you\'ll do|responsibilities|requirements|$)',
             r'minimum qualifications?:?(.*?)(?:preferred qualifications?|what you\'ll do|responsibilities|requirements|$)',
             r'required qualifications?:?(.*?)(?:preferred qualifications?|what you\'ll do|responsibilities|requirements|$)',
             r'minimum requirements?:?(.*?)(?:preferred|nice to have|what you\'ll do|responsibilities|$)'
         ]
-        
+
         for pattern in basic_qual_patterns:
             match = re.search(pattern, description_text, re.DOTALL | re.IGNORECASE)
             if match:
                 basic_qual_section = match.group(1)
                 break
-        
+
         if not basic_qual_section:
             basic_qual_section = description_text
-        
+
         experience_patterns = [
             r'(\d+)(?:\+|\s*\+)?\s*(?:-|to)?\s*(\d+)?\s*(?:years?|yrs?)(?:\s*of\s*(?:experience|exp))?',
             r'(?:minimum|at least|minimum of)\s*(\d+)(?:\+|\s*\+)?\s*(?:years?|yrs?)(?:\s*of\s*(?:experience|exp))?',
             r'(\d+)(?:\+|\s*\+)?\s*(?:years?|yrs?)(?:\s*of\s*(?:experience|exp))',
         ]
-        
+
         for pattern in experience_patterns:
             matches = re.findall(pattern, basic_qual_section)
             if matches:
                 match = matches[0]
-                
+
                 if isinstance(match, tuple):
                     if len(match) > 1 and match[1]:
                         min_years = int(match[0])
@@ -384,87 +385,79 @@ class indeedScraper:
                         if min_years > 3:
                             return "SKIP_HIGH_EXPERIENCE"
                         return f"{match[0]}-{match[1]}"
-                    else:
-                        min_years = int(match[0])
-                        if min_years > 3:
-                            return "SKIP_HIGH_EXPERIENCE"
-                        return f"{match[0]}+"
-                else:
-                    min_years = int(match)
+                    min_years = int(match[0])
                     if min_years > 3:
                         return "SKIP_HIGH_EXPERIENCE"
-                    return str(match)
-        
+                    return f"{match[0]}+"
+                min_years = int(match)
+                if min_years > 3:
+                    return "SKIP_HIGH_EXPERIENCE"
+                return str(match)
+
         entry_level_terms = [
             'entry level', 'junior', 'no experience required', 'entry-level',
             'new graduate', 'recent graduate', 'graduate program'
         ]
-        
+
         if any(term in basic_qual_section for term in entry_level_terms):
             return "Entry Level"
-        
+
         return "Not specified"
 
-    def categorize_experience(self, description_text: str) -> str:
+    def categorize_experience(self, description_text: str) -> str:  # noqa: C901 - complejidad heredada; no crecer
         years = self.extract_years_of_experience(description_text)
-        
+
         if years == "SKIP_HIGH_EXPERIENCE":
             return "SKIP_HIGH_EXPERIENCE"
-        
+
         if years == "Not specified":
             return "Unknown"
-            
+
         if years == "Entry Level":
             return "Entry Level (0 years)"
-        
+
         try:
             if "+" in years:
                 min_years = int(years.replace("+", ""))
-                
+
                 if min_years == 0:
                     return "Entry Level (0 years)"
-                elif min_years <= 1:
+                if min_years <= 1:
                     return "Entry Level (0-1 years)"
-                elif min_years <= 2:
+                if min_years <= 2:
                     return "Early Career (2 years)"
-                elif min_years <= 3:
+                if min_years <= 3:
                     return "Mid-Career (3 years)"
-                else:
-                    return "SKIP_HIGH_EXPERIENCE"
-                    
-            elif "-" in years:
-                min_years, max_years = map(int, years.split("-"))
-                
-                if min_years == 0:
+                return "SKIP_HIGH_EXPERIENCE"
+
+            if "-" in years:
+                min_years, _max_years = map(int, years.split("-"))
+
+                if min_years == 0 or min_years <= 1:
                     return "Entry Level (0-1 years)"
-                elif min_years <= 1:
-                    return "Entry Level (0-1 years)"
-                elif min_years <= 2:
+                if min_years <= 2:
                     return "Early Career (2-3 years)"
-                elif min_years <= 3:
+                if min_years <= 3:
                     return "Mid-Career (3 years)"
-                else:
-                    return "SKIP_HIGH_EXPERIENCE"
-            else:
-                num_years = int(years)
-                if num_years == 0:
-                    return "Entry Level (0 years)"
-                elif num_years <= 1:
-                    return "Entry Level (0-1 years)"
-                elif num_years <= 2:
-                    return "Early Career (2 years)"
-                elif num_years <= 3:
-                    return "Mid-Career (3 years)"
-                else:
-                    return "SKIP_HIGH_EXPERIENCE"
-                    
+                return "SKIP_HIGH_EXPERIENCE"
+            num_years = int(years)
+            if num_years == 0:
+                return "Entry Level (0 years)"
+            if num_years <= 1:
+                return "Entry Level (0-1 years)"
+            if num_years <= 2:
+                return "Early Career (2 years)"
+            if num_years <= 3:
+                return "Mid-Career (3 years)"
+            return "SKIP_HIGH_EXPERIENCE"
+
         except (ValueError, TypeError):
             return "Unknown"
-            
+
         return "Unknown"
 
-    def extract_salary_from_description(self, description_text: str) -> Optional[str]:
-        
+    def extract_salary_from_description(self, description_text: str) -> str | None:
+
         salary_patterns = [
             r'\$[\d,]+(?:/year|/yr|\/year|\/yr)?\s+to\s+\$[\d,]+(?:/year|/yr|\/year|\/yr)?(?:\s*\+\s*(?:bonus|equity|benefits))*',
             r'\$[\d,]+\s*[-–—]\s*\$[\d,]+(?:\s+(?:per\s+year|annually|/year|/yr))?',
@@ -475,7 +468,7 @@ class indeedScraper:
             r'(?:salary|compensation|pay)(?:\s+(?:range|is))?:?\s*\$[\d,]+(?:\s*[-–—]\s*\$?[\d,]+)?(?:\s*(?:/year|/yr|annually|per\s+year|/hour|/hr|per\s+hour))?',
             r'\$[\d,]+(?:/year|/yr|\/year|\/yr)?\s*\+\s*(?:bonus|equity|benefits|stock)',
         ]
-        
+
         for pattern in salary_patterns:
             matches = re.findall(pattern, description_text, re.IGNORECASE)
             if matches:
@@ -483,7 +476,7 @@ class indeedScraper:
                 salary_match = re.sub(r'\s+', ' ', salary_match)
                 logger.info(f"Extracted salary from description: {salary_match}")
                 return salary_match
-        
+
         return None
 
 

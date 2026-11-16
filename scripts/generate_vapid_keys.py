@@ -2,8 +2,8 @@
 
 Uso: python scripts/generate_vapid_keys.py  → copiá las dos líneas al .env (la privada es un secreto).
 """
-from typing import Any
 import base64
+from typing import Any
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec

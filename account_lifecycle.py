@@ -1,7 +1,7 @@
 """Ciclo de vida de las cuentas: resumen semanal, actividad, aviso por inactividad y borrado."""
 import os
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
@@ -19,7 +19,7 @@ def set_weekly_digest(user_id: int, enabled: bool) -> None:
             session.commit()
 
 
-def claim_weekly_digest(user_id: int, previous: Optional[datetime], when: datetime) -> bool:
+def claim_weekly_digest(user_id: int, previous: datetime | None, when: datetime) -> bool:
     """Toma el resumen de la cuenta: anota `when` solo si el último envío sigue siendo `previous`.
     Si dos ejecuciones se pisan, solo una gana y manda el email."""
     last = User.weekly_digest_sent_at
@@ -31,7 +31,7 @@ def claim_weekly_digest(user_id: int, previous: Optional[datetime], when: dateti
         return bool(getattr(result, 'rowcount', 0))
 
 
-def mark_weekly_digest(user_id: int, when: Optional[datetime]) -> None:
+def mark_weekly_digest(user_id: int, when: datetime | None) -> None:
     """Anota hasta cuándo cubrió el último resumen semanal de la cuenta (el próximo arranca ahí)."""
     with accounts._sessions()() as session:
         user = session.get(User, user_id)
@@ -63,7 +63,7 @@ def recover_weekly_digest(user_id: int, older_than: datetime) -> bool:
         return bool(getattr(result, 'rowcount', 0))
 
 
-def mark_active(user_id: int, session: Optional[Session] = None) -> None:
+def mark_active(user_id: int, session: Session | None = None) -> None:
     """Anota que la cuenta usó la web y anula el aviso de borrado por inactividad."""
     query = update(User).where(User.id == user_id).values(last_active_at=datetime.now(), inactivity_notice_at=None,
                                                    inactivity_notice_sent=False)
@@ -85,7 +85,7 @@ def inactive_accounts(since: datetime) -> list[dict[str, Any]]:
                 for uid, email, notice, sent in rows]
 
 
-def set_inactivity_notice(user_id: int, when: datetime, previous: Optional[datetime] = None) -> bool:
+def set_inactivity_notice(user_id: int, when: datetime, previous: datetime | None = None) -> bool:
     """Reserva el aviso de borrado (todavía sin enviar); False si la cuenta volvió a entrar u otro worker lo tomó.
 
     `previous` retoma una reserva que quedó sin enviar (el worker se cortó antes de mandar el email).
@@ -117,13 +117,14 @@ def clear_inactivity_notice(user_id: int, when: datetime) -> None:
         session.commit()
 
 
-def delete_account(user_id: int, notice_at: Optional[datetime] = None) -> bool:
+def delete_account(user_id: int, notice_at: datetime | None = None) -> bool:
     """Borra la cuenta, todas sus filas y sus carpetas de resultados (los CVs los borra quien llama).
 
     Con `notice_at`, solo si la cuenta sigue con ese aviso de inactividad enviado: la fila queda bloqueada
     hasta el commit, así un login que llega a la vez (que anula el aviso) espera y no se pierde. False si no borró.
     """
     import shutil
+
     from sqlalchemy import delete, inspect, text
     with accounts._sessions()() as session:
         if notice_at is not None and session.execute(
@@ -132,7 +133,7 @@ def delete_account(user_id: int, notice_at: Optional[datetime] = None) -> bool:
             session.rollback()
             return False
         for table in accounts._owned_tables(inspect(session.get_bind())):
-            session.execute(text(f'DELETE FROM {table} WHERE user_id = :uid'), {'uid': user_id})
+            session.execute(text(f'DELETE FROM {table} WHERE user_id = :uid'), {'uid': user_id})  # noqa: S608 - tabla/orden de una lista fija, no del usuario
         session.execute(delete(User).where(User.id == user_id))
         session.commit()
     shutil.rmtree(os.path.join(accounts.RESULTS_ROOT, f'u{user_id}'), ignore_errors=True)

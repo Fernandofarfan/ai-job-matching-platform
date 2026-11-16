@@ -2,7 +2,7 @@
 import json
 import logging
 import secrets
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse, Response
@@ -12,9 +12,22 @@ import accounts
 import auth
 import google_oauth
 import passkeys
-from fastapi_web import (_body_within, _csrf_ok, save_session, client_info, client_ip, flash, get_session,
-                         hit_limit, limit_key, public_url, redirect, safe_next,
-                         too_many_requests, url_for)
+from fastapi_web import (
+    _body_within,
+    _csrf_ok,
+    client_info,
+    client_ip,
+    flash,
+    get_session,
+    hit_limit,
+    limit_key,
+    public_url,
+    redirect,
+    safe_next,
+    save_session,
+    too_many_requests,
+    url_for,
+)
 from routers.auth_pages import _audit_login, _finish_login, _secret, audit, begin_login
 
 logger = logging.getLogger(__name__)
@@ -27,7 +40,7 @@ def request_origin(request: Request) -> str:
 
 
 async def passkey_json(request: Request, limit: str, namespace: str,
-                       key: str) -> tuple[Optional[dict[str, Any]], Optional[Response]]:
+                       key: str) -> tuple[dict[str, Any] | None, Response | None]:
     """(cuerpo JSON, error): límite de tamaño, CSRF por header y límite de pedidos."""
     if not await _body_within(request, 64 * 1024):
         return None, JSONResponse({'error': 'Pedido demasiado grande'}, status_code=413)

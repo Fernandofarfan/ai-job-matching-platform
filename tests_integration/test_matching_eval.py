@@ -1,5 +1,6 @@
 """Calidad del matching con TF-IDF real (sin los mocks de sklearn de tests/conftest.py)."""
 import json
+
 import matching_eval
 
 # Línea base con TF-IDF (scripts/eval_matching.py). Si un cambio en el matching la baja, este test falla.

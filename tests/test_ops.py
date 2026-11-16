@@ -159,6 +159,7 @@ def test_invalid_ai_rate_limit_falls_back_to_default(monkeypatch):
 def test_concurrent_first_hits_share_one_counter(monkeypatch):
     """Las primeras llamadas simultáneas usan un solo contador."""
     import threading
+
     import rate_limit
     monkeypatch.setenv('AI_RATE_LIMIT', '5 per minute')
     rate_limit.reset()

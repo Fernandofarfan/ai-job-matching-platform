@@ -9,7 +9,7 @@ import accounts
 import auth
 import i18n
 import onboarding
-from fastapi_web import services_for, render
+from fastapi_web import render, services_for
 
 router = APIRouter(tags=["pages"], include_in_schema=False)
 

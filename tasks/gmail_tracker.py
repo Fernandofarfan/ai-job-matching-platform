@@ -1,20 +1,22 @@
 import functools
-from collections.abc import Callable
-from typing import Any, Optional
 import json
-import os
 import logging
-from googleapiclient.discovery import build
-from google_auth_oauthlib.flow import InstalledAppFlow
+import os
+from collections.abc import Callable
+from typing import Any
+
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import InstalledAppFlow
+from googleapiclient.discovery import build
+
 from celery_app import celery
 
 logger = logging.getLogger(__name__)
 
 # Leer y marcar como leídos los correos ya procesados
 SCOPES = ['https://www.googleapis.com/auth/gmail.modify']
-TOKEN_FILE = 'token.json'
+TOKEN_FILE = 'token.json'  # noqa: S105 - nombre de archivo
 # Una invitación no pisa postulaciones ya cerradas (aceptadas o rechazadas) ni las que ya están en entrevista
 OPEN_STATUSES = ('bookmarked', 'applying', 'applied')
 
@@ -38,13 +40,13 @@ def get_gmail_service() -> Any:
                 return None
             flow = InstalledAppFlow.from_client_secrets_file('credentials.json', SCOPES)
             creds = flow.run_local_server(port=0)
-            
+
         with open(TOKEN_FILE, 'w') as token:
             token.write(creds.to_json())
 
     return build('gmail', 'v1', credentials=creds)
 
-def service_from_token(token_json: Optional[str], on_refresh: Optional[Callable[[str], None]] = None) -> Any:
+def service_from_token(token_json: str | None, on_refresh: Callable[[str], None] | None = None) -> Any:
     """Servicio de Gmail con el token OAuth de una cuenta (lo renueva si venció); None si ya no sirve."""
     if not token_json:
         return None
@@ -107,12 +109,12 @@ def _process_mailbox(service: Any) -> str:
             headers = msg['payload'].get('headers', [])
             subject = next((h['value'] for h in headers if h['name'] == 'Subject'), '')
             sender = next((h['value'] for h in headers if h['name'] == 'From'), '')
-            
+
             # Aqui integramos AI Engine para revisar si el correo (texto completo)
             # corresponde a alguna empresa guardada en el tracker
             from ai_engine import GEMINI_ERROR_PREFIX, GEMINI_LIGHT_MODEL, _call_gemini
             prompt = f"El reclutador {sender} envió este correo: {subject}. ¿Corresponde a alguna de estas empresas? {', '.join([j['company'] for j in tracked_jobs])}. Responde el nombre de la empresa exacto."
-            
+
             answer = _call_gemini(prompt, temperature=0, model=GEMINI_LIGHT_MODEL)
             matched_company = (answer or '').strip()
             if matched_company.startswith(GEMINI_ERROR_PREFIX):
@@ -125,14 +127,14 @@ def _process_mailbox(service: Any) -> str:
                     logger.info(f"¡Match! Actualizando estado de {job['company']} a ENTRENVISTA.")
                     db_manager.update_job_status(job['id'], 'interviewing')
                     updates_made += 1
-                    
+
             # Marcar como leído
             try:
                 service.users().messages().modify(userId='me', id=message['id'],
                                                   body={'removeLabelIds': ['UNREAD']}).execute()
             except Exception as e:
                 logger.warning(f"No se pudo marcar como leído el correo {message['id']}: {e}")
-            
+
         return f"{updates_made} postulaciones actualizadas automáticamente."
     except Exception as e:
         logger.error(f"Falla al chequear correo: {e}")

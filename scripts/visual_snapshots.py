@@ -5,11 +5,11 @@
 La cuenta tiene que existir (loadtest/seed.py la crea con datos fijos). Los elementos con
 `data-visual-mask` se tapan en la captura: usalo para fechas, contadores u otros datos que cambian solos.
 """
-from typing import Any
 import argparse
 import os
 import sys
 from pathlib import Path
+from typing import Any
 
 PUBLIC_PAGES = ['/login', '/register', '/forgot_password', '/terms', '/privacy']
 PAGES = ['/', '/scraper', '/results', '/profile', '/view_profile', '/mock-interview', '/tracker', '/analytics',

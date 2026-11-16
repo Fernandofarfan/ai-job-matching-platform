@@ -7,7 +7,8 @@ La precisión y la cobertura se miden con los pares etiquetados de eval/dedup_pa
 """
 import re
 import unicodedata
-from typing import Any, Iterable, Optional
+from collections.abc import Iterable
+from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlsplit
 
 Job = dict[str, Any]
@@ -146,7 +147,7 @@ def unify(jobs: Iterable[Job]) -> list[Job]:
     for job in jobs:
         url = _url_key(job.get('URL'))
         key = (title_key(job.get('Title')), company_key(job.get('Company')))
-        index: Optional[int] = by_url.get(url) if url else None
+        index: int | None = by_url.get(url) if url else None
         if index is None and all(key):
             index = next((i for i in by_key.get(key, []) if all(_compatible(job, other) for other in groups[i])), None)
         if index is None:

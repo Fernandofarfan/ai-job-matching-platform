@@ -3,12 +3,12 @@
 Con Celery la búsqueda sobrevive a reinicios y escalado del contenedor web: el worker
 publica el progreso como estado de la tarea y `refresh()` lo copia a `job_status`.
 """
-from typing import Any
 import copy
 import importlib
 import logging
 import os
 from collections.abc import Callable, Iterator, MutableMapping
+from typing import Any
 
 import accounts
 import i18n

@@ -1,10 +1,10 @@
 """Perfiles de CV por rol, el texto del CV guardado y los últimos resultados de la cuenta."""
-from typing import Any, Optional
 import glob
 import json
 import logging
 import os
 from datetime import datetime
+from typing import Any
 
 import accounts
 import cv_storage
@@ -21,7 +21,7 @@ def get_recent_job_files() -> list[str]:
     return [os.path.basename(f[0]) for f in files_with_time[:10]]
 
 
-def get_user_profile() -> Optional[dict[str, Any]]:
+def get_user_profile() -> dict[str, Any] | None:
     """Todos los perfiles por rol ({role_type: perfil}) o None si no hay."""
     try:
         return profile_store.get_all_profiles() or None
@@ -35,7 +35,7 @@ def save_user_profile(profile: dict[str, Any], filename: str) -> bool:
     profile_data = profile.copy()
     profile_data['resume_filename'] = filename
     profile_data['upload_date'] = datetime.now().isoformat()
-    
+
     try:
         with open(profile_path, 'w') as f:
             json.dump(profile_data, f, indent=2)
@@ -68,7 +68,7 @@ def get_all_user_profiles() -> dict[str, Any]:
         return {}
 
 
-def get_user_profile_by_role(role_type: str) -> Optional[dict[str, Any]]:
+def get_user_profile_by_role(role_type: str) -> dict[str, Any] | None:
     all_profiles = get_all_user_profiles()
     return all_profiles.get(role_type)
 
@@ -109,7 +109,7 @@ def delete_user_profile() -> bool:
 
 
 
-def get_resume_text_from_profile() -> Optional[str]:
+def get_resume_text_from_profile() -> str | None:
     """Texto del CV del primer perfil disponible (cualquier rol)."""
     try:
         user_profile = profile_store.get_first_profile()
@@ -119,7 +119,7 @@ def get_resume_text_from_profile() -> Optional[str]:
         if not cv_storage.exists(resume_filename):
             return None
         with cv_storage.plaintext_path(resume_filename) as resume_path:
-            text: Optional[str] = resume_parser.extract_text_from_file(resume_path)
+            text: str | None = resume_parser.extract_text_from_file(resume_path)
             return text
     except Exception as e:
         logger.error(f"Error reading resume from profile: {e}")

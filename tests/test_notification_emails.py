@@ -14,7 +14,7 @@ def sent(monkeypatch):
 def test_followup_reminder(sent):
     assert nt.send_followup_reminder({'title': 'Data <b>Engineer</b>', 'company': 'Acme', 'applied_date': '2026-11-01',
                                       'job_link': 'https://x/1'}, 'ana@example.com')
-    to, subject, html = sent[0]
+    to, subject, _html = sent[0]
     assert to == 'ana@example.com' and 'Acme' in subject
 
 

@@ -1,12 +1,13 @@
-import web_settings
-import accounts
-import auth
-import os
 import logging
-
+import os
 import sys
 from logging.handlers import RotatingFileHandler
+
 from dotenv import load_dotenv
+
+import accounts
+import auth
+import web_settings
 
 # Cargar variables de entorno desde .env
 load_dotenv()
@@ -14,8 +15,15 @@ load_dotenv()
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # los routers lo usan vía services_for(request).db (conexiones, excluir empresas y guardar postulaciones)
-from db_config import db_manager
-from services import AppServices, connections, portal_search, probe_tasks, profiles, state
+from db_config import db_manager  # noqa: E402
+from services import (  # noqa: E402
+    AppServices,
+    connections,
+    portal_search,
+    probe_tasks,
+    profiles,
+    state,
+)
 
 app = web_settings.WebApp()
 # Con `python app.py` este módulo es __main__: los routers deben importar este mismo módulo

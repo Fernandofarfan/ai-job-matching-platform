@@ -7,8 +7,7 @@ from fastapi import APIRouter, Request, Response
 
 import accounts
 import tracker_export
-from fastapi_web import (flash, services_for,
-                         redirect, url_for)
+from fastapi_web import flash, redirect, services_for, url_for
 from routers.account_pages import _download
 
 logger = logging.getLogger(__name__)

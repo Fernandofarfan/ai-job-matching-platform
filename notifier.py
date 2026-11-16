@@ -2,10 +2,10 @@
 notifier.py — Sistema de Notificaciones de EmpleoIA
 Interfaz de alto nivel para enviar notificaciones y gestionar preferencias.
 """
-from typing import Any
-import os
 import logging
-from datetime import datetime, date
+import os
+from datetime import date, datetime
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -109,7 +109,7 @@ class NotificationManager:
 
     def test_email_config(self) -> dict[str, Any]:
         """Envía un email de prueba para verificar la configuración SMTP."""
-        from tasks.notification_tasks import _send_email, _get_email_template
+        from tasks.notification_tasks import _get_email_template, _send_email
         email = os.getenv("NOTIFICATION_EMAIL") or os.getenv("SMTP_USER")
         if not email:
             return {"success": False, "message": "NOTIFICATION_EMAIL no configurado en .env"}

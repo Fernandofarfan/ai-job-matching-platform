@@ -1,8 +1,8 @@
 """Pruebas de scrapers en segundo plano: estado en memoria y en disco, visible entre workers de Gunicorn."""
-from typing import Any, Optional
 import json
 import logging
 import os
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -27,13 +27,13 @@ def save(task_id: str) -> None:
         logger.exception(f"Failed to save task {task_id} to disk")
 
 
-def load(task_id: str) -> Optional[dict[str, Any]]:
+def load(task_id: str) -> dict[str, Any] | None:
     """Estado guardado de la prueba `task_id` (None si no existe)."""
     path = _path(task_id)
     if not os.path.exists(path):
         return None
     try:
-        with open(path, 'r', encoding='utf-8') as f:
+        with open(path, encoding='utf-8') as f:
             state: dict[str, Any] = json.load(f)
             return state
     except Exception:

@@ -1,8 +1,8 @@
 """Cabeceras de seguridad de todas las respuestas: CSP con nonce por pedido, HSTS y anti-framing."""
 import os
+import secrets
 from collections.abc import Awaitable, Callable
 from typing import TypeVar
-import secrets
 
 from fastapi import Request
 from starlette.responses import Response
@@ -56,7 +56,7 @@ async def add_security_headers(request: Request, call_next: Callable[[Request], 
     return apply(request, await call_next(request))
 
 
-def apply(request: Request, response: R) -> R:
+def apply[R: Response](request: Request, response: R) -> R:
     """Cabeceras de seguridad en `response`; también la usa el 500, que se arma fuera de los middlewares."""
     script_nonce = nonce(request)
     csp_header = ("Content-Security-Policy-Report-Only" if os.getenv("CSP_REPORT_ONLY", "0") == "1"

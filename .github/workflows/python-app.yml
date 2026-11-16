@@ -28,9 +28,9 @@ jobs:
       - name: Install dependencies and linters
         run: |
           pip install --require-hashes -r requirements.txt
-          pip install ruff mypy
+          pip install ruff==0.17.5 mypy
 
-      - name: Ruff (pyflakes + bugbear)
+      - name: Ruff
         run: ruff check . --output-format=github
 
       - name: Mypy (módulos tipados)

@@ -1,8 +1,9 @@
+import logging
 import os
 import re
 import time
-import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
+
 from playwright.sync_api import Playwright, sync_playwright
 
 logging.basicConfig(level=logging.INFO)
@@ -78,18 +79,18 @@ def categorize_experience_with_limit(years: str) -> str:
 
 class linkedinClass:
     """Implementación modernizada usando Playwright (Fase 2)."""
-    def __init__(self, li_at_token: Optional[str] = None, email: Optional[str] = None, password: Optional[str] = None):
+    def __init__(self, li_at_token: str | None = None, email: str | None = None, password: str | None = None):
         self.li_at_token = li_at_token
         self.email = email
         self.password = password
-        self.playwright: Optional[Playwright] = sync_playwright().start()
-        
+        self.playwright: Playwright | None = sync_playwright().start()
+
         # Lógica de proxy rotation
         proxy_server = os.getenv('PROXY_SERVER')
         launch_opts: dict[str, Any] = {"headless": True}
         if proxy_server:
             launch_opts["proxy"] = {"server": proxy_server}
-            
+
         self.browser = self.playwright.chromium.launch(**launch_opts)
         self.context = self.browser.new_context(
             user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0"
@@ -124,21 +125,22 @@ class linkedinClass:
             logger.error(f"Credentials login failed: {e}")
             return False
 
-    def search_jobs(self, keyword: str, location: str, filters: Optional[Dict[str, Any]] = None,
-                    max_jobs_per_search: int = 50) -> List[Dict[str, str]]:
-        jobs: List[Dict[str, str]] = []
+    def search_jobs(self, keyword: str, location: str, filters: dict[str, Any] | None = None,
+                    max_jobs_per_search: int = 50) -> list[dict[str, str]]:
+        jobs: list[dict[str, str]] = []
         try:
             search_url = f"https://www.linkedin.com/jobs/search/?keywords={keyword}&location={location}"
             self.page.goto(search_url)
             self.page.wait_for_selector(".jobs-search-results-list", timeout=15000)
-            
+
             for _ in range(3):
                 self.page.evaluate("document.querySelector('.jobs-search-results-list')?.scrollTo(0, document.body.scrollHeight)")
                 time.sleep(1)
-            
+
             cards = self.page.locator(".job-card-container").all()
             for i, card in enumerate(cards):
-                if i >= max_jobs_per_search: break
+                if i >= max_jobs_per_search:
+                    break
                 title = card.locator(".job-card-container__title").inner_text() if card.locator(".job-card-container__title").count() else "No title"
                 company = card.locator(".job-card-container__primary-description").inner_text() if card.locator(".job-card-container__primary-description").count() else "No company"
                 jobs.append({

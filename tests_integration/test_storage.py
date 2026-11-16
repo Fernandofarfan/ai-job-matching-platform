@@ -156,11 +156,12 @@ def test_applications_filters_and_connections(migrated_db):
 
 def test_accounts_isolate_data(mysql, monkeypatch, tmp_path):
     """Con dos cuentas, cada una ve y modifica solo su tracker, sus perfiles y sus alertas."""
+    from sqlalchemy import text
+
     import accounts
     import job_alerts
     import profile_store
     from db_config import DatabaseManager
-    from sqlalchemy import text
     monkeypatch.setattr(profile_store, 'JSON_PATH', str(tmp_path / 'profiles.json'))
     tag = uuid.uuid4().hex[:8]
     monkeypatch.setenv('ALLOW_SIGNUP', 'true')

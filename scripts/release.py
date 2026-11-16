@@ -42,7 +42,7 @@ def consolidate(changelog: str, version: str, date: str) -> str:
             body.append('#' + line)
         else:
             body.append(line)
-    return '\n'.join(lines[:start] + [f'## [{version}] - {date}', ''] + body + lines[end:])
+    return '\n'.join([*lines[:start], f'## [{version}] - {date}', '', *body, *lines[end:]])
 
 
 def notes(changelog: str, version: str) -> str:

@@ -124,10 +124,10 @@ def train(applications: Iterable[Job], today: date | None = None) -> Model | Non
         feats = features(job)
         if weight > 0:
             n_pos += weight
-            pos.update({f: weight for f in feats})
+            pos.update(dict.fromkeys(feats, weight))
         else:
             n_neg += -weight
-            neg.update({f: -weight for f in feats})
+            neg.update(dict.fromkeys(feats, -weight))
     if n_pos < MIN_EXAMPLES or n_neg < MIN_EXAMPLES:
         return None
     return {'pos': pos, 'neg': neg, 'n_pos': n_pos, 'n_neg': n_neg}

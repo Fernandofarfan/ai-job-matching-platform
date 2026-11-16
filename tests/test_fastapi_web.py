@@ -1,7 +1,8 @@
 """Páginas de FastAPI: sesión, CSRF, avisos y URLs compatibles con lo que dejaba Flask (fastapi_web.py)."""
+import re
+from datetime import UTC
 from types import SimpleNamespace
 from unittest import mock
-import re
 
 from fastapi import Request
 from fastapi.routing import APIRoute
@@ -104,8 +105,8 @@ def test_url_for_unknown_endpoint_raises(client):
 
 def test_session_cookie_format_matches_flask(app):
     """Una cookie firmada por Flask (tuplas en _flashes, sesión permanente) se lee igual sin Flask."""
-    from datetime import datetime, timezone
-    data = {'_flashes': [('info', 'hola')], '_permanent': True, 'uid': 1, 'when': datetime(2026, 1, 2, tzinfo=timezone.utc),
+    from datetime import datetime
+    data = {'_flashes': [('info', 'hola')], '_permanent': True, 'uid': 1, 'when': datetime(2026, 1, 2, tzinfo=UTC),
             ' t': 'clave rara'}
     serializer = app.session_serializer()
     assert serializer.loads(serializer.dumps(data)) == data

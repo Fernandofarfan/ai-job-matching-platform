@@ -2,7 +2,6 @@
 import base64
 import hashlib
 import os
-from typing import Optional
 from urllib.parse import urlencode
 
 import requests
@@ -10,7 +9,7 @@ import requests
 import auth
 
 AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth'
-TOKEN_URL = 'https://oauth2.googleapis.com/token'
+TOKEN_URL = 'https://oauth2.googleapis.com/token'  # noqa: S105 - URL pública
 USERINFO_URL = 'https://openidconnect.googleapis.com/v1/userinfo'
 
 
@@ -28,7 +27,7 @@ def authorization_url(redirect_uri: str, state: str, verifier: str) -> str:
         'code_challenge': challenge, 'code_challenge_method': 'S256', 'prompt': 'select_account'})
 
 
-def verified_email(code: str, verifier: str, redirect_uri: str) -> Optional[str]:
+def verified_email(code: str, verifier: str, redirect_uri: str) -> str | None:
     """Cambia el código por el email verificado de la cuenta de Google, o None."""
     token = requests.post(TOKEN_URL, data={
         'code': code, 'client_id': os.getenv('GOOGLE_OAUTH_CLIENT_ID'),

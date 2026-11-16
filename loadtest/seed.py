@@ -10,9 +10,9 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import accounts  # noqa: E402
-import job_feedback  # noqa: E402
-from db_config import DatabaseManager  # noqa: E402
+import accounts
+import job_feedback
+from db_config import DatabaseManager
 
 STATUSES = ['bookmarked', 'applying', 'applied', 'interviewing', 'negotiating', 'rejected']
 

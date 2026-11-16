@@ -5,14 +5,32 @@ ORM completo reemplazando queries SQL manuales en db_config.py
 import os
 from collections.abc import Iterator
 from datetime import date, datetime
-from typing import Any, Optional
+from typing import Any
+
+from dotenv import load_dotenv
 from sqlalchemy import (
-    create_engine, Integer, String, Text, DateTime, Date, Float, Boolean, Enum, ForeignKey, Index
+    Boolean,
+    Date,
+    DateTime,
+    Enum,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    create_engine,
 )
 from sqlalchemy.engine import URL
-from sqlalchemy.orm import DeclarativeBase, relationship, sessionmaker, Session, Mapped, mapped_column
+from sqlalchemy.orm import (
+    DeclarativeBase,
+    Mapped,
+    Session,
+    mapped_column,
+    relationship,
+    sessionmaker,
+)
 from sqlalchemy.pool import QueuePool
-from dotenv import load_dotenv
 
 load_dotenv()
 
@@ -241,7 +259,7 @@ class SQLAlchemyManager:
 
 
 # Instancia global compatible con el código existente
-orm_manager: Optional[SQLAlchemyManager]
+orm_manager: SQLAlchemyManager | None
 try:
     orm_manager = SQLAlchemyManager()
 except Exception as e:

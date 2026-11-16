@@ -127,10 +127,14 @@ def advanced_stats(all_jobs: list[Row], history: Iterable[Row] | None = None) ->
             except Exception:
                 pass
 
-        if st == 'applied':     applied += 1
-        if st == 'interviewing': interviewing += 1
-        if st == 'accepted':    accepted += 1
-        if st == 'rejected':    rejected += 1
+        if st == 'applied':
+            applied += 1
+        if st == 'interviewing':
+            interviewing += 1
+        if st == 'accepted':
+            accepted += 1
+        if st == 'rejected':
+            rejected += 1
 
     # ── Tasas (evitar divisiones por cero) ──
     response_rate   = round(interviewing / applied * 100, 1) if applied  > 0 else 0

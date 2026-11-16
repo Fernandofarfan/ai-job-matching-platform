@@ -5,13 +5,13 @@ Sale con código 1 si algún portal devuelve menos de --min-jobs ofertas o lanza
 Si un portal muestra un captcha se informa como `blocked` y no hace fallar la corrida: eso dice
 que bloquea al navegador, no que haya cambiado su HTML. LinkedIn queda afuera porque requiere login.
 """
-from typing import Any
-from collections.abc import Callable
 import argparse
 import json
 import logging
 import os
 import sys
+from collections.abc import Callable
+from typing import Any
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 

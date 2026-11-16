@@ -2,7 +2,6 @@
 import logging
 import os
 from datetime import datetime
-from typing import Optional
 
 from ai_engine import _call_gemini
 
@@ -81,7 +80,7 @@ No inventes datos de contacto. Devolvé SOLO el texto de la carta, sin markdown.
         return _generate(prompt)
 
     def save_cover_letter(self, letter_text: str, job_title: str, company: str,
-                          output_dir: Optional[str] = None) -> str:
+                          output_dir: str | None = None) -> str:
         return _save_docx(letter_text, output_dir or _generated_dir("cover_letters"), _safe_filename("cover_letter", job_title, company, "docx"))
 
 
@@ -103,5 +102,5 @@ Secciones: RESUMEN PROFESIONAL, HABILIDADES TÉCNICAS, EXPERIENCIA, PROYECTOS (s
         return _generate(prompt)
 
     def save_resume(self, resume_text: str, job_title: str, company: str,
-                    output_dir: Optional[str] = None) -> str:
+                    output_dir: str | None = None) -> str:
         return _save_docx(resume_text, output_dir or _generated_dir("resumes"), _safe_filename("resume", job_title, company, "docx"))

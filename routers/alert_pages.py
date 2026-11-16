@@ -1,7 +1,7 @@
 """Alertas de empleo (búsquedas guardadas) y "me interesa / no me interesa" de las ofertas, en FastAPI."""
-from typing import Any
 import json
 import logging
+from typing import Any
 
 from fastapi import APIRouter, Request, Response
 from fastapi.responses import JSONResponse
@@ -10,7 +10,7 @@ from starlette.concurrency import run_in_threadpool
 import accounts
 import job_alerts
 import job_dispatch
-from fastapi_web import (_body_within, _csrf_ok, flash, read_form, render)
+from fastapi_web import _body_within, _csrf_ok, flash, read_form, render
 from routers.content_pages import _go, _json_error
 
 logger = logging.getLogger(__name__)

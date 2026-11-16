@@ -4,13 +4,13 @@ Perfiles de CV en profile_pages.py; alertas y "me interesa" en alert_pages.py.
 
 Los nombres de ruta son los endpoints que usaba Flask, así las plantillas siguen armando las mismas URLs.
 """
-from typing import Any, Optional
 import ast
 import json
 import logging
 import os
 from collections.abc import Mapping
 from html import escape
+from typing import Any
 
 import pandas as pd
 from fastapi import APIRouter, Request
@@ -22,7 +22,21 @@ import ats_score
 import i18n
 import job_dispatch
 from document_generators import ResumeOptimizer
-from fastapi_web import (_body_within, _csrf_ok, flash, select_language, web_app_for, get_session, services_for, read_form, redirect, render, save_session, upload_max_bytes, url_for)
+from fastapi_web import (
+    _body_within,
+    _csrf_ok,
+    flash,
+    get_session,
+    read_form,
+    redirect,
+    render,
+    save_session,
+    select_language,
+    services_for,
+    upload_max_bytes,
+    url_for,
+    web_app_for,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["content"], include_in_schema=False)
@@ -35,7 +49,7 @@ def _go(request: Request, endpoint: str, **values: Any) -> Response:
     return redirect(request, url_for(request, endpoint, **values))
 
 
-def _csv_path(filename: str) -> Optional[str]:
+def _csv_path(filename: str) -> str | None:
     """CSV de resultados de la cuenta actual, o None si el nombre no es un .csv de esa carpeta."""
     if filename != os.path.basename(filename) or not filename.endswith('.csv'):
         return None
@@ -43,7 +57,7 @@ def _csv_path(filename: str) -> Optional[str]:
     return path if os.path.isfile(path) else None
 
 
-def _attachment(path: str, filename: str, media_type: Optional[str] = None) -> FileResponse:
+def _attachment(path: str, filename: str, media_type: str | None = None) -> FileResponse:
     """Archivo como descarga (Content-Disposition: attachment)."""
     return FileResponse(path, media_type=media_type, filename=filename)
 
@@ -55,7 +69,7 @@ COLUMNS = {'Title': 'Título', 'Company': 'Empresa', 'Location': 'Ubicación', '
            'Experience_Category': 'Categoría de Experiencia'}
 
 
-def _match_of(job: dict[str, Any]) -> Optional[float]:
+def _match_of(job: dict[str, Any]) -> float | None:
     """Match 0-100 de una fila del CSV, o None."""
     value = job.get('overall_match')
     return None if value is None or pd.isna(value) else float(value)

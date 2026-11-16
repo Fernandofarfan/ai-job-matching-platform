@@ -1,6 +1,6 @@
 """Match entre un perfil de CV y una oferta: habilidades, años de experiencia pedidos y similitud de texto."""
-from typing import Any
 import re
+from typing import Any
 
 import pandas as pd
 from dotenv import load_dotenv
@@ -51,28 +51,27 @@ class jobMatcher:
             ngram_range=(1, 2),
             max_features=1000
         )
-    
-    
+
+
 
 
     def calculate_experience_match(self, profile_years: Any, job_description: str) -> float:
-        
+
         required_years = self._extract_required_experience(job_description)
-        
+
         if required_years == 0:
-            return 100.0 
-        
+            return 100.0
+
         if profile_years >= required_years:
             return 100.0
-        elif profile_years >= required_years * 0.8: 
+        if profile_years >= required_years * 0.8:
             return 80.0
-        elif profile_years >= required_years * 0.6: 
+        if profile_years >= required_years * 0.6:
             return 60.0
-        else:
-            return float(max(20.0, (profile_years / required_years) * 100))
-    
+        return float(max(20.0, (profile_years / required_years) * 100))
+
     def _extract_required_experience(self, job_description: str) -> int:
-        
+
         patterns = [
             r'(\d+)\+?\s*years?\s*(?:of\s*)?experience',
             r'(\d+)\+?\s*years?\s*in',
@@ -82,10 +81,10 @@ class jobMatcher:
             r'(\d+)\+?\s*(?:años|anos?)\s*(?:de\s*)?experi[eê]ncia',
             r'(?:mínimo|minimo|al menos|pelo menos)\s*(?:de\s*)?(\d+)\+?\s*(?:años|anos?)',
         ]
-        
+
         years = []
         text_lower = job_description.lower()
-        
+
         for pattern in patterns:
             matches = re.findall(pattern, text_lower)
             for match in matches:
@@ -96,10 +95,10 @@ class jobMatcher:
                 # "empresa con 30 años de experiencia" habla de la empresa, no del puesto
                 if required_years <= MAX_REQUIRED_YEARS:
                     years.append(required_years)
-        
-        
+
+
         return min(years) if years else 0
-    
+
     def calculate_text_similarity(self, profile_text: str, job_description: str) -> float:
         """Similitud 0-100: embeddings si están activos para el idioma del CV, si no (o si fallan) TF-IDF."""
         import embeddings
@@ -107,43 +106,43 @@ class jobMatcher:
         if semantic is not None:
             return semantic
         try:
-           
+
             texts = [profile_text, job_description]
-            
-           
+
+
             tfidf_matrix = self.vectorizer.fit_transform(texts)
-            
-            
+
+
             similarity = cosine_similarity(tfidf_matrix[0:1], tfidf_matrix[1:2])[0][0]
-            
+
             return float(similarity * 100)
         except Exception as e:
-            print(f"Error calculating text similarity: {str(e)}")
+            print(f"Error calculating text similarity: {e!s}")
             return 0.0
-    
+
     def calculate_overall_match(self, profile: dict[str, Any], job_description: str, weights: dict[str, float] | None = None) -> dict[str, Any]:
-        
+
         if weights is None:
             weights = {
                 'skills': 0.4,
                 'experience': 0.3,
                 'text_similarity': 0.3
             }
-        
-        
+
+
         # Perfiles viejos o cargados a mano pueden no tener todos los campos del parser
         skills = profile.get('skills') or []
         skill_score = self.calculate_skill_match(skills, job_description)
         experience_score = self.calculate_experience_match(profile.get('experience_years') or 0, job_description)
         text_similarity_score = self.calculate_text_similarity(profile.get('raw_text') or '', job_description)
-        
-       
+
+
         overall_score = (
             skill_score * weights['skills'] +
             experience_score * weights['experience'] +
             text_similarity_score * weights['text_similarity']
         )
-        
+
         return {
             'overall_match': round(overall_score, 1),
             'skill_match': round(skill_score, 1),
@@ -152,23 +151,23 @@ class jobMatcher:
             'matched_skills': self._get_matched_skills(skills, job_description),
             'missing_skills': self.get_missing_skills(skills, job_description),
         }
-    
-    def calculate_skill_match(self, profile_skills: list[str], job_description: str) -> float:
-       
+
+    def calculate_skill_match(self, profile_skills: list[str], job_description: str) -> float:  # noqa: C901 - complejidad heredada; no crecer
+
         if not profile_skills:
             return 0.0
-        
+
         job_description_lower = job_description.lower()
         matched_skills = []
-        
-        
+
+
         expanded_skills = []
-        
+
         for skill in profile_skills:
             skill_lower = skill.lower().strip()
             expanded_skills.append(skill_lower)
-            
-            
+
+
             if 'apache spark' in skill_lower or skill_lower == 'spark':
                 expanded_skills.extend(['spark', 'apache spark', 'pyspark', 'spark sql', 'databricks'])
             elif 'power bi' in skill_lower:
@@ -217,42 +216,42 @@ class jobMatcher:
                 expanded_skills.extend(['rest api', 'api', 'restful', 'web services'])
             elif 'ci/cd' in skill_lower:
                 expanded_skills.extend(['continuous integration', 'jenkins', 'devops'])
-        
+
         expanded_skills = list(set(expanded_skills))
-        
-       
+
+
         for skill in expanded_skills:
             pattern = r'\b' + re.escape(skill) + r'\b'
             if re.search(pattern, job_description_lower):
                 matched_skills.append(skill)
-        
-       
+
+
         match_percentage = (len(matched_skills) / len(profile_skills)) * 100
         return min(match_percentage, 100.0)
 
 
     def _get_matched_skills(self, profile_skills: list[str], job_description: str) -> list[str]:
-       
+
         if not profile_skills:
             return []
-        
+
         job_description_lower = job_description.lower()
         matched_skills = []
-        
-        
-        
+
+
+
         for skill in profile_skills:
             skill_lower = skill.lower().strip()
             skill_found = False
-            
-            
+
+
             pattern = r'\b' + re.escape(skill_lower) + r'\b'
             if re.search(pattern, job_description_lower):
                 matched_skills.append(skill)
                 skill_found = True
             else:
-                
-                for base_skill, variations in SKILL_VARIATIONS.items():
+
+                for variations in SKILL_VARIATIONS.values():
                     if skill_lower in [v.lower() for v in variations]:
                         for variation in variations:
                             variation_pattern = r'\b' + re.escape(variation.lower()) + r'\b'
@@ -262,12 +261,11 @@ class jobMatcher:
                                 break
                         if skill_found:
                             break
-                
-                
-                if not skill_found and len(skill_lower) > 4:
-                    if skill_lower in job_description_lower:
-                        matched_skills.append(skill)
-        
+
+
+                if not skill_found and len(skill_lower) > 4 and skill_lower in job_description_lower:
+                    matched_skills.append(skill)
+
         return matched_skills
 
     @staticmethod
@@ -284,19 +282,19 @@ class jobMatcher:
     def process_job_dataframe(self, df: pd.DataFrame, profile: dict[str, Any], job_description_column: str = "Description") -> pd.DataFrame:
         """Process entire job dataframe and add match scores"""
         results = []
-        
+
         for index, row in df.iterrows():
             job_description = str(row.get(job_description_column, ''))
-            
+
             if job_description and job_description != 'nan':
                 match_results = self.calculate_overall_match(profile, job_description)
-                
-               
+
+
                 job_result = row.to_dict()
                 job_result.update(match_results)
                 results.append(job_result)
             else:
-                
+
                 job_result = row.to_dict()
                 job_result.update({
                     'overall_match': 0.0,
@@ -307,9 +305,8 @@ class jobMatcher:
                     'missing_skills': [],
                 })
                 results.append(job_result)
-        
-        
+
+
         results_df = pd.DataFrame(results)
-        results_df = results_df.sort_values('overall_match', ascending=False)
-        
-        return results_df
+        return results_df.sort_values('overall_match', ascending=False)
+

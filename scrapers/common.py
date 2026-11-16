@@ -2,7 +2,8 @@
 import logging
 import os
 import time
-from typing import TYPE_CHECKING, Any, Callable, Optional
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from playwright.sync_api import Browser as PlaywrightBrowser
@@ -30,12 +31,12 @@ class Browser:
     SCRAPER_HEADLESS=false abre la ventana (útil para depurar). Si algo falla al arrancar, cierra lo ya abierto.
     """
 
-    def __init__(self, playwright_factory: Optional[Callable[[], Any]] = None) -> None:
+    def __init__(self, playwright_factory: Callable[[], Any] | None = None) -> None:
         if playwright_factory is None:
             from playwright.sync_api import sync_playwright
             playwright_factory = sync_playwright
-        self._playwright: Optional[Playwright] = playwright_factory().start()
-        self.browser: Optional[PlaywrightBrowser] = None
+        self._playwright: Playwright | None = playwright_factory().start()
+        self.browser: PlaywrightBrowser | None = None
         try:
             endpoint = os.getenv('PLAYWRIGHT_WS_ENDPOINT')
             proxy: dict[str, Any] = {'proxy': {'server': os.environ['PROXY_SERVER']}} if os.getenv('PROXY_SERVER') else {}
@@ -68,7 +69,7 @@ class Browser:
         self.browser = self._playwright = None
 
 
-def get_with_retries(page: 'Page', url: str, attempts: Optional[int] = None, backoff: float = 2.0,
+def get_with_retries(page: 'Page', url: str, attempts: int | None = None, backoff: float = 2.0,
                      sleep: Callable[[float], None] = time.sleep) -> None:
     """page.goto con reintentos y espera exponencial; relanza el último error."""
     attempts = attempts or MAX_ATTEMPTS

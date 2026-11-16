@@ -67,6 +67,7 @@ def test_telegram_requests_not_traced(monkeypatch):
 def test_metrics_endpoint_runs_off_event_loop():
     """/metrics es sincrónico para que las lecturas de Redis no bloqueen el event loop."""
     import asyncio
+
     import main
     assert not asyncio.iscoroutinefunction(main.metrics)
 

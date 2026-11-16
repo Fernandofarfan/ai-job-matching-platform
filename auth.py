@@ -4,7 +4,7 @@ import hmac
 import logging
 import os
 from collections.abc import Mapping
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -25,7 +25,7 @@ def session_fingerprint(secret_key: str, user: dict[str, Any]) -> str:
     return hmac.new(key, f"{user['id']}:{user['password_hash']}".encode(), 'sha256').hexdigest()
 
 
-def start_session(session: Any, secret_key: str, user_id: int, ip: Optional[str] = None, user_agent: Optional[str] = None) -> None:
+def start_session(session: Any, secret_key: str, user_id: int, ip: str | None = None, user_agent: str | None = None) -> None:
     """Abre la sesión de `user_id` (borra lo anterior para evitar fijación de sesión) y la registra en user_sessions."""
     user = accounts.get_user(user_id)
     if user is None:
@@ -38,7 +38,7 @@ def start_session(session: Any, secret_key: str, user_id: int, ip: Optional[str]
     session.permanent = True
 
 
-def session_user_id(session_data: Mapping[str, Any], secret_key: str) -> Optional[int]:
+def session_user_id(session_data: Mapping[str, Any], secret_key: str) -> int | None:
     """Id del usuario de la sesión si sigue siendo válida; None si no."""
     user_id = session_data.get('user_id')
     if not user_id:
@@ -64,7 +64,7 @@ def is_session_valid(session_data: Mapping[str, Any], secret_key: str) -> bool:
     return session_user_id(session_data, secret_key) is not None
 
 
-def extension_token_user(candidate: str) -> Optional[int]:
+def extension_token_user(candidate: str) -> int | None:
     """Cuenta del token de la extensión: el generado en "Mi cuenta", o EXTENSION_TOKEN para la primera cuenta."""
     if not candidate:
         return None
@@ -89,7 +89,7 @@ def is_local_path(target: object) -> bool:
     return isinstance(target, str) and target.startswith('/') and not target.startswith('//') and '\\' not in target
 
 
-def load_session_cookie(web_app: Any, cookie_value: Optional[str]) -> dict[str, Any]:
+def load_session_cookie(web_app: Any, cookie_value: str | None) -> dict[str, Any]:
     """Contenido de la cookie de sesión (web_settings.WebApp); {} si no vale."""
     if not cookie_value:
         return {}
@@ -101,7 +101,7 @@ def load_session_cookie(web_app: Any, cookie_value: Optional[str]) -> dict[str, 
     return data if isinstance(data, dict) else {}
 
 
-def cookie_user_id(web_app: Any, cookie_value: Optional[str]) -> Optional[int]:
+def cookie_user_id(web_app: Any, cookie_value: str | None) -> int | None:
     """Usuario de la cookie de sesión, o None."""
     return session_user_id(load_session_cookie(web_app, cookie_value), web_app.secret_key)
 
@@ -141,7 +141,7 @@ def account_token(secret_key: str, purpose: str, user: dict[str, Any]) -> str:
         {'uid': user['id'], 'fp': _token_fp(purpose, user)}))
 
 
-def read_account_token(secret_key: str, purpose: str, token: str, max_age: int) -> Optional[dict[str, Any]]:
+def read_account_token(secret_key: str, purpose: str, token: str, max_age: int) -> dict[str, Any] | None:
     """Cuenta del enlace si es válido, no venció y no se usó; None si no."""
     from itsdangerous import BadData, URLSafeTimedSerializer
     try:

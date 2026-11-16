@@ -22,7 +22,7 @@ def store(monkeypatch):
 
 
 def test_profiles_by_role(store):
-    data, fake, cv = store
+    data, _fake, cv = store
     assert profiles.get_user_profile() == data
     assert profiles.get_user_profile_by_role('data_engineer')['name'] == 'Ana'
     assert profiles.save_user_profile_for_role({'name': 'Beto'}, 'b.pdf', 'backend')

@@ -8,7 +8,8 @@ import logging
 import random
 import re
 import time
-from typing import TYPE_CHECKING, Callable, Optional, Tuple
+from collections.abc import Callable
+from typing import TYPE_CHECKING
 from urllib.parse import urlencode
 
 from scrapers.common import Browser, get_with_retries
@@ -36,7 +37,7 @@ def people_search_url(keywords: str, page: int = 1) -> str:
     return 'https://www.linkedin.com/search/results/people/?' + urlencode(params)
 
 
-def card_name_and_profile(card: 'ElementHandle') -> Tuple[Optional[str], Optional[str]]:
+def card_name_and_profile(card: 'ElementHandle') -> tuple[str | None, str | None]:
     """Nombre y URL del perfil de una tarjeta de resultados."""
     link = card.query_selector("a[href*='/in/']")
     if not link:
@@ -59,7 +60,7 @@ def card_works_at(card: 'ElementHandle', company: str) -> bool:
     return not target or target in card.inner_text().lower()
 
 
-def format_message(template: str, name: Optional[str], company: Optional[str]) -> str:
+def format_message(template: str, name: str | None, company: str | None) -> str:
     """Plantilla con {name} (solo el nombre de pila) y {company}; si la plantilla está mal, va tal cual."""
     first = (name or 'there').split(' ')[0].strip('.,!|')
     try:
@@ -71,7 +72,7 @@ def format_message(template: str, name: Optional[str], company: Optional[str]) -
 class linkedinConnections:
     """Bot de solicitudes de conexión (misma interfaz que la versión de Selenium)."""
 
-    def __init__(self, email: Optional[str] = None, password: Optional[str] = None, li_at_token: Optional[str] = None,
+    def __init__(self, email: str | None = None, password: str | None = None, li_at_token: str | None = None,
                  browser_factory: Callable[[], Browser] = Browser) -> None:
         self.email = email
         self.password = password
@@ -79,7 +80,7 @@ class linkedinConnections:
         self.processed_profiles: set[str] = set()
         self.connection_count = 0
         self.total_connections_sent = 0
-        self._browser: Optional[Browser] = browser_factory()
+        self._browser: Browser | None = browser_factory()
         self.page = self._browser.page
 
     def _logged_in(self, timeout: int = 20_000) -> bool:
@@ -156,7 +157,7 @@ class linkedinConnections:
         return self._connect_on_profile(profile) if profile else False
 
     def send_connection_requests_with_rules(self, keywords: str, company: str, target_min: int, target_max: int,
-                                            max_pages: int = 5, stop_check_callback: Optional[Callable[[], bool]] = None) -> bool:
+                                            max_pages: int = 5, stop_check_callback: Callable[[], bool] | None = None) -> bool:
         """Entre `target_min` y `target_max` invitaciones (al azar) recorriendo hasta `max_pages` páginas."""
         target = random.randint(target_min, target_max)
         sent = 0
@@ -194,7 +195,7 @@ class linkedinConnections:
         return sent > 0
 
     def process_company(self, company: str, message: str = '', max_connections: int = 25, max_pages: int = 5,
-                        stop_check_callback: Optional[Callable[[], bool]] = None) -> bool:
+                        stop_check_callback: Callable[[], bool] | None = None) -> bool:
         """Entre 10 y 15 invitaciones a personas que hoy trabajan en `company`."""
         if stop_check_callback and stop_check_callback():
             return False
@@ -208,7 +209,7 @@ class linkedinConnections:
             return False
 
     def process_general_search(self, search_term: str, message: str = '', max_connections: int = 25,
-                               max_pages: int = 5, stop_check_callback: Optional[Callable[[], bool]] = None) -> bool:
+                               max_pages: int = 5, stop_check_callback: Callable[[], bool] | None = None) -> bool:
         """Entre 50 y 100 invitaciones a personas que coinciden con `search_term` (p. ej. "Recruiter")."""
         if stop_check_callback and stop_check_callback():
             return False

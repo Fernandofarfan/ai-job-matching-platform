@@ -4,8 +4,9 @@ Las rutas pasan la IP, el navegador y la URL base de su pedido.
 """
 import logging
 import os
+from collections.abc import Callable
 from datetime import datetime
-from typing import Any, Callable, Optional
+from typing import Any
 from urllib.parse import urlsplit
 
 from markupsafe import escape
@@ -17,7 +18,7 @@ logger = logging.getLogger(__name__)
 LOCAL_HOSTS = {'localhost', '127.0.0.1', '::1'}
 
 
-def public_base(host: str, url_root: str) -> Optional[str]:
+def public_base(host: str, url_root: str) -> str | None:
     """Base de los enlaces de los emails: PUBLIC_BASE_URL (obligatoria en Cloud Run, evita usar el Host del pedido)."""
     base = os.getenv('PUBLIC_BASE_URL', '').rstrip('/')
     if base:
@@ -35,7 +36,7 @@ def deliver(to: str, subject: str, body: str, link: str, cta: str) -> bool:
     return _send_email(to, subject, _get_email_template(subject, body, link, cta))
 
 
-def send_verification(user: dict[str, Any], link: Optional[str]) -> bool:
+def send_verification(user: dict[str, Any], link: str | None) -> bool:
     """Email con el enlace para confirmar la cuenta."""
     if not link:
         return False
@@ -44,7 +45,7 @@ def send_verification(user: dict[str, Any], link: Optional[str]) -> bool:
                                   link, 'Confirmar email')
 
 
-def send_reset(user: dict[str, Any], link: Optional[str]) -> bool:
+def send_reset(user: dict[str, Any], link: str | None) -> bool:
     """Email con el enlace para elegir una contraseña nueva."""
     if not link:
         return False
@@ -66,13 +67,13 @@ def send_inactivity_notice(user: dict[str, Any], delete_on: datetime) -> bool:
                    f'{base}/login', 'Entrar y conservar mi cuenta')
 
 
-def audit(user_id: int | None, kind: str, ip: Optional[str], agent: Optional[str]) -> bool:
+def audit(user_id: int | None, kind: str, ip: str | None, agent: str | None) -> bool:
     """Registra el evento con la IP y el navegador del pedido."""
     return security_events.record(user_id, kind, ip, agent)
 
 
-def audit_login(user: dict[str, Any], kind: str, ip: Optional[str], agent: Optional[str],
-                account_link: Callable[[], Optional[str]]) -> None:
+def audit_login(user: dict[str, Any], kind: str, ip: str | None, agent: str | None,
+                account_link: Callable[[], str | None]) -> None:
     """Registra el login y, si es un navegador nuevo para la cuenta, avisa por email en segundo plano."""
     try:
         new_device = security_events.login_alerts_enabled() and security_events.is_new_device(user['id'], agent)

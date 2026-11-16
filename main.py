@@ -22,10 +22,27 @@ import observability
 import rate_limit
 import security_headers
 import version
-from routers import (account_integrations, account_pages, admin_pages, ai, alert_pages, analytics, auth_pages, content_pages, documents,
-                     export_pages, insights, login_providers, pages, profile_pages, scraper_pages, security_pages, tracker)
+from routers import (
+    account_integrations,
+    account_pages,
+    admin_pages,
+    ai,
+    alert_pages,
+    analytics,
+    auth_pages,
+    content_pages,
+    documents,
+    export_pages,
+    insights,
+    login_providers,
+    pages,
+    profile_pages,
+    scraper_pages,
+    security_pages,
+    tracker,
+    webhooks,
+)
 from routers import push as push_router
-from routers import webhooks
 
 CallNext = Callable[[Request], Awaitable[Response]]
 PUBLIC_API_PATHS = {"/api/health", "/api/ready"}
@@ -61,9 +78,8 @@ async def rate_limit_ai(request: Request, call_next: CallNext) -> Response:
     key = rate_limit.client_key(user_id, client_ip)
     if path.startswith("/api/") and path not in PUBLIC_API_PATHS and not rate_limit.hit_api_limit(key):
         return JSONResponse({"error": "Demasiadas solicitudes, probá de nuevo en un minuto"}, status_code=429)
-    if _matches([ai.router], request.scope):
-        if not rate_limit.hit_ai_limit(key):
-            return JSONResponse({"error": "Demasiadas solicitudes de IA, probá de nuevo en un minuto"}, status_code=429)
+    if _matches([ai.router], request.scope) and not rate_limit.hit_ai_limit(key):
+        return JSONResponse({"error": "Demasiadas solicitudes de IA, probá de nuevo en un minuto"}, status_code=429)
     return await call_next(request)
 
 async def require_login(request: Request, call_next: CallNext) -> Response:

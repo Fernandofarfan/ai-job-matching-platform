@@ -46,7 +46,7 @@ def test_process_job_dataframe_orders_by_match(monkeypatch):
                        {'Title': 'Data', 'Description': 'Python, SQL and data pipelines, 3 years of experience'},
                        {'Title': 'Vacía', 'Description': float('nan')}])
     out = matcher.process_job_dataframe(df, profile)
-    assert list(out['Title'])[0] == 'Data'
+    assert next(iter(out['Title'])) == 'Data'
     assert out.set_index('Title').loc['Vacía', 'overall_match'] == 0.0
 
 

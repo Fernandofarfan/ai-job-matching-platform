@@ -6,8 +6,8 @@ import logging
 import re
 from typing import Any
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 
 logger = logging.getLogger(__name__)
 
@@ -62,10 +62,7 @@ def extract_salary_from_text(text: str) -> dict[str, Any]:
 
                 # Inferir moneda por magnitud si no se detectó
                 if not detected_currency:
-                    if min_val < 20000:
-                        detected_currency = "USD"
-                    else:
-                        detected_currency = "ARS"
+                    detected_currency = "USD" if min_val < 20000 else "ARS"
 
                 return {
                     "min": min_val,

@@ -3,14 +3,15 @@
 En Celery el pedido no depende de que la instancia web siga viva: el worker publica el
 progreso como estado de la tarea y la página lo consulta en /api/documents/tasks/<id>.
 """
-from typing import Any
-from collections.abc import Callable
-import accounts
 import logging
 import os
 import time
+from collections.abc import Callable
+from typing import Any
 
 import pandas as pd
+
+import accounts
 
 logger = logging.getLogger(__name__)
 

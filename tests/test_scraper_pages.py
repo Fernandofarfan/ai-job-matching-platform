@@ -35,7 +35,7 @@ def test_linkedin_token_or_env_credentials(client, launched, monkeypatch):
     client.post('/start_linkedin_scraper', data=form)
     assert launched == []
     client.post('/start_linkedin_scraper', data={**form, 'linkedin_token': 'tok', 'job_type[]': ['F', 'C']})
-    key, job, args = launched[0]
+    _key, job, args = launched[0]
     assert job == 'run_linkedin_scraper_with_matching' and args[0]['linkedin_token'] == 'tok'
     assert args[2]['job_type'] == ['F', 'C'] and args[2]['has_verifications'] is True
     client.post('/start_linkedin_scraper', data={'linkedin_token': 'tok'})

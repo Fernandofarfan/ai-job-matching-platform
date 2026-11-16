@@ -11,7 +11,6 @@ import argparse
 import os
 import sys
 from pathlib import Path
-from typing import Optional
 
 from PIL import Image, ImageChops
 
@@ -41,7 +40,7 @@ def highlight(after: Image.Image, mask: Image.Image) -> Image.Image:
     return faded
 
 
-def compare(base_dir: Path, head_dir: Path, diff_dir: Optional[Path], tolerance: int,
+def compare(base_dir: Path, head_dir: Path, diff_dir: Path | None, tolerance: int,
             max_ratio: float) -> list[tuple[str, str, float]]:
     """(captura, estado, % distinto) por página. Estados: 'igual', 'cambió', 'nueva', 'quitada'."""
     rows = []

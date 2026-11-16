@@ -1,16 +1,16 @@
 """API de IA (/api/ai/*), notificaciones y análisis salarial servida por FastAPI (antes web/ai_api.py).
 Comparte con routers/tracker.py la sesión, el login, el CSRF y el formato de error;
 el rate limit de IA lo aplica main.py sobre las rutas de `router`."""
-from collections.abc import Callable
-import accounts
 import logging
 import os
+from collections.abc import Callable
 from types import SimpleNamespace
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Body, Depends, Response
 from fastapi.responses import JSONResponse
 
+import accounts
 import ai_usage
 from routers.tracker import ApiError, TrackerRoute, browser, get_db
 
@@ -226,7 +226,7 @@ def notifications_trigger_digest(ai: SimpleNamespace = Depends(get_ai), db: Any 
     return {'success': bool(sent), 'message': f'Digest enviado a {email}' if sent else 'Error al enviar'}
 
 
-def _results_csv(filename: Optional[str]) -> str:
+def _results_csv(filename: str | None) -> str:
     """Ruta de un CSV dentro de results/; rechaza nombres con directorios."""
     name = str(filename or '')
     if not name:

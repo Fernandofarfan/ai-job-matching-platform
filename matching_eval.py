@@ -4,10 +4,10 @@ Para cada CV ordena todas las ofertas por `jobMatcher.calculate_overall_match` y
 el orden con las etiquetas: NDCG@5, precisión@3 (ofertas con relevancia >= 1) y MRR
 (posición de la primera oferta con relevancia 2).
 """
-from typing import Any
 import json
 import math
 import os
+from typing import Any
 
 DATASET = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'eval', 'matching_dataset.json')
 

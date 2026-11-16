@@ -3,7 +3,7 @@ import hashlib
 import re
 import secrets
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy import Boolean, DateTime, Integer, String, Text, select
 from sqlalchemy.orm import Mapped, mapped_column
@@ -47,14 +47,14 @@ def _update(user_id: int, **values: Any) -> None:
         session.commit()
 
 
-def _row(user_id: Optional[int]) -> Optional[UserIntegration]:
+def _row(user_id: int | None) -> UserIntegration | None:
     if user_id is None:
         return None
     with accounts._sessions()() as session:
         return session.get(UserIntegration, user_id)
 
 
-def status(user_id: Optional[int]) -> dict[str, Any]:
+def status(user_id: int | None) -> dict[str, Any]:
     """Qué tiene conectado la cuenta (sin secretos)."""
     row = _row(user_id)
     return {
@@ -72,7 +72,7 @@ def set_telegram_chat(user_id: int, chat_id: str) -> None:
     _update(user_id, telegram_chat_id=chat_id)
 
 
-def telegram_chat_id(user_id: Optional[int]) -> Optional[str]:
+def telegram_chat_id(user_id: int | None) -> str | None:
     """Chat de Telegram propio de la cuenta; '' si lo desconectó, None si nunca lo configuró."""
     row = _row(user_id)
     return row.telegram_chat_id if row else None
@@ -90,7 +90,7 @@ def revoke_extension_token(user_id: int) -> None:
     _update(user_id, extension_token_hash=None, legacy_extension_off=True)
 
 
-def legacy_allowed(user_id: Optional[int], kind: str) -> bool:
+def legacy_allowed(user_id: int | None, kind: str) -> bool:
     """La cuenta no tocó esta integración: puede usar la de la instancia (TELEGRAM_CHAT_ID, token.json, EXTENSION_TOKEN)."""
     row = _row(user_id)
     if row is None:
@@ -102,7 +102,7 @@ def legacy_allowed(user_id: Optional[int], kind: str) -> bool:
     return not row.legacy_extension_off
 
 
-def user_for_extension_token(token: str) -> Optional[int]:
+def user_for_extension_token(token: str) -> int | None:
     """Cuenta dueña del token de la extensión, o None."""
     if not token:
         return None
@@ -118,7 +118,7 @@ def save_gmail_token(user_id: int, token_json: str) -> None:
     _update(user_id, gmail_token=fernet.encrypt(token_json.encode()).decode() if fernet else token_json)
 
 
-def gmail_token(user_id: int) -> Optional[str]:
+def gmail_token(user_id: int) -> str | None:
     """Token OAuth de Gmail de la cuenta en claro, o None."""
     import cv_storage
     row = _row(user_id)

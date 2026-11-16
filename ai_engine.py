@@ -2,12 +2,13 @@
 ai_engine.py — Motor de IA Centralizado para EmpleoIA
 Usa Google Gemini para análisis semántico avanzado de ofertas de trabajo.
 """
-import os
 import json
 import logging
+import os
 import re
 from datetime import datetime
-from typing import Any, List, Optional, cast
+from typing import Any, cast
+
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field, ValidationError
 
@@ -30,21 +31,21 @@ class SalarioEstimadoSchema(BaseModel):
 
 class JobAnalysisSchema(BaseModel):
     cultura: CulturaSchema = Field(default_factory=CulturaSchema)
-    skills_requeridas: List[str] = Field(default_factory=list)
-    skills_deseadas: List[str] = Field(default_factory=list)
-    skills_del_cv_que_aplican: List[str] = Field(default_factory=list)
-    skills_faltantes: List[str] = Field(default_factory=list)
+    skills_requeridas: list[str] = Field(default_factory=list)
+    skills_deseadas: list[str] = Field(default_factory=list)
+    skills_del_cv_que_aplican: list[str] = Field(default_factory=list)
+    skills_faltantes: list[str] = Field(default_factory=list)
     nivel_experiencia: str = Field(default="no especificado")
     modalidad: str = Field(default="no especificado")
     tipo_contrato: str = Field(default="no especificado")
     salario_estimado: SalarioEstimadoSchema = Field(default_factory=SalarioEstimadoSchema)
     match_score: float = Field(default=0.0)
     match_explicacion: str = Field(default="")
-    puntos_fuertes: List[str] = Field(default_factory=list)
-    areas_mejora: List[str] = Field(default_factory=list)
-    red_flags: List[str] = Field(default_factory=list)
+    puntos_fuertes: list[str] = Field(default_factory=list)
+    areas_mejora: list[str] = Field(default_factory=list)
+    red_flags: list[str] = Field(default_factory=list)
     resumen_ejecutivo: str = Field(default="")
-    error: Optional[str] = None
+    error: str | None = None
 
 # ── Gemini client ─────────────────────────────────────────────────────────────
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
@@ -72,7 +73,7 @@ GEMINI_ERROR_PREFIX = "Error al contactar Gemini"
 AI_CONSENT_ERROR = "Error al contactar Gemini: falta tu permiso para usar la IA (activalo en Mi cuenta)"
 
 
-def _call_gemini(prompt: str, temperature: float = 0.7, model: Optional[str] = None) -> str:
+def _call_gemini(prompt: str, temperature: float = 0.7, model: str | None = None) -> str:
     """Wrapper seguro para llamar a Gemini con manejo de errores; model=None usa GEMINI_MODEL."""
     model = model or GEMINI_MODEL
     if not GEMINI_AVAILABLE:
@@ -110,7 +111,7 @@ def _call_gemini(prompt: str, temperature: float = 0.7, model: Optional[str] = N
         return text
     except Exception as e:
         logger.error(f"Gemini API error: {e}")
-        return f"Error al contactar Gemini: {str(e)}"
+        return f"Error al contactar Gemini: {e!s}"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -206,7 +207,7 @@ Respondé en JSON sin bloques de código:
     raw = re.sub(r'```(?:json)?\s*', '', raw).strip()
     try:
         return cast(dict[str, Any], json.loads(raw))
-    except:
+    except Exception:
         return {
             "original": bullet_point,
             "mejorado": raw,
@@ -244,7 +245,7 @@ Creá un plan de aprendizaje práctico. Respondé en JSON sin bloques de código
     raw = re.sub(r'```(?:json)?\s*', '', raw).strip()
     try:
         return cast(dict[str, Any], json.loads(raw))
-    except:
+    except Exception:
         return {"plan": [], "consejo_general": raw}
 
 
@@ -282,7 +283,7 @@ Respondé en JSON sin bloques de código:
     raw = re.sub(r'```(?:json)?\s*', '', raw).strip()
     try:
         return cast(dict[str, Any], json.loads(raw))
-    except:
+    except Exception:
         return {"preguntas": [], "consejo_general": raw}
 
 
@@ -310,7 +311,7 @@ Respondé en JSON sin bloques de código:
     raw = re.sub(r'```(?:json)?\s*', '', raw).strip()
     try:
         return cast(dict[str, Any], json.loads(raw))
-    except:
+    except Exception:
         return {
             "puntaje": 5.0,
             "fortalezas": [],
@@ -332,8 +333,8 @@ Podés ayudar con: análisis de ofertas, mejora de CVs, preparación para entrev
 Si el usuario te pide algo fuera de tu dominio laboral, redirigilo amablemente hacia temas de búsqueda de empleo."""
 
 
-def copilot_chat(user_message: str, conversation_history: Optional[list[dict[str, Any]]] = None,
-                 user_context: Optional[dict[str, Any]] = None) -> str:
+def copilot_chat(user_message: str, conversation_history: list[dict[str, Any]] | None = None,
+                 user_context: dict[str, Any] | None = None) -> str:
     """
     Chat libre con el AI Copilot.
     conversation_history: lista de {"role": "user"|"assistant", "content": "..."}
@@ -386,7 +387,7 @@ Si no hay info salarial, usá inferencias del mercado latinoamericano 2025 para 
     raw = re.sub(r'```(?:json)?\s*', '', raw).strip()
     try:
         return cast(dict[str, Any], json.loads(raw))
-    except:
+    except Exception:
         return {
             "salario_minimo": 0, "salario_maximo": 0,
             "moneda": "USD", "periodo": "mensual",
@@ -422,7 +423,7 @@ Respondé en JSON sin bloques de código:
         data: dict[str, Any] = json.loads(raw)
         data["generated_at"] = datetime.now().isoformat()
         return data
-    except:
+    except Exception:
         return {
             "salario_promedio_usd": 0, "tendencia": "desconocida",
             "demanda": "desconocida", "nota_contexto": raw,

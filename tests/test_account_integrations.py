@@ -3,8 +3,8 @@ import pytest
 
 import accounts
 import auth
-import security_events
 import integrations
+import security_events
 from tests.test_gmail_tracker import gmail_tracker  # noqa: F401  (clientes de Google simulados)
 
 PASSWORD = 'clave-larga-1'

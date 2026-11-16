@@ -54,7 +54,7 @@ def test_exclude_company(client, mock_db):
 
 def test_connections_page_uses_tracker_companies(client, mock_db, monkeypatch):
     mock_db.get_companies_for_connections.return_value = [{'company': 'Mercado Libre'}]
-    monkeypatch.setattr(profiles, 'get_recent_job_files', lambda: [])
+    monkeypatch.setattr(profiles, 'get_recent_job_files', list)
     assert 'Mercado Libre' in client.get('/connections').get_data(as_text=True)
 
 

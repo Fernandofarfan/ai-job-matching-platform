@@ -4,7 +4,7 @@ import json
 import logging
 import os
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 from urllib.parse import urlsplit
 
 from sqlalchemy import DateTime, Integer, String, Text, delete, select
@@ -61,12 +61,12 @@ def _allowed_endpoint(endpoint: str) -> bool:
             and any(host == h or host.endswith('.' + h) for h in PUSH_HOSTS + extra))
 
 
-def _owner_filter(user_id: Optional[int]) -> Any:
+def _owner_filter(user_id: int | None) -> Any:
     col = PushSubscription.user_id
     return col.is_(None) if user_id is None else col == user_id
 
 
-def subscribe(user_id: Optional[int], endpoint: str, p256dh: str, auth: str) -> None:
+def subscribe(user_id: int | None, endpoint: str, p256dh: str, auth: str) -> None:
     """Guarda el dispositivo para la cuenta; si ya estaba suscripto con otra cuenta, pasa a esta."""
     endpoint = (endpoint or '').strip()
     if not _allowed_endpoint(endpoint):
@@ -82,7 +82,7 @@ def subscribe(user_id: Optional[int], endpoint: str, p256dh: str, auth: str) -> 
         session.commit()
 
 
-def unsubscribe(user_id: Optional[int], endpoint: str) -> bool:
+def unsubscribe(user_id: int | None, endpoint: str) -> bool:
     """Quita el dispositivo, solo si es de la cuenta."""
     with accounts._sessions()() as session:
         result = session.execute(delete(PushSubscription).where(
@@ -91,7 +91,7 @@ def unsubscribe(user_id: Optional[int], endpoint: str) -> bool:
         return bool(accounts.rowcount(result))
 
 
-def device_count(user_id: Optional[int]) -> int:
+def device_count(user_id: int | None) -> int:
     """Dispositivos suscriptos de la cuenta."""
     try:
         with accounts._sessions()() as session:
@@ -101,7 +101,7 @@ def device_count(user_id: Optional[int]) -> int:
         return 0
 
 
-def available(user_id: Optional[int]) -> bool:
+def available(user_id: int | None) -> bool:
     """La cuenta puede recibir push: VAPID configurado y al menos un dispositivo."""
     return configured() and device_count(user_id) > 0
 
@@ -111,7 +111,7 @@ def _webpush(**kwargs: Any) -> Any:
     return webpush(**kwargs)
 
 
-def send(user_id: Optional[int], title: str, body: str, url: str = '/', endpoint: Optional[str] = None) -> int:
+def send(user_id: int | None, title: str, body: str, url: str = '/', endpoint: str | None = None) -> int:
     """Manda la notificación a cada dispositivo de la cuenta (o solo a `endpoint`, si es de la cuenta);
     borra los que el servicio dio de baja. Devuelve cuántos la recibieron."""
     if not configured():
