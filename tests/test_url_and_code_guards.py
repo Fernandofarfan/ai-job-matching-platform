@@ -1,0 +1,53 @@
+"""URLs con usuario o '\\' que el cliente HTTP lee con otro host, códigos 2FA no ASCII y métodos HTTP raros en métricas."""
+
+import pyotp
+import pytest
+
+import observability
+import push
+import two_factor
+from tasks.ai_tasks import _is_linkedin_job
+
+
+@pytest.mark.parametrize('url', [
+    'https://127.0.0.1:8443\\@fcm.googleapis.com/x',
+    'https://user@fcm.googleapis.com/x',
+    'https://a:b@fcm.googleapis.com/x',
+    'https://fcm.googleapis.com/x y',
+])
+def test_push_endpoint_rejects_ambiguous_urls(url):
+    """La allowlist no se deja engañar por userinfo ni por la barra invertida."""
+    assert not push._allowed_endpoint(url)
+
+
+def test_push_endpoint_accepts_real_service():
+    """Un endpoint de FCM normal sigue permitido."""
+    assert push._allowed_endpoint('https://fcm.googleapis.com/fcm/send/abc')
+
+
+@pytest.mark.parametrize('url', [
+    'https://127.0.0.1\\@linkedin.com/jobs/view/1',
+    'https://x@www.linkedin.com/jobs/view/1',
+    'https://www.linkedin.com/jobs/view/1 x',
+])
+def test_linkedin_job_rejects_ambiguous_urls(url):
+    """Auto-Apply no navega a URLs que Chromium resolvería a otro host."""
+    assert not _is_linkedin_job(url)
+
+
+def test_linkedin_job_accepts_real_offer():
+    """Una oferta de LinkedIn normal sigue aceptada."""
+    assert _is_linkedin_job('https://www.linkedin.com/jobs/view/123')
+
+
+@pytest.mark.parametrize('code', ['１２３４５６', '١٢٣٤٥٦'])
+def test_totp_rejects_non_ascii_digits(code):
+    """Dígitos de ancho completo o arábigos devuelven 'código inválido', no un 500."""
+    assert two_factor._matching_step(pyotp.random_base32(), code) is None
+
+
+def test_metrics_group_unknown_methods():
+    """Un método inventado no crea series nuevas en Prometheus."""
+    observability.observe_request('FOOBAR', '/x', 405, 0.01)
+    labels = {s.labels.get('method') for m in observability.HTTP_REQUESTS.collect() for s in m.samples}
+    assert 'FOOBAR' not in labels and 'OTHER' in labels
