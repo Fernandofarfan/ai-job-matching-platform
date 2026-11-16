@@ -33,6 +33,7 @@ def _mark_searched() -> None:
 
 
 def run_computrabajo_job(searches: list[dict[str, Any]], email: str | None, password: str | None) -> None:
+    scraper: ComputrabajoScraper | None = None
     try:
         scraper = ComputrabajoScraper()
         all_jobs: list[Job] = []
@@ -71,13 +72,18 @@ def run_computrabajo_job(searches: list[dict[str, Any]], email: str | None, pass
             job_status['computrabajo_scraping']['message'] = _m('No se encontraron ofertas')
             _mark_searched()
 
-        scraper.close()
-
     except Exception as e:
         logger.error(f"Error in Computrabajo scraper: {e}")
         scraper_stats.record('computrabajo', None, e)
         job_status['computrabajo_scraping']['status'] = 'failed'
         job_status['computrabajo_scraping']['message'] = _m('Error: %(error)s', error=str(e)[:100])
+    finally:
+        # fuera del try: si close() falla, la búsqueda ya contada no se cuenta de nuevo como error
+        if scraper is not None:
+            try:
+                scraper.close()
+            except Exception as e:
+                logger.warning(f"No se pudo cerrar el scraper de Computrabajo: {e}")
 
 
 
