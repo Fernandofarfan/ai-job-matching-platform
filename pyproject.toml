@@ -98,5 +98,5 @@ patch = ["subprocess"]
 
 [tool.coverage.report]
 # mínimo de tests unitarios + integración juntos (job "coverage" del CI); los unitarios solos piden 60
-fail_under = 70
+fail_under = 80
 skip_covered = true
