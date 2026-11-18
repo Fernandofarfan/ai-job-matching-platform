@@ -51,3 +51,21 @@ def test_metrics_group_unknown_methods():
     observability.observe_request('FOOBAR', '/x', 405, 0.01)
     labels = {s.labels.get('method') for m in observability.HTTP_REQUESTS.collect() for s in m.samples}
     assert 'FOOBAR' not in labels and 'OTHER' in labels
+
+
+def test_encrypt_existing_keeps_original_if_write_fails(tmp_path, monkeypatch):
+    """Si cifrar un CV falla a mitad, el original sigue entero."""
+    import base64
+    import os
+
+    import cv_storage
+    monkeypatch.setattr(cv_storage, 'UPLOADS_DIR', str(tmp_path))
+    monkeypatch.setenv('CV_ENCRYPTION_KEY', base64.urlsafe_b64encode(os.urandom(32)).decode())
+    (tmp_path / 'cv.txt').write_bytes(b'contenido del cv')
+
+    def boom(src, dst):
+        raise OSError('disco lleno')
+    monkeypatch.setattr(cv_storage.os, 'replace', boom)
+    with pytest.raises(OSError):
+        cv_storage.encrypt_existing()
+    assert (tmp_path / 'cv.txt').read_bytes() == b'contenido del cv'

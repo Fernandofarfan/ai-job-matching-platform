@@ -158,8 +158,11 @@ def encrypt_existing() -> int:
         if _is_encrypted(data):
             continue
         stat = os.stat(path)
-        with open(path, 'wb') as fh:
+        # archivo temporal + os.replace: si se corta a mitad (disco lleno, worker muerto) el CV original sigue entero
+        tmp = os.path.join(os.path.dirname(path), f'.{os.path.basename(path)}.tmp')
+        with open(tmp, 'wb') as fh:
             fh.write(fernet.encrypt(data))
-        os.utime(path, (stat.st_atime, stat.st_mtime))
+        os.utime(tmp, (stat.st_atime, stat.st_mtime))
+        os.replace(tmp, path)
         done += 1
     return done
