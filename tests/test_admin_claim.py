@@ -61,6 +61,16 @@ def test_create_admin_script(admin_env, monkeypatch):
     assert create_admin.main(['--password-stdin']) == 1
 
 
+def test_create_admin_takes_over_unverified_first_account(admin_env, monkeypatch):
+    """Si la cuenta de ADMIN_EMAIL quedó sin verificar, el script le pone otra contraseña y la verifica."""
+    uid = accounts.register('admin@example.com', 'clave-del-intruso')
+    monkeypatch.setattr('sys.stdin', io.StringIO(PASSWORD + '\n'))
+    assert create_admin.main(['--password-stdin']) == 0
+    assert accounts.is_admin(uid) and admin_env == [uid]
+    assert accounts.authenticate('admin@example.com', PASSWORD) == uid
+    assert accounts.authenticate('admin@example.com', 'clave-del-intruso') is None
+
+
 @pytest.mark.parametrize(('url', 'expected'), [
     ('/alerts', '/alerts'),
     ('https://www.bumeran.com.ar/empleos/1', 'https://www.bumeran.com.ar/empleos/1'),
