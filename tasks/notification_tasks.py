@@ -173,7 +173,7 @@ def _send_weekly_digest() -> dict[str, Any]:
         return {"sent": 0, "reason": "otra ejecución lo está mandando"}
     try:
         from db_config import db_manager
-        jobs = db_manager.get_all_tracked_jobs()
+        jobs = db_manager.get_all_tracked_jobs(raise_errors=True)
         # sin resumen previo (cuenta anterior al resumen) solo cuentan las ofertas de la última semana
         offers_since = since if user["weekly_digest_sent_at"] else max(since, now - timedelta(days=WEEKLY_DAYS))
         # hasta `now`, que es donde arranca el próximo resumen: una oferta no sale en dos emails
