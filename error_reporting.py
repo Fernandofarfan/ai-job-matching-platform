@@ -51,6 +51,11 @@ def _scrub_event(event: dict[str, Any]) -> dict[str, Any]:
         exc['value'] = _scrub_text(exc.get('value'))
         for frame in (exc.get('stacktrace') or {}).get('frames') or []:
             frame.pop('vars', None)
+    breadcrumbs = event.get('breadcrumbs')
+    for crumb in (breadcrumbs.get('values') if isinstance(breadcrumbs, dict) else breadcrumbs) or []:
+        if isinstance(crumb, dict):
+            crumb['message'] = _scrub_text(crumb.get('message'))
+            crumb.pop('data', None)  # los argumentos del log pueden traer el destinatario
     if isinstance(event.get('logentry'), dict):
         for key in ('message', 'formatted'):
             event['logentry'][key] = _scrub_text(event['logentry'].get(key))
