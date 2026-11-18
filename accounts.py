@@ -348,11 +348,23 @@ def _owned_tables(inspector: Any) -> list[str]:
             if inspector.has_table(t) and 'user_id' in {c['name'] for c in inspector.get_columns(t)}]
 
 
+# Tablas con unicidad (user_id, columna): lo que la cuenta ya tiene gana sobre la fila previa sin dueño
+UNIQUE_PER_USER = {'user_profiles': 'role_type', 'networking_exclusions': 'company_name',
+                   'processed_files': 'filename', 'seen_jobs': 'fingerprint'}
+
+
 def claim_orphans(user_id: int) -> None:
     """Asigna al usuario las filas creadas antes del multiusuario (user_id NULL)."""
-    from sqlalchemy import inspect, text
+    from sqlalchemy import bindparam, inspect, text
     with _sessions()() as session:
         for table in _owned_tables(inspect(session.get_bind())):
+            column = UNIQUE_PER_USER.get(table)
+            if column:
+                mine = list(session.execute(text(f'SELECT {column} FROM {table} WHERE user_id = :uid'),  # noqa: S608 - tabla/columna de una lista fija
+                                            {'uid': user_id}).scalars())
+                for i in range(0, len(mine), 500):
+                    session.execute(text(f'DELETE FROM {table} WHERE user_id IS NULL AND {column} IN :keys')  # noqa: S608 - tabla/columna de una lista fija
+                                    .bindparams(bindparam('keys', expanding=True)), {'keys': mine[i:i + 500]})
             session.execute(text(f'UPDATE {table} SET user_id = :uid WHERE user_id IS NULL'), {'uid': user_id})  # noqa: S608 - tabla/orden de una lista fija, no del usuario
         session.commit()
     claim_legacy_files(user_id)

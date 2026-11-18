@@ -54,6 +54,26 @@ def test_legacy_owner_needs_verified_admin(admin_env, monkeypatch):
     assert accounts.legacy_owner_id() == uid
 
 
+def test_claim_keeps_rows_the_account_already_has(accounts_db, monkeypatch):
+    """Si la cuenta subió un perfil del mismo rol antes de verificar, el suyo gana y el reclamo no falla."""
+    from sqlalchemy import text
+
+    import profile_store
+    profile_store.UserProfile.__table__.create(accounts_db, checkfirst=True)
+    monkeypatch.setenv('ADMIN_EMAIL', 'admin@example.com')
+    monkeypatch.setattr(accounts, 'claim_legacy_files', lambda uid: None)
+    uid = accounts.register('admin@example.com', PASSWORD)
+    with accounts_db.begin() as conn:
+        for owner, role, data in [(None, 'dev', 'viejo'), (None, 'qa', 'viejo'), (uid, 'dev', 'nuevo')]:
+            conn.execute(text("INSERT INTO user_profiles (user_id, role_type, data) VALUES (:u, :r, :d)"),
+                         {'u': owner, 'r': role, 'd': f'"{data}"'})
+    accounts.mark_verified(uid)
+    with accounts_db.connect() as conn:
+        rows = set(conn.execute(text('SELECT user_id, role_type, data FROM user_profiles')))
+    assert rows == {(uid, 'dev', '"nuevo"'), (uid, 'qa', '"viejo"')}
+    assert accounts.get_user(uid)['email_verified']
+
+
 def test_second_account_verifying_claims_nothing(admin_env, monkeypatch):
     """Verificar otra cuenta no le asigna los datos previos."""
     monkeypatch.setenv('ALLOW_SIGNUP', 'true')
