@@ -153,16 +153,23 @@ def encrypt_existing() -> int:
     for path in glob.glob(os.path.join(UPLOADS_DIR, '*')):
         if not os.path.isfile(path):
             continue
-        with open(path, 'rb') as fh:
-            data = fh.read()
-        if _is_encrypted(data):
-            continue
-        stat = os.stat(path)
-        # archivo temporal + os.replace: si se corta a mitad (disco lleno, worker muerto) el CV original sigue entero
-        tmp = os.path.join(os.path.dirname(path), f'.{os.path.basename(path)}.tmp')
-        with open(tmp, 'wb') as fh:
-            fh.write(fernet.encrypt(data))
-        os.utime(tmp, (stat.st_atime, stat.st_mtime))
-        os.replace(tmp, path)
-        done += 1
+        try:
+            done += _encrypt_file(fernet, path)
+        except OSError as e:  # un CV que no se puede cifrar no frena la retención ni los demás
+            logger.warning(f"No se pudo cifrar el CV {os.path.basename(path)}: {e}")
     return done
+
+
+def _encrypt_file(fernet: Fernet, path: str) -> int:
+    """Cifra un CV en texto plano vía temporal + os.replace: un corte a mitad no lo trunca. 1 si lo cifró."""
+    with open(path, 'rb') as fh:
+        data = fh.read()
+    if _is_encrypted(data):
+        return 0
+    stat = os.stat(path)
+    fd, tmp = tempfile.mkstemp(dir=os.path.dirname(path), prefix='.enc-', suffix='.tmp')  # nombre corto
+    with os.fdopen(fd, 'wb') as fh:
+        fh.write(fernet.encrypt(data))
+    os.utime(tmp, (stat.st_atime, stat.st_mtime))
+    os.replace(tmp, path)
+    return 1
