@@ -69,3 +69,10 @@ def test_encrypt_existing_keeps_original_if_write_fails(tmp_path, monkeypatch):
     with pytest.raises(OSError):
         cv_storage.encrypt_existing()
     assert (tmp_path / 'cv.txt').read_bytes() == b'contenido del cv'
+
+
+def test_compound_cv_skill_is_not_missing():
+    """'AWS Glue' en el CV no aparece como habilidad faltante en una oferta de AWS Glue."""
+    from job_matcher import jobMatcher
+    missing = jobMatcher.get_missing_skills(['AWS Glue'], 'Buscamos experiencia con AWS Glue y Python')
+    assert 'glue' not in missing and 'aws' not in missing
