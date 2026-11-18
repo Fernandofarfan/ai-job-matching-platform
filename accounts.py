@@ -111,6 +111,14 @@ def as_user(user_id: int | None) -> Iterator[None]:
     token = _current.set(user_id)
     try:
         yield
+    except Exception as e:
+        # Celery reporta la excepción a Sentry fuera de este bloque: el id viaja con ella
+        if user_id is not None and not hasattr(e, 'account_id'):
+            try:
+                e.account_id = user_id  # type: ignore[attr-defined]
+            except AttributeError:
+                pass
+        raise
     finally:
         _current.reset(token)
 

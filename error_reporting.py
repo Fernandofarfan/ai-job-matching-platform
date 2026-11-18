@@ -33,10 +33,10 @@ def _scrub_text(value: Any) -> Any:
 
 def before_send(event: "Event", hint: "Hint | None" = None) -> "Event":
     """Saca datos personales del evento y le pone solo el id de la cuenta actual."""
-    return cast("Event", _scrub_event(cast(dict[str, Any], event)))
+    return cast("Event", _scrub_event(cast(dict[str, Any], event), cast(dict[str, Any] | None, hint)))
 
 
-def _scrub_event(event: dict[str, Any]) -> dict[str, Any]:
+def _scrub_event(event: dict[str, Any], hint: dict[str, Any] | None = None) -> dict[str, Any]:
     """`before_send` sobre el evento como dict: el TypedDict de Sentry no deja editar claves anidadas."""
     request = event.get('request')
     if isinstance(request, dict):
@@ -64,6 +64,8 @@ def _scrub_event(event: dict[str, Any]) -> dict[str, Any]:
         uid = accounts.current_user_id()
     except Exception:
         uid = None
+    if uid is None and hint and hint.get('exc_info'):
+        uid = getattr(hint['exc_info'][1], 'account_id', None)  # falló dentro de accounts.as_user (worker)
     if uid is None:
         # el 500 lo maneja una capa que no ve el ContextVar del middleware: queda el id de `identify`
         uid = (event.get('user') or {}).get('id')

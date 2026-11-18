@@ -84,3 +84,23 @@ def test_ranking_needs_three_real_positive_examples():
     jobs = [{'status': 'interviewing', 'title': f'Dev {i}'} for i in range(2)]
     jobs += [{'interested': False, 'title': f'Otro {i}'} for i in range(3)]
     assert job_ranking.train(jobs) is None
+
+
+def test_sentry_event_drops_frame_vars_and_breadcrumb_emails():
+    """Sin variables de los frames ni emails en breadcrumbs; el id de la cuenta viaja con la excepción."""
+    import accounts
+    import error_reporting
+    try:
+        with accounts.as_user(7):
+            raise ValueError('falla')
+    except ValueError as e:
+        exc = e
+    event = {
+        'exception': {'values': [{'value': 'x', 'stacktrace': {'frames': [{'vars': {'cv': 'texto'}}]}}]},
+        'breadcrumbs': {'values': [{'message': 'Email enviado a ana@example.com', 'data': {'to': 'ana@example.com'}}]},
+    }
+    out = error_reporting.before_send(event, {'exc_info': (ValueError, exc, None)})
+    assert 'vars' not in out['exception']['values'][0]['stacktrace']['frames'][0]
+    crumb = out['breadcrumbs']['values'][0]
+    assert 'ana@example.com' not in crumb['message'] and 'data' not in crumb
+    assert out['user'] == {'id': '7'}
