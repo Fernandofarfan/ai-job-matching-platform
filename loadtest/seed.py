@@ -21,7 +21,7 @@ def seed(email: str, password: str, jobs: int) -> int:
     """Registra la cuenta (o reusa la existente) y le carga `jobs` postulaciones y una marca por cada una."""
     os.environ.setdefault('ALLOW_SIGNUP', 'true')
     try:
-        user_id = accounts.register(email, password, terms_accepted=True)
+        user_id = accounts.register(email, password, terms_accepted=True, verified=True)
     except accounts.AccountError:
         existing = accounts.authenticate(email, password)
         if existing is None:
