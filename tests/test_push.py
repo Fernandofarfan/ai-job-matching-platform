@@ -72,7 +72,7 @@ def test_send_delivers_and_drops_expired(vapid):
         if 'apple' in kwargs['subscription_info']['endpoint']:
             raise _gone()
     with mock.patch.object(push, '_webpush', side_effect=fake):
-        assert push.send(1, 'Hola', 'Cuerpo', 'https://evil.com') == 1
+        assert push.send(1, 'Hola', 'Cuerpo', 'javascript:alert(1)') == 1
     assert len(calls) == 2 and push.device_count(1) == 1 and push.device_count(2) == 1
     payload = json.loads(calls[0]['data'])
     assert payload == {'title': 'Hola', 'body': 'Cuerpo', 'url': '/'}

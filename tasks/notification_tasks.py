@@ -335,9 +335,11 @@ def notify_alert(search: dict[str, Any], jobs: list[Any]) -> dict[str, Any]:
         import push
         first = jobs[0] if jobs else {}
         title = str(first.get("Title") or first.get("title") or "")
+        # con una sola oferta el aviso la abre; con varias, la lista de alertas
+        link = str(first.get("Url") or first.get("URL") or first.get("url") or "") if len(jobs) == 1 else ""
         sent["push"] = push.send_to_current(
             f"{len(jobs)} ofertas nuevas: {search['name']}"[:120],
-            title + (f" y {len(jobs) - 1} más" if len(jobs) > 1 else ""), "/alerts")
+            title + (f" y {len(jobs) - 1} más" if len(jobs) > 1 else ""), link or "/alerts")
     return sent
 
 
