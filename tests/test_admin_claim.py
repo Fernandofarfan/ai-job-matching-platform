@@ -27,8 +27,9 @@ def test_admin_email_needs_verification(admin_env):
     assert not accounts.get_user(uid)['email_verified']
     assert not accounts.is_admin(uid) and admin_env == []
     accounts.mark_verified(uid)
-    accounts.mark_verified(uid)
     assert accounts.is_admin(uid) and admin_env == [uid]
+    accounts.mark_verified(uid)  # otra verificación reintenta el reclamo, por si el anterior falló
+    assert admin_env == [uid, uid]
 
 
 def test_legacy_owner_needs_verified_admin(admin_env, monkeypatch):

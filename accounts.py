@@ -398,13 +398,17 @@ def check_password(user_id: int, password: str) -> bool:
 
 
 def mark_verified(user_id: int) -> None:
-    """Marca el email de la cuenta como verificado; si es la primera cuenta, recibe los datos previos."""
+    """Marca el email de la cuenta como verificado; si es la primera cuenta, recibe los datos previos.
+
+    El reclamo corre en cada verificación de la primera cuenta (enlace, recuperar contraseña, Google), no solo
+    en la primera: si falló una vez, la próxima lo completa. Es idempotente."""
     with _sessions()() as session:
         user = session.get(User, user_id)
-        if user is None or user.email_verified_at is not None:
+        if user is None:
             return
-        user.email_verified_at = datetime.now()
-        session.commit()
+        if user.email_verified_at is None:
+            user.email_verified_at = datetime.now()
+            session.commit()
     if user_id == first_user_id():
         claim_orphans(user_id)
 
