@@ -212,7 +212,7 @@ def _telegram_chat() -> str | None:
         own = integrations.telegram_chat_id(uid)
         if own is not None:
             return own or None
-        return (os.getenv("TELEGRAM_CHAT_ID") or None) if uid == accounts.legacy_owner_id() else None
+        return (os.getenv("TELEGRAM_CHAT_ID") or None) if uid == accounts.legacy_owner_id() and not accounts.legacy_locked() else None
     except Exception as e:
         logger.error(f"No se pudo leer el chat de Telegram de la cuenta: {type(e).__name__}")
         return None

@@ -164,6 +164,12 @@ def legacy_owner_id() -> int | None:
     return uid if user and user['email_verified'] else None
 
 
+def legacy_locked() -> bool:
+    """Hay cuentas pero ninguna es dueña de lo previo todavía (ADMIN_EMAIL sin verificar): nadie lo usa,
+    ni siquiera sin login."""
+    return first_user_id() is not None and legacy_owner_id() is None
+
+
 def owner_ids(active_only: bool = False) -> list[int | None]:
     """Dueños por los que corren las tareas periódicas; None cubre los datos sin cuenta (sin login).
 

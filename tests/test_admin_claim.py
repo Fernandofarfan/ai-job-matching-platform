@@ -45,10 +45,11 @@ def test_failed_claim_leaves_account_unverified(admin_env, monkeypatch):
 
 def test_legacy_owner_needs_verified_admin(admin_env, monkeypatch):
     """Telegram, Gmail, la extensión y los archivos previos no van a la cuenta de ADMIN_EMAIL sin verificar."""
+    assert not accounts.legacy_locked()  # sin cuentas, lo previo es del uso sin login
     uid = accounts.register('admin@example.com', PASSWORD)
-    assert accounts.legacy_owner_id() is None
+    assert accounts.legacy_owner_id() is None and accounts.legacy_locked()
     accounts.mark_verified(uid)
-    assert accounts.legacy_owner_id() == uid
+    assert accounts.legacy_owner_id() == uid and not accounts.legacy_locked()
     monkeypatch.delenv('ADMIN_EMAIL')
     assert accounts.legacy_owner_id() == uid
 

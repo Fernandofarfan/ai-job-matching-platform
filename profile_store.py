@@ -194,10 +194,11 @@ def _json_files() -> list[tuple[str, int | None]]:
              if path.rsplit('.u', 1)[1][:-5].isdigit()]
     if os.path.exists(JSON_PATH):
         try:
-            owner = accounts.legacy_owner_id()
+            owner, locked = accounts.legacy_owner_id(), accounts.legacy_locked()
         except SQLAlchemyError:
-            owner = None
-        files.append((JSON_PATH, owner))
+            owner, locked = None, False
+        if not locked:  # con ADMIN_EMAIL sin verificar no es de nadie, tampoco de los invitados
+            files.append((JSON_PATH, owner))
     return files
 
 

@@ -79,7 +79,7 @@ def check_interview_emails() -> str | dict[int, str]:
                 service = None
             results[uid] = _process_mailbox(service) if service else "Token de Gmail vencido: volvé a conectar Gmail"
     first = accounts.legacy_owner_id()
-    if first not in results and integrations.legacy_allowed(first, 'gmail'):
+    if first not in results and not accounts.legacy_locked() and integrations.legacy_allowed(first, 'gmail'):
         service = get_gmail_service()
         if service:
             with accounts.as_user(first):

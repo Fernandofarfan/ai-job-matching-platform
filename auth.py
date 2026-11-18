@@ -81,7 +81,7 @@ def legacy_extension_token(candidate: str) -> bool:
     import integrations
     expected = os.getenv('EXTENSION_TOKEN', '')
     return (bool(expected and candidate) and hmac.compare_digest(candidate.encode(), expected.encode())
-            and integrations.legacy_allowed(accounts.legacy_owner_id(), 'extension'))
+            and not accounts.legacy_locked() and integrations.legacy_allowed(accounts.legacy_owner_id(), 'extension'))
 
 
 def is_local_path(target: object) -> bool:
