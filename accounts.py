@@ -149,9 +149,19 @@ def user_ids() -> list[int]:
 
 
 def first_user_id() -> int | None:
-    """Id de la primera cuenta (dueña de Telegram, Gmail y la extensión)."""
+    """Id de la primera cuenta."""
     ids = user_ids()
     return ids[0] if ids else None
+
+
+def legacy_owner_id() -> int | None:
+    """Dueña de los datos previos al multiusuario y de Telegram, Gmail y la extensión del .env: la primera
+    cuenta, pero con ADMIN_EMAIL solo después de verificar el email (quien solo conoce la dirección no los toma)."""
+    uid = first_user_id()
+    if uid is None or not normalize_email(os.getenv('ADMIN_EMAIL', '')):
+        return uid
+    user = get_user(uid)
+    return uid if user and user['email_verified'] else None
 
 
 def owner_ids(active_only: bool = False) -> list[int | None]:
@@ -320,7 +330,7 @@ def claim_legacy_files(user_id: int) -> None:
 
 def adopt_legacy_files() -> None:
     """Instancias que ya tenían cuentas antes de separar archivos: los sueltos pasan a la primera cuenta."""
-    uid = first_user_id()
+    uid = legacy_owner_id()
     if uid is not None:
         claim_legacy_files(uid)
 

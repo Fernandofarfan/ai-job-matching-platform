@@ -31,6 +31,16 @@ def test_admin_email_needs_verification(admin_env):
     assert accounts.is_admin(uid) and admin_env == [uid]
 
 
+def test_legacy_owner_needs_verified_admin(admin_env, monkeypatch):
+    """Telegram, Gmail, la extensión y los archivos previos no van a la cuenta de ADMIN_EMAIL sin verificar."""
+    uid = accounts.register('admin@example.com', PASSWORD)
+    assert accounts.legacy_owner_id() is None
+    accounts.mark_verified(uid)
+    assert accounts.legacy_owner_id() == uid
+    monkeypatch.delenv('ADMIN_EMAIL')
+    assert accounts.legacy_owner_id() == uid
+
+
 def test_second_account_verifying_claims_nothing(admin_env, monkeypatch):
     """Verificar otra cuenta no le asigna los datos previos."""
     monkeypatch.setenv('ALLOW_SIGNUP', 'true')

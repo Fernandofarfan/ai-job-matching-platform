@@ -194,7 +194,7 @@ def _json_files() -> list[tuple[str, int | None]]:
              if path.rsplit('.u', 1)[1][:-5].isdigit()]
     if os.path.exists(JSON_PATH):
         try:
-            owner = accounts.first_user_id()
+            owner = accounts.legacy_owner_id()
         except SQLAlchemyError:
             owner = None
         files.append((JSON_PATH, owner))
@@ -323,7 +323,7 @@ def delete_all() -> None:
             session.execute(delete(UserProfile).where(_mine()))
             session.commit()
     paths = [_current_json()]
-    if accounts.current_user_id() is not None and accounts.current_user_id() == accounts.first_user_id():
+    if accounts.current_user_id() is not None and accounts.current_user_id() == accounts.legacy_owner_id():
         paths.append(JSON_PATH)  # el JSON de antes del multiusuario es de la primera cuenta
     for path in paths:
         for candidate in (path, path + '.migrated'):
