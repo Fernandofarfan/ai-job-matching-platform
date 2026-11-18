@@ -171,5 +171,12 @@ def _encrypt_file(fernet: Fernet, path: str) -> int:
     with os.fdopen(fd, 'wb') as fh:
         fh.write(fernet.encrypt(data))
     os.utime(tmp, (stat.st_atime, stat.st_mtime))
+    try:
+        current = os.stat(path)
+    except FileNotFoundError:
+        current = None
+    if current is None or (current.st_mtime, current.st_size) != (stat.st_mtime, stat.st_size):
+        os.remove(tmp)  # se borró (o cambió) mientras se cifraba: no se restaura
+        return 0
     os.replace(tmp, path)
     return 1
