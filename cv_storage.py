@@ -149,6 +149,11 @@ def encrypt_existing() -> int:
     fernet = _fernet()
     if fernet is None:
         return 0
+    for tmp in glob.glob(os.path.join(UPLOADS_DIR, '.enc-*.tmp')):  # restos de un worker que murió a mitad
+        try:
+            os.remove(tmp)
+        except OSError as e:
+            logger.warning(f"No se pudo borrar el temporal {tmp}: {e}")
     done = 0
     for path in glob.glob(os.path.join(UPLOADS_DIR, '*')):
         if not os.path.isfile(path):
@@ -168,15 +173,18 @@ def _encrypt_file(fernet: Fernet, path: str) -> int:
         return 0
     stat = os.stat(path)
     fd, tmp = tempfile.mkstemp(dir=os.path.dirname(path), prefix='.enc-', suffix='.tmp')  # nombre corto
-    with os.fdopen(fd, 'wb') as fh:
-        fh.write(fernet.encrypt(data))
-    os.utime(tmp, (stat.st_atime, stat.st_mtime))
     try:
-        current = os.stat(path)
-    except FileNotFoundError:
-        current = None
-    if current is None or (current.st_mtime, current.st_size) != (stat.st_mtime, stat.st_size):
-        os.remove(tmp)  # se borró (o cambió) mientras se cifraba: no se restaura
-        return 0
-    os.replace(tmp, path)
-    return 1
+        with os.fdopen(fd, 'wb') as fh:
+            fh.write(fernet.encrypt(data))
+        os.utime(tmp, (stat.st_atime, stat.st_mtime))
+        try:
+            current = os.stat(path)
+        except FileNotFoundError:
+            current = None
+        if current is None or (current.st_mtime, current.st_size) != (stat.st_mtime, stat.st_size):
+            return 0  # se borró (o cambió) mientras se cifraba: no se restaura
+        os.replace(tmp, path)
+        return 1
+    finally:
+        if os.path.exists(tmp):
+            os.remove(tmp)  # no quedan copias sin cifrar que la retención no ve

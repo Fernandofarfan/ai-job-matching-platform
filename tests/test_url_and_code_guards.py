@@ -66,9 +66,31 @@ def test_encrypt_existing_keeps_original_if_write_fails(tmp_path, monkeypatch):
     def boom(src, dst):
         raise OSError('disco lleno')
     monkeypatch.setattr(cv_storage.os, 'replace', boom)
-    with pytest.raises(OSError):
-        cv_storage.encrypt_existing()
+    (tmp_path / '.enc-viejo.tmp').write_bytes(b'resto')
+    assert cv_storage.encrypt_existing() == 0
     assert (tmp_path / 'cv.txt').read_bytes() == b'contenido del cv'
+    assert sorted(p.name for p in tmp_path.iterdir()) == ['cv.txt']  # sin temporales
+
+
+def test_encrypt_existing_does_not_restore_deleted_cv(tmp_path, monkeypatch):
+    """Si el CV se borra mientras se cifra, no vuelve."""
+    import base64
+    import os
+
+    import cv_storage
+    monkeypatch.setattr(cv_storage, 'UPLOADS_DIR', str(tmp_path))
+    monkeypatch.setenv('CV_ENCRYPTION_KEY', base64.urlsafe_b64encode(os.urandom(32)).decode())
+    cv = tmp_path / ('x' * 250)  # cerca del límite de nombre: el temporal no puede ser más largo
+    cv.write_bytes(b'contenido del cv')
+    real_utime = os.utime
+
+    def utime_and_delete(path, times):
+        real_utime(path, times)
+        if str(path).endswith('.tmp'):
+            cv.unlink()
+    monkeypatch.setattr(cv_storage.os, 'utime', utime_and_delete)
+    assert cv_storage.encrypt_existing() == 0
+    assert list(tmp_path.iterdir()) == []
 
 
 def test_compound_cv_skill_is_not_missing():
