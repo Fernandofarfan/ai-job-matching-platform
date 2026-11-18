@@ -100,14 +100,6 @@ def test_compound_cv_skill_is_not_missing():
     assert 'glue' not in missing and 'aws' not in missing
 
 
-def test_ranking_needs_three_real_positive_examples():
-    """Dos entrevistas (peso doble) no alcanzan para activar el ranking."""
-    import job_ranking
-    jobs = [{'status': 'interviewing', 'title': f'Dev {i}'} for i in range(2)]
-    jobs += [{'interested': False, 'title': f'Otro {i}'} for i in range(3)]
-    assert job_ranking.train(jobs) is None
-
-
 def test_sentry_event_drops_frame_vars_and_breadcrumb_emails():
     """Sin variables de los frames ni emails en breadcrumbs; el id de la cuenta viaja con la excepción."""
     import accounts

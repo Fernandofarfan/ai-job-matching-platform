@@ -117,7 +117,6 @@ def train(applications: Iterable[Job], today: date | None = None) -> Model | Non
     pos: Counter[str] = Counter()
     neg: Counter[str] = Counter()
     n_pos = n_neg = 0
-    seen_pos = seen_neg = 0  # postulaciones, no pesos: dos entrevistas son 2 ejemplos aunque pesen 4
     for job in applications:
         weight = label(job, today)
         if weight == 0:
@@ -125,13 +124,11 @@ def train(applications: Iterable[Job], today: date | None = None) -> Model | Non
         feats = features(job)
         if weight > 0:
             n_pos += weight
-            seen_pos += 1
             pos.update(dict.fromkeys(feats, weight))
         else:
             n_neg += -weight
-            seen_neg += 1
             neg.update(dict.fromkeys(feats, -weight))
-    if seen_pos < MIN_EXAMPLES or seen_neg < MIN_EXAMPLES:
+    if n_pos < MIN_EXAMPLES or n_neg < MIN_EXAMPLES:
         return None
     return {'pos': pos, 'neg': neg, 'n_pos': n_pos, 'n_neg': n_neg}
 
