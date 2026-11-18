@@ -49,6 +49,8 @@ def _scrub_event(event: dict[str, Any]) -> dict[str, Any]:
             request['url'] = request['url'].split('?', 1)[0]
     for exc in (event.get('exception') or {}).get('values') or []:
         exc['value'] = _scrub_text(exc.get('value'))
+        for frame in (exc.get('stacktrace') or {}).get('frames') or []:
+            frame.pop('vars', None)
     if isinstance(event.get('logentry'), dict):
         for key in ('message', 'formatted'):
             event['logentry'][key] = _scrub_text(event['logentry'].get(key))
@@ -90,6 +92,7 @@ def setup(component: str) -> bool:
         release=os.getenv('SENTRY_RELEASE') or version.release(),
         traces_sample_rate=_float_env('SENTRY_TRACES_SAMPLE_RATE', '0'),
         send_default_pii=False,
+        include_local_variables=False,  # las variables de los frames pueden tener el texto del CV o emails
         max_request_body_size='never',
         before_send=before_send,
         # los logger.error son breadcrumbs; eventos solo para excepciones no atrapadas
