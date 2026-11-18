@@ -424,12 +424,16 @@ def mark_verified(user_id: int) -> None:
         user = session.get(User, user_id)
         if user is None or user.email_verified_at is not None:
             return
-    if user_id == first_user_id():
+    first = user_id == first_user_id()
+    if first:
         claim_orphans(user_id)
     with _sessions()() as session:
         session.execute(update(User).where(User.id == user_id, User.email_verified_at.is_(None))
                         .values(email_verified_at=datetime.now()))
         session.commit()
+    if first:
+        import profile_store
+        profile_store.import_legacy_profiles()  # el JSON previo se salteó mientras la cuenta no estaba verificada
 
 
 def accept_terms(user_id: int) -> None:

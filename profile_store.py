@@ -212,6 +212,16 @@ def _import_legacy_json() -> None:
         _import_json(path, user_id)
 
 
+def import_legacy_profiles() -> None:
+    """Reintenta pasar a MySQL el JSON viejo (p. ej. cuando la primera cuenta recién verificó el email)."""
+    if _session_factory is None:
+        return
+    try:
+        _import_legacy_json()
+    except Exception as e:
+        logger.warning(f"No se pudo importar el perfil previo: {type(e).__name__}: {e}")
+
+
 def _import_json(path: str, user_id: int | None) -> None:
     legacy, deleted = _read_json(path), _json_deleted(path)
     if not legacy and not deleted:

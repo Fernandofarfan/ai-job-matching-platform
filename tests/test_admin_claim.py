@@ -74,6 +74,17 @@ def test_claim_keeps_rows_the_account_already_has(accounts_db, monkeypatch):
     assert accounts.get_user(uid)['email_verified']
 
 
+def test_verifying_imports_deferred_legacy_profile(admin_env, monkeypatch):
+    """Al verificar la primera cuenta se reintenta importar el perfil JSON previo."""
+    import profile_store
+    calls = []
+    monkeypatch.setattr(profile_store, 'import_legacy_profiles', lambda: calls.append(1))
+    uid = accounts.register('admin@example.com', PASSWORD)
+    accounts.mark_verified(uid)
+    accounts.mark_verified(uid)
+    assert calls == [1]
+
+
 def test_second_account_verifying_claims_nothing(admin_env, monkeypatch):
     """Verificar otra cuenta no le asigna los datos previos."""
     monkeypatch.setenv('ALLOW_SIGNUP', 'true')
