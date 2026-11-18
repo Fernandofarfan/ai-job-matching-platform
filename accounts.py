@@ -400,17 +400,18 @@ def check_password(user_id: int, password: str) -> bool:
 def mark_verified(user_id: int) -> None:
     """Marca el email de la cuenta como verificado; si es la primera cuenta, recibe los datos previos.
 
-    El reclamo corre en cada verificación de la primera cuenta (enlace, recuperar contraseña, Google), no solo
-    en la primera: si falló una vez, la próxima lo completa. Es idempotente."""
+    El reclamo va antes de marcar la verificación: si falla, la cuenta sigue sin verificar y la próxima
+    verificación lo reintenta. Ya verificada no reclama más (en modo invitado, lo nuevo sin dueño es del invitado)."""
     with _sessions()() as session:
         user = session.get(User, user_id)
-        if user is None:
+        if user is None or user.email_verified_at is not None:
             return
-        if user.email_verified_at is None:
-            user.email_verified_at = datetime.now()
-            session.commit()
     if user_id == first_user_id():
         claim_orphans(user_id)
+    with _sessions()() as session:
+        session.execute(update(User).where(User.id == user_id, User.email_verified_at.is_(None))
+                        .values(email_verified_at=datetime.now()))
+        session.commit()
 
 
 def accept_terms(user_id: int) -> None:
