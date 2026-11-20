@@ -20,7 +20,7 @@ router = APIRouter(prefix='/api/ai', tags=['ai'], route_class=TrackerRoute, depe
 extras = APIRouter(prefix='/api', tags=['notifications'], route_class=TrackerRoute, dependencies=browser)
 
 INTERNAL_ERROR = 'Error interno del servidor'
-NOT_CONFIGURED = 'Gemini no configurado. Agregá GEMINI_API_KEY al .env'
+NOT_CONFIGURED = 'IA no configurada. Agregá OPENCODE_API_KEY o GEMINI_API_KEY al .env'
 JsonBody = Body(default_factory=dict)
 
 
@@ -55,7 +55,7 @@ def _call(label: str, fn: Callable[..., Any], *args: Any) -> Any:
 
 @router.get('/usage', response_model=None)
 def usage() -> dict[str, Any]:
-    """Tokens de Gemini consumidos en el mes, tope configurado y costo estimado."""
+    """Tokens de IA consumidos en el mes, tope configurado y costo estimado."""
     return {'success': True, 'usage': ai_usage.summary()}
 
 
@@ -92,7 +92,7 @@ def _copilot_context(ai: SimpleNamespace, db: Any) -> dict[str, Any]:
 
 @router.post('/copilot', response_model=None)
 def copilot(payload: dict[str, Any] = JsonBody, ai: SimpleNamespace = Depends(get_ai), db: Any = Depends(get_db)) -> Response | dict[str, Any]:
-    """Chat con el copiloto; sin Gemini responde 200 con el aviso en `reply` (lo muestra el chat)."""
+    """Chat con el copiloto; sin IA responde 200 con el aviso en `reply` (lo muestra el chat)."""
     if not ai.available:
         return {'success': False, 'reply': f'⚠️ {NOT_CONFIGURED}'}
     message = _text(payload, 'message')
