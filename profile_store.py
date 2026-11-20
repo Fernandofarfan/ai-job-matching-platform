@@ -3,6 +3,7 @@
 Con CV_ENCRYPTION_KEY cada perfil (incluido el texto del CV en `raw_text`) se guarda cifrado como
 {"_enc": <token Fernet>}, tanto en MySQL como en el JSON de respaldo.
 """
+import fcntl
 import json
 import logging
 import os
@@ -46,6 +47,8 @@ JSON_PATH = os.path.join('profiles', 'user_profiles.json')
 DELETED_KEY = '_deleted'
 # Momento exacto de la escritura: el mtime del archivo tiene resolución de milisegundos
 WRITTEN_KEY = '_written_at'
+# Momento de cada guardado o borrado por rol: al volver MySQL se compara rol por rol con updated_at
+TIMES_KEY = '_times'
 _RETRY_SECONDS = 60
 ENC_KEY = '_enc'
 
@@ -101,6 +104,8 @@ class UserProfile(Base):
     role_type: Mapped[str] = mapped_column(String(100), nullable=False)
     data: Mapped[Any] = mapped_column(SealedJSON, nullable=False)
     updated_at: Mapped[datetime | None] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now)
+    # Borrado (datos vaciados): la fila queda para que un JSON más viejo de una caída no lo reviva
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
 def configure(session_factory: Callable[[], Session] | None) -> None:
@@ -144,7 +149,25 @@ def _run[T](db_op: Callable[[Session], T], json_op: Callable[[], T]) -> T:
                 return db_op(session)
         except SQLAlchemyError as e:
             _mark_failure(e)
-    return json_op()
+    with _json_lock():
+        result = json_op()
+    if _session_factory is not None:
+        # MySQL volvió mientras se escribía el JSON: se pasa ya, si no quedaría sin importar
+        _import_legacy_json()
+    return result
+
+
+class _json_lock:
+    """Lock de archivo sobre los JSON de respaldo: leer-modificar-escribir e importar no se pisan."""
+
+    def __enter__(self) -> None:
+        os.makedirs(os.path.dirname(JSON_PATH) or '.', exist_ok=True)
+        self._file = open(JSON_PATH + '.lock', 'a')
+        fcntl.flock(self._file, fcntl.LOCK_EX)
+
+    def __exit__(self, *exc: object) -> None:
+        fcntl.flock(self._file, fcntl.LOCK_UN)
+        self._file.close()
 
 
 def _json_path(user_id: int | None = None) -> str:
@@ -167,16 +190,24 @@ def _read_json_raw(path: str | None = None) -> dict[str, Any]:
 
 
 def _read_json(path: str | None = None) -> Profiles:
-    return {k: _unseal(v) for k, v in _read_json_raw(path).items() if isinstance(v, dict)}
+    return {k: _unseal(v) for k, v in _read_json_raw(path).items() if isinstance(v, dict) and k != TIMES_KEY}
 
 
-def _write_json(profiles: Profiles, deleted: set[str], path: str | None = None) -> None:
+def _write_json(profiles: Profiles, deleted: set[str], path: str | None = None, changed: str | None = None) -> None:
+    """Escribe el JSON; `changed` es el rol guardado o borrado ahora (su momento queda en TIMES_KEY)."""
     path = path or _current_json()
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    data = {role: _seal(profile) for role, profile in profiles.items()}
+    now = time.time()
+    times = _json_times(path)
+    if changed is not None:
+        times[changed] = now
+    data: dict[str, Any] = {role: _seal(profile) for role, profile in profiles.items()}
     if deleted:
         data[DELETED_KEY] = sorted(deleted)
-    data[WRITTEN_KEY] = time.time()
+    times = {role: t for role, t in times.items() if role in profiles or role in deleted}
+    if times:
+        data[TIMES_KEY] = times
+    data[WRITTEN_KEY] = now
     with open(path, 'w', encoding='utf-8') as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
 
@@ -185,6 +216,12 @@ def _json_deleted(path: str | None = None) -> set[str]:
     """Roles borrados mientras MySQL no respondía."""
     deleted = _read_json_raw(path).get(DELETED_KEY, [])
     return set(deleted) if isinstance(deleted, list) else set()
+
+
+def _json_times(path: str | None = None) -> dict[str, float]:
+    """{rol: momento} de los guardados y borrados hechos en el JSON."""
+    times = _read_json_raw(path).get(TIMES_KEY, {})
+    return {k: float(v) for k, v in times.items() if isinstance(v, (int, float))} if isinstance(times, dict) else {}
 
 
 def _json_files() -> list[tuple[str, int | None]]:
@@ -204,11 +241,12 @@ def _json_files() -> list[tuple[str, int | None]]:
 def _import_legacy_json() -> None:
     """Pasa a MySQL lo escrito en los JSON (perfiles viejos o cambios durante una caída).
 
-    Solo se aplica sobre filas que no cambiaron después de la última escritura del JSON, para no
-    pisar cambios hechos en MySQL por otra instancia. Después se renombra a .migrated.
+    Cada rol se aplica solo si su fila (incluido un borrado) no cambió en MySQL después del cambio
+    en el JSON, para no pisar lo hecho por otra instancia. Después se renombra a .migrated.
     """
-    for path, user_id in _json_files():
-        _import_json(path, user_id)
+    with _json_lock():
+        for path, user_id in _json_files():
+            _import_json(path, user_id)
 
 
 def _import_json(path: str, user_id: int | None) -> None:
@@ -221,19 +259,20 @@ def _import_json(path: str, user_id: int | None) -> None:
         stamp = _read_json_raw(path).get(WRITTEN_KEY)
         if not isinstance(stamp, (int, float)):
             stamp = os.path.getmtime(path)
-        written_at = datetime.fromtimestamp(stamp)
+        times = _json_times(path)
         owner = UserProfile.user_id.is_(None) if user_id is None else UserProfile.user_id == user_id
         rows = {row.role_type: row for row in session.scalars(select(UserProfile).where(owner))}
         stale = {role for role, row in rows.items()
-                 if row.updated_at and row.updated_at > written_at}
+                 if row.updated_at and row.updated_at > datetime.fromtimestamp(times.get(role, stamp))}
         for role, data in legacy.items():
             if role not in rows:
                 session.add(UserProfile(role_type=role, data=data, user_id=user_id))
             elif role not in stale:
                 rows[role].data = data
+                rows[role].deleted_at = None
         for role in deleted - set(legacy) - stale:
-            if role in rows:
-                session.delete(rows[role])
+            if role in rows and rows[role].deleted_at is None:
+                _tombstone(rows[role])
         session.commit()
     os.replace(path, path + '.migrated')
     logger.info(f"Migrados {len(legacy)} perfiles y {len(deleted)} borrados de {path} a MySQL")
@@ -245,14 +284,21 @@ def _mine() -> ColumnElement[bool]:
 
 
 def _find(session: Session, role_type: str) -> UserProfile | None:
-    """Fila del rol en MySQL o None."""
+    """Fila del rol en MySQL (también si está borrada) o None."""
     return session.scalars(select(UserProfile).where(_mine(), UserProfile.role_type == role_type)).first()
+
+
+def _tombstone(row: UserProfile) -> None:
+    """Marca la fila como borrada y descarta sus datos."""
+    row.data = {}
+    row.deleted_at = datetime.now()
 
 
 def get_all_profiles() -> Profiles:
     """{role_type: perfil} de todos los perfiles."""
     def db_op(session: Session) -> Profiles:
-        rows = session.scalars(select(UserProfile).where(_mine()).order_by(UserProfile.id))
+        rows = session.scalars(select(UserProfile).where(_mine(), UserProfile.deleted_at.is_(None))
+                               .order_by(UserProfile.id))
         return {row.role_type: row.data for row in rows}
     return _run(db_op, _read_json)
 
@@ -273,6 +319,7 @@ def save_profile(role_type: str, data: dict[str, Any]) -> None:
         row = _find(session, role_type)
         if row:
             row.data = data
+            row.deleted_at = None
         else:
             session.add(UserProfile(role_type=role_type, data=data, user_id=accounts.current_user_id()))
         session.commit()
@@ -280,7 +327,7 @@ def save_profile(role_type: str, data: dict[str, Any]) -> None:
     def json_op() -> None:
         profiles = _read_json()
         profiles[role_type] = data
-        _write_json(profiles, _json_deleted() - {role_type})
+        _write_json(profiles, _json_deleted() - {role_type}, changed=role_type)
     _run(db_op, json_op)
 
 
@@ -288,10 +335,10 @@ def delete_profile(role_type: str) -> dict[str, Any] | None:
     """Borra el perfil de un rol; devuelve los datos borrados o None si no existía."""
     def db_op(session: Session) -> dict[str, Any] | None:
         row = _find(session, role_type)
-        if not row:
+        if not row or row.deleted_at is not None:
             return None
         removed: dict[str, Any] | None = row.data
-        session.delete(row)
+        _tombstone(row)
         session.commit()
         return removed
 
@@ -300,7 +347,7 @@ def delete_profile(role_type: str) -> dict[str, Any] | None:
         removed = profiles.pop(role_type, None)
         # Sin MySQL no se puede borrar un perfil que solo está en la tabla: se informa que no existe
         if removed is not None:
-            _write_json(profiles, _json_deleted() | {role_type})
+            _write_json(profiles, _json_deleted() | {role_type}, changed=role_type)
         return removed
     return _run(db_op, json_op)
 
@@ -337,7 +384,7 @@ def _seal_json_file(path: str) -> int:
         return 0
     with open(path, encoding='utf-8') as f:
         raw = json.load(f)
-    plain = [k for k, v in raw.items() if isinstance(v, dict) and not _is_sealed(v)]
+    plain = [k for k, v in raw.items() if isinstance(v, dict) and k != TIMES_KEY and not _is_sealed(v)]
     if plain:
         raw.update({k: _seal(raw[k]) for k in plain})
         with open(path, 'w', encoding='utf-8') as f:
