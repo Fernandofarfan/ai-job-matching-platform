@@ -218,3 +218,19 @@ def test_json_write_when_mysql_comes_back_is_imported(db, monkeypatch):
     assert calls and not os.path.exists(profile_store.JSON_PATH)
     monkeypatch.undo()
     assert profile_store.get_all_profiles() == {'backend': {'skills': ['go']}}
+
+
+def test_failed_immediate_import_keeps_the_json_write(db, monkeypatch, cv_key):
+    """Si MySQL vuelve a fallar al importar enseguida, el guardado en el JSON vale y no da error; cifrar ignora el lock."""
+    from sqlalchemy.exc import OperationalError
+
+    def write_and_recover():
+        profile_store._write_json({'backend': {'skills': ['go']}}, set(), changed='backend')
+        profile_store._session_factory = lambda: (_ for _ in ()).throw(OperationalError('x', {}, Exception('caído')))
+    monkeypatch.setattr(profile_store, '_sessions', lambda: None)
+    profile_store._run(lambda session: None, write_and_recover)
+    assert profile_store._session_factory is None
+    assert profile_store._read_json() == {'backend': {'skills': ['go']}}
+    assert os.path.exists(profile_store.JSON_PATH + '.lock')
+    monkeypatch.setattr(profile_store, '_sessions', lambda: None)
+    assert profile_store.encrypt_existing() >= 0

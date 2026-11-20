@@ -153,7 +153,10 @@ def _run[T](db_op: Callable[[Session], T], json_op: Callable[[], T]) -> T:
         result = json_op()
     if _session_factory is not None:
         # MySQL volvió mientras se escribía el JSON: se pasa ya, si no quedaría sin importar
-        _import_legacy_json()
+        try:
+            _import_legacy_json()
+        except SQLAlchemyError as e:
+            _mark_failure(e)  # el cambio ya está en el JSON; se importa cuando MySQL vuelva
     return result
 
 
