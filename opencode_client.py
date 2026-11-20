@@ -17,6 +17,8 @@ TIMEOUT = 180.0
 
 
 class Reply(NamedTuple):
+    """Texto de la respuesta y tokens de entrada y de salida (razonamiento incluido)."""
+
     text: str
     input_tokens: int
     output_tokens: int
