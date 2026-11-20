@@ -61,3 +61,4 @@ def test_skills_match_across_languages():
     assert matcher._get_matched_skills(['Respuesta a incidentes', 'Pentesting'], offer) == ['Respuesta a incidentes']
     assert matcher.calculate_skill_match(['Accounting'], 'Analista contábil: contabilidade e impostos') == 100.0
     assert matcher.calculate_skill_match(['Ventas'], 'Analista de marketing: SEO y SEM') == 0.0
+    assert matcher.calculate_skill_match(['Ventas', 'Negociación'], 'Ventas / Sales representative') == 50.0

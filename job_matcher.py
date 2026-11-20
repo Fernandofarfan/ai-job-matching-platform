@@ -183,9 +183,6 @@ class jobMatcher:
         for skill in profile_skills:
             skill_lower = skill.lower().strip()
             expanded_skills.append(skill_lower)
-            for translations in SKILL_TRANSLATIONS.values():
-                if skill_lower in translations:
-                    expanded_skills.extend(translations)
 
 
             if 'apache spark' in skill_lower or skill_lower == 'spark':
@@ -245,6 +242,13 @@ class jobMatcher:
             if re.search(pattern, job_description_lower):
                 matched_skills.append(skill)
 
+
+        # una habilidad del CV nombrada en otro idioma cuenta una vez, aunque la oferta la diga en dos
+        for skill in profile_skills:
+            translations = next((t for t in SKILL_TRANSLATIONS.values() if skill.lower().strip() in t), [])
+            if translations and not any(t in matched_skills for t in translations) and any(
+                    re.search(r'\b' + re.escape(t) + r'\b', job_description_lower) for t in translations):
+                matched_skills.append(skill.lower().strip())
 
         match_percentage = (len(matched_skills) / len(profile_skills)) * 100
         return min(match_percentage, 100.0)
