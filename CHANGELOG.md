@@ -6,6 +6,15 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar]
+
+### Agregado
+- OpenCode como proveedor de IA (`opencode_client.py`): con `OPENCODE_API_KEY`, las cartas, los CVs optimizados, el Copilot, el análisis de ofertas, la lectura de CVs y Gmail usan OpenCode en lugar de Gemini. `AI_PROVIDER` elige el proveedor; `OPENCODE_MODEL` y `OPENCODE_LIGHT_MODEL` (por defecto `glm-5.3` y `glm-5.3-flash`, con retención cero) eligen los modelos. Los embeddings siguen en Gemini.
+- Terraform y el deploy aceptan `opencode_api_key`; `gemini_api_key` pasa a ser opcional.
+
+### Cambiado
+- Los avisos de IA y la política de privacidad nombran el proveedor configurado. Los errores dicen "Error al contactar la IA".
+
 ## [4.0.0] - 2026-11-14
 
 ### Para actualizar desde 3.0.0
