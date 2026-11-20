@@ -51,3 +51,13 @@ def test_results_table_shows_skills_escaped(client, monkeypatch, tmp_path):
     assert 'text-bg-success me-1">python</span>' in html
     assert 'Te falta:' in html and 'docker</span>' in html
     assert '&lt;b&gt;x&lt;/b&gt;' in html and '<b>x</b>' not in html
+
+
+def test_skills_match_across_languages():
+    """Un CV en español coincide con la misma habilidad nombrada en inglés o portugués, y al revés."""
+    matcher = jobMatcher()
+    offer = 'Security Analyst: SIEM, incident response and vulnerability management.'
+    assert matcher.calculate_skill_match(['Respuesta a incidentes', 'Gestión de vulnerabilidades'], offer) == 100.0
+    assert matcher._get_matched_skills(['Respuesta a incidentes', 'Pentesting'], offer) == ['Respuesta a incidentes']
+    assert matcher.calculate_skill_match(['Accounting'], 'Analista contábil: contabilidade e impostos') == 100.0
+    assert matcher.calculate_skill_match(['Ventas'], 'Analista de marketing: SEO y SEM') == 0.0

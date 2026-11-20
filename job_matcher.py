@@ -38,6 +38,23 @@ SKILL_VARIATIONS = {
     'rest api': ['rest api', 'api', 'rest', 'restful', 'web services'],
     'ci/cd': ['ci/cd', 'continuous integration', 'jenkins', 'devops']
 }
+# la misma habilidad en español, portugués e inglés: un CV en un idioma y la oferta en otro
+SKILL_TRANSLATIONS = {
+    'incident response': ['incident response', 'respuesta a incidentes', 'resposta a incidentes'],
+    'vulnerability management': ['vulnerability management', 'gestión de vulnerabilidades', 'gestão de vulnerabilidades'],
+    'recruitment': ['recruitment', 'recruiting', 'reclutamiento', 'recrutamento'],
+    'customer service': ['customer service', 'customer support', 'atención al cliente', 'atendimento ao cliente'],
+    'project management': ['project management', 'gestión de proyectos', 'gestão de projetos'],
+    'accounting': ['accounting', 'contabilidad', 'contabilidade'],
+    'sales': ['sales', 'ventas', 'vendas'],
+    'negotiation': ['negotiation', 'negociación', 'negociação'],
+    'data analysis': ['data analysis', 'análisis de datos', 'análise de dados'],
+    'logistics': ['logistics', 'logística'],
+    'inventory': ['inventory', 'inventarios', 'inventario', 'inventário'],
+    'social media': ['social media', 'redes sociales', 'redes sociais'],
+    'manual testing': ['manual testing', 'pruebas manuales', 'testes manuais'],
+}
+SKILL_VARIATIONS.update(SKILL_TRANSLATIONS)
 MAX_MISSING_SKILLS = 8
 
 
@@ -166,6 +183,9 @@ class jobMatcher:
         for skill in profile_skills:
             skill_lower = skill.lower().strip()
             expanded_skills.append(skill_lower)
+            for translations in SKILL_TRANSLATIONS.values():
+                if skill_lower in translations:
+                    expanded_skills.extend(translations)
 
 
             if 'apache spark' in skill_lower or skill_lower == 'spark':

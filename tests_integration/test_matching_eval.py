@@ -6,7 +6,7 @@ import matching_eval
 # Línea base con TF-IDF (scripts/eval_matching.py). Si un cambio en el matching la baja, este test falla.
 # P@3 es más baja que con el dataset original: varios CVs tienen una sola oferta buena y P@3 no llega a 1.
 # Con 24 CVs y 38 ofertas el promedio baja: los perfiles nuevos tienen ofertas parecidas de otras áreas.
-BASELINE = {'ndcg@5': 0.89, 'precision@3': 0.75, 'mrr': 0.95}
+BASELINE = {'ndcg@5': 0.91, 'precision@3': 0.75, 'mrr': 0.95}
 # Mínimo por CV: que un perfil empeore aunque el promedio no baje también frena el CI.
 MIN_PROFILE = {'ndcg@5': 0.70, 'mrr': 1.0}
 
