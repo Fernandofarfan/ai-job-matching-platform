@@ -408,5 +408,6 @@ def encrypt_existing() -> int:
             session.commit()
     import glob
     for path in glob.glob(JSON_PATH.replace('.json', '*.json*')):
-        done += _seal_json_file(path)
+        if not path.endswith('.lock'):
+            done += _seal_json_file(path)
     return done
