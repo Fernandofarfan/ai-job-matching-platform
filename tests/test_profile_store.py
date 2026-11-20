@@ -1,5 +1,6 @@
 """Perfiles en base de datos (SQLite en memoria como stand-in de MySQL) y fallback JSON."""
 import json
+import os
 
 import pytest
 from sqlalchemy import create_engine
@@ -36,6 +37,7 @@ def test_json_fallback():
     with open(profile_store.JSON_PATH, encoding='utf-8') as f:
         stored = json.load(f)
     assert stored.pop(profile_store.WRITTEN_KEY) > 0
+    assert stored.pop(profile_store.TIMES_KEY)['backend'] > 0
     assert stored == {'backend': {'skills': ['python']}}
     assert profile_store.delete_profile('backend') == {'skills': ['python']}
     assert profile_store.get_all_profiles() == {}
@@ -166,3 +168,69 @@ def test_wrong_key_gives_clear_error(db, cv_key, monkeypatch):
     monkeypatch.setenv('CV_ENCRYPTION_KEY', Fernet.generate_key().decode())
     with pytest.raises(RuntimeError, match='CV_ENCRYPTION_KEY'):
         profile_store.get_profile('backend')
+
+
+def test_delete_in_mysql_is_not_undone_by_an_older_outage_json(db):
+    """Un perfil borrado en MySQL después de que otra instancia lo guardó en su JSON no reaparece."""
+    import time
+    profile_store._write_json({'backend': {'skills': ['caida']}}, set(), changed='backend')
+    time.sleep(0.01)
+    profile_store.save_profile('backend', {'skills': ['python']})
+    assert profile_store.delete_profile('backend') == {'skills': ['python']}
+    profile_store._import_legacy_json()
+    assert profile_store.get_all_profiles() == {}
+    assert profile_store.delete_profile('backend') is None
+    profile_store.save_profile('backend', {'skills': ['go']})
+    assert profile_store.get_all_profiles() == {'backend': {'skills': ['go']}}
+
+
+def test_recovery_compares_each_role_with_its_own_change(db):
+    """Un rol cambiado en el JSON después de la fila se aplica aunque otro rol del mismo JSON sea más viejo."""
+    import time
+    with profile_store._session_factory() as session:
+        session.add(profile_store.UserProfile(role_type='data', data={'skills': ['sql']}))
+        session.commit()
+    profile_store._write_json({'data': {'skills': ['viejo']}}, set(), changed='data')
+    times = profile_store._json_times()
+    times['data'] = time.time() - 3600
+    raw = profile_store._read_json_raw()
+    raw[profile_store.TIMES_KEY] = times
+    with open(profile_store.JSON_PATH, 'w', encoding='utf-8') as f:
+        json.dump(raw, f)
+    profile_store._write_json({'data': {'skills': ['viejo']}, 'backend': {'skills': ['rust']}}, set(),
+                              changed='backend')
+    profile_store._import_legacy_json()
+    assert profile_store.get_all_profiles() == {'data': {'skills': ['sql']}, 'backend': {'skills': ['rust']}}
+
+
+def test_json_write_when_mysql_comes_back_is_imported(db, monkeypatch):
+    """Si MySQL vuelve mientras se escribe el JSON, ese cambio se pasa enseguida y no queda olvidado."""
+    working = profile_store._session_factory
+    calls = []
+
+    def write_and_recover():
+        calls.append(1)
+        profile_store._write_json({'backend': {'skills': ['go']}}, set(), changed='backend')
+        profile_store._session_factory = working
+    profile_store._session_factory = None
+    monkeypatch.setattr(profile_store, '_sessions', lambda: None)
+    profile_store._run(lambda session: None, write_and_recover)
+    assert calls and not os.path.exists(profile_store.JSON_PATH)
+    monkeypatch.undo()
+    assert profile_store.get_all_profiles() == {'backend': {'skills': ['go']}}
+
+
+def test_failed_immediate_import_keeps_the_json_write(db, monkeypatch, cv_key):
+    """Si MySQL vuelve a fallar al importar enseguida, el guardado en el JSON vale y no da error; cifrar ignora el lock."""
+    from sqlalchemy.exc import OperationalError
+
+    def write_and_recover():
+        profile_store._write_json({'backend': {'skills': ['go']}}, set(), changed='backend')
+        profile_store._session_factory = lambda: (_ for _ in ()).throw(OperationalError('x', {}, Exception('caído')))
+    monkeypatch.setattr(profile_store, '_sessions', lambda: None)
+    profile_store._run(lambda session: None, write_and_recover)
+    assert profile_store._session_factory is None
+    assert profile_store._read_json() == {'backend': {'skills': ['go']}}
+    assert os.path.exists(profile_store.JSON_PATH + '.lock')
+    monkeypatch.setattr(profile_store, '_sessions', lambda: None)
+    assert profile_store.encrypt_existing() >= 0

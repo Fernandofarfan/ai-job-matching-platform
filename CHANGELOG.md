@@ -6,6 +6,11 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar]
+
+### Corregido
+- Perfiles durante una caída de MySQL: un perfil borrado en MySQL ya no reaparece al importar el JSON de respaldo de otra instancia (borrado como fila vacía con `user_profiles.deleted_at`, migración `0022`); cada rol se compara con su propia fila (`_times`); un lock de archivo evita que la importación y una escritura al JSON se pisen, y lo escrito justo cuando MySQL vuelve se importa enseguida.
+
 ## [4.0.0] - 2026-11-14
 
 ### Para actualizar desde 3.0.0
