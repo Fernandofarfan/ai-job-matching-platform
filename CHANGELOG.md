@@ -6,6 +6,11 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar]
+
+### Corregido
+- 28 archivos de tests fallaban corridos solos: el fixture `app` importaba los modelos de cuentas dentro de `patch.dict('sys.modules')` y el reimport duplicaba el índice `ix_user_sessions_user_id`; `test_job_alerts` no registraba la tabla `job_feedback`. El CI corre cada archivo de tests por separado.
+
 ## [4.0.0] - 2026-11-14
 
 ### Para actualizar desde 3.0.0
