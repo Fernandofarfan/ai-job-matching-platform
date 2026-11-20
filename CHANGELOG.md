@@ -6,6 +6,11 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar]
+
+### Mejorado
+- Matching entre idiomas: habilidades como "Respuesta a incidentes", "Contabilidad" o "Ventas" coinciden con "incident response", "accounting" o "sales" (`SKILL_TRANSLATIONS`). NDCG@5 promedio de 0,901 a 0,918; ciberseguridad en español de 0,714 a 0,840. Línea base del CI a 0,91.
+
 ## [4.0.0] - 2026-11-14
 
 ### Para actualizar desde 3.0.0
