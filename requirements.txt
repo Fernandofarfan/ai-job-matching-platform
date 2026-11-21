@@ -845,9 +845,9 @@ google-auth-oauthlib==1.5.0 \
     --hash=sha256:71625fdea21c6c03217eb9ff13741c3096e6d257ebca0ad084dbd6e9f4aa4ef4 \
     --hash=sha256:b351107c7dd9017f426cbb0272ea1bc04f469020fd18f4443c7d40362e0b1510
     # via -r requirements.in
-google-genai==3.3.0 \
-    --hash=sha256:86bd1830fec4b12e474237414fa52383aa0f49458910f6c9c938c207715559b5 \
-    --hash=sha256:c0ab7bfbf13d4a24a5798ec9e4200773b2fa150eb620317db337f751a9c9576c
+google-genai==3.5.0 \
+    --hash=sha256:2a8320df8a27d4483a95a65211bc787a78a7ba3c8512d0e9e3daabf9d8dda34e \
+    --hash=sha256:3bf424714df775f38aa8adf6c002d660276a147bec288c55db41cccae6ba2eef
     # via -r requirements.in
 googleapis-common-protos==1.76.0 \
     --hash=sha256:59e13344a9f3651aa201a03e2bee815a3bf43a4baf1f9ff8a9b62a840ce25fac \
