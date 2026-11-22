@@ -50,6 +50,11 @@ def enforce_cv_retention() -> dict[str, Any]:
             for role, data in profile_store.get_all_profiles().items():
                 if data.get("resume_filename") in old and profile_store.delete_profile(role) is not None:
                     deleted_profiles += 1
+    if not profile_store.primary_available():
+        # MySQL se cayó a mitad: los perfiles se leyeron del JSON y los de la base quedarían sin su CV para expirarlos
+        logger.warning("Retención de CVs postergada: MySQL dejó de responder mientras se borraban los perfiles")
+        return {"encrypted": encrypted, "deleted_cvs": 0, "deleted_profiles": deleted_profiles,
+                "deleted_generated": deleted_generated}
     deleted_cvs = sum(cv_storage.delete(name) for name in old)
     logger.info(f"Retención de CVs ({days} días): {deleted_cvs} CVs, {deleted_profiles} perfiles, "
                 f"{deleted_generated} documentos generados")

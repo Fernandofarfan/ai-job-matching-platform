@@ -13,7 +13,11 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 - Terraform y el deploy aceptan `opencode_api_key`; `gemini_api_key` pasa a ser opcional.
 
 ### Cambiado
+- El aviso push de una alerta con una sola oferta abre la oferta; con varias, la página de alertas.
 - Los avisos de IA y la política de privacidad nombran el proveedor configurado. Los errores dicen "Error al contactar la IA".
+
+### Seguridad
+- Con `ADMIN_EMAIL`, la primera cuenta administra y recibe los datos previos recién al verificar el email; `scripts/create_admin.py` la crea ya verificada. Recuperar la contraseña o entrar con Google sobre una cuenta sin verificar borra también su segundo factor.
 
 ## [4.0.0] - 2026-11-14
 

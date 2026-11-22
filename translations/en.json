@@ -741,5 +741,7 @@
  "Permiso de micrófono denegado": "Microphone permission denied",
  "Tu navegador no soporta reconocimiento de voz": "Your browser does not support speech recognition",
  "Detener grabación": "Stop recording",
- "Grabando... Empezá a hablar": "Recording... Start speaking"
+ "Grabando... Empezá a hablar": "Recording... Start speaking",
+ "Confirmá tu email con el enlace que te mandamos para administrar la instancia": "Confirm your email with the link we sent you to administer this instance",
+ "No se pudo mandar el enlace para confirmar el email: creá la cuenta de administrador con scripts/create_admin.py": "The email confirmation link couldn't be sent: create the administrator account with scripts/create_admin.py"
 }
