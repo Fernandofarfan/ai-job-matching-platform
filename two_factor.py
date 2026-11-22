@@ -90,7 +90,7 @@ def start_setup(user_id: int) -> str:
         raise TwoFactorError('El segundo factor ya está activado')
     secret = pyotp.random_base32()
     with accounts._sessions()() as session:
-        session.execute(delete(UserTotp).where(UserTotp.user_id == user_id))
+        session.execute(delete(UserTotp).where(UserTotp.user_id == user_id, UserTotp.enabled_at.is_(None)))
         session.add(UserTotp(user_id=user_id, secret=_encrypt(secret)))
         session.commit()
     return str(secret)
@@ -115,7 +115,7 @@ def qr_svg(uri: str) -> str:
 def _matching_step(secret: str, code: str) -> int | None:
     """Paso de 30 s cuyo código coincide, dentro de la ventana permitida."""
     code = (code or '').replace(' ', '')
-    if not (code.isdigit() and len(code) == 6):
+    if not (code.isascii() and code.isdigit() and len(code) == 6):
         return None
     totp = pyotp.TOTP(secret)
     now = int(time.time()) // totp.interval

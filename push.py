@@ -54,7 +54,12 @@ def _hash(endpoint: str) -> str:
 
 
 def _allowed_endpoint(endpoint: str) -> bool:
+    """Solo https a un servicio push conocido, sin usuario en la URL ni '\\' que el cliente HTTP lea distinto."""
+    if '\\' in endpoint or any(c.isspace() for c in endpoint):
+        return False
     parts = urlsplit(endpoint)
+    if parts.username is not None or parts.password is not None:
+        return False
     host = (parts.hostname or '').lower()
     extra = tuple(h.strip().lower() for h in os.getenv('PUSH_ALLOWED_HOSTS', '').split(',') if h.strip())
     return (parts.scheme == 'https' and len(endpoint) <= MAX_ENDPOINT and parts.port in (None, 443)
