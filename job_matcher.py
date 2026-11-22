@@ -38,6 +38,23 @@ SKILL_VARIATIONS = {
     'rest api': ['rest api', 'api', 'rest', 'restful', 'web services'],
     'ci/cd': ['ci/cd', 'continuous integration', 'jenkins', 'devops']
 }
+# la misma habilidad en español, portugués e inglés: un CV en un idioma y la oferta en otro
+SKILL_TRANSLATIONS = {
+    'incident response': ['incident response', 'respuesta a incidentes', 'resposta a incidentes'],
+    'vulnerability management': ['vulnerability management', 'gestión de vulnerabilidades', 'gestão de vulnerabilidades'],
+    'recruitment': ['recruitment', 'recruiting', 'reclutamiento', 'recrutamento'],
+    'customer service': ['customer service', 'customer support', 'atención al cliente', 'atendimento ao cliente'],
+    'project management': ['project management', 'gestión de proyectos', 'gestão de projetos'],
+    'accounting': ['accounting', 'contabilidad', 'contabilidade'],
+    'sales': ['sales', 'ventas', 'vendas'],
+    'negotiation': ['negotiation', 'negociación', 'negociação'],
+    'data analysis': ['data analysis', 'análisis de datos', 'análise de dados'],
+    'logistics': ['logistics', 'logística'],
+    'inventory': ['inventory', 'inventarios', 'inventario', 'inventário'],
+    'social media': ['social media', 'redes sociales', 'redes sociais'],
+    'manual testing': ['manual testing', 'pruebas manuales', 'testes manuais'],
+}
+SKILL_VARIATIONS.update(SKILL_TRANSLATIONS)
 MAX_MISSING_SKILLS = 8
 
 
@@ -226,6 +243,13 @@ class jobMatcher:
                 matched_skills.append(skill)
 
 
+        # una habilidad del CV nombrada en otro idioma cuenta una vez, aunque la oferta la diga en dos
+        for skill in profile_skills:
+            translations = next((t for t in SKILL_TRANSLATIONS.values() if skill.lower().strip() in t), [])
+            if translations and not any(t in matched_skills for t in translations) and any(
+                    re.search(r'\b' + re.escape(t) + r'\b', job_description_lower) for t in translations):
+                matched_skills.append(skill.lower().strip())
+
         match_percentage = (len(matched_skills) / len(profile_skills)) * 100
         return min(match_percentage, 100.0)
 
@@ -272,6 +296,8 @@ class jobMatcher:
     def get_missing_skills(profile_skills: list[str], job_description: str) -> list[str]:
         """Habilidades del vocabulario que pide la oferta y no están en el CV (ni como variante), hasta 8."""
         have = {skill_catalog.canonical(s) for s in profile_skills}
+        # "AWS Glue" en el CV también cubre "aws" y "glue", que es como skills_in lee la oferta
+        have |= set(skill_catalog.skills_in(' , '.join(profile_skills)))
         for variations in SKILL_VARIATIONS.values():
             names = {skill_catalog.canonical(v) for v in variations}
             if have & names:

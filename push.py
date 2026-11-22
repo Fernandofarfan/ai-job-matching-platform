@@ -54,7 +54,12 @@ def _hash(endpoint: str) -> str:
 
 
 def _allowed_endpoint(endpoint: str) -> bool:
+    """Solo https a un servicio push conocido, sin usuario en la URL ni '\\' que el cliente HTTP lea distinto."""
+    if '\\' in endpoint or any(c.isspace() for c in endpoint):
+        return False
     parts = urlsplit(endpoint)
+    if parts.username is not None or parts.password is not None:
+        return False
     host = (parts.hostname or '').lower()
     extra = tuple(h.strip().lower() for h in os.getenv('PUSH_ALLOWED_HOSTS', '').split(',') if h.strip())
     return (parts.scheme == 'https' and len(endpoint) <= MAX_ENDPOINT and parts.port in (None, 443)
@@ -111,6 +116,14 @@ def _webpush(**kwargs: Any) -> Any:
     return webpush(**kwargs)
 
 
+def _click_url(url: str) -> str:
+    """Ruta de la app o link http(s) de una oferta; cualquier otra cosa abre la portada."""
+    if url.startswith('/') and not url.startswith('//'):
+        return url
+    parts = urlsplit(url)
+    return url if parts.scheme in ('http', 'https') and parts.hostname and len(url) <= 2000 else '/'
+
+
 def send(user_id: int | None, title: str, body: str, url: str = '/', endpoint: str | None = None) -> int:
     """Manda la notificación a cada dispositivo de la cuenta (o solo a `endpoint`, si es de la cuenta);
     borra los que el servicio dio de baja. Devuelve cuántos la recibieron."""
@@ -122,7 +135,7 @@ def send(user_id: int | None, title: str, body: str, url: str = '/', endpoint: s
     with accounts._sessions()() as session:
         subs = session.execute(query).scalars().all()
         targets = [(s.id, s.endpoint, s.p256dh, s.auth) for s in subs]
-    payload = json.dumps({'title': title[:120], 'body': body[:300], 'url': url if url.startswith('/') else '/'})
+    payload = json.dumps({'title': title[:120], 'body': body[:300], 'url': _click_url(url)})
     claims = {'sub': os.getenv('VAPID_SUBJECT') or f"mailto:{os.getenv('ADMIN_EMAIL') or 'admin@localhost'}"}
     delivered, dead = 0, []
     for sub_id, endpoint, p256dh, auth in targets:

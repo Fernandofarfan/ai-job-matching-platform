@@ -154,8 +154,13 @@ class NewJob(TrackerDates):
     """Postulación nueva: título y empresa obligatorios; el resto de los campos pasa tal cual a la base."""
 
     model_config = ConfigDict(extra='allow')
-    title: str = Field(min_length=1)
-    company: str = Field(min_length=1)
+    title: str = Field(min_length=1, max_length=255)
+    company: str = Field(min_length=1, max_length=255)
+    location: str | None = Field(default=None, max_length=255)
+    suggested_address: str | None = Field(default=None, max_length=255)
+    salary: str | None = Field(default=None, max_length=100)
+    experience_category: str | None = Field(default=None, max_length=100)
+    job_type: str | None = Field(default=None, max_length=100)
 
 
 class StatusUpdate(BaseModel):
@@ -194,7 +199,7 @@ def list_jobs(db: Any = Depends(get_db)) -> dict[str, Any]:
 @router.post('/job', dependencies=browser, response_model=None)
 def add_job(job: NewJob, db: Any = Depends(get_db)) -> Response | dict[str, Any]:
     """Crea la postulación (409 si ya existe) y guarda sus fechas; si fallan, avisa con `warning`."""
-    result = db.add_job_to_tracker(job.model_dump())
+    result = db.add_job_to_tracker(job.model_dump(exclude_none=True))
     if isinstance(result, dict) and result.get('exists'):
         return JSONResponse({'success': False, 'exists': True, 'job_id': result['job_id'],
                              'message': 'Job already exists in tracker'}, status_code=409)

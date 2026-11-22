@@ -73,6 +73,8 @@ def test_admin_is_admin_email_or_first_account(signup, monkeypatch):
     beto = accounts.register('beto@example.com', PASSWORD)
     assert (accounts.is_admin(ana), accounts.is_admin(beto)) == (True, False)
     monkeypatch.setenv('ADMIN_EMAIL', ' Beto@Example.com ')
+    assert (accounts.is_admin(ana), accounts.is_admin(beto)) == (False, False)  # falta verificar el email
+    accounts.mark_verified(beto)
     assert (accounts.is_admin(ana), accounts.is_admin(beto)) == (False, True)
     accounts.set_disabled(beto, True)
     assert accounts.is_admin(beto) is False

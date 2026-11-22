@@ -29,6 +29,7 @@ def _fake_gemini(monkeypatch, text='respuesta', input_tokens=100, output_tokens=
     client = mock.Mock()
     client.models.generate_content.return_value = response
     monkeypatch.setattr(ai_engine, 'GEMINI_AVAILABLE', True)
+    monkeypatch.setattr(ai_engine, 'AI_PROVIDER', 'gemini')
     monkeypatch.setattr(ai_engine, '_gemini_client', client, raising=False)
     monkeypatch.setattr(ai_engine, 'genai_types', mock.Mock(), raising=False)
     return client
@@ -88,12 +89,12 @@ def test_redis_errors_do_not_break_calls(monkeypatch):
 
 def test_simple_tasks_use_light_model(monkeypatch):
     client = _fake_gemini(monkeypatch, text='{"salario_min": 1000}')
-    monkeypatch.setattr(ai_engine, 'GEMINI_LIGHT_MODEL', 'gemini-lite')
+    monkeypatch.setattr(ai_engine, 'AI_LIGHT_MODEL', 'gemini-lite')
     with mock.patch('accounts.ai_consent_missing', return_value=False):
         ai_engine.extract_salary_from_description('Pagamos 1000 USD', 'Dev')
         ai_engine._call_gemini('analizá esto', temperature=0.3)
     models = [c.kwargs['model'] for c in client.models.generate_content.call_args_list]
-    assert models == ['gemini-lite', ai_engine.GEMINI_MODEL]
+    assert models == ['gemini-lite', ai_engine.AI_MODEL]
 
 
 
@@ -109,7 +110,7 @@ def test_monthly_limit_blocks_calls_with_gemini_error_prefix(monkeypatch):
     client = _fake_gemini(monkeypatch)
     ai_engine._call_gemini('primera', temperature=0.8)
     result = ai_engine._call_gemini('segunda', temperature=0.8)
-    assert result.startswith('Error al contactar Gemini')
+    assert result.startswith(ai_engine.GEMINI_ERROR_PREFIX)
     assert client.models.generate_content.call_count == 1
 
 

@@ -23,3 +23,7 @@ tests_integration
 chrome_extension
 # Credenciales que google-github-actions/auth deja en el workspace durante el deploy
 gha-creds-*.json
+# Credenciales locales de OAuth (Gmail, Google): nunca dentro de la imagen
+credentials.json
+token.json
+client_secret*.json

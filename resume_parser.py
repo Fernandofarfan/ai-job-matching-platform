@@ -1,4 +1,4 @@
-"""Lectura de CVs (PDF, DOCX, TXT): texto, habilidades, años de experiencia y estudios, con Gemini si hay permiso."""
+"""Lectura de CVs (PDF, DOCX, TXT): texto, habilidades, años de experiencia y estudios, con IA si hay permiso."""
 import json
 import os
 import re
@@ -8,6 +8,7 @@ from typing import Any, cast
 import docx
 import pypdf
 
+import opencode_client
 import skill_catalog
 
 try:
@@ -32,6 +33,11 @@ class resumeParser:
             self.all_technical_skills.extend(category)
 
     def configure_genai(self) -> None:
+        self.provider = opencode_client.provider()
+        if self.provider == 'opencode':
+            self.model_name = opencode_client.light_model()
+            self.use_ai = opencode_client.enabled()
+            return
         if not getattr(self, '__module__', None) and not globals().get('_GENAI_AVAILABLE', False):
             self.use_ai = False
             print("Warning: AI API not available (import failed). Using regex-based parsing.")
@@ -390,13 +396,16 @@ class resumeParser:
             if ai_usage.budget_exceeded():
                 print("Límite mensual de tokens de IA alcanzado; el CV se parsea sin IA")
                 return None
-            response = self.client.models.generate_content(model=self.model_name, contents=prompt)
-            usage = getattr(response, 'usage_metadata', None)
-            ai_usage.record(
-                getattr(usage, 'prompt_token_count', 0) or 0,
-                (getattr(usage, 'candidates_token_count', 0) or 0) + (getattr(usage, 'thoughts_token_count', 0) or 0),
-            )
-            json_str = (response.text or '').strip()
+            if getattr(self, 'provider', 'gemini') == 'opencode':
+                json_str, input_tokens, output_tokens = opencode_client.chat(prompt, self.model_name, temperature=0)
+            else:
+                response = self.client.models.generate_content(model=self.model_name, contents=prompt)
+                usage = getattr(response, 'usage_metadata', None)
+                input_tokens = getattr(usage, 'prompt_token_count', 0) or 0
+                output_tokens = (getattr(usage, 'candidates_token_count', 0) or 0) + \
+                    (getattr(usage, 'thoughts_token_count', 0) or 0)
+                json_str = (response.text or '').strip()
+            ai_usage.record(input_tokens, output_tokens)
             # Clean up potential markdown code blocks
             if json_str.startswith("```json"):
                 json_str = json_str[7:]
