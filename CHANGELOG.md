@@ -16,6 +16,9 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 - El aviso push de una alerta con una sola oferta abre la oferta; con varias, la página de alertas.
 - Los avisos de IA y la política de privacidad nombran el proveedor configurado. Los errores dicen "Error al contactar la IA".
 
+### Corregido
+- 28 archivos de tests fallaban corridos solos: el fixture `app` importaba los modelos de cuentas dentro de `patch.dict('sys.modules')` y el reimport duplicaba el índice `ix_user_sessions_user_id`; `test_job_alerts` no registraba la tabla `job_feedback`. El CI corre cada archivo de tests por separado.
+
 ### Seguridad
 - Con `ADMIN_EMAIL`, la primera cuenta administra y recibe los datos previos recién al verificar el email; `scripts/create_admin.py` la crea ya verificada. Recuperar la contraseña o entrar con Google sobre una cuenta sin verificar borra también su segundo factor.
 

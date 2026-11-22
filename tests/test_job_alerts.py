@@ -8,6 +8,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 import job_alerts
+import job_feedback  # noqa: F401  (registra job_feedback en job_alerts.Base)
 from tasks import notification_tasks
 
 

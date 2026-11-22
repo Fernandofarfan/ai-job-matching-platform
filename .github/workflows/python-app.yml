@@ -121,6 +121,12 @@ jobs:
             --tb=short \
             --cov --cov-report=term --cov-fail-under=80
 
+      - name: Run each test file alone
+        # Un archivo que solo pasa después de otros esconde una dependencia entre tests
+        run: |
+          ls tests/test_*.py | xargs -P 4 -I{} sh -c \
+            'python -m pytest -q -p no:cacheprovider {} > /dev/null 2>&1 || { echo "Falla solo: {}"; exit 1; }'
+
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
         with:
           name: coverage-unit
