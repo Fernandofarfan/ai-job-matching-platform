@@ -1,4 +1,4 @@
-"""Generación de cartas de presentación y CVs optimizados con Gemini, exportados a DOCX."""
+"""Generación de cartas de presentación y CVs optimizados con la IA, exportados a DOCX."""
 import logging
 import os
 from datetime import datetime
@@ -8,7 +8,7 @@ from ai_engine import _call_gemini
 logger = logging.getLogger(__name__)
 
 # _call_gemini devuelve estos mensajes en lugar de lanzar excepciones
-GEMINI_ERROR_PREFIXES = ("⚠️ Gemini no está configurado", "Error al contactar Gemini")
+GEMINI_ERROR_PREFIXES = ("⚠️ La IA no está configurada", "Error al contactar la IA")
 
 
 def _generated_dir(kind: str) -> str:

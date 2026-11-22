@@ -33,7 +33,7 @@ def test_save_resume_writes_file(tmp_path):
 
 def test_gemini_error_raises_instead_of_saving_document():
     import pytest
-    with mock.patch.object(document_generators, "_call_gemini", return_value="Error al contactar Gemini: quota"):
+    with mock.patch.object(document_generators, "_call_gemini", return_value="Error al contactar la IA: quota"):
         with pytest.raises(RuntimeError):
             ResumeOptimizer().optimize_resume("cv", "desc")
 

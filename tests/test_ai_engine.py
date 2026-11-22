@@ -58,7 +58,7 @@ def test_salary_uses_light_model(gemini):
     replies, prompts = gemini
     replies.append('{}')
     ai_engine.extract_salary_from_description('x', 'y')
-    assert prompts[0][1] == ai_engine.GEMINI_LIGHT_MODEL
+    assert prompts[0][1] == ai_engine.AI_LIGHT_MODEL
 
 
 def test_evaluation_error_has_no_grade(gemini):

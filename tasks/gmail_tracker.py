@@ -78,8 +78,8 @@ def check_interview_emails() -> str | dict[int, str]:
                 logger.error(f"Token de Gmail inválido para la cuenta {uid}: {type(e).__name__}")
                 service = None
             results[uid] = _process_mailbox(service) if service else "Token de Gmail vencido: volvé a conectar Gmail"
-    first = accounts.first_user_id()
-    if first not in results and integrations.legacy_allowed(first, 'gmail'):
+    first = accounts.legacy_owner_id()
+    if first not in results and not accounts.legacy_locked() and integrations.legacy_allowed(first, 'gmail'):
         service = get_gmail_service()
         if service:
             with accounts.as_user(first):
@@ -112,13 +112,13 @@ def _process_mailbox(service: Any) -> str:
 
             # Aqui integramos AI Engine para revisar si el correo (texto completo)
             # corresponde a alguna empresa guardada en el tracker
-            from ai_engine import GEMINI_ERROR_PREFIX, GEMINI_LIGHT_MODEL, _call_gemini
+            from ai_engine import AI_LIGHT_MODEL, GEMINI_ERROR_PREFIX, _call_gemini
             prompt = f"El reclutador {sender} envió este correo: {subject}. ¿Corresponde a alguna de estas empresas? {', '.join([j['company'] for j in tracked_jobs])}. Responde el nombre de la empresa exacto."
 
-            answer = _call_gemini(prompt, temperature=0, model=GEMINI_LIGHT_MODEL)
+            answer = _call_gemini(prompt, temperature=0, model=AI_LIGHT_MODEL)
             matched_company = (answer or '').strip()
             if matched_company.startswith(GEMINI_ERROR_PREFIX):
-                # sin permiso o sin cuota: el correo queda sin leer para revisarlo cuando Gemini responda
+                # sin permiso o sin cuota: el correo queda sin leer para revisarlo cuando la IA responda
                 logger.warning(f"Correo {message['id']} sin revisar: {matched_company}")
                 continue
 

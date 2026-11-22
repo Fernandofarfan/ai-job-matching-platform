@@ -48,7 +48,7 @@
 
 ### ¿Qué hace diferente a EmpleoIA?
 
-- ✅ **AI Copilot integrado**: Chat en tiempo real con Gemini para estrategia laboral personalizada
+- ✅ **AI Copilot integrado**: Chat en tiempo real con OpenCode o Gemini para estrategia laboral personalizada
 - ✅ **Mock Interviews**: Entrevistas simuladas con feedback instantáneo de IA
 - ✅ **Análisis semántico**: Match entre CV y ofertas usando IA generativa (no solo keywords)
 - ✅ **Scraping sin APIs**: Extrae ofertas de Indeed, LinkedIn, Bumeran y Computrabajo
@@ -70,7 +70,7 @@
 - **Autonomías Externas**: Tracker automático para Gmail vía OAuth e introducción de auto-aplicación en LinkedIn.
 
 ### 🤖 **IA Generativa (Validada)**
-- **AI Copilot**: Chat lateral con Gemini en todas las páginas — preguntá sobre tu búsqueda, estrategia, salarios, LinkedIn
+- **AI Copilot**: Chat lateral con la IA (OpenCode o Gemini) en todas las páginas — preguntá sobre tu búsqueda, estrategia, salarios, LinkedIn
 - **Mock Interviews**: Entrevistas simuladas con preguntas personalizadas, timer, evaluación STAR y feedback en tiempo real
 - **Análisis completo de ofertas**: Cultura de empresa, skills requeridas vs tus skills, rango salarial inferido, red flags
 - **Reescritura de CV**: Mejora bullet points de tu CV para hacer match perfecto con una oferta
@@ -125,7 +125,7 @@
 - **Sesiones abiertas** (**Mi cuenta**): lista los navegadores con la cuenta abierta (IP, inicio y última actividad) y permite cerrar uno o todos los demás. Salir, cambiar o recuperar la contraseña también cierra las sesiones. Las sesiones vencen a los 31 días sin uso.
 - **Verificación en dos pasos** (**Mi cuenta**): app autenticadora (TOTP) con QR, pedida después de la contraseña o de Google, y 10 códigos de recuperación de un uso. El secreto se cifra con `CV_ENCRYPTION_KEY`. Sin el teléfono ni códigos, el administrador la quita desde **Administración**.
 - **Idiomas:** español, inglés y portugués, desde el selector de la barra (o según el idioma del navegador). Los textos nuevos se marcan con `{{ _('Texto en español') }}` y se traducen en `translations/en.json` y `translations/pt.json`; los mensajes de progreso que arman los threads o el worker se guardan con `i18n.lazy('Buscando %(position)s...', position=...)` y `/status` los traduce al leerlos. Un test falla si un texto marcado no tiene su traducción.
-- **Administración** (`/admin`, solo la cuenta de `ADMIN_EMAIL` o, sin esa variable, la primera): lista las cuentas con fecha de alta, última actividad, verificación en dos pasos y consumo de IA del mes. Permite bloquear y desbloquear (una cuenta bloqueada no entra, pierde sus sesiones, su token de la extensión deja de valer y no recibe avisos), quitar la verificación en dos pasos y borrar la cuenta con todos sus datos; las dos últimas piden la contraseña del administrador. Las demás cuentas reciben 404.
+- **Administración** (`/admin`, solo la cuenta de `ADMIN_EMAIL` con el email verificado o, sin esa variable, la primera): lista las cuentas con fecha de alta, última actividad, verificación en dos pasos y consumo de IA del mes. Permite bloquear y desbloquear (una cuenta bloqueada no entra, pierde sus sesiones, su token de la extensión deja de valer y no recibe avisos), quitar la verificación en dos pasos y borrar la cuenta con todos sus datos; las dos últimas piden la contraseña del administrador. Las demás cuentas reciben 404.
 - **Actividad reciente** (**Mi cuenta**): registro de inicios de sesión (con contraseña o Google), contraseñas incorrectas, cambios y recuperación de contraseña, Telegram, Gmail, token de la extensión y exportaciones, con IP y navegador. Un login desde un navegador nuevo manda un aviso por email (`LOGIN_ALERTS=false` lo apaga). Los eventos se borran a los `SECURITY_EVENTS_DAYS` días (180).
 - **Notificaciones push** (PWA): en **Mi cuenta** cada dispositivo se suscribe a los avisos de alertas y recordatorios, sin email ni Telegram. Generá las claves con `python scripts/generate_vapid_keys.py` y cargá `VAPID_PUBLIC_KEY` y `VAPID_PRIVATE_KEY` (en Cloud Run, la privada va en `EXTRA_SECRETS_JSON`). En iPhone hay que agregar la app a la pantalla de inicio primero.
 
@@ -271,7 +271,7 @@ python app.py
 ```bash
 # Copia y configura las variables de entorno
 cp .env.example .env
-# Editar .env con GEMINI_API_KEY, DB_PASSWORD y REDIS_PASSWORD (obligatoria; solo letras y números)
+# Editar .env con OPENCODE_API_KEY o GEMINI_API_KEY, DB_PASSWORD y REDIS_PASSWORD (obligatoria; solo letras y números)
 
 # Levanta todo: web (FastAPI) + MySQL + Redis + Celery + Flower
 docker-compose up -d
@@ -301,7 +301,7 @@ docker-compose logs -f web
 4. El sistema extraerá automáticamente tus habilidades
 
 #### Configurar el AI Copilot
-1. Agregá `GEMINI_API_KEY` a tu archivo `.env` ([obtenela gratis aquí](https://aistudio.google.com/app/apikey))
+1. Agregá `OPENCODE_API_KEY` ([OpenCode](https://opencode.ai/auth)) o `GEMINI_API_KEY` ([obtenela gratis aquí](https://aistudio.google.com/app/apikey)) a tu archivo `.env`. Con `OPENCODE_API_KEY`, las cartas, los CVs, el Copilot y el análisis usan OpenCode (`OPENCODE_MODEL`, por defecto `glm-5.3`, y `OPENCODE_LIGHT_MODEL`, por defecto `glm-5.3-flash`, los dos con retención cero en OpenCode Go). `AI_PROVIDER=gemini` fuerza Gemini. Los embeddings del matching siguen en Gemini, porque OpenCode Go no tiene modelos de embeddings
 2. El ícono 🤖 aparecerá en la esquina inferior derecha de todas las páginas
 3. Hacé clic para abrir el chat con el AI Copilot
 
@@ -396,7 +396,8 @@ EmpleoIA/
 ├── 📄 app.py                 # Arma la web (web_settings.py) y sus servicios (AppServices)
 ├── 📁 services/              # Perfiles, búsquedas de Indeed/LinkedIn, conexiones y pruebas de scrapers
 ├── 📁 routers/               # Páginas y APIs de FastAPI por área
-├── 📄 ai_engine.py           # 🆕 Motor de IA centralizado (Gemini)
+├── 📄 ai_engine.py           # 🆕 Motor de IA centralizado (OpenCode o Gemini)
+├── 📄 opencode_client.py     # Cliente de OpenCode (API compatible con OpenAI)
 ├── 📄 celery_app.py          # 🆕 Configuración de Celery
 ├── 📄 models.py              # 🆕 Modelos SQLAlchemy ORM
 ├── 📄 market_analyzer.py     # 🆕 Análisis salarial
@@ -430,11 +431,12 @@ cp .env.example .env
 
 ```env
 # === IA (OBLIGATORIO para funciones de IA) ===
+OPENCODE_API_KEY=               # con ella la IA generativa usa OpenCode; AI_PROVIDER=gemini fuerza Gemini
 GEMINI_API_KEY=tu_api_key_aqui
 
 # === Seguridad ===
 SECRET_KEY=            # obligatoria en producción: python -c "import secrets; print(secrets.token_hex(32))"
-ADMIN_EMAIL=           # email obligatorio de la primera cuenta (la que se queda con los datos previos) y administrador de /admin
+ADMIN_EMAIL=           # email obligatorio de la primera cuenta y administrador de /admin; administra y recibe los datos previos al verificar el email, o creala con scripts/create_admin.py
 ALLOW_SIGNUP=false     # true = registro abierto en /register; por defecto solo se crea la primera cuenta
 REQUIRE_EMAIL_VERIFICATION=false  # true = las cuentas nuevas entran solo después de confirmar el email (necesita SMTP)
 PUBLIC_BASE_URL=               # URL pública de la app para los enlaces de los emails (obligatoria en Cloud Run)
@@ -461,7 +463,7 @@ AI_RATE_LIMIT=30 per minute     # límite por cuenta (o por IP sin sesión) para
 API_RATE_LIMIT=300 per minute   # límite por cuenta para todo /api/*
 TRUSTED_PROXY_HOPS=0            # 1 en Cloud Run: toma la IP real de X-Forwarded-For
 RATELIMIT_STORAGE_URI=memory:// # usá redis://... con varias instancias
-AI_MONTHLY_TOKEN_LIMIT=0        # tope mensual de tokens de Gemini (0 = sin tope); consumo en GET /api/ai/usage.
+AI_MONTHLY_TOKEN_LIMIT=0        # tope mensual de tokens de IA (0 = sin tope); consumo en GET /api/ai/usage.
 AI_USER_MONTHLY_TOKEN_LIMIT=0   # tope mensual por cuenta (0 = sin tope); cada cuenta ve su consumo en GET /api/ai/usage.
 MATCHING_BACKEND=tfidf          # embeddings = match CV-oferta por significado con Gemini (cuenta en el tope); tfidf = palabras en común.
 MATCHING_BACKEND_BY_LANGUAGE=   # backend según el idioma del CV (es, pt, en), por encima de MATCHING_BACKEND. Ej.: es=embeddings,pt=embeddings
@@ -555,7 +557,7 @@ En ⚙️ cargá la URL de tu EmpleoIA y tocá **Vincular con mi cuenta**: se ab
 | Bucket `<proyecto>-empleoia-uploads-<env>` | CVs montados en `/app/uploads`; privado, sin versionado y con borrado por antigüedad si `cv_retention_days > 0` |
 | Bucket `<proyecto>-empleoia-results-<env>` | Resultados de búsqueda montados en `/app/results`, compartidos entre el worker y la web |
 | Cloud Monitoring | Uptime check de `/api/ready` (app, base y Redis), alertas de 5xx, latencia p95 y disco de Cloud SQL; por email con `alert_email` (`docs/observability.md`) |
-| Secret Manager | `DB_PASSWORD`, `SECRET_KEY`, `GEMINI_API_KEY`, `CV_ENCRYPTION_KEY` y `extra_secrets` |
+| Secret Manager | `DB_PASSWORD`, `SECRET_KEY`, `OPENCODE_API_KEY` y/o `GEMINI_API_KEY`, `CV_ENCRYPTION_KEY` y `extra_secrets` |
 
 Los valores no secretos de cada ambiente están en `terraform/envs/<env>.tfvars`. Los secretos se pasan como `TF_VAR_*` y nunca van al repo (quedan en el estado de Terraform, así que el bucket del estado debe ser privado).
 
@@ -566,7 +568,7 @@ Los valores no secretos de cada ambiente están en `terraform/envs/<env>.tfvars`
 
 El deploy se saltea hasta que crees la variable de repositorio `GCP_DEPLOY_ENABLED=true` y configures, en cada GitHub Environment (`staging`, `prod`):
 - **Variables:** `GCP_PROJECT_ID`, `GCP_WORKLOAD_IDENTITY_PROVIDER`, `GCP_DEPLOY_SA`, `TF_STATE_BUCKET` y, opcionalmente, `GCP_REGION`.
-- **Secretos:** `DB_PASSWORD`, `GEMINI_API_KEY`, `SECRET_KEY`, `CV_ENCRYPTION_KEY` y, opcionalmente, `EXTRA_SECRETS_JSON` (p. ej. `{"TELEGRAM_BOT_TOKEN":"..."}`).
+- **Secretos:** `DB_PASSWORD`, `OPENCODE_API_KEY` y/o `GEMINI_API_KEY`, `SECRET_KEY`, `CV_ENCRYPTION_KEY` y, opcionalmente, `EXTRA_SECRETS_JSON` (p. ej. `{"TELEGRAM_BOT_TOKEN":"..."}`).
 
 Producción solo se despliega desde un tag `vX.Y.Z`: "Run workflow" con `prod` y el tag en "Use workflow from". Para volver atrás se despliega el tag anterior, sin reconstruir la imagen. Cada tag crea además un release de GitHub con las notas del CHANGELOG y la imagen en `ghcr.io` (`release.yml`). Los pasos para sacar una versión están en [docs/releases.md](docs/releases.md).
 
@@ -618,7 +620,7 @@ docker run -d -p 6379:6379 redis:7-alpine
 ```
 
 ### ❌ AI Copilot no responde
-- Verificá que `GEMINI_API_KEY` esté en tu `.env`
+- Verificá que `OPENCODE_API_KEY` o `GEMINI_API_KEY` esté en tu `.env`
 - La API key debe estar activa en [aistudio.google.com](https://aistudio.google.com/app/apikey)
 
 ### ❌ LinkedIn/Indeed detecta scraping
@@ -697,7 +699,7 @@ Proyecto desarrollado desde cero para automatizar la búsqueda de empleo con tec
 - **Task Queue**: [Celery](https://docs.celeryq.dev/) + [Redis](https://redis.io/)
 - **Matching**: [scikit-learn](https://scikit-learn.org/) (TF-IDF) o embeddings de Gemini
 - **UI**: [Bootstrap 5](https://getbootstrap.com/)
-- **IA Generativa**: [Google Gemini](https://ai.google.dev/)
+- **IA Generativa**: [OpenCode](https://opencode.ai/docs/go/) o [Google Gemini](https://ai.google.dev/)
 - **Infraestructura**: [Terraform](https://www.terraform.io/) + [Google Cloud](https://cloud.google.com/)
 
 ---

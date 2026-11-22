@@ -38,7 +38,8 @@ def _tag(value: Any) -> Any:
     if isinstance(value, uuid.UUID):
         return {' u': value.hex}
     if isinstance(value, datetime):
-        return {' d': format_datetime(value.astimezone(UTC), usegmt=True)}
+        aware = value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
+        return {' d': format_datetime(aware, usegmt=True)}
     return value
 
 

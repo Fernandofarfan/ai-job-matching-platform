@@ -46,17 +46,18 @@ locals {
     var.extra_env,
   )
 
-  # Nombre de variable de entorno -> valor del secreto.
-  secret_values = merge(
+  # Nombre de variable de entorno -> valor del secreto; las claves de IA vacías no se crean.
+  secret_values = { for name, value in merge(
     {
       DB_PASSWORD       = var.db_password
       SECRET_KEY        = var.secret_key
       GEMINI_API_KEY    = var.gemini_api_key
+      OPENCODE_API_KEY  = var.opencode_api_key
       CV_ENCRYPTION_KEY = var.cv_encryption_key
     },
     var.enable_redis ? { REDIS_URL = local.redis_url, RATELIMIT_STORAGE_URI = local.redis_url } : {},
     var.extra_secrets,
-  )
+  ) : name => value if value != "" }
   secret_names = nonsensitive(toset(keys(local.secret_values)))
 
   uploads_mount = "/app/uploads"

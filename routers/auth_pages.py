@@ -41,7 +41,7 @@ from fastapi_web import (
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["auth"], include_in_schema=False)
 # fecha de la última versión de templates/legal/*: cambiala al modificar los textos
-LEGAL_UPDATED = '2026-11-12'
+LEGAL_UPDATED = '2026-11-20'
 PENDING_MAX_AGE = 300
 
 
@@ -183,6 +183,10 @@ def _register(request: Request, form: TextForm | None) -> Response:
                     audit(request, user_id, 'register')
                     user = accounts.get_user(user_id) or {}
                     sent = not user['email_verified'] and send_verification(request, user)
+                    if first and not user['email_verified']:
+                        flash(request, 'Confirmá tu email con el enlace que te mandamos para administrar la instancia'
+                              if sent else 'No se pudo mandar el enlace para confirmar el email: creá la cuenta de '
+                              'administrador con scripts/create_admin.py', 'info' if sent else 'danger')
                     if auth.verification_required() and not user['email_verified']:
                         if sent:
                             flash(request, 'Te mandamos un enlace para confirmar tu email', 'info')
@@ -265,8 +269,9 @@ def _reset_password(request: Request, token: str, form: TextForm | None) -> Resp
                 flash(request, str(e), 'danger')
             else:
                 if not user['email_verified']:
-                    # la cuenta pudo crearla otro con este email: sus passkeys dejan de valer
+                    # la cuenta pudo crearla otro con este email: sus passkeys y su segundo factor dejan de valer
                     passkeys.delete_all(user['id'])
+                    two_factor.disable(user['id'])
                 accounts.mark_verified(user['id'])  # recibió el email: la dirección es suya
                 audit(request, user['id'], 'password_reset')
                 get_session(request).clear()

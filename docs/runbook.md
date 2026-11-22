@@ -45,7 +45,7 @@ Las alertas de SLO (consumo del presupuesto de errores) llevan acá. La rápida 
 ### La IA no responde o cuesta de más
 
 - `AI_MONTHLY_TOKEN_LIMIT` (instancia) y `AI_USER_MONTHLY_TOKEN_LIMIT` (cuenta) cortan el gasto: al superarse, la IA responde "se alcanzó el límite mensual de tokens" y el resto de la app sigue.
-- Clave inválida o cuota de Gemini agotada: rotá `GEMINI_API_KEY` en Secret Manager y redeployá.
+- Clave inválida o cuota agotada: rotá `OPENCODE_API_KEY` o `GEMINI_API_KEY` en Secret Manager y redeployá. Si se agotó el plan de OpenCode Go, `AI_PROVIDER=gemini` pasa a Gemini mientras tanto.
 - Para apagarla del todo, sacá `GEMINI_API_KEY`: las funciones de IA responden con un error y el matching con embeddings vuelve a TF-IDF.
 
 ### Emails que no llegan
