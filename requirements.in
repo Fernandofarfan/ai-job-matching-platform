@@ -29,7 +29,7 @@ celery[redis]==5.7.0
 redis==8.1.0
 
 # --- Scraping ---
-playwright==1.65.1
+playwright==1.65.2
 beautifulsoup4==4.15.0
 lxml==6.1.3
 requests==2.34.2
