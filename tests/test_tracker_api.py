@@ -73,6 +73,16 @@ def test_add_job_validates_dates_before_inserting(api, db):
     db.add_job_to_tracker.assert_not_called()
 
 
+def test_add_job_rejects_fields_longer_than_columns(api, db):
+    for field, limit in (('company', 255), ('title', 255), ('location', 255), ('salary', 100)):
+        job = {'title': 'Dev', 'company': 'Acme', field: 'a' * (limit + 1)}
+        resp = api.post('/api/tracker/job', json=job)
+        assert resp.status_code == 400 and field in resp.json()['error']
+    db.add_job_to_tracker.assert_not_called()
+    assert api.post('/api/tracker/job', json={'title': 'Dev', 'company': 'a' * 255}).status_code == 200
+    assert 'location' not in db.add_job_to_tracker.call_args[0][0]
+
+
 def test_add_job_warns_when_dates_not_saved(api, db):
     db.update_tracker_dates.return_value = False
     data = api.post('/api/tracker/job', json={'title': 'Dev', 'company': 'Acme', 'follow_up': '2026-12-31'}).json()
