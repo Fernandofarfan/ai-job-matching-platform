@@ -6,7 +6,11 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
-## [Sin publicar]
+## [4.1.0] - 2026-11-22
+
+### Para actualizar desde 4.0.0
+- La migración `0022` agrega `user_profiles.deleted_at` (columna con valor nulo, compatible con 4.0.0); el deploy la aplica sola con `alembic upgrade head`.
+- Para usar OpenCode, cargá `OPENCODE_API_KEY` en el `.env` y como secreto `OPENCODE_API_KEY` del repo (GitHub Actions). Sin esa clave todo sigue con Gemini, como en 4.0.0. Los embeddings siguen usando `GEMINI_API_KEY`.
 
 ### Agregado
 - OpenCode como proveedor de IA (`opencode_client.py`): con `OPENCODE_API_KEY`, las cartas, los CVs optimizados, el Copilot, el análisis de ofertas, la lectura de CVs y Gmail usan OpenCode en lugar de Gemini. `AI_PROVIDER` elige el proveedor; `OPENCODE_MODEL` y `OPENCODE_LIGHT_MODEL` (por defecto `glm-5.3` y `glm-5.3-flash`, con retención cero) eligen los modelos. Los embeddings siguen en Gemini.
@@ -19,12 +23,23 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 ### Mejorado
 - Matching entre idiomas: habilidades como "Respuesta a incidentes", "Contabilidad" o "Ventas" coinciden con "incident response", "accounting" o "sales" (`SKILL_TRANSLATIONS`). NDCG@5 promedio de 0,901 a 0,918; ciberseguridad en español de 0,714 a 0,840. Línea base del CI a 0,91.
 
+### Dependencias
+- Actions: `checkout` 7.0.1, `setup-python` 7.1.0, `download-artifact` 8.0.2, `setup-terraform` 4.0.1 y `gitleaks-action` 3.0.0.
+- Python: `google-genai` 3.5.0, `playwright` 1.65.2 (imagen `v1.65.2-noble`), `python-multipart` 0.0.34, `schemathesis` 4.33.4 y `locust` 2.47.0.
+
 ### Corregido
+- CVs: cifrar un CV existente escribe a un temporal y reemplaza, así un corte no lo trunca ni restaura un CV recién borrado; si MySQL se cae durante la retención, no se borran los CVs de perfiles que siguen.
+- Matching: una habilidad compuesta del CV (por ejemplo "AWS Glue") ya no aparece como faltante.
+- 2FA: dígitos no ASCII dan código inválido en vez de 500, y empezar la configuración no borra un segundo factor ya activo.
+- Resumen semanal: si falla la lectura del tracker no se manda ni se consume.
 - `POST /api/tracker/job` respondía 500 con un título, una empresa u otro campo más largo que su columna; ahora responde 400 con el campo. Lo encontró Schemathesis 4.33.
 - 28 archivos de tests fallaban corridos solos: el fixture `app` importaba los modelos de cuentas dentro de `patch.dict('sys.modules')` y el reimport duplicaba el índice `ix_user_sessions_user_id`; `test_job_alerts` no registraba la tabla `job_feedback`. El CI corre cada archivo de tests por separado.
 - Perfiles durante una caída de MySQL: un perfil borrado en MySQL ya no reaparece al importar el JSON de respaldo de otra instancia (borrado como fila vacía con `user_profiles.deleted_at`, migración `0022`); cada rol se compara con su propia fila (`_times`); un lock de archivo evita que la importación y una escritura al JSON se pisen, y lo escrito justo cuando MySQL vuelve se importa enseguida.
 
 ### Seguridad
+- Push y postulación automática en LinkedIn: se rechazan URLs con usuario o `\` que el cliente HTTP o Chromium resuelven a otro host (SSRF).
+- Sentry: los eventos ya no llevan variables locales de los frames (texto de CVs) ni emails o argumentos en los breadcrumbs.
+- Docker: `credentials.json`, `token.json` y `client_secret*.json` quedan fuera de la imagen.
 - Con `ADMIN_EMAIL`, la primera cuenta administra y recibe los datos previos recién al verificar el email; `scripts/create_admin.py` la crea ya verificada. Recuperar la contraseña o entrar con Google sobre una cuenta sin verificar borra también su segundo factor.
 
 ## [4.0.0] - 2026-11-14
