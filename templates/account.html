@@ -263,7 +263,7 @@
   <div class="card border-0 shadow-sm mb-4">
     <div class="card-body p-4">
       <h2 class="h5 fw-bold">{{ _('Permiso para usar la IA') }}</h2>
-      <p class="text-muted small">{{ _('Las cartas, los CVs optimizados, el Copilot, la entrevista simulada y el matching semántico envían el texto de tu CV y de las ofertas a Google Gemini. Sin permiso, esas funciones no se usan y el matching sigue sin IA.') }}</p>
+      <p class="text-muted small">{{ _('Las cartas, los CVs optimizados, el Copilot y la entrevista simulada envían el texto de tu CV y de las ofertas a %(provider)s; el matching semántico, a Google Gemini. Sin permiso, esas funciones no se usan y el matching sigue sin IA.', provider=ai_provider_name) }}</p>
       <form method="POST" action="{{ url_for('ai_consent') }}" class="d-flex align-items-center gap-3">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         {% if user.ai_consent %}

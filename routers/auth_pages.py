@@ -41,7 +41,7 @@ from fastapi_web import (
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["auth"], include_in_schema=False)
 # fecha de la última versión de templates/legal/*: cambiala al modificar los textos
-LEGAL_UPDATED = '2026-11-12'
+LEGAL_UPDATED = '2026-11-20'
 PENDING_MAX_AGE = 300
 
 

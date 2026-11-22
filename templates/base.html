@@ -376,7 +376,7 @@
 
         {% if ai_consent_needed %}
         <div class="alert alert-info d-flex flex-wrap align-items-center gap-2" role="region" aria-label="{{ _('Permiso para usar la IA') }}">
-            <span class="me-auto">{% set more_link %}<a href="{{ url_for('privacy') }}">{{ _('más información') }}</a>{% endset %}{{ _('Las funciones de IA envían el texto de tu CV y de las ofertas a Google Gemini. Necesitamos tu permiso para usarlas (%(more)s).', more=more_link) }}</span>
+            <span class="me-auto">{% set more_link %}<a href="{{ url_for('privacy') }}">{{ _('más información') }}</a>{% endset %}{{ _('Las funciones de IA envían el texto de tu CV y de las ofertas a %(provider)s. Necesitamos tu permiso para usarlas (%(more)s).', more=more_link, provider=ai_provider_name) }}</span>
             <form method="POST" action="{{ url_for('ai_consent') }}" class="m-0">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="granted" value="1">
@@ -406,7 +406,7 @@
             <div class="copilot-header-logo">🤖</div>
             <div class="copilot-header-text">
                 <h6>{{ _('Asistente Copilot') }}</h6>
-                <small id="copilot-ai-status">{{ _('Impulsado por Gemini') }}</small>
+                <small id="copilot-ai-status">{{ _('Impulsado por %(provider)s', provider=ai_provider_name) }}</small>
             </div>
             <button class="copilot-close-btn" data-onclick="closeCopilot" title="{{ _('Cerrar') }}">✕</button>
         </div>

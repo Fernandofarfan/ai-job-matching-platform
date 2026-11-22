@@ -115,6 +115,7 @@ tests_dir = [
 # Lo que importan los tests y no se muta: mutmut corre desde mutants/ y no ve el resto del repo.
 # tests/test_mutmut_config.py avisa si falta un módulo.
 also_copy = [
+    "opencode_client.py",
     "eval", "scripts", "templates", "static", "routers", "services", "scrapers", "tasks", "alembic", "translations",
     "alembic.ini", "VERSION", "account_lifecycle.py", "account_notify.py", "ai_engine.py", "ai_usage.py", "app.py",
     "ats_score.py", "celery_app.py", "cv_storage.py", "data_export.py", "db_config.py", "db_schema.py",
