@@ -38,6 +38,23 @@ SKILL_VARIATIONS = {
     'rest api': ['rest api', 'api', 'rest', 'restful', 'web services'],
     'ci/cd': ['ci/cd', 'continuous integration', 'jenkins', 'devops']
 }
+# la misma habilidad en español, portugués e inglés: un CV en un idioma y la oferta en otro
+SKILL_TRANSLATIONS = {
+    'incident response': ['incident response', 'respuesta a incidentes', 'resposta a incidentes'],
+    'vulnerability management': ['vulnerability management', 'gestión de vulnerabilidades', 'gestão de vulnerabilidades'],
+    'recruitment': ['recruitment', 'recruiting', 'reclutamiento', 'recrutamento'],
+    'customer service': ['customer service', 'customer support', 'atención al cliente', 'atendimento ao cliente'],
+    'project management': ['project management', 'gestión de proyectos', 'gestão de projetos'],
+    'accounting': ['accounting', 'contabilidad', 'contabilidade'],
+    'sales': ['sales', 'ventas', 'vendas'],
+    'negotiation': ['negotiation', 'negociación', 'negociação'],
+    'data analysis': ['data analysis', 'análisis de datos', 'análise de dados'],
+    'logistics': ['logistics', 'logística'],
+    'inventory': ['inventory', 'inventarios', 'inventario', 'inventário'],
+    'social media': ['social media', 'redes sociales', 'redes sociais'],
+    'manual testing': ['manual testing', 'pruebas manuales', 'testes manuais'],
+}
+SKILL_VARIATIONS.update(SKILL_TRANSLATIONS)
 MAX_MISSING_SKILLS = 8
 
 
@@ -225,6 +242,13 @@ class jobMatcher:
             if re.search(pattern, job_description_lower):
                 matched_skills.append(skill)
 
+
+        # una habilidad del CV nombrada en otro idioma cuenta una vez, aunque la oferta la diga en dos
+        for skill in profile_skills:
+            translations = next((t for t in SKILL_TRANSLATIONS.values() if skill.lower().strip() in t), [])
+            if translations and not any(t in matched_skills for t in translations) and any(
+                    re.search(r'\b' + re.escape(t) + r'\b', job_description_lower) for t in translations):
+                matched_skills.append(skill.lower().strip())
 
         match_percentage = (len(matched_skills) / len(profile_skills)) * 100
         return min(match_percentage, 100.0)
