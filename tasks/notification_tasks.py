@@ -212,7 +212,7 @@ def _telegram_chat() -> str | None:
         own = integrations.telegram_chat_id(uid)
         if own is not None:
             return own or None
-        return (os.getenv("TELEGRAM_CHAT_ID") or None) if uid == accounts.first_user_id() else None
+        return (os.getenv("TELEGRAM_CHAT_ID") or None) if uid == accounts.legacy_owner_id() and not accounts.legacy_locked() else None
     except Exception as e:
         logger.error(f"No se pudo leer el chat de Telegram de la cuenta: {type(e).__name__}")
         return None
@@ -335,9 +335,11 @@ def notify_alert(search: dict[str, Any], jobs: list[Any]) -> dict[str, Any]:
         import push
         first = jobs[0] if jobs else {}
         title = str(first.get("Title") or first.get("title") or "")
+        # con una sola oferta el aviso la abre; con varias, la lista de alertas
+        link = str(first.get("Url") or first.get("URL") or first.get("url") or "") if len(jobs) == 1 else ""
         sent["push"] = push.send_to_current(
             f"{len(jobs)} ofertas nuevas: {search['name']}"[:120],
-            title + (f" y {len(jobs) - 1} más" if len(jobs) > 1 else ""), "/alerts")
+            title + (f" y {len(jobs) - 1} más" if len(jobs) > 1 else ""), link or "/alerts")
     return sent
 
 

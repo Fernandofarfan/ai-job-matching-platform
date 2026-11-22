@@ -157,9 +157,25 @@ def user_ids() -> list[int]:
 
 
 def first_user_id() -> int | None:
-    """Id de la primera cuenta (dueña de Telegram, Gmail y la extensión)."""
+    """Id de la primera cuenta."""
     ids = user_ids()
     return ids[0] if ids else None
+
+
+def legacy_owner_id() -> int | None:
+    """Dueña de los datos previos al multiusuario y de Telegram, Gmail y la extensión del .env: la primera
+    cuenta, pero con ADMIN_EMAIL solo después de verificar el email (quien solo conoce la dirección no los toma)."""
+    uid = first_user_id()
+    if uid is None or not normalize_email(os.getenv('ADMIN_EMAIL', '')):
+        return uid
+    user = get_user(uid)
+    return uid if user and user['email_verified'] else None
+
+
+def legacy_locked() -> bool:
+    """Hay cuentas pero ninguna es dueña de lo previo todavía (ADMIN_EMAIL sin verificar): nadie lo usa,
+    ni siquiera sin login."""
+    return first_user_id() is not None and legacy_owner_id() is None
 
 
 def owner_ids(active_only: bool = False) -> list[int | None]:
@@ -198,12 +214,12 @@ def get_user(user_id: int | None) -> dict[str, Any] | None:
 
 
 def is_admin(user_id: int | None) -> bool:
-    """Administra la instancia la cuenta de ADMIN_EMAIL o, sin esa variable, la primera cuenta."""
+    """Administra la instancia la cuenta de ADMIN_EMAIL con el email verificado o, sin esa variable, la primera."""
     user = get_user(user_id)
     if user is None or user['disabled']:
         return False
     admin = normalize_email(os.getenv('ADMIN_EMAIL', ''))
-    return bool(user['email'] == admin if admin else user['id'] == first_user_id())
+    return bool(user['email'] == admin and user['email_verified'] if admin else user['id'] == first_user_id())
 
 
 def list_users() -> list[dict[str, Any]]:
@@ -232,10 +248,12 @@ def normalize_email(email: str) -> str:
     return (email or '').strip().lower()
 
 
-def register(email: str, password: str, terms_accepted: bool = False) -> int:
+def register(email: str, password: str, terms_accepted: bool = False, verified: bool = False) -> int:
     """Crea la cuenta y devuelve su id; la primera cuenta se queda con los datos previos (user_id NULL).
 
     terms_accepted guarda la aceptación de los Términos en el mismo commit que crea la cuenta.
+    Con ADMIN_EMAIL, la primera cuenta es administradora y recibe los datos previos recién al verificar el
+    email (o con verified=True, desde scripts/create_admin.py): quien solo conoce la dirección no la toma.
     """
     email = normalize_email(email)
     if not EMAIL_RE.match(email) or len(email) > 255:
@@ -250,9 +268,10 @@ def register(email: str, password: str, terms_accepted: bool = False) -> int:
             raise AccountError('Definí ADMIN_EMAIL antes de crear la primera cuenta')
         if not first and not _signup_allowed():
             raise AccountError('El registro de cuentas nuevas está cerrado')
-        # la primera cuenta es la del administrador: no espera el email de verificación
+        # sin ADMIN_EMAIL (solo local) la primera cuenta no espera el email de verificación
+        pre_verified = first and (verified or not admin)
         user = User(email=email, password_hash=generate_password_hash(password),
-                    email_verified_at=datetime.now() if first else None,
+                    email_verified_at=datetime.now() if pre_verified else None,
                     terms_accepted_at=datetime.now() if terms_accepted else None)
         session.add(user)
         try:
@@ -261,7 +280,7 @@ def register(email: str, password: str, terms_accepted: bool = False) -> int:
             session.rollback()
             raise AccountError('Ya existe una cuenta con ese email') from None
         user_id = user.id
-    if first:
+    if pre_verified:
         claim_orphans(user_id)
     return int(user_id)
 
@@ -325,7 +344,7 @@ def claim_legacy_files(user_id: int) -> None:
 
 def adopt_legacy_files() -> None:
     """Instancias que ya tenían cuentas antes de separar archivos: los sueltos pasan a la primera cuenta."""
-    uid = first_user_id()
+    uid = legacy_owner_id()
     if uid is not None:
         claim_legacy_files(uid)
 
@@ -337,11 +356,23 @@ def _owned_tables(inspector: Any) -> list[str]:
             if inspector.has_table(t) and 'user_id' in {c['name'] for c in inspector.get_columns(t)}]
 
 
+# Tablas con unicidad (user_id, columna): lo que la cuenta ya tiene gana sobre la fila previa sin dueño
+UNIQUE_PER_USER = {'user_profiles': 'role_type', 'networking_exclusions': 'company_name',
+                   'processed_files': 'filename', 'seen_jobs': 'fingerprint'}
+
+
 def claim_orphans(user_id: int) -> None:
     """Asigna al usuario las filas creadas antes del multiusuario (user_id NULL)."""
-    from sqlalchemy import inspect, text
+    from sqlalchemy import bindparam, inspect, text
     with _sessions()() as session:
         for table in _owned_tables(inspect(session.get_bind())):
+            column = UNIQUE_PER_USER.get(table)
+            if column:
+                mine = list(session.execute(text(f'SELECT {column} FROM {table} WHERE user_id = :uid'),  # noqa: S608 - tabla/columna de una lista fija
+                                            {'uid': user_id}).scalars())
+                for i in range(0, len(mine), 500):
+                    session.execute(text(f'DELETE FROM {table} WHERE user_id IS NULL AND {column} IN :keys')  # noqa: S608 - tabla/columna de una lista fija
+                                    .bindparams(bindparam('keys', expanding=True)), {'keys': mine[i:i + 500]})
             session.execute(text(f'UPDATE {table} SET user_id = :uid WHERE user_id IS NULL'), {'uid': user_id})  # noqa: S608 - tabla/orden de una lista fija, no del usuario
         session.commit()
     claim_legacy_files(user_id)
@@ -393,12 +424,24 @@ def check_password(user_id: int, password: str) -> bool:
 
 
 def mark_verified(user_id: int) -> None:
-    """Marca el email de la cuenta como verificado."""
+    """Marca el email de la cuenta como verificado; si es la primera cuenta, recibe los datos previos.
+
+    El reclamo va antes de marcar la verificación: si falla, la cuenta sigue sin verificar y la próxima
+    verificación lo reintenta. Ya verificada no reclama más (en modo invitado, lo nuevo sin dueño es del invitado)."""
     with _sessions()() as session:
         user = session.get(User, user_id)
-        if user is not None and user.email_verified_at is None:
-            user.email_verified_at = datetime.now()
-            session.commit()
+        if user is None or user.email_verified_at is not None:
+            return
+    first = user_id == first_user_id()
+    if first:
+        claim_orphans(user_id)
+    with _sessions()() as session:
+        session.execute(update(User).where(User.id == user_id, User.email_verified_at.is_(None))
+                        .values(email_verified_at=datetime.now()))
+        session.commit()
+    if first:
+        import profile_store
+        profile_store.import_legacy_profiles()  # el JSON previo se salteó mientras la cuenta no estaba verificada
 
 
 def accept_terms(user_id: int) -> None:

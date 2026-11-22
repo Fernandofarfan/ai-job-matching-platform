@@ -6,6 +6,14 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 
+## [Sin publicar]
+
+### Seguridad
+- Con `ADMIN_EMAIL`, la primera cuenta administra y recibe los datos previos recién al verificar el email; `scripts/create_admin.py` la crea ya verificada. Recuperar la contraseña o entrar con Google sobre una cuenta sin verificar borra también su segundo factor.
+
+### Cambiado
+- El aviso push de una alerta con una sola oferta abre la oferta; con varias, la página de alertas.
+
 ## [4.0.0] - 2026-11-14
 
 ### Para actualizar desde 3.0.0
