@@ -71,7 +71,7 @@ def extension_token_user(candidate: str) -> int | None:
     import integrations
     uid = integrations.user_for_extension_token(candidate)
     if uid is None and legacy_extension_token(candidate):
-        uid = accounts.first_user_id()
+        uid = accounts.legacy_owner_id()
     user = accounts.get_user(uid) if uid is not None else None
     return uid if user and not user['disabled'] else None
 
@@ -81,7 +81,7 @@ def legacy_extension_token(candidate: str) -> bool:
     import integrations
     expected = os.getenv('EXTENSION_TOKEN', '')
     return (bool(expected and candidate) and hmac.compare_digest(candidate.encode(), expected.encode())
-            and integrations.legacy_allowed(accounts.first_user_id(), 'extension'))
+            and not accounts.legacy_locked() and integrations.legacy_allowed(accounts.legacy_owner_id(), 'extension'))
 
 
 def is_local_path(target: object) -> bool:

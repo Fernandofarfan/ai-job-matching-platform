@@ -296,6 +296,8 @@ class jobMatcher:
     def get_missing_skills(profile_skills: list[str], job_description: str) -> list[str]:
         """Habilidades del vocabulario que pide la oferta y no están en el CV (ni como variante), hasta 8."""
         have = {skill_catalog.canonical(s) for s in profile_skills}
+        # "AWS Glue" en el CV también cubre "aws" y "glue", que es como skills_in lee la oferta
+        have |= set(skill_catalog.skills_in(' , '.join(profile_skills)))
         for variations in SKILL_VARIATIONS.values():
             names = {skill_catalog.canonical(v) for v in variations}
             if have & names:

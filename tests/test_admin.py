@@ -86,6 +86,7 @@ def test_admin_email_decides_admin(client, bob_client, monkeypatch):
     ana, bob = _ids()
     assert accounts.is_admin(ana) and not accounts.is_admin(bob)
     monkeypatch.setenv('ADMIN_EMAIL', 'bob@example.com')
+    accounts.mark_verified(bob)
     assert accounts.is_admin(bob) and not accounts.is_admin(ana)
 
 

@@ -68,6 +68,7 @@ def test_ai_consent_next_cannot_leave_the_site(client, accounts_db):
 def test_ai_calls_need_consent(accounts_db):
     user_id = accounts.register('ana@example.com', PASSWORD)
     with accounts.as_user(user_id), mock.patch.object(ai_engine, 'GEMINI_AVAILABLE', True), \
+            mock.patch.object(ai_engine, 'AI_PROVIDER', 'gemini'), \
             mock.patch.object(ai_engine, '_gemini_client', create=True) as client:
         assert ai_engine._call_gemini('hola') == ai_engine.AI_CONSENT_ERROR
         assert embeddings.embed(['texto']) is None

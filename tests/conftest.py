@@ -117,8 +117,10 @@ def app():
     import numpy  # noqa: F401
 
     # Modelos sobre accounts.Base: reimportarlos duplicaría sus índices en la metadata
-    import integrations  # noqa: F401
+    import db_schema
     import profile_store  # noqa: F401
+    for module in db_schema.ACCOUNT_MODULES:
+        importlib.import_module(module)
 
     with mock.patch.dict('sys.modules', {}):
         import db_config

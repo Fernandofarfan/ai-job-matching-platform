@@ -19,7 +19,7 @@ flowchart LR
     W --> FS[(uploads/ y results/<br/>GCS en Cloud Run)]
     C --> FS
     C -->|Playwright / requests| P[Portales: Computrabajo, Bumeran,<br/>ZonaJobs, GetOnBoard, Indeed, LinkedIn]
-    W -->|IA con permiso de la cuenta| G[Gemini]
+    W -->|IA con permiso de la cuenta| G[OpenCode o Gemini]
     C --> G
     W --> M[/metrics → Prometheus → Grafana/]
 ```
@@ -31,7 +31,7 @@ flowchart LR
 | Beat | `celery_app.py` (`beat_schedule`) | Recordatorios diarios, alertas de empleo (`ALERTS_INTERVAL_HOURS`), resumen semanal, retención de CVs, cuentas inactivas, limpieza de temporales |
 | Scrapers | `scrapers/`, `scraping_jobs.py`, `job_dispatch.py` | Un scraper por portal; `SCRAPER_BACKEND=thread` (en la web) o `celery` (en el worker). La búsqueda universal unifica las ofertas repetidas (`job_dedup.py`) |
 | Matching | `resume_parser.py`, `job_matcher.py`, `embeddings.py`, `job_ranking.py` | CV → habilidades y años; match TF-IDF o embeddings (`MATCHING_BACKEND`, `MATCHING_BACKEND_BY_LANGUAGE`); ranking aprendido de "me interesa" |
-| IA | `ai_engine.py`, `ai_usage.py` | Gemini con caché, presupuesto diario y permiso por cuenta |
+| IA | `ai_engine.py`, `ai_usage.py` | OpenCode (`opencode_client.py`) o Gemini, con caché, presupuesto diario y permiso por cuenta |
 | Cuentas y seguridad | `accounts*.py`, `auth*.py`, `two_factor.py`, `passkeys.py`, `security_*` | Cuentas, sesiones, 2FA, passkeys, eventos de seguridad |
 | Datos | `models.py`, `alembic/`, `db_config.py` | SQLAlchemy sobre MySQL; el esquema solo cambia con migraciones de Alembic |
 | CVs | `cv_storage.py` | Cifrado en reposo (`CV_ENCRYPTION_KEY`) y retención (`CV_RETENTION_DAYS`) |

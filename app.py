@@ -53,11 +53,11 @@ if auth.auth_enabled():
     except Exception as e:
         logger.warning(f'No se pudieron asignar los archivos previos a la primera cuenta: {e}')
 
-# ── AI Engine import (lazy para no bloquear startup si Gemini no está) ────────
+# ── AI Engine import (lazy para no bloquear startup si la IA no está) ────────
 try:
     import ai_engine
     AI_AVAILABLE = ai_engine.GEMINI_AVAILABLE
-    logger.info(f"AI Engine loaded (Gemini={'✓' if AI_AVAILABLE else '✗'})")
+    logger.info(f"AI Engine loaded ({ai_engine.AI_PROVIDER}={'✓' if AI_AVAILABLE else '✗'})")
 except ImportError as _ai_err:
     ai_engine = None  # type: ignore[assignment]
     AI_AVAILABLE = False

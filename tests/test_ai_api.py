@@ -93,10 +93,10 @@ def test_notifications_without_manager(api):
 
 def test_interview_evaluate_without_gemini_has_no_grade(api, engine):
     """Si Gemini no respondió (sin permiso, sin cuota) no se devuelve un puntaje inventado."""
-    engine.evaluate_interview_answer.return_value = {'error': 'Error al contactar Gemini: falta tu permiso'}
+    engine.evaluate_interview_answer.return_value = {'error': 'Error al contactar la IA: falta tu permiso'}
     resp = api.post('/api/ai/interview/evaluate', json={'question': 'q', 'answer': 'a'})
     assert resp.status_code == 503
-    assert resp.json() == {'success': False, 'error': 'Error al contactar Gemini: falta tu permiso'}
+    assert resp.json() == {'success': False, 'error': 'Error al contactar la IA: falta tu permiso'}
 
 
 def test_rewrite_and_interview_validation(api, engine):

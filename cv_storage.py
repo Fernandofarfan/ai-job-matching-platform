@@ -149,17 +149,42 @@ def encrypt_existing() -> int:
     fernet = _fernet()
     if fernet is None:
         return 0
+    for tmp in glob.glob(os.path.join(UPLOADS_DIR, '.enc-*.tmp')):  # restos de un worker que murió a mitad
+        try:
+            os.remove(tmp)
+        except OSError as e:
+            logger.warning(f"No se pudo borrar el temporal {tmp}: {e}")
     done = 0
     for path in glob.glob(os.path.join(UPLOADS_DIR, '*')):
         if not os.path.isfile(path):
             continue
-        with open(path, 'rb') as fh:
-            data = fh.read()
-        if _is_encrypted(data):
-            continue
-        stat = os.stat(path)
-        with open(path, 'wb') as fh:
-            fh.write(fernet.encrypt(data))
-        os.utime(path, (stat.st_atime, stat.st_mtime))
-        done += 1
+        try:
+            done += _encrypt_file(fernet, path)
+        except OSError as e:  # un CV que no se puede cifrar no frena la retención ni los demás
+            logger.warning(f"No se pudo cifrar el CV {os.path.basename(path)}: {e}")
     return done
+
+
+def _encrypt_file(fernet: Fernet, path: str) -> int:
+    """Cifra un CV en texto plano vía temporal + os.replace: un corte a mitad no lo trunca. 1 si lo cifró."""
+    with open(path, 'rb') as fh:
+        data = fh.read()
+    if _is_encrypted(data):
+        return 0
+    stat = os.stat(path)
+    fd, tmp = tempfile.mkstemp(dir=os.path.dirname(path), prefix='.enc-', suffix='.tmp')  # nombre corto
+    try:
+        with os.fdopen(fd, 'wb') as fh:
+            fh.write(fernet.encrypt(data))
+        os.utime(tmp, (stat.st_atime, stat.st_mtime))
+        try:
+            current = os.stat(path)
+        except FileNotFoundError:
+            current = None
+        if current is None or (current.st_mtime, current.st_size) != (stat.st_mtime, stat.st_size):
+            return 0  # se borró (o cambió) mientras se cifraba: no se restaura
+        os.replace(tmp, path)
+        return 1
+    finally:
+        if os.path.exists(tmp):
+            os.remove(tmp)  # no quedan copias sin cifrar que la retención no ve

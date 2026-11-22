@@ -80,7 +80,11 @@ def observe_ai(input_tokens: int, output_tokens: int) -> None:
     AI_TOKENS.labels('output').inc(max(int(output_tokens or 0), 0))
 
 
+_METHODS = frozenset({'GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'})
+
+
 def observe_request(method: str, route: str, status: int, seconds: float) -> None:
+    method = method if method in _METHODS else 'OTHER'
     HTTP_REQUESTS.labels(method, route, str(status)).inc()
     HTTP_LATENCY.labels(method, route).observe(seconds)
 

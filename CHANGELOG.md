@@ -8,8 +8,22 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [Sin publicar]
 
+### Agregado
+- OpenCode como proveedor de IA (`opencode_client.py`): con `OPENCODE_API_KEY`, las cartas, los CVs optimizados, el Copilot, el análisis de ofertas, la lectura de CVs y Gmail usan OpenCode en lugar de Gemini. `AI_PROVIDER` elige el proveedor; `OPENCODE_MODEL` y `OPENCODE_LIGHT_MODEL` (por defecto `glm-5.3` y `glm-5.3-flash`, con retención cero) eligen los modelos. Los embeddings siguen en Gemini.
+- Terraform y el deploy aceptan `opencode_api_key`; `gemini_api_key` pasa a ser opcional.
+
+### Cambiado
+- El aviso push de una alerta con una sola oferta abre la oferta; con varias, la página de alertas.
+- Los avisos de IA y la política de privacidad nombran el proveedor configurado. Los errores dicen "Error al contactar la IA".
+
 ### Mejorado
 - Matching entre idiomas: habilidades como "Respuesta a incidentes", "Contabilidad" o "Ventas" coinciden con "incident response", "accounting" o "sales" (`SKILL_TRANSLATIONS`). NDCG@5 promedio de 0,901 a 0,918; ciberseguridad en español de 0,714 a 0,840. Línea base del CI a 0,91.
+
+### Corregido
+- 28 archivos de tests fallaban corridos solos: el fixture `app` importaba los modelos de cuentas dentro de `patch.dict('sys.modules')` y el reimport duplicaba el índice `ix_user_sessions_user_id`; `test_job_alerts` no registraba la tabla `job_feedback`. El CI corre cada archivo de tests por separado.
+
+### Seguridad
+- Con `ADMIN_EMAIL`, la primera cuenta administra y recibe los datos previos recién al verificar el email; `scripts/create_admin.py` la crea ya verificada. Recuperar la contraseña o entrar con Google sobre una cuenta sin verificar borra también su segundo factor.
 
 ## [4.0.0] - 2026-11-14
 
