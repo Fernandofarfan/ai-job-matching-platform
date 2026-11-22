@@ -108,8 +108,16 @@ variable "db_password" {
 }
 
 variable "gemini_api_key" {
-  description = "API key de Google Gemini"
+  description = "API key de Google Gemini (embeddings, y la IA generativa si no hay opencode_api_key). Vacía = sin Gemini"
   type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "opencode_api_key" {
+  description = "API key de OpenCode: con ella las cartas, los CVs y el Copilot usan OpenCode en lugar de Gemini. Vacía = Gemini"
+  type        = string
+  default     = ""
   sensitive   = true
 }
 

@@ -193,6 +193,12 @@ def select_language(request: Request) -> str:
     return lang
 
 
+def ai_provider_name() -> str:
+    """Nombre del servicio que recibe el texto de los CVs cuando se usa la IA (avisos y privacidad)."""
+    import opencode_client
+    return 'OpenCode' if opencode_client.provider() == 'opencode' else 'Google Gemini'
+
+
 def render(request: Request, name: str, status_code: int = 200, **context: Any) -> HTMLResponse:
     """Plantilla con el contexto que Flask agrega a todas (cuenta, idioma) y la sesión guardada."""
     lang = select_language(request)
@@ -201,7 +207,7 @@ def render(request: Request, name: str, status_code: int = 200, **context: Any) 
     base = {'auth_enabled': auth.auth_enabled(), 'current_user_email': user['email'] if user else '',
             'current_user_is_admin': user is not None and accounts.is_admin(user['id']),
             'ai_consent_needed': user is not None and not user.get('ai_consent', True),
-            'current_lang': lang, 'languages': i18n.LANGUAGES,
+            'current_lang': lang, 'languages': i18n.LANGUAGES, 'ai_provider_name': ai_provider_name(),
             'current_path': request.url.path + (f'?{request.url.query}' if request.url.query else '')}
     response = templates.TemplateResponse(request=request, name=name, context={**base, **context},
                                           status_code=status_code)

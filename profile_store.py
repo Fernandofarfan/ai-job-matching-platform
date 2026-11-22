@@ -234,10 +234,11 @@ def _json_files() -> list[tuple[str, int | None]]:
              if path.rsplit('.u', 1)[1][:-5].isdigit()]
     if os.path.exists(JSON_PATH):
         try:
-            owner = accounts.first_user_id()
+            owner, locked = accounts.legacy_owner_id(), accounts.legacy_locked()
         except SQLAlchemyError:
-            owner = None
-        files.append((JSON_PATH, owner))
+            owner, locked = None, False
+        if not locked:  # con ADMIN_EMAIL sin verificar no es de nadie, tampoco de los invitados
+            files.append((JSON_PATH, owner))
     return files
 
 
@@ -250,6 +251,16 @@ def _import_legacy_json() -> None:
     with _json_lock():
         for path, user_id in _json_files():
             _import_json(path, user_id)
+
+
+def import_legacy_profiles() -> None:
+    """Reintenta pasar a MySQL el JSON viejo (p. ej. cuando la primera cuenta recién verificó el email)."""
+    if _session_factory is None:
+        return
+    try:
+        _import_legacy_json()
+    except Exception as e:
+        logger.warning(f"No se pudo importar el perfil previo: {type(e).__name__}: {e}")
 
 
 def _import_json(path: str, user_id: int | None) -> None:
@@ -373,7 +384,7 @@ def delete_all() -> None:
             session.execute(delete(UserProfile).where(_mine()))
             session.commit()
     paths = [_current_json()]
-    if accounts.current_user_id() is not None and accounts.current_user_id() == accounts.first_user_id():
+    if accounts.current_user_id() is not None and accounts.current_user_id() == accounts.legacy_owner_id():
         paths.append(JSON_PATH)  # el JSON de antes del multiusuario es de la primera cuenta
     for path in paths:
         for candidate in (path, path + '.migrated'):

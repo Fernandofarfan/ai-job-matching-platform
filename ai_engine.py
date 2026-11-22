@@ -1,6 +1,6 @@
 """
 ai_engine.py — Motor de IA Centralizado para EmpleoIA
-Usa Google Gemini para análisis semántico avanzado de ofertas de trabajo.
+Usa OpenCode o Google Gemini (opencode_client.provider()) para análisis semántico de ofertas de trabajo.
 """
 import json
 import logging
@@ -13,6 +13,7 @@ from dotenv import load_dotenv
 from pydantic import BaseModel, Field, ValidationError
 
 import ai_usage
+import opencode_client
 
 load_dotenv()
 logger = logging.getLogger(__name__)
@@ -47,37 +48,48 @@ class JobAnalysisSchema(BaseModel):
     resumen_ejecutivo: str = Field(default="")
     error: str | None = None
 
-# ── Gemini client ─────────────────────────────────────────────────────────────
+# ── Cliente de IA: OpenCode o Gemini ─────────────────────────────────────────
+AI_PROVIDER = opencode_client.provider()
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 # Modelo más barato para extraer datos o clasificar (salarios, correos); vacío = GEMINI_MODEL
 GEMINI_LIGHT_MODEL = os.getenv("GEMINI_LIGHT_MODEL", "gemini-2.5-flash-lite") or GEMINI_MODEL
+AI_MODEL = opencode_client.model() if AI_PROVIDER == 'opencode' else GEMINI_MODEL
+AI_LIGHT_MODEL = opencode_client.light_model() if AI_PROVIDER == 'opencode' else GEMINI_LIGHT_MODEL
 
-try:
-    from google import genai
-    from google.genai import types as genai_types
-    _api_key = os.getenv("GEMINI_API_KEY", "")
-    if _api_key:
-        _gemini_client = genai.Client(api_key=_api_key, http_options={'api_version': 'v1beta'})
-        GEMINI_AVAILABLE = True
-        logger.info("Gemini AI engine initialized ✓")
+if AI_PROVIDER == 'opencode':
+    GEMINI_AVAILABLE = opencode_client.enabled()
+    if GEMINI_AVAILABLE:
+        logger.info(f"IA con OpenCode ({AI_MODEL}) ✓")
     else:
+        logger.warning("AI_PROVIDER=opencode sin OPENCODE_API_KEY — AI features disabled")
+else:
+    try:
+        from google import genai
+        from google.genai import types as genai_types
+        _api_key = os.getenv("GEMINI_API_KEY", "")
+        if _api_key:
+            _gemini_client = genai.Client(api_key=_api_key, http_options={'api_version': 'v1beta'})
+            GEMINI_AVAILABLE = True
+            logger.info("Gemini AI engine initialized ✓")
+        else:
+            GEMINI_AVAILABLE = False
+            logger.warning("GEMINI_API_KEY not set — AI features disabled")
+    except ImportError:
         GEMINI_AVAILABLE = False
-        logger.warning("GEMINI_API_KEY not set — AI features disabled")
-except ImportError:
-    GEMINI_AVAILABLE = False
-    logger.warning("google-genai not installed — AI features disabled")
+        logger.warning("google-genai not installed — AI features disabled")
 
 
-# empieza como los demás errores de Gemini (document_generators.GEMINI_ERROR_PREFIXES)
-GEMINI_ERROR_PREFIX = "Error al contactar Gemini"
-AI_CONSENT_ERROR = "Error al contactar Gemini: falta tu permiso para usar la IA (activalo en Mi cuenta)"
+# empieza como los demás errores de la IA (document_generators.GEMINI_ERROR_PREFIXES)
+GEMINI_ERROR_PREFIX = "Error al contactar la IA"
+AI_CONSENT_ERROR = "Error al contactar la IA: falta tu permiso para usar la IA (activalo en Mi cuenta)"
+NOT_CONFIGURED_MESSAGE = "⚠️ La IA no está configurada. Agregá OPENCODE_API_KEY o GEMINI_API_KEY al archivo .env"
 
 
 def _call_gemini(prompt: str, temperature: float = 0.7, model: str | None = None) -> str:
-    """Wrapper seguro para llamar a Gemini con manejo de errores; model=None usa GEMINI_MODEL."""
-    model = model or GEMINI_MODEL
+    """Llama a la IA (OpenCode o Gemini) sin lanzar excepciones; model=None usa AI_MODEL."""
+    model = model or AI_MODEL
     if not GEMINI_AVAILABLE:
-        return "⚠️ Gemini no está configurado. Agregá GEMINI_API_KEY al archivo .env"
+        return NOT_CONFIGURED_MESSAGE
     import accounts
     if accounts.ai_consent_missing():
         return AI_CONSENT_ERROR
@@ -86,32 +98,40 @@ def _call_gemini(prompt: str, temperature: float = 0.7, model: str | None = None
         return cached
     if ai_usage.budget_exceeded():
         logger.warning("Límite mensual de tokens de IA alcanzado (instancia o cuenta)")
-        return "Error al contactar Gemini: se alcanzó el límite mensual de tokens"
+        return f"{GEMINI_ERROR_PREFIX}: se alcanzó el límite mensual de tokens"
     try:
-        response = _gemini_client.models.generate_content(
-            model=model,
-            contents=prompt,
-            config=genai_types.GenerateContentConfig(
-                temperature=temperature,
-                max_output_tokens=2048,
-            ),
-        )
-        usage = getattr(response, 'usage_metadata', None)
-        input_tokens = getattr(usage, 'prompt_token_count', 0) or 0
-        # Los tokens de razonamiento (thinking) se facturan como salida
-        output_tokens = (getattr(usage, 'candidates_token_count', 0) or 0) + (getattr(usage, 'thoughts_token_count', 0) or 0)
+        if AI_PROVIDER == 'opencode':
+            text, input_tokens, output_tokens = opencode_client.chat(prompt, model, temperature)
+        else:
+            text, input_tokens, output_tokens = _gemini_generate(prompt, temperature, model)
         ai_usage.record(input_tokens, output_tokens)
-        logger.info(f"Gemini: {input_tokens} tokens de entrada, {output_tokens} de salida")
-        text = (response.text or "").strip()
+        logger.info(f"IA: {input_tokens} tokens de entrada, {output_tokens} de salida")
         if not text:
             # sin texto (bloqueo de seguridad, tope de tokens): no se guarda para no repetir la respuesta vacía
-            logger.warning("Gemini devolvió una respuesta vacía")
-            return "Error al contactar Gemini: respuesta vacía"
+            logger.warning("La IA devolvió una respuesta vacía")
+            return f"{GEMINI_ERROR_PREFIX}: respuesta vacía"
         ai_usage.cache_set(model, prompt, temperature, text)
         return text
     except Exception as e:
-        logger.error(f"Gemini API error: {e}")
-        return f"Error al contactar Gemini: {e!s}"
+        logger.error(f"Error de la API de IA ({AI_PROVIDER}): {e}")
+        return f"{GEMINI_ERROR_PREFIX}: {e!s}"
+
+
+def _gemini_generate(prompt: str, temperature: float, model: str) -> tuple[str, int, int]:
+    """Texto y tokens (entrada, salida con razonamiento) de una respuesta de Gemini."""
+    response = _gemini_client.models.generate_content(
+        model=model,
+        contents=prompt,
+        config=genai_types.GenerateContentConfig(
+            temperature=temperature,
+            max_output_tokens=2048,
+        ),
+    )
+    usage = getattr(response, 'usage_metadata', None)
+    input_tokens = getattr(usage, 'prompt_token_count', 0) or 0
+    # Los tokens de razonamiento (thinking) se facturan como salida
+    output_tokens = (getattr(usage, 'candidates_token_count', 0) or 0) + (getattr(usage, 'thoughts_token_count', 0) or 0)
+    return (response.text or "").strip(), input_tokens, output_tokens
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -173,11 +193,11 @@ Respondé con este JSON exacto (sin markdown, sin bloques de código):
         validated = JobAnalysisSchema(**data)
         return validated.model_dump()
     except json.JSONDecodeError:
-        logger.warning("Could not parse Gemini JSON response, returning raw text")
+        logger.warning("Could not parse AI JSON response, returning raw text")
         fallback = JobAnalysisSchema(resumen_ejecutivo=raw, error="No se pudo parsear la respuesta de IA JSONDecodeError")
         return fallback.model_dump()
     except ValidationError as e:
-        logger.warning(f"Validation Error with Gemini JSON response: {e}")
+        logger.warning(f"Validation Error with AI JSON response: {e}")
         fallback = JobAnalysisSchema(resumen_ejecutivo=raw, error=f"Error validacion de JSON: {e}")
         return fallback.model_dump()
 
@@ -383,7 +403,7 @@ Respondé en JSON sin bloques de código:
 
 Si no hay info salarial, usá inferencias del mercado latinoamericano 2025 para el rol y nivel de experiencia."""
 
-    raw = _call_gemini(prompt, temperature=0.2, model=GEMINI_LIGHT_MODEL)
+    raw = _call_gemini(prompt, temperature=0.2, model=AI_LIGHT_MODEL)
     raw = re.sub(r'```(?:json)?\s*', '', raw).strip()
     try:
         return cast(dict[str, Any], json.loads(raw))
