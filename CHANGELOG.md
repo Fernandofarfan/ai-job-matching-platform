@@ -20,6 +20,7 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 - Matching entre idiomas: habilidades como "Respuesta a incidentes", "Contabilidad" o "Ventas" coinciden con "incident response", "accounting" o "sales" (`SKILL_TRANSLATIONS`). NDCG@5 promedio de 0,901 a 0,918; ciberseguridad en español de 0,714 a 0,840. Línea base del CI a 0,91.
 
 ### Corregido
+- `POST /api/tracker/job` respondía 500 con un título, una empresa u otro campo más largo que su columna; ahora responde 400 con el campo. Lo encontró Schemathesis 4.33.
 - 28 archivos de tests fallaban corridos solos: el fixture `app` importaba los modelos de cuentas dentro de `patch.dict('sys.modules')` y el reimport duplicaba el índice `ix_user_sessions_user_id`; `test_job_alerts` no registraba la tabla `job_feedback`. El CI corre cada archivo de tests por separado.
 - Perfiles durante una caída de MySQL: un perfil borrado en MySQL ya no reaparece al importar el JSON de respaldo de otra instancia (borrado como fila vacía con `user_profiles.deleted_at`, migración `0022`); cada rol se compara con su propia fila (`_times`); un lock de archivo evita que la importación y una escritura al JSON se pisen, y lo escrito justo cuando MySQL vuelve se importa enseguida.
 
