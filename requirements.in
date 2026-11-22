@@ -8,7 +8,7 @@
 # Dependabot propone las subidas y actualiza los dos archivos.
 Werkzeug==3.1.9
 fastapi==0.162.5
-python-multipart==0.0.33
+python-multipart==0.0.34
 httpx==0.28.1
 uvicorn[standard]==0.54.0
 
