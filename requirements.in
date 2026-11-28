@@ -60,7 +60,7 @@ google-auth-oauthlib==1.5.0
 
 # --- Exportación de datos ---
 openpyxl==3.1.5
-reportlab==5.1.0
+reportlab==5.1.1
 
 # --- Tests ---
 pytest==9.2.0
