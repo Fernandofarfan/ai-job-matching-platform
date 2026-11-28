@@ -51,7 +51,7 @@ alembic==1.20.1
 
 # --- Inteligencia Artificial ---
 google-genai==3.5.0
-pydantic==2.14.3
+pydantic==2.14.4
 
 # --- Email integration ---
 google-api-python-client==2.202.0
